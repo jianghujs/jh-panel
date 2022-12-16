@@ -5,7 +5,7 @@ export PATH
 is64bit=`getconf LONG_BIT`
 
 if [ -f /etc/motd ];then
-    echo "welcome to mdserver-web panel" > /etc/motd
+    echo "welcome to jianghu panel (base on mdserver-web)" > /etc/motd
 fi
 
 startTime=`date +%s`
@@ -70,15 +70,16 @@ if [ $OSNAME != "macos" ];then
 	mkdir -p /www/backup/site
 
 
-	# https://cdn.jsdelivr.net/gh/midoks/mdserver-web@latest/scripts/install.sh
+	# https://cdn.jsdelivr.net/gh/jianghujs/jh-panel@latest/scripts/install.sh
 
 	if [ ! -d /www/server/mdserver-web ];then
 
 		cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
 		if [ ! -z "$cn" ];then
-			curl -sSLo /tmp/master.zip https://gitee.com/midoks/mdserver-web/repository/archive/master.zip
+			# curl -sSLo /tmp/master.zip https://gitee.com/jianghujs/jh-panel/repository/archive/master.zip
+			curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/master
 		else
-			curl -sSLo /tmp/master.zip https://codeload.github.com/midoks/mdserver-web/zip/master
+			curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/master
 		fi
 
 		cd /tmp && unzip /tmp/master.zip

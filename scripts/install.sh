@@ -83,9 +83,9 @@ if [ $OSNAME != "macos" ];then
 		fi
 
 		cd /tmp && unzip /tmp/master.zip
-		mv -f /tmp/mdserver-web-master /www/server/mdserver-web
+		mv -f /tmp/jh-panel-master /www/server/mdserver-web
 		rm -rf /tmp/master.zip
-		rm -rf /tmp/mdserver-web-master
+		rm -rf /tmp/jh-panel-master
 	fi
 fi
 

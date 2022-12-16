@@ -59,9 +59,9 @@ fi
 
 
 cd /tmp && unzip /tmp/master.zip
-/usr/bin/cp -rf  /tmp/mdserver-web-master/* /www/server/mdserver-web
+/usr/bin/cp -rf  /tmp/jh-panel-master/* /www/server/mdserver-web
 rm -rf /tmp/master.zip
-rm -rf /tmp/mdserver-web-master
+rm -rf /tmp/jh-panel-master
 
 
 if [ -f /etc/rc.d/init.d/mw ];then

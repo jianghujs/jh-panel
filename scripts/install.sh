@@ -76,10 +76,10 @@ if [ $OSNAME != "macos" ];then
 
 		cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
 		if [ ! -z "$cn" ];then
-			# curl -sSLo /tmp/master.zip https://gitee.com/jianghujs/jh-panel/repository/archive/simple.zip
-			curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/simple
+			# curl -sSLo /tmp/master.zip https://gitee.com/jianghujs/jh-panel/repository/archive/master.zip
+			curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/master
 		else
-			curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/simple
+			curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/master
 		fi
 
 		cd /tmp && unzip /tmp/master.zip

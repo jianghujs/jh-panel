@@ -1060,8 +1060,8 @@ def makeConf():
     file = getRunDir() + '/data/json/config.json'
     if not os.path.exists(file):
         c = {}
-        c['title'] = '猫王面板'
-        c['home'] = 'http://github/midoks/mdserver-web'
+        c['title'] = '江湖面板'
+        c['home'] = 'http://github/jianghujs/jh-panel'
         c['recycle_bin'] = True
         c['template'] = 'default'
         writeFile(file, json.dumps(c))

@@ -28,7 +28,7 @@ mw_start_panel()
 {
     isStart=`ps -ef|grep 'gunicorn -c setting.py app:app' |grep -v grep|awk '{print $2}'`
     if [ "$isStart" == '' ];then
-        echo -e "starting mw-panel... \c"
+        echo -e "starting jh-panel... \c"
         cd $mw_path &&  gunicorn -c setting.py app:app
         port=$(cat ${mw_path}/data/port.pl)
         isStart=""
@@ -47,12 +47,12 @@ mw_start_panel()
             echo '------------------------------------------------------'
             tail -n 20 ${mw_path}/logs/error.log
             echo '------------------------------------------------------'
-            echo -e "\033[31mError: mw-panel service startup failed.\033[0m"
+            echo -e "\033[31mError: jh-panel service startup failed.\033[0m"
             return;
         fi
         echo -e "\033[32mdone\033[0m"
     else
-        echo "starting mw-panel... mw(pid $(echo $isStart)) already running"
+        echo "starting jh-panel... mw(pid $(echo $isStart)) already running"
     fi
 }
 
@@ -105,7 +105,7 @@ mw_stop_task()
 
 mw_stop_panel()
 {
-    echo -e "stopping mw-panel... \c";
+    echo -e "stopping jh-panel... \c";
     arr=`ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}'`
     for p in ${arr[@]}
     do
@@ -306,9 +306,9 @@ case "$1" in
             v6=$(python3 $mw_path/tools.py getServerIp 6)
 
             if [ "$v4" != "" ] && [ "$v6" != "" ]; then
-                address="MW-Panel-Url-Ipv4: http://$v4:$port$auth_path \nMW-Panel-Url-Ipv6: http://[$v6]:$port$auth_path"
+                address="JH-Panel-Url-Ipv4: http://$v4:$port$auth_path \nJH-Panel-Url-Ipv6: http://[$v6]:$port$auth_path"
             elif [ "$v4" != "" ]; then
-                address="MW-Panel-Url: http://$v4:$port$auth_path"
+                address="JH-Panel-Url: http://$v4:$port$auth_path"
             elif [ "$v6" != "" ]; then
 
                 if [ ! -f $mw_path/data/ipv6.pl ];then
@@ -317,17 +317,17 @@ case "$1" in
                     mw_stop
                     mw_start
                 fi
-                address="MW-Panel-Url: http://[$v6]:$port$auth_path"
+                address="JH-Panel-Url: http://[$v6]:$port$auth_path"
             else
-                address="MW-Panel-Url: http://you-network-ip:$port$auth_path"
+                address="JH-Panel-Url: http://you-network-ip:$port$auth_path"
             fi
         else
-            address="MW-Panel-Url: http://$address:$port$auth_path"
+            address="JH-Panel-Url: http://$address:$port$auth_path"
         fi
 
         show_panel_ip="$port|"
         echo -e "=================================================================="
-        echo -e "\033[32mMW-Panel default info!\033[0m"
+        echo -e "\033[32mJH-Panel default info!\033[0m"
         echo -e "=================================================================="
         echo -e "$address"
         echo -e `python3 $mw_path/tools.py username`

@@ -168,7 +168,7 @@ class fpm(object):
             'SCRIPT_NAME': self.last_path + script_name,
             'REQUEST_URI': url,
             'GATEWAY_INTERFACE': 'CGI/1.1',
-            'SERVER_SOFTWARE': 'MW-Panel',
+            'SERVER_SOFTWARE': 'JH-Panel',
             'REDIRECT_STATUS': '200',
             'CONTENT_TYPE': content_type,
             'CONTENT_LENGTH': str(content_length),
@@ -179,7 +179,7 @@ class fpm(object):
             'REMOTE_PORT': '7200',
             'SERVER_ADDR': '127.0.0.1',
             'SERVER_PORT': '80',
-            'SERVER_NAME': 'MW-Panel'
+            'SERVER_NAME': 'JH-Panel'
         }
 
         fpm_sock = fcgi(env, content)

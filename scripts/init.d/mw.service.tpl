@@ -1,5 +1,5 @@
 [Unit]
-Description=mw-panel daemon
+Description=jh-panel daemon
 After=network.target
 
 [Service]

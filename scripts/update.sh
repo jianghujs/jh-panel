@@ -24,44 +24,47 @@ elif grep -Eq "FreeBSD" /etc/*-release; then
 	OSNAME='freebsd'
 elif grep -Eqi "CentOS" /etc/issue || grep -Eq "CentOS" /etc/*-release; then
 	OSNAME='centos'
-	yum install -y wget zip unzip
+	yum install -y wget zip unzip git
 elif grep -Eqi "Fedora" /etc/issue || grep -Eq "Fedora" /etc/*-release; then
 	OSNAME='fedora'
-	yum install -y wget zip unzip
+	yum install -y wget zip unzip git
 elif grep -Eqi "Rocky" /etc/issue || grep -Eq "Rocky" /etc/*-release; then
 	OSNAME='rocky'
-	yum install -y wget zip unzip
+	yum install -y wget zip unzip git
 elif grep -Eqi "AlmaLinux" /etc/issue || grep -Eq "AlmaLinux" /etc/*-release; then
 	OSNAME='alma'
-	yum install -y wget zip unzip
+	yum install -y wget zip unzip git
 elif grep -Eqi "Amazon Linux" /etc/issue || grep -Eq "Amazon Linux" /etc/*-release; then
 	OSNAME='amazon'
-	yum install -y wget zip unzip
+	yum install -y wget zip unzip git
 elif grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release; then
 	OSNAME='debian'
+	apt update -y
+	apt install -y devscripts
 	apt install -y wget zip unzip
+	apt install -y git
 elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
 	OSNAME='ubuntu'
 	apt install -y wget zip unzip
-elif grep -Eqi "Raspbian" /etc/issue || grep -Eq "Raspbian" /etc/*-release; then
-	OSNAME='raspbian'
+	apt install -y git
 else
 	OSNAME='unknow'
 fi
 
 
-cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
-if [ ! -z "$cn" ];then
-	curl -sSLo /tmp/master.zip https://gitee.com/midoks/mdserver-web/repository/archive/master.zip
-else
-	curl -sSLo /tmp/master.zip https://codeload.github.com/midoks/mdserver-web/zip/master
-fi
+# cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
+# if [ ! -z "$cn" ];then
+# 	curl -sSLo /tmp/master.zip https://gitee.com/midoks/mdserver-web/repository/archive/master.zip
+# else
+# 	curl -sSLo /tmp/master.zip https://codeload.github.com/midoks/mdserver-web/zip/master
+# fi
 
 
-cd /tmp && unzip /tmp/master.zip
-/usr/bin/cp -rf  /tmp/jh-panel-master/* /www/server/mdserver-web
-rm -rf /tmp/master.zip
-rm -rf /tmp/jh-panel-master
+# cd /tmp && unzip /tmp/master.zip
+# /usr/bin/cp -rf  /tmp/jh-panel-master/* /www/server/mdserver-web
+# rm -rf /tmp/master.zip
+# rm -rf /tmp/jh-panel-master
+cd /www/server/mdserver-web && git pull
 
 
 if [ -f /etc/rc.d/init.d/mw ];then

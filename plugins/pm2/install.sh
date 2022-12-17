@@ -26,18 +26,13 @@ Install_pm2()
 		apt install -y nodejs
 		apt install -y npm
 		npm install pm2 -g
-		echo '正在安装脚本文件...' > $install_tmp
-		export NVM_NODEJS_ORG_MIRROR=https://cdn.npmmirror.com/binaries/node && nvm install 16
-		nvm use 16
-		nvm alias default 16
-		npm config set registry https://registry.npmmirror.com/
-		npm install pm2 -g
 	else 
 		yum install -y nodejs
+		yum install -y npm
 		npm install pm2 -g
 	fi
 	
-	curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+	curl -fsSL https://fnm.vercel.app/install | bash
 
 	mkdir -p $serverPath/pm2
 	echo '1.0' > $serverPath/pm2/version.pl

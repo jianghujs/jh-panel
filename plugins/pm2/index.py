@@ -73,15 +73,16 @@ def rootDir():
     return path
 
 
-def pm2NVMDir():
-    path = rootDir() + '/.nvm'
+def pm2FNMDir():
+    path = rootDir() + '/.local/share/fnm'
     return path
 
 __SR = '''#!/bin/bash
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+PATH=%s:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 export HOME=%s
-source %s/nvm.sh && ''' % (rootDir(), pm2NVMDir())
+source %s/.bashrc
+''' % (pm2FNMDir(), rootDir(), rootDir())
 __path = getServerDir() + '/list'
 
 
@@ -229,11 +230,11 @@ def pm2VerList():
     result = {}
     rep = 'v\d+\.\d+\.\d+'
 
-    cmd = __SR + ' nvm ls-remote|grep -v v0|grep -v iojs'
+    cmd = __SR + ' fnm ls-remote|grep -v v0'
     # print cmd
     tmp = mw.execShell(cmd)
     result['list'] = re.findall(rep, tmp[0])
-    tmp = mw.execShell(__SR + "nvm version")
+    tmp = mw.execShell(__SR + " node --version")
     result['version'] = tmp[0].strip()
     return mw.returnJson(True, 'ok', result)
 
@@ -246,13 +247,10 @@ def setNodeVersion():
     # 切换Node版本
     version = args['version'].replace('v', '')
     estr = '''
-export NVM_NODEJS_ORG_MIRROR=http://npm.taobao.org/mirrors/node && nvm install %s
-nvm use %s
-nvm alias default %s
-oldreg=`npm get registry`
-npm config set registry http://registry.npm.taobao.org/
+fnm install %s
+fnm use %s
+fnm default %s
 npm install pm2 -g
-npm config set registry $oldreg 
 ''' % (version, version, version)
     cmd = __SR + estr
     mw.execShell(cmd)

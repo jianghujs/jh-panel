@@ -97,7 +97,10 @@ Install_mysql()
 	if [ "$?" == "0" ];then
 		mkdir -p $serverPath/mysql-apt
 		echo '5.7' > $serverPath/mysql-apt/version.pl
-		
+		rm -rf /usr/bin/mysql
+		rm -rf /etc/my.cnf
+		ln -s /www/server/mysql-apt/bin/usr/bin/mysql /usr/bin
+		ln -s /www/server/mysql-apt/etc/my.cnf /etc/my.cnf
 		echo '安装完成' > $install_tmp
 	else
 		echo "暂时不支持该系统" > $install_tmp

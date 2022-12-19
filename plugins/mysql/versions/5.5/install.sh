@@ -87,6 +87,10 @@ Install_mysql()
 
 		if [ -d $serverPath/mysql ];then
 			echo '5.5' > $serverPath/mysql/version.pl
+			rm -rf /usr/bin/mysql
+			rm -rf /etc/my.cnf
+			ln -s /www/server/mysql/bin/mysql /usr/bin
+			ln -s /www/server/mysql/etc/my.cnf /etc/my.cnf
 			echo '安装完成' > $install_tmp
 		else
 			# rm -rf ${mysqlDir}/mysql-5.5.62

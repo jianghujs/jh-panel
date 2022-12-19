@@ -41,24 +41,4 @@ function mysqlBackupHtml(){
             layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
         });
     })
-    // myPost('my_port','',function(data){
-    //     var con = '<div class="line ">\
-    //         <div class="info-r  ml0">\
-    //         <input name="port" class="bt-input-text mr5 port" type="text" style="width:100px" value="'+data.data+'">\
-    //         <button id="btn_change_port" name="btn_change_port" class="btn btn-success btn-sm mr5 ml5 btn_change_port">修改</button>\
-    //         </div></div>';
-    //     $(".soft-man-con").html(con);
-
-    //     $('#btn_change_port').click(function(){
-    //         var port = $("input[name='port']").val();
-    //         myPost('set_my_port','port='+port,function(data){
-    //             var rdata = $.parseJSON(data.data);
-    //             if (rdata.status){
-    //                 layer.msg('修改成功!',{icon:1,time:2000,shade: [0.3, '#000']});
-    //             } else {
-    //                 layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
-    //             }
-    //         });
-    //     });
-    // });
 }

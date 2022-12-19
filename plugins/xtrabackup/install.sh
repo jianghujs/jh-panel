@@ -12,7 +12,7 @@ install_tmp=${rootPath}/tmp/mw_install.pl
 
 VERSION=$2
 
-Install_redis()
+Install_xtrabackup()
 {
 	echo '正在安装脚本文件...' > $install_tmp
 	mkdir -p $serverPath/xtrabackup
@@ -33,7 +33,7 @@ Install_redis()
 	echo '安装完成' > $install_tmp
 }
 
-Uninstall_redis()
+Uninstall_xtrabackup()
 {
 	echo '卸载开始' > $install_tmp	
 	apt-get remove percona-xtrabackup* -y
@@ -43,7 +43,7 @@ Uninstall_redis()
 
 action=$1
 if [ "${1}" == 'install' ];then
-	Install_redis
+	Install_xtrabackup
 else
-	Uninstall_redis
+	Uninstall_xtrabackup
 fi

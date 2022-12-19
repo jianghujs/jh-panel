@@ -97,8 +97,9 @@ Install_mysql()
 	if [ "$?" == "0" ];then
 		mkdir -p $serverPath/mysql-apt
 		echo '5.7' > $serverPath/mysql-apt/version.pl
+		# mysql 全局配置
 		rm -rf /usr/bin/mysql
-		rm -rf /etc/my.cnf
+		mv /etc/my.cnf /etc/my.cnf.$(date "+%Y-%m-%d_%H-%M-%S")
 		ln -s /www/server/mysql-apt/bin/usr/bin/mysql /usr/bin
 		ln -s /www/server/mysql-apt/etc/my.cnf /etc/my.cnf
 		echo '安装完成' > $install_tmp

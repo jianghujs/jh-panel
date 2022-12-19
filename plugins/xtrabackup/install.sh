@@ -45,7 +45,7 @@ Install_xtrabackup()
 		rm -rf /usr/bin/mysql
 		rm -rf /etc/my.cnf
 		ln -s /www/server/mysql/bin/mysql /usr/bin
-		ln -s /www/server/mysql-apt/etc/my.cnf /etc/my.cnf
+		ln -s /www/server/mysql/etc/my.cnf /etc/my.cnf
 	fi
 	echo "2.4" > $serverPath/xtrabackup/version.pl
 	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh

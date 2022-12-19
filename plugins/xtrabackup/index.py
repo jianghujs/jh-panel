@@ -15,7 +15,7 @@ if mw.isAppleSystem():
 
 
 def getPluginName():
-    return 'redis'
+    return 'xtrabackup'
 
 
 def getPluginDir():
@@ -235,7 +235,7 @@ def initdUinstall():
 
 
 def runLog():
-    return getServerDir() + '/data/redis.log'
+    return getServerDir() + '/xtrabackup.log'
 
 
 def getRedisConfInfo():
@@ -300,6 +300,14 @@ def submitRedisConf():
     reload()
     return mw.returnJson(True, '设置成功')
 
+def doMysqlBackup():
+    log_file = runLog()
+    xtrabackupScript = getServerDir() + '/xtrabackup.sh'
+    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份开始" >> ' + log_file)
+    mw.execShell("sh %(xtrabackupScript)s" % {'xtrabackupScript': xtrabackupScript, 'logFile': log_file })
+    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份成功" >> ' + log_file)
+    return mw.returnJson(True, '备份成功!')
+    
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':
@@ -328,5 +336,7 @@ if __name__ == "__main__":
         print(getRedisConf())
     elif func == 'submit_redis_conf':
         print(submitRedisConf())
+    elif func == 'do_mysql_backup':
+        print(doMysqlBackup())
     else:
         print('error')

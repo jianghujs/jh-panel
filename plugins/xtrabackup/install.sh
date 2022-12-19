@@ -16,21 +16,27 @@ Install_xtrabackup()
 {
 	echo '正在安装脚本文件...' > $install_tmp
 	mkdir -p $serverPath/xtrabackup
-	# arm
-	# wget http://ports.ubuntu.com/pool/universe/p/percona-xtrabackup/percona-xtrabackup_2.4.9-0ubuntu2_arm64.deb
-	# amd
-	wget https://repo.percona.com/apt/percona-release_latest.generic_all.deb
-	dpkg -i  percona-xtrabackup_2.4.9-0ubuntu2_arm64.deb
+	mkdir -p $serverPath/source/xtrabackup
+	# wget -O ./percona-xtrabackup.amd.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb
+	# wget -O ./percona-xtrabackup.arm.deb http://ports.ubuntu.com/pool/universe/p/percona-xtrabackup/percona-xtrabackup_2.4.9-0ubuntu2_arm64.deb
+	if [[ `arch` =~ "x86_64" ]];then
+		echo 'this is x86_64' >> $install_tmp
+		dpkg -i percona-xtrabackup.amd.deb
+	elif [[ `arch` =~ "aarch64" ]];then
+		echo 'this is arm64' >> $install_tmp
+		dpkg -i percona-xtrabackup.arm.deb
+	else
+		echo '不支持的设备类型 $(arch)' >> $install_tmp
+	fi
 	apt-get update
 	apt-get -f install
-	apt-get install percona-xtrabackup
-	# apt-get install percona-xtrabackup-24
+	apt-get install percona-xtrabackup-24
 	ln -s /www/server/mysql/bin/mysql /usr/bin
 	mkdir -p /var/run/mysqld
-	ln -s /www/server/mysql/mysql.sock /var/run/mysqld/mysqld.sock
-	xtrabackup --version
+	ln -s /www/server/mysql/mysql.sock /var/run/mysqld/mysqld.sock	
 	echo "2.4" > $serverPath/xtrabackup/version.pl
-	echo '安装完成' > $install_tmp
+	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh
+	echo '安装完成 $(xtrabackup --version)' >> $install_tmp
 }
 
 Uninstall_xtrabackup()

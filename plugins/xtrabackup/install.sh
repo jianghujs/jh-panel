@@ -35,17 +35,17 @@ Install_xtrabackup()
 	if [ -d "/www/server/mysql-apt/" ];then
 		echo $(date "+%Y-%m-%d %H:%M:%S") 'mysql-apt适配' >> $install_tmp
 		rm -rf /usr/bin/mysql
-		rm -rf /var/run/mysqld/mysqld.sock	
+		rm -rf /etc/my.cnf
 		ln -s /www/server/mysql-apt/bin/usr/bin/mysql /usr/bin
-		ln -s /www/server/mysql-apt/mysql.sock /var/run/mysqld/mysqld.sock	
+		ln -s /www/server/mysql-apt/etc/my.cnf /etc/my.cnf
 	fi
 	
 	if [ -d "/www/server/mysql/mysql/" ];then
 		echo $(date "+%Y-%m-%d %H:%M:%S") 'mysql适配' >> $install_tmp
 		rm -rf /usr/bin/mysql
-		rm -rf /var/run/mysqld/mysqld.sock
+		rm -rf /etc/my.cnf
 		ln -s /www/server/mysql/bin/mysql /usr/bin
-		ln -s /www/server/mysql/mysql.sock /var/run/mysqld/mysqld.sock	
+		ln -s /www/server/mysql-apt/etc/my.cnf /etc/my.cnf
 	fi
 	echo "2.4" > $serverPath/xtrabackup/version.pl
 	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh

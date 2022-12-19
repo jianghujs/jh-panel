@@ -32,8 +32,18 @@ Install_xtrabackup()
 	apt-get -f install
 	apt-get install percona-xtrabackup-24
 	mkdir -p /var/run/mysqld
-	ln -s /www/server/mysql/bin/mysql /usr/bin
-	ln -s /www/server/mysql/mysql.sock /var/run/mysqld/mysqld.sock	
+	if [ ! -f "/www/server/mysql-apt/mysql.sock" ];then
+		rm -rf /usr/bin/mysql
+		rm -rf /var/run/mysqld/mysqld.sock	
+		ln -s /www/server/mysql-apt/bin/mysql /usr/bin
+		ln -s /www/server/mysql-apt/mysql.sock /var/run/mysqld/mysqld.sock	
+	fi
+	if [ ! -f "/www/server/mysql/mysql.sock" ];then
+		rm -rf /usr/bin/mysql
+		rm -rf /var/run/mysqld/mysqld.sock
+		ln -s /www/server/mysql/bin/mysql /usr/bin
+		ln -s /www/server/mysql/mysql.sock /var/run/mysqld/mysqld.sock	
+	fi
 	echo "2.4" > $serverPath/xtrabackup/version.pl
 	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' $(xtrabackup --version) >> $install_tmp

@@ -35,7 +35,6 @@ function mysqlBackupHtml(){
                </div>`;
     $(".soft-man-con").html(con);
     $('#btn_mysql_backup').click(function(){
-        console.log('66666666');
         myPost('do_mysql_backup', {}, function(data){
             var rdata = $.parseJSON(data.data);
             layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});

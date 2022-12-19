@@ -41,7 +41,7 @@ function getSList(isdisplay) {
 
     var search = $("#SearchValue").val();
     if (search != '') {
-        search = '&search=' + search;
+        search = '&searchKeyword=' + search + '&searchKey=title';
     }
     var type = '';
     var istype = getCookie('soft_type');

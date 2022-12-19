@@ -36,7 +36,7 @@ Install_xtrabackup()
 		rm -rf /usr/bin/mysql
 		rm -rf /var/run/mysqld/mysqld.sock	
 		ln -s /www/server/mysql-apt/bin/usr/bin/mysql /usr/bin
-		ln -s /www/server/mysql-apt/bin/mysql.sock /var/run/mysqld/mysqld.sock	
+		ln -s /www/server/mysql-apt/mysql.sock /var/run/mysqld/mysqld.sock	
 	fi
 	if [ ! -f "/www/server/mysql/mysql.sock" ];then
 		rm -rf /usr/bin/mysql

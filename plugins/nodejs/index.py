@@ -57,9 +57,11 @@ def checkArgs(data, ck=[]):
 
 
 def status():
-    cmd = "ps -ef|grep nodejs |grep -v grep | grep -v python | awk '{print $2}'"
-    data = mw.execShell(cmd)
-    if data[0] == '':
+    import re
+    tmp = mw.execShell(__SR + " node --version")
+    version = tmp[0].strip()
+    # mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") ' + version + '>> ' + '/www/server/nodejs/nodejs')
+    if version is None or not version.startswith("v"):
         return 'stop'
     return 'start'
 

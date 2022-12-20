@@ -421,6 +421,7 @@ function getfilePath() {
 	}
 
 	$("#" + getCookie("SetId")).val(a + getCookie("SetName"));
+	$("#" + getCookie("SetId")).trigger("change", a + getCookie("SetName")); 
 	layer.close(getCookie("ChangePath"));
 }
 

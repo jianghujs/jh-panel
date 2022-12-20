@@ -1,5 +1,4 @@
 <div class="bt-form">
-	<div class='plugin_version'></div>
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
 			<p onclick="pluginConfig('xtrabackup');">mysql备份脚本</p>
@@ -13,6 +12,6 @@
 </div>
 <script type="text/javascript">
 $.getScript( "/plugins/file?name=xtrabackup&f=js/xtrabackup.js", function(){
-	pluginService('xtrabackup', $('.plugin_version').attr('version'));
+	mysqlBackupHtml();
 });
 </script>

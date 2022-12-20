@@ -533,7 +533,7 @@ function checkUpdate() {
 }
 
 function updateServerCode() {
-    var loadT = layer.msg(lan.index.update_get, { icon: 16, time: 0, shade: [0.3, '#000'] });
+    var loadT = layer.msg(lan.index.update_server_code, { icon: 16, time: 0, shade: [0.3, '#000'] });
     $.get('/system/update_server_code', function(rdata) {
         layer.close(loadT);
         layer.msg(rdata.msg, { icon: 1 });

@@ -21,7 +21,8 @@ Install_nodejs()
 
 
 	curl -o- http://npmjs.org/install.sh | bash
-	
+	# sh ./script/npmjs.install.sh
+
 	apt install -y nodejs
 	apt install -y npm
 	npm install nodejs -g
@@ -36,6 +37,7 @@ Install_nodejs()
 	# fi
 	
 	curl -fsSL https://fnm.vercel.app/install | bash
+	# sh ./script/fnm.install.sh
 
 	mkdir -p $serverPath/nodejs
 	echo '1.0' > $serverPath/nodejs/version.pl

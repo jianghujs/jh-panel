@@ -2,7 +2,6 @@
 	"title":"nodejs管理器",
 	"tip":"soft",
 	"name":"nodejs",
-	"type":"运行环境",
 	"ps":"node.js管理器，内置 node.js + npm + nvm + nodejs.!",
 	"versions":"1.0",
 	"updates":"1.0",
@@ -12,5 +11,5 @@
 	"author":"nodejs",
 	"home":"http://nodejs.keymetrics.io/",
 	"date":"2019-02-27",
-	"pid": "4"
+	"pid": "-1"
 }

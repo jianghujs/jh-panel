@@ -51,10 +51,10 @@ function refreshTable() {
             }
             
             tbody += '<tr>\
-                        <td style="width: 200px;">'+tmp[i].path+'</td>\
+                        <td style="width: 180px;">'+tmp[i].path+'</td>\
                         <td style="width: 150px;">'+tmp[i].name+'</td>\
                         <td style="width: 60px;">'+status+'</td>\
-                        <td style="text-align: right;width: 250px;">\
+                        <td style="text-align: right;width: 260px;">\
                             '+opt+
                             '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
                             '<a href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 

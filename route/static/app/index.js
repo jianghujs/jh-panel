@@ -771,6 +771,7 @@ function showDanger(num, port) {
     $(".showDanger td").css("padding", "8px")
 }
 
+console.log(">>>>>>>>>>>>>>>")
 function pluginInit(){
     $.post('/plugins/init', function(data){
         if (!data.status){

@@ -308,7 +308,7 @@ function toIndexDisplay(name, version, coexist) {
     },'json');
 }
 
-function indexListHtml(callback){
+function indexSoftHtml(callback){
     
 
     // init
@@ -323,7 +323,9 @@ function indexListHtml(callback){
     $.get('/plugins/index_list', function(rdata) {
         // layer.close(loadT);
         $("#indexsoft").html('');
-        var con = '';
+        $("#menusoft").html('');
+        var indexsoftcon = '';
+        var menusoftcon = '';
         for (var i = 0; i < rdata.length; i++) {
             var plugin = rdata[i];
             var len = plugin.versions.length;
@@ -353,7 +355,7 @@ function indexListHtml(callback){
                 data_id = plugin.name + '-' + plugin.versions;
             }
 
-            con += '<div class="col-sm-3 col-md-3 col-lg-3" data-id="' + data_id + '">\
+            indexsoftcon += '<div class="col-sm-3 col-md-3 col-lg-3" data-id="' + data_id + '">\
                 <span class="spanmove"></span>\
                 <div onclick="softMain(\'' + plugin.name + '\',\'' + plugin.title + '\',\'' + plugin.setup_version + '\')">\
                 <div class="image"><img bk-src="/static/img/loading.gif" src="/plugins/file?name=' + plugin.name + '&f=ico.png" style="max-width:48px;"></div>\
@@ -361,10 +363,16 @@ function indexListHtml(callback){
                 </div>\
             </div>';
 
+            menusoftcon += '<li style="cursor:pointer;" onclick="softMain(\'' + plugin.name + '\',\'' + plugin.title + '\',\'' + plugin.setup_version + '\')"> \
+                <img bk-src="/static/img/loading.gif" src="/plugins/file?name=' + plugin.name + '&f=ico.png" style=" max-width: 20px; display: inline-block; position: absolute; left: 25px; top: 50%; transform: translateY(-50%);"></div>\
+                <a style="color: #fff; text-overflow: ellipsis; width: 180px; overflow: hidden; white-space: nowrap;">' + plugin.title + '</a>\
+            </li>';
+
             // loadImage();
         }
 
-        $("#indexsoft").html(con);
+        $("#indexsoft").html(indexsoftcon);
+        $("#menusoft").html(menusoftcon);
         //软件位置移动
         var softboxlen = $("#indexsoft > div").length;
         var softboxsum = 12;
@@ -386,7 +394,7 @@ function indexListHtml(callback){
 
 //首页软件列表
 function indexSoft() {
-    indexListHtml(function(){
+    indexSoftHtml(function(){
         $("#indexsoft").dragsort({ dragSelector: ".spanmove", dragBetween: true, dragEnd: saveOrder, placeHolderTemplate: "<div class='col-sm-3 col-md-3 col-lg-3 dashed-border'></div>" });
     });
     
@@ -404,7 +412,7 @@ function indexSoft() {
         $.post("/plugins/index_sort", 'ssort=' + ssort, function(rdata) {
             if (!rdata.status){
                 showMsg('设置失败:'+ rdata.msg, function(){
-                    indexListHtml();
+                    indexSoftHtml();
                 }, { icon: 16, time: 0, shade: [0.3, '#000'] });
             }
         },'json');

@@ -2,7 +2,7 @@
 	"title":"MySQL[YUM]",
 	"tip":"soft",
 	"name":"mysql-yum",
-	"type":"运行环境",
+	"type":"数据库软件",
 	"ps":"[<b style='color:red;'>潜龙勿用</b>]一种关系数据库管理系统[centos](极速安装)",
 	"todo_versions":["5.7","8.0"],
 	"versions":["5.7","8.0"],
@@ -13,5 +13,5 @@
 	"author":"mysql",
 	"home":"https://dev.mysql.com/downloads/mysql",
 	"date":"2022-06-29",
-	"pid": "6"
+	"pid": "2"
 }

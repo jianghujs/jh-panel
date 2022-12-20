@@ -335,7 +335,7 @@ case "$1" in
         # echo -e "password: $password"
         echo -e "\033[33mWarning:\033[0m"
         echo -e "\033[33mIf you cannot access the panel. \033[0m"
-        echo -e "\033[33mrelease the following port (${show_panel_ip}888|80|443|22) in the security group.\033[0m"
+        echo -e "\033[33mrelease the following port (${show_panel_ip}888|80|443|22|10022|33067|10744) in the security group.\033[0m"
         echo -e "=================================================================="
         ;;
     *)

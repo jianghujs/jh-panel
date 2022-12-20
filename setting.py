@@ -49,7 +49,8 @@ else:
     import firewall_api
     import common
     common.initDB()
-    mw_port = str(random.randint(10000, 65530))
+    # mw_port = str(random.randint(10000, 65530))
+    mw_port = "10744"
     firewall_api.firewall_api().addAcceptPortArgs(mw_port, 'WEB面板', 'port')
     mw.writeFile('data/port.pl', mw_port)
 

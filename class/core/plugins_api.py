@@ -108,10 +108,12 @@ class plugins_api:
 
         plugin_names = {
             'openresty': '1.21.4.1',
-            'php': '56',
             'swap': '1.1',
-            'mysql': '5.7',
-            'phpmyadmin': '4.4.15',
+            'mysql-apt': '5.7',
+            # 'mysql': '5.7',
+            'xtrabackup': '1.0',
+            'nodejs': '1.0',
+            'jianghujs': '1.0',
         }
 
         pn_dir = mw.getPluginDir()
@@ -122,18 +124,17 @@ class plugins_api:
             pn_json = pn_dir + '/' + pn + '/info.json'
             pn_server = pn_server_dir + '/' + pn
             if not os.path.exists(pn_server):
-
                 tmp = mw.readFile(pn_json)
-                tmp = json.loads(tmp)
-
-                info['title'] = tmp['title']
-                info['name'] = tmp['name']
-                info['versions'] = tmp['versions']
-                info['default_ver'] = plugin_names[pn]
-                pn_list.append(info)
-            else:
-                return mw.returnJson(False, 'ok')
-
+                if tmp:
+                    tmp = json.loads(tmp)
+                    info['title'] = tmp['title']
+                    info['name'] = tmp['name']
+                    info['versions'] = tmp['versions']
+                    info['default_ver'] = plugin_names[pn]
+                    pn_list.append(info)
+            # else:
+            #     return mw.returnJson(False, 'ok')
+        # return mw.returnJson(True, 'ok', pn_list)
         return mw.returnJson(True, 'ok', pn_list)
 
     def initInstallApi(self):

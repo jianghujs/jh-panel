@@ -3,7 +3,7 @@
 import sys
 import io
 import os
-import datetime,time
+import time
 import shutil
 import uuid
 import json
@@ -92,6 +92,7 @@ socketio.init_app(app)
 # debug macosx dev
 if mw.isDebugMode():
     app.debug = True
+    app.config.jhpanelVersion = app.config.version
     app.config.version = app.config.version + str(time.time())
     # app.config.version = app.config.version + ' / 开发模式; ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

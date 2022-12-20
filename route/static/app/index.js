@@ -499,18 +499,18 @@ function setImg() {
 }
 
 // 检查更新
-setTimeout(function() {
-    $.get('/system/update_server?type=check', function(rdata) {
-        if (rdata.status == false) return;
-        if (rdata.data != undefined) {
-            $("#toUpdate").html('<a class="btlink" href="javascript:updateMsg();">更新</a>');
-            $('#toUpdate a').html('更新<i style="display: inline-block; color: red; font-size: 40px;position: absolute;top: -35px; font-style: normal; right: -8px;">.</i>');
-            $('#toUpdate a').css("position","relative");
-            return;
-        }
-    },'json').error(function() {
-    });
-}, 3000);
+// setTimeout(function() {
+//     $.get('/system/update_server?type=check', function(rdata) {
+//         if (rdata.status == false) return;
+//         if (rdata.data != undefined) {
+//             $("#toUpdate").html('<a class="btlink" href="javascript:updateMsg();">更新</a>');
+//             $('#toUpdate a').html('更新<i style="display: inline-block; color: red; font-size: 40px;position: absolute;top: -35px; font-style: normal; right: -8px;">.</i>');
+//             $('#toUpdate a').css("position","relative");
+//             return;
+//         }
+//     },'json').error(function() {
+//     });
+// }, 3000);
 
 
 //检查更新
@@ -534,15 +534,9 @@ function checkUpdate() {
 
 function updateServerCode() {
     var loadT = layer.msg(lan.index.update_get, { icon: 16, time: 0, shade: [0.3, '#000'] });
-    $.get('/system/update_server_code?type=check', function(rdata) {
+    $.get('/system/update_server_code', function(rdata) {
         layer.close(loadT);
-
-        if (rdata.status === false) {
-            layer.confirm(rdata.msg, { title: lan.index.update_check, icon: 1, closeBtn: 1, btn: [lan.public.know, lan.public.close] });
-            return;
-        }
         layer.msg(rdata.msg, { icon: 1 });
-        if (rdata.data != undefined) updateMsg();
     },'json');
 }
 

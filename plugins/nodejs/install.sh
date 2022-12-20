@@ -15,39 +15,42 @@ OSNAME=`cat ${rootPath}/data/osname.pl`
 OSNAME_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
 
 
-Install_pm2()
+Install_nodejs()
 {
 	echo '正在安装脚本文件...' > $install_tmp
 
 
 	curl -o- http://npmjs.org/install.sh | bash
 	
-	if [ "$OSNAME" == 'debian' ] && [ "$OSNAME" == 'ubuntu' ];then
-		apt install -y nodejs
-		apt install -y npm
-		npm install pm2 -g
-	else 
-		yum install -y nodejs
-		yum install -y npm
-		npm install pm2 -g
-	fi
+	apt install -y nodejs
+	apt install -y npm
+	npm install nodejs -g
+	# if [ "$OSNAME" == 'debian' ] && [ "$OSNAME" == 'ubuntu' ];then
+	# 	apt install -y nodejs
+	# 	apt install -y npm
+	# 	npm install nodejs -g
+	# else 
+	# 	yum install -y nodejs
+	# 	yum install -y npm
+	# 	npm install nodejs -g
+	# fi
 	
 	curl -fsSL https://fnm.vercel.app/install | bash
 
-	mkdir -p $serverPath/pm2
-	echo '1.0' > $serverPath/pm2/version.pl
+	mkdir -p $serverPath/nodejs
+	echo '1.0' > $serverPath/nodejs/version.pl
 	echo '安装完成' > $install_tmp
 }
 
-Uninstall_pm2()
+Uninstall_nodejs()
 {
-	rm -rf $serverPath/pm2
+	rm -rf $serverPath/nodejs
 	echo "卸载完成" > $install_tmp
 }
 
 action=$1
 if [ "${1}" == 'install' ];then
-	Install_pm2
+	Install_nodejs
 else
-	Uninstall_pm2
+	Uninstall_nodejs
 fi

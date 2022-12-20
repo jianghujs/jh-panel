@@ -10,7 +10,7 @@ function str2Obj(str){
 }
 
 
-function pm2Post(method,args,callback){
+function nodejsPost(method,args,callback){
 
     var _args = null; 
     if (typeof(args) == 'string'){
@@ -20,7 +20,7 @@ function pm2Post(method,args,callback){
     }
 
     var loadT = layer.msg('正在获取中...', { icon: 16, time: 0, shade: 0.3 });
-    $.post('/plugins/run', {name:'pm2', func:method, args:_args}, function(data) {
+    $.post('/plugins/run', {name:'nodejs', func:method, args:_args}, function(data) {
         layer.close(loadT);
         if (!data.status){
             layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});
@@ -35,7 +35,7 @@ function pm2Post(method,args,callback){
 
 
 
-function pm2List() {
+function nodejsList() {
 	var con = '<div class="divtable" style="width:620px;">\
 				<input class="bt-input-text mr5" id="mmpath" name="path" type="text" value="" style="width:260px" placeholder="项目所在根目录">\
 				<span onclick="changePath(\'mmpath\')" class="glyphicon glyphicon-folder-open cursor mr20"></span>\
@@ -62,7 +62,7 @@ function pm2List() {
 	$(".soft-man-con").html(con);
 
 
-	pm2Post('list','', function(data){
+	nodejsPost('list','', function(data){
 		var rdata = $.parseJSON(data.data);
 		// console.log(rdata);
 		if (!rdata['status']){
@@ -110,13 +110,13 @@ function pm2List() {
 //取版本号列表
 function getNodeVersions(){
     var loadT = layer.msg('正在获取版本列表...',{icon:16,time:0,shade: [0.3, '#000']});
-    $.get('/plugin?action=a&s=Versions&name=pm2',function(versions){
+    $.get('/plugin?action=a&s=Versions&name=nodejs',function(versions){
         layer.close(loadT);
         
         
     });
 
-    pm2Post('versions', '', function(data){
+    nodejsPost('versions', '', function(data){
     	
     	var rdata = $.parseJSON(data.data);
         var versions = rdata.data;
@@ -146,7 +146,7 @@ function getNodeVersions(){
 function setNodeVersion(){
     var version = $("select[name='versions']").val();
     var data = "version="+version;
-    pm2Post('set_node_version', data, function(data){
+    nodejsPost('set_node_version', data, function(data){
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
         if(rdata.status) {
@@ -179,7 +179,7 @@ function getModList(){
 
     $(".soft-man-con").html(con);
 
-    pm2Post('mod_list', '', function(data){
+    nodejsPost('mod_list', '', function(data){
         var rdata = $.parseJSON(data.data);
         var tbody = '';
         var tmp = rdata['data'];
@@ -206,14 +206,14 @@ function installMod(){
     }
     
     // var loadT = layer.msg('正在安装模块['+mname+']...',{icon:16,time:0,shade: [0.3, '#000']});
-    // $.post('/plugin?action=a&s=InstallMod&name=pm2',data,function(rdata){
+    // $.post('/plugin?action=a&s=InstallMod&name=nodejs',data,function(rdata){
     //     layer.close(loadT);
     //     layer.msg(rdata.msg,{icon:rdata.status?1:2});
     //     if(rdata.status) GetModList();
     // });
     
     var data = {mname:mname};
-    pm2Post('install_mod', data, function(data){
+    nodejsPost('install_mod', data, function(data){
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
         if(rdata.status) {
@@ -226,7 +226,7 @@ function installMod(){
 function uninstallMod(mname){
     safeMessage('卸载模块['+mname+']','卸载['+mname+']模块后,可能影响现有项目,继续吗?',function(){
         var data = "mname="+mname;
-        pm2Post('uninstall_mod', data, function(data){
+        nodejsPost('uninstall_mod', data, function(data){
             var rdata = $.parseJSON(data.data);
             layer.msg(rdata.msg,{icon:rdata.status?1:2});
             if(rdata.status) {
@@ -243,53 +243,53 @@ function addNode(){
         return;
     }
 
-    pm2Post('add', data, function(data){
+    nodejsPost('add', data, function(data){
     	var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        pm2List();
+        nodejsList();
     });
 }
 
 function delNode(pname){
     safeMessage('删除项目['+pname+']','删除['+pname+']项目后,该项目将无法被访问,继续吗?',function(){
         var data = "pname="+pname;
-        pm2Post('delete', data, function(data){
+        nodejsPost('delete', data, function(data){
         	var rdata = $.parseJSON(data.data);
 	        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-	        pm2List();
+	        nodejsList();
         });
     });
 }
 
 function nodeStop(pname){
 	var data = 'pname=' + pname;
-	pm2Post('stop', data, function(data){
+	nodejsPost('stop', data, function(data){
     	var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        pm2List();
+        nodejsList();
     });
 }
 
 function nodeStart(pname){
 	var data = 'pname=' + pname;
-	pm2Post('start', data, function(data){
+	nodejsPost('start', data, function(data){
     	var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        pm2List();
+        nodejsList();
     });
 }
 
-function pm2RollingLogs(func,pname){
+function nodejsRollingLogs(func,pname){
     var args = {'pname':pname}
     _args = JSON.stringify(args);
-    pluginRollingLogs('pm2','',func, _args);
+    pluginRollingLogs('nodejs','',func, _args);
 }
 
 function nodeLog(pname){
 	var html = '';
-    html += '<button onclick="pm2RollingLogs(\'node_log_run\',\''+pname+'\')" class="btn btn-default btn-sm">运行日志</button>';
+    html += '<button onclick="nodejsRollingLogs(\'node_log_run\',\''+pname+'\')" class="btn btn-default btn-sm">运行日志</button>';
     html += '<button onclick="nodeLogClearRun(\''+pname+'\')" class="btn btn-default btn-sm">清空运行日志</button>';
-    html += '<button onclick="pm2RollingLogs(\'node_log_err\',\''+pname+'\')" class="btn btn-default btn-sm">错误日志</button>';
+    html += '<button onclick="nodejsRollingLogs(\'node_log_err\',\''+pname+'\')" class="btn btn-default btn-sm">错误日志</button>';
     html += '<button onclick="nodeLogClearError(\''+pname+'\')" class="btn btn-default btn-sm">清空错误日志</button>';
 
     var loadOpen = layer.open({
@@ -303,7 +303,7 @@ function nodeLog(pname){
 
 function nodeLogClearRun(pname){
     var data = 'pname=' + pname;
-    pm2Post('node_log_clear_run', data, function(data){
+    nodejsPost('node_log_clear_run', data, function(data){
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
     });
@@ -311,7 +311,7 @@ function nodeLogClearRun(pname){
 
 function nodeLogClearError(pname){
     var data = 'pname=' + pname;
-    pm2Post('node_log_clear_err', data, function(data){
+    nodejsPost('node_log_clear_err', data, function(data){
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
     });

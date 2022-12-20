@@ -364,8 +364,8 @@ function indexSoftHtml(callback){
             </div>';
 
             menusoftcon += '<li style="cursor:pointer;" onclick="softMain(\'' + plugin.name + '\',\'' + plugin.title + '\',\'' + plugin.setup_version + '\')"> \
-            <img bk-src="/static/img/loading.gif" src="/plugins/file?name=' + plugin.name + '&f=ico.png" style=" max-width: 20px; display: inline-block; position: absolute; left: 25px; top: 50%; transform: translateY(-50%);"></div>\
-            <a style="color: #fff; text-overflow: ellipsis; width: 180px; overflow: hidden; white-space: nowrap;">' + name + '</a>\
+                <img bk-src="/static/img/loading.gif" src="/plugins/file?name=' + plugin.name + '&f=ico.png" style=" max-width: 20px; display: inline-block; position: absolute; left: 25px; top: 50%; transform: translateY(-50%);"></div>\
+                <a style="color: #fff; text-overflow: ellipsis; width: 180px; overflow: hidden; white-space: nowrap;">' + plugin.title + '</a>\
             </li>';
 
             // loadImage();

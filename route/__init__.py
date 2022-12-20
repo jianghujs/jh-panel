@@ -90,9 +90,9 @@ socketio.init_app(app)
 # http_server.serve_forever()
 
 # debug macosx dev
+app.config.jhpanelVersion = app.config.version
 if mw.isDebugMode():
     app.debug = True
-    app.config.jhpanelVersion = app.config.version
     app.config.version = app.config.version + str(time.time())
     # app.config.version = app.config.version + ' / 开发模式; ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

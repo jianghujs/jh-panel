@@ -1,5 +1,8 @@
-var addLayer = null;
-var logLayer = null;
+var tableData = []; // 表格数据
+var addLayer = null; // 添加弹框
+var editLayer = null; // 编辑弹框
+var logLayer = null; // 日志弹框
+var editItem = null; // 编辑项
 
 function refreshTable() {
     let firstLoad = $('.soft-man-con').html() == '';
@@ -31,6 +34,7 @@ function refreshTable() {
 
         var tbody = '';
         var tmp = rdata['data'];
+        tableData = tmp;
         for(var i=0;i<tmp.length;i++){
             var opt = '';
             if(tmp[i].status != 'start'){
@@ -47,13 +51,14 @@ function refreshTable() {
             }
             
             tbody += '<tr>\
-                        <td style="width: 150px;">'+tmp[i].name+'</td>\
                         <td style="width: 200px;">'+tmp[i].path+'</td>\
+                        <td style="width: 150px;">'+tmp[i].name+'</td>\
                         <td style="width: 60px;">'+status+'</td>\
                         <td style="text-align: right;width: 250px;">\
                             '+opt+
                             '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
                             '<a href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
+                            '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
                             '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
                         </td>\
                     </tr>';
@@ -106,20 +111,88 @@ function openCreateItem() {
             </div>\
             <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(addLayer)'>取消</button>\
-                <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"createItem()\">提交</button>\
+                <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitCreateItem()\">提交</button>\
             </div>\
         </form>",
     });
 }
 
-
-function createItem(){
+function submitCreateItem(){
     var data = $("#addForm").serialize();
 
     requestApi('project_add', data, function(data){
     	var rdata = $.parseJSON(data.data);
         if(rdata.status) {
             layer.close(addLayer);
+            refreshTable();
+        }
+        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+    });
+}
+
+function openEditItem(id) {
+    editItem = tableData.find(item => item.id == id) || {};
+
+    editLayer = layer.open({
+        type: 1,
+        skin: 'demo-class',
+        area: '640px',
+        title: '编辑项目',
+        closeBtn: 1,
+        shift: 0,
+        shadeClose: false,
+        content: "\
+        <form class='bt-form pd20 pb70' id='editForm'>\
+            <div class='line'>\
+                <span class='tname'>项目根目录</span>\
+                <div class='info-r c4'>\
+                    <input onchange='handlePathChange()' id='projectPath' class='bt-input-text mr5' type='text' name='path' value='"+editItem.path+"' placeholder='"+editItem.path+"' style='width:458px' />\
+                    <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"projectPath\")'></span>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>项目名称</span>\
+                <div class='info-r c4'>\
+                    <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:458px' value='" + editItem.name + "'/>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>启动脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectStartScript' class='bt-input-text' name='startScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>重启脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectReloadScript' class='bt-input-text' name='reloadScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>停止脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                </div>\
+            </div>\
+            <div class='bt-form-submit-btn'>\
+                <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(editLayer)'>取消</button>\
+                <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitEditItem()\">提交</button>\
+            </div>\
+        </form>",
+    });
+    
+    $('#projectStartScript').val(editItem.start_script);
+    $('#projectReloadScript').val(editItem.reload_script);
+    $('#projectStopScript').val(editItem.stop_script);
+}
+
+function submitEditItem(){
+    var data = $("#editForm").serialize() + '&id=' + editItem.id;
+
+    requestApi('project_edit', data, function(data){
+    	var rdata = $.parseJSON(data.data);
+        if(rdata.status) {
+            layer.close(editLayer);
             refreshTable();
         }
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
@@ -176,7 +249,7 @@ function projectUpdate(path) {
 function handlePathChange() {
     let path = document.getElementById('projectPath').value;
     let name = (path || '').split('/').pop();
-    let startScript = 'cd ' + path + '\nnpm i\nnpm startopenProjectLog ';
+    let startScript = 'cd ' + path + '\nnpm i\nnpm start';
     let reloadScript = 'cd ' + path + '\nnpm stop\nnpm start';
     let stopScript = 'cd ' + path + '\nnpm stop';
     $('#projectName').val(name);

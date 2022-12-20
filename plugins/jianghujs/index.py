@@ -201,34 +201,52 @@ def projectAdd():
         return data[1]
     name = args['name']
     path = unquote(args['path'], 'utf-8')
-    startScript = unquote(args['startScript'], 'utf-8').replace('+', ' ').replace("\r\n", "\n")
-    reloadScript = unquote(args['reloadScript'], 'utf-8').replace('+', ' ').replace("\r\n", "\n")
-    stopScript = unquote(args['stopScript'], 'utf-8').replace('+', ' ').replace("\r\n", "\n")
+    startScript = getScriptArg('startScript')
+    reloadScript = getScriptArg('reloadScript')
+    stopScript = getScriptArg('stopScript')
     echo =  mw.md5(str(time.time()) + '_jianghujs')
     conn = getSqliteDb('project')
     data = conn.add(
         'name,path,start_script,reload_script,stop_script,create_time,echo',
         ( name, path, startScript, reloadScript, stopScript, int(time.time()), echo )
     )
-    scriptPath = getServerDir() + '/script'
-    if not os.path.exists(scriptPath):
-        mw.execShell('mkdir -p ' + scriptPath)
-    startScriptFile = scriptPath + '/' + echo + '_start.sh'
-    mw.writeFile(startScriptFile, startScript)
-    mw.execShell('chmod 750 ' + startScriptFile)
-    reloadScriptFile = scriptPath + '/' + echo + '_reload.sh'
-    mw.writeFile(reloadScriptFile, reloadScriptFile)
-    mw.execShell('chmod 750 ' + reloadScriptFile)
-    stopScriptFile = scriptPath + '/' + echo + '_stop.sh'
-    mw.writeFile(stopScriptFile, stopScript)
-    mw.execShell('chmod 750 ' + stopScriptFile)
+    makeScriptFile(echo + '_start.sh', startScript)
+    makeScriptFile(echo + '_reload.sh', reloadScript)
+    makeScriptFile(echo + '_stop.sh', stopScript)
     return mw.returnJson(True, '添加成功!')
 
 def projectEdit():
+    args = getArgs()
+    data = checkArgs(args, ['id', 'name', 'path', 'startScript', 'reloadScript', 'stopScript'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    name = args['name']
+    path = unquote(args['path'], 'utf-8')
+    startScript = getScriptArg('startScript')
+    reloadScript = getScriptArg('reloadScript')
+    stopScript = getScriptArg('stopScript')
     conn = getSqliteDb('project')
-    conn.where('id=?', (1,)).update({
-        'name': 'jianghujs-1table-crud1'
+    conn.where('id=?', (id,)).update({
+        'name': name,
+        'path': path,
+        'start_script': startScript,
+        'reload_script': reloadScript,
+        'stop_script': stopScript
     })
+    return mw.returnJson(True, '修改成功!')
+
+def getScriptArg(arg):
+    args = getArgs()
+    return unquote(args[arg], 'utf-8').replace('+', ' ').replace("\r\n", "\n")
+
+def makeScriptFile(filename, content):
+    scriptPath = getServerDir() + '/script'
+    if not os.path.exists(scriptPath):
+        mw.execShell('mkdir -p ' + scriptPath)
+    scriptFile = scriptPath + '/' + filename
+    mw.writeFile(scriptFile, content)
+    mw.execShell('chmod 750 ' + scriptFile)
 
 def projectDelete():
     args = getArgs()

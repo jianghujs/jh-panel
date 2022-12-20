@@ -15,7 +15,7 @@ if mw.isAppleSystem():
 
 
 def getPluginName():
-    return 'pm2'
+    return 'nodejs'
 
 
 def getPluginDir():
@@ -57,7 +57,7 @@ def checkArgs(data, ck=[]):
 
 
 def status():
-    cmd = "ps -ef|grep pm2 |grep -v grep | grep -v python | awk '{print $2}'"
+    cmd = "ps -ef|grep nodejs |grep -v grep | grep -v python | awk '{print $2}'"
     data = mw.execShell(cmd)
     if data[0] == '':
         return 'stop'
@@ -73,7 +73,7 @@ def rootDir():
     return path
 
 
-def pm2FNMDir():
+def nodejsFNMDir():
     path = rootDir() + '/.local/share/fnm'
     return path
 
@@ -82,23 +82,23 @@ PATH=%s:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 export HOME=%s
 source %s/.bashrc
-''' % (pm2FNMDir(), rootDir(), rootDir())
+''' % (nodejsFNMDir(), rootDir(), rootDir())
 __path = getServerDir() + '/list'
 
 
-def pm2LogDir():
-    path = rootDir() + '/.pm2'
+def nodejsLogDir():
+    path = rootDir() + '/.nodejs'
     return path
 
 
-def pm2Log():
-    path = pm2LogDir() + '/pm2.log'
+def nodejsLog():
+    path = nodejsLogDir() + '/nodejs.log'
     return path
 
 
-def pm2GetList():
+def nodejsGetList():
     try:
-        tmp = mw.execShell(__SR + "pm2 list|grep -v 'pm2 show'")
+        tmp = mw.execShell(__SR + "nodejs list|grep -v 'nodejs show'")
         t2 = tmp[0].replace("│", "").replace("└", "").replace(
             "─", "").replace("┴", "").replace("┘", "").strip().split("┤")
         if len(t2) == 1:
@@ -144,12 +144,12 @@ def pm2GetList():
         return []
 
 
-def pm2List():
-    result = pm2GetList()
+def nodejsList():
+    result = nodejsGetList()
     return mw.returnJson(True, 'ok', result)
 
 
-def pm2Add():
+def nodejsAdd():
     args = getArgs()
     data = checkArgs(args, ['path', 'run', 'pname'])
     if not data[0]:
@@ -163,54 +163,54 @@ def pm2Add():
     if not os.path.exists(runFile):
         return mw.returnJson(False, '指定文件不存在!')
 
-    nlist = pm2GetList()
+    nlist = nodejsGetList()
     for node in nlist:
         if pname == node['name']:
             return mw.returnJson(False, '指定项目名称已经存在!')
     if os.path.exists(path + '/package.json') and not os.path.exists(path + '/package-lock.json'):
         mw.execShell(__SR + "cd " + path + ' && npm install -s')
-    mw.execShell(__SR + 'cd ' + path + ' && pm2 start ' +
+    mw.execShell(__SR + 'cd ' + path + ' && nodejs start ' +
                  runFile + ' --name "' + pname + '"|grep ' + pname)
-    mw.execShell(__SR + 'pm2 save && pm2 startup')
+    mw.execShell(__SR + 'nodejs save && nodejs startup')
     if not os.path.exists(__path):
         mw.execShell('mkdir -p ' + __path)
     mw.writeFile(__path + '/' + pname, path)
     return mw.returnJson(True, '添加成功!')
 
 
-def pm2Delete():
+def nodejsDelete():
     args = getArgs()
     data = checkArgs(args, ['pname'])
     if not data[0]:
         return data[1]
 
     pname = args['pname']
-    cmd = 'pm2 stop "' + pname + '" && pm2 delete "' + \
+    cmd = 'nodejs stop "' + pname + '" && nodejs delete "' + \
         pname + '" | grep "' + pname + '"'
     result = mw.execShell(__SR + cmd)[0]
     if result.find('✓') != -1:
-        mw.execShell(__SR + 'pm2 save && pm2 startup')
+        mw.execShell(__SR + 'nodejs save && nodejs startup')
         if os.path.exists(__path + '/' + pname):
             os.remove(__path + '/' + pname)
         return mw.returnJson(True, '删除成功!')
     return mw.returnJson(False, '删除失败!')
 
 
-def pm2Stop():
+def nodejsStop():
     args = getArgs()
     data = checkArgs(args, ['pname'])
     if not data[0]:
         return data[1]
 
     pname = args['pname']
-    result = mw.execShell(__SR + 'pm2 stop "' +
+    result = mw.execShell(__SR + 'nodejs stop "' +
                           pname + '"|grep ' + pname)[0]
     if result.find('stoped') != -1:
         return mw.returnJson(True, '项目[' + pname + ']已停止!')
     return mw.returnJson(True, '项目[' + pname + ']停止失败!')
 
 
-def pm2Start():
+def nodejsStart():
     args = getArgs()
     data = checkArgs(args, ['pname'])
     if not data[0]:
@@ -218,13 +218,13 @@ def pm2Start():
 
     pname = args['pname']
     result = mw.execShell(
-        __SR + 'pm2 start "' + pname + '"|grep ' + pname)[0]
+        __SR + 'nodejs start "' + pname + '"|grep ' + pname)[0]
     if result.find('online') != -1:
         return mw.returnJson(True, '项目[' + pname + ']已启动!')
     return mw.returnJson(False, '项目[' + pname + ']启动失败!')
 
 
-def pm2VerList():
+def nodejsVerList():
     # 获取Node版本列表
     import re
     result = {}
@@ -250,7 +250,7 @@ def setNodeVersion():
 fnm install %s
 fnm use %s
 fnm default %s
-npm install pm2 -g
+npm install nodejs -g
 ''' % (version, version, version)
     cmd = __SR + estr
     mw.execShell(cmd)
@@ -294,7 +294,7 @@ def uninstallMod():
         return data[1]
 
     mname = args['mname']
-    myNot = ['pm2', 'npm']
+    myNot = ['nodejs', 'npm']
     if mname in myNot:
         return mw.returnJson(False, '不能卸载[' + mname + ']')
     mw.execShell(__SR + 'npm uninstall ' + mname + ' -g')
@@ -308,7 +308,7 @@ def nodeLogRun():
         return data[1]
 
     pname = args['pname']
-    return pm2LogDir() + '/logs/' + pname + '-out.log'
+    return nodejsLogDir() + '/logs/' + pname + '-out.log'
 
 
 def nodeLogErr():
@@ -318,7 +318,7 @@ def nodeLogErr():
         return data[1]
 
     pname = args['pname']
-    return pm2LogDir() + '/logs/' + pname + '-error.log'
+    return nodejsLogDir() + '/logs/' + pname + '-error.log'
 
 
 def nodeLogClearRun():
@@ -328,7 +328,7 @@ def nodeLogClearRun():
         return data[1]
 
     pname = args['pname']
-    path = pm2LogDir() + '/logs/' + pname + '-out.log'
+    path = nodejsLogDir() + '/logs/' + pname + '-out.log'
     mw.execShell('rm -rf ' + path + '&& touch ' + path)
     return mw.returnJson(True, '清空运行成功')
 
@@ -339,7 +339,7 @@ def nodeLogClearErr():
     if not data[0]:
         return data[1]
     pname = args['pname']
-    path = pm2LogDir() + '/logs/' + pname + '-error.log'
+    path = nodejsLogDir() + '/logs/' + pname + '-error.log'
     mw.execShell('rm -rf ' + path + '&& touch ' + path)
     return mw.returnJson(True, '清空错误成功')
 
@@ -352,17 +352,17 @@ if __name__ == "__main__":
     elif func == 'reload':
         print(reload())
     elif func == 'list':
-        print(pm2List())
+        print(nodejsList())
     elif func == 'add':
-        print(pm2Add())
+        print(nodejsAdd())
     elif func == 'delete':
-        print(pm2Delete())
+        print(nodejsDelete())
     elif func == 'stop':
-        print(pm2Stop())
+        print(nodejsStop())
     elif func == 'start':
-        print(pm2Start())
+        print(nodejsStart())
     elif func == 'get_logs':
-        print(pm2Log())
+        print(nodejsLog())
     elif func == 'node_log_run':
         print(nodeLogRun())
     elif func == 'node_log_err':
@@ -372,7 +372,7 @@ if __name__ == "__main__":
     elif func == 'node_log_clear_err':
         print(nodeLogClearErr())
     elif func == 'versions':
-        print(pm2VerList())
+        print(nodejsVerList())
     elif func == 'set_node_version':
         print(setNodeVersion())
     elif func == 'mod_list':

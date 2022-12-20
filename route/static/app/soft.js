@@ -489,8 +489,18 @@ function importPluginInstall(plugin_name, tmp_path) {
     },'json');
 }
 
+function onSearchInputKeydown(e) {
+    e = e || event;
+    var keyCode = e.keyCode; 
+    if (keyCode == 13) {
+        getSList()
+    }
+}
+
 $(function() {
     if (window.document.location.pathname == '/soft/') {
-        setInterval(function() { getSList(); }, 8000);
+        setInterval(function() { 
+            getSList(); 
+        }, 8000);
     }
 });

@@ -734,7 +734,7 @@ class plugins_api:
                         sSearchKey = request.args.get('searchKey', None)
                         sSearchKeyword = request.args.get('searchKeyword', None)
                         if(sSearchKey is not None and sSearchKeyword is not None):
-                            tmp_data = list(filter(lambda item: item[sSearchKey].find(sSearchKeyword) != -1, tmp_data))
+                            tmp_data = list(filter(lambda item: item[sSearchKey].lower().find(sSearchKeyword.lower()) != -1, tmp_data))
                         
                         for index in range(len(tmp_data)):
                             plugins_info.append(tmp_data[index])

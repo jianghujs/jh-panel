@@ -532,6 +532,20 @@ function checkUpdate() {
     },'json');
 }
 
+function updateServerCode() {
+    var loadT = layer.msg(lan.index.update_get, { icon: 16, time: 0, shade: [0.3, '#000'] });
+    $.get('/system/update_server_code?type=check', function(rdata) {
+        layer.close(loadT);
+
+        if (rdata.status === false) {
+            layer.confirm(rdata.msg, { title: lan.index.update_check, icon: 1, closeBtn: 1, btn: [lan.public.know, lan.public.close] });
+            return;
+        }
+        layer.msg(rdata.msg, { icon: 1 });
+        if (rdata.data != undefined) updateMsg();
+    },'json');
+}
+
 function updateMsg(){
     $.get('/system/update_server?type=info',function(rdata){
 

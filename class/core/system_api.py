@@ -58,6 +58,9 @@ class system_api:
         version = request.args.get('version', '')
         return self.updateServer(stype, version)
 
+    def updateServerCodeApi(self):
+        return mw.returnJson(True, '更新成功!')
+
     def systemTotalApi(self):
         data = self.getSystemTotal()
         return mw.getJson(data)

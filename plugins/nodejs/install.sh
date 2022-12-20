@@ -22,7 +22,8 @@ Install_nodejs()
 
 	curl -o- http://npmjs.org/install.sh | bash
 	# sh ./script/npmjs.install.sh
-
+	
+	apt update
 	apt install -y nodejs
 	apt install -y npm
 	npm install nodejs -g

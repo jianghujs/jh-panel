@@ -43,6 +43,7 @@
                         <li id="memuAconfig"><a class="menu_set" href="/config">面板设置</a></li>
                         <li><a class="menu_exit" href="javascript:;" id="signout">退出</a></li>
                     </ul>
+                    <ul class="menu" id="menusoft"></ul>
                     <div id="newbtpc"></div>
                     <div class="btpc-plus" onclick="bindPanel(0,'b')">+</div>
                 </div>
@@ -75,8 +76,10 @@
     </div>
     </div>
 </body>
-
+<script type="text/javascript" src="/static/app/soft.js?v={{config.version}}"></script>
 <script type="text/javascript">
+
+indexSoft();
 
 function showAd(){
     layer.open({

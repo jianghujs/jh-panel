@@ -119,6 +119,11 @@ Install_mysql()
 
 		if [ -d $serverPath/mysql ];then
 			echo '5.7' > $serverPath/mysql/version.pl
+			# mysql 全局配置
+			rm -rf /usr/bin/mysql
+			mv /etc/my.cnf /etc/my.cnf.$(date "+%Y-%m-%d_%H-%M-%S")
+			ln -s /www/server/mysql/bin/mysql /usr/bin
+			ln -s /www/server/mysql/etc/my.cnf /etc/my.cnf
 			echo '安装完成' > $install_tmp
 		else
 			# rm -rf ${mysqlDir}/mysql-${VERSION}

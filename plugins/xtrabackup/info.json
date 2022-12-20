@@ -1,0 +1,18 @@
+{
+	"sort": -1,
+	"ps": "备份mysql 👉 xtrabackup",
+	"name": "xtrabackup",
+	"title": "Xtrabackup",
+	"shell": "install.sh",
+	"versions":["24"],
+	"updates":["24"],
+	"tip": "soft",
+	"checks": "server/xtrabackup",
+	"path": "server/xtrabackup",
+	"display": 1,
+	"author": "Colin",
+	"date": "2022-12-19",
+	"home": "https://docs.percona.com/percona-xtrabackup/2.4/installation/apt_repo.html",
+	"type":"数据软件",
+	"pid": "2"
+}

@@ -1,0 +1,16 @@
+{
+	"title":"jianghujs项目管理器",
+	"tip":"soft",
+	"name":"jianghujs",
+	"type":"运行环境",
+	"ps":"jianghujs项目管理器",
+	"versions":"1.0",
+	"updates":"1.0",
+	"shell":"install.sh",
+	"checks":"server/jianghujs",
+	"path": "server/jianghujs",
+	"author":"jianghujs",
+	"home":"https://cn.jianghujs.org/",
+	"date":"2022-12-17",
+	"pid": "4"
+}

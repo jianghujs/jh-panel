@@ -306,6 +306,16 @@ function setIPv6() {
 }
 
 
+function switchEnvToCn() {
+    var loadT = layer.msg('正在配置,请稍候...', { icon: 16, time: 0, shade: [0.3, '#000'] });
+    $.post('/config/set_env_to_cn', {}, function (rdata) {
+        layer.close(loadT);
+        layer.msg(rdata.msg, {icon:rdata.status?1:2});
+        setTimeout(function(){window.location.reload();},5000);
+    },'json');
+}
+
+
 //设置面板SSL
 function setPanelSSL(){
 	var status = $("#sshswitch").prop("checked")==true?1:0;

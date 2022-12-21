@@ -37,6 +37,10 @@ function mysqlBackupHtml(){
     $('#btn_mysql_backup').click(function(){
         myPost('do_mysql_backup', {}, function(data){
             var rdata = $.parseJSON(data.data);
+            if(!rdata.status) {
+                layer.msg(rdata.msg,{icon:2, time:2000});
+                return;
+            };
             layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
         });
     })

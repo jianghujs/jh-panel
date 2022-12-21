@@ -33,9 +33,10 @@ def doMysqlBackup():
     xtrabackupScript = getServerDir() + '/xtrabackup.sh'
     mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份开始" >> ' + log_file)
     # TODO: 优化脚本
-    #  - 脚本 echo 到 log_file
     #  - 如何判断脚本执行成功了
-    mw.execShell("sh %(xtrabackupScript)s" % {'xtrabackupScript': xtrabackupScript, 'logFile': log_file })
+    execResult = mw.execShell("sh %(xtrabackupScript)s >> %(logFile)s" % {'xtrabackupScript': xtrabackupScript, 'logFile': log_file })
+    if execResult[1]:
+        return mw.returnJson(False, '备份失败!' + execResult[1])
     mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份成功" >> ' + log_file)
     return mw.returnJson(True, '备份成功!')
 

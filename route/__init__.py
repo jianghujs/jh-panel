@@ -188,11 +188,11 @@ def isLogined():
 
         return True
 
-    if os.path.exists('data/api_login.txt'):
-        content = mw.readFile('data/api_login.txt')
-        session['login'] = True
-        session['username'] = content
-        os.remove('data/api_login.txt')
+    # if os.path.exists('data/api_login.txt'):
+    #     content = mw.readFile('data/api_login.txt')
+    #     session['login'] = True
+    #     session['username'] = content
+    #     os.remove('data/api_login.txt')
     return False
 
 
@@ -337,8 +337,8 @@ def doLogin():
     session['overdue'] = int(time.time()) + 7 * 24 * 60 * 60
     # session['overdue'] = int(time.time()) + 7
 
-    # fix 跳转时,数据消失，可能是跨域问题
-    mw.writeFile('data/api_login.txt', userInfo['username'])
+    # # fix 跳转时,数据消失，可能是跨域问题
+    # mw.writeFile('data/api_login.txt', userInfo['username'])
     return mw.returnJson(True, '登录成功,正在跳转...')
 
 

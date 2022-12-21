@@ -132,8 +132,8 @@ class plugins_api:
                     info['versions'] = tmp['versions']
                     info['default_ver'] = plugin_names[pn]
                     pn_list.append(info)
-            # else:
-            #     return mw.returnJson(False, 'ok')
+            else:
+                return mw.returnJson(False, 'ok')
         return mw.returnJson(True, 'ok', pn_list)
 
     def initInstallApi(self):

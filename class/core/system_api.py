@@ -58,6 +58,10 @@ class system_api:
         version = request.args.get('version', '')
         return self.updateServer(stype, version)
 
+    def updateServerCodeApi(self):
+        mw.execShell("cd /www/server/mdserver-web && git pull")
+        return mw.returnJson(True, '更新成功, 请手动重启面板!')
+
     def systemTotalApi(self):
         data = self.getSystemTotal()
         return mw.getJson(data)

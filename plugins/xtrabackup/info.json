@@ -1,5 +1,4 @@
 {
-	"sort": -1,
 	"ps": "备份mysql 👉 xtrabackup",
 	"name": "xtrabackup",
 	"title": "Xtrabackup",
@@ -13,6 +12,5 @@
 	"author": "Colin",
 	"date": "2022-12-19",
 	"home": "https://docs.percona.com/percona-xtrabackup/2.4/installation/apt_repo.html",
-	"type":"数据软件",
-	"pid": "2"
+	"pid": "-1"
 }

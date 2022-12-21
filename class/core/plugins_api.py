@@ -108,10 +108,12 @@ class plugins_api:
 
         plugin_names = {
             'openresty': '1.21.4.1',
-            'php': '56',
             'swap': '1.1',
-            'mysql': '5.7',
-            'phpmyadmin': '4.4.15',
+            'mysql-apt': '5.7',
+            # 'mysql': '5.7',
+            'xtrabackup': '1.0',
+            'nodejs': '1.0',
+            'jianghujs': '1.0',
         }
 
         pn_dir = mw.getPluginDir()
@@ -122,18 +124,16 @@ class plugins_api:
             pn_json = pn_dir + '/' + pn + '/info.json'
             pn_server = pn_server_dir + '/' + pn
             if not os.path.exists(pn_server):
-
                 tmp = mw.readFile(pn_json)
-                tmp = json.loads(tmp)
-
-                info['title'] = tmp['title']
-                info['name'] = tmp['name']
-                info['versions'] = tmp['versions']
-                info['default_ver'] = plugin_names[pn]
-                pn_list.append(info)
+                if tmp:
+                    tmp = json.loads(tmp)
+                    info['title'] = tmp['title']
+                    info['name'] = tmp['name']
+                    info['versions'] = tmp['versions']
+                    info['default_ver'] = plugin_names[pn]
+                    pn_list.append(info)
             else:
                 return mw.returnJson(False, 'ok')
-
         return mw.returnJson(True, 'ok', pn_list)
 
     def initInstallApi(self):
@@ -154,7 +154,7 @@ class plugins_api:
                            'execshell', '0', time.strftime('%Y-%m-%d %H:%M:%S'), execstr)
 
                 mw.M('tasks').add('name,type,status,addtime, execstr', taskAdd)
-            os.mkdir(mw.getServerDir() + '/php')
+            # os.mkdir(mw.getServerDir() + '/php')
             # 任务执行相关
             mw.triggerTask()
             return mw.returnJson(True, '添加成功')
@@ -734,7 +734,7 @@ class plugins_api:
                         sSearchKey = request.args.get('searchKey', None)
                         sSearchKeyword = request.args.get('searchKeyword', None)
                         if(sSearchKey is not None and sSearchKeyword is not None):
-                            tmp_data = list(filter(lambda item: item[sSearchKey].find(sSearchKeyword) != -1, tmp_data))
+                            tmp_data = list(filter(lambda item: item[sSearchKey].lower().find(sSearchKeyword.lower()) != -1, tmp_data))
                         
                         for index in range(len(tmp_data)):
                             plugins_info.append(tmp_data[index])

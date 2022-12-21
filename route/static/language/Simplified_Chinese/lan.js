@@ -55,6 +55,7 @@ var lan = {
 		"net_font":"宋体",
 		"update_go":"立即更新",
 		"update_get":"正在获取版本信息...",
+		"update_server_code":"正在拉取最新版本Jhpanel...",
 		"update_check":"检查更新",
 		"update_to":"升级到",
 		"update_the":"正在升级面板..",

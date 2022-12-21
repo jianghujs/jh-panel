@@ -1,5 +1,4 @@
 {
-	"sort": 7,
 	"ps": "一个高性能的KV数据库",
 	"name": "redis",
 	"title": "Redis",
@@ -13,6 +12,5 @@
 	"author": "Zend",
 	"date": "2017-04-01",
 	"home": "https://redis.io",
-	"type": 0,
-	"pid": "2"
+	"pid": "-1"
 }

@@ -499,18 +499,18 @@ function setImg() {
 }
 
 // 检查更新
-setTimeout(function() {
-    $.get('/system/update_server?type=check', function(rdata) {
-        if (rdata.status == false) return;
-        if (rdata.data != undefined) {
-            $("#toUpdate").html('<a class="btlink" href="javascript:updateMsg();">更新</a>');
-            $('#toUpdate a').html('更新<i style="display: inline-block; color: red; font-size: 40px;position: absolute;top: -35px; font-style: normal; right: -8px;">.</i>');
-            $('#toUpdate a').css("position","relative");
-            return;
-        }
-    },'json').error(function() {
-    });
-}, 3000);
+// setTimeout(function() {
+//     $.get('/system/update_server?type=check', function(rdata) {
+//         if (rdata.status == false) return;
+//         if (rdata.data != undefined) {
+//             $("#toUpdate").html('<a class="btlink" href="javascript:updateMsg();">更新</a>');
+//             $('#toUpdate a').html('更新<i style="display: inline-block; color: red; font-size: 40px;position: absolute;top: -35px; font-style: normal; right: -8px;">.</i>');
+//             $('#toUpdate a').css("position","relative");
+//             return;
+//         }
+//     },'json').error(function() {
+//     });
+// }, 3000);
 
 
 //检查更新
@@ -529,6 +529,14 @@ function checkUpdate() {
         }
         layer.msg(rdata.msg, { icon: 1 });
         if (rdata.data != undefined) updateMsg();
+    },'json');
+}
+
+function updateServerCode() {
+    var loadT = layer.msg(lan.index.update_server_code, { icon: 16, time: 0, shade: [0.3, '#000'] });
+    $.get('/system/update_server_code', function(rdata) {
+        layer.close(loadT);
+        layer.msg(rdata.msg, { icon: 1 });
     },'json');
 }
 
@@ -685,6 +693,75 @@ function reBoot() {
                 break;
         }
     });
+}
+
+function reBootPanel() {
+    layer.confirm('即将重启面板服务，继续吗？', { title: '重启面板服务', closeBtn: 1, icon: 3 }, function () {
+        var loadT = layer.load();
+        $.post('/system/restart','',function (rdata) {
+            layer.close(loadT);
+            layer.msg(rdata.msg);
+            setTimeout(function () { window.location.reload(); }, 6000);
+        },'json');
+    });
+}
+
+function reBootServer() {
+    var rebootbox = layer.open({
+        type: 1,
+        title: '安全重启服务器',
+        area: ['500px', '280px'],
+        closeBtn: 1,
+        shadeClose: false,
+        content: "<div class='bt-form bt-window-restart'>\
+                <div class='pd15'>\
+                <p style='color:red; margin-bottom:10px; font-size:15px;'>注意，若您的服务器是一个容器，请取消。</p>\
+                <div class='SafeRestart' style='line-height:26px'>\
+                    <p>安全重启有利于保障文件安全，将执行以下操作：</p>\
+                    <p>1.停止Web服务</p>\
+                    <p>2.停止MySQL服务</p>\
+                    <p>3.开始重启服务器</p>\
+                    <p>4.等待服务器启动</p>\
+                </div>\
+                </div>\
+                <div class='bt-form-submit-btn'>\
+                    <button type='button' class='btn btn-danger btn-sm btn-reboot'>取消</button>\
+                    <button type='button' class='btn btn-success btn-sm WSafeRestart' >确定</button>\
+                </div>\
+            </div>"
+    });
+    setTimeout(function () {
+        $(".btn-reboot").click(function () {
+            rebootbox.close();
+        })
+        $(".WSafeRestart").click(function () {
+            var body = '<div class="SafeRestartCode pd15" style="line-height:26px"></div>';
+            $(".bt-window-restart").html(body);
+            $(".SafeRestartCode").append("<p>正在停止Web服务</p>");
+            pluginIndexService('openresty', 'stop', function (r1) {
+                $(".SafeRestartCode p").addClass('c9');
+                $(".SafeRestartCode").append("<p>正在停止MySQL服务...</p>");
+                pluginIndexService('mysql','stop', function (r2) {
+                    $(".SafeRestartCode p").addClass('c9');
+                    $(".SafeRestartCode").append("<p>开始重启服务器...</p>");
+                    $.post('/system/restart_server', '',function (rdata) {
+                        $(".SafeRestartCode p").addClass('c9');
+                        $(".SafeRestartCode").append("<p>等待服务器启动...</p>");
+                        var sEver = setInterval(function () {
+                           $.get("/system/system_total", function(info) {
+                                clearInterval(sEver);
+                                $(".SafeRestartCode p").addClass('c9');
+                                $(".SafeRestartCode").append("<p>服务器重启成功!...</p>");
+                                setTimeout(function () {
+                                    layer.closeAll();
+                                }, 3000);
+                            })
+                        }, 3000);
+                    })
+                })
+            })
+        })
+    }, 100);
 }
 
 //修复面板

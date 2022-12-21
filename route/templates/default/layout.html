@@ -16,13 +16,13 @@
 	<![endif]-->
     <!-- 统计一下用户量,让我的开发更有激情 -->
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FC74BB2RGD"></script>
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-FC74BB2RGD"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-FC74BB2RGD');
-    </script>
+    </script> -->
 </head>
 
 <body>
@@ -41,6 +41,9 @@
                         <li id="memuAcrontab"><a class="menu_day" href="/crontab">计划任务</a></li>
                         <li id="memuAsoft"><a class="menu_soft" href="/soft">软件管理</a><span class="softnum">1</span></li>
                         <li id="memuAconfig"><a class="menu_set" href="/config">面板设置</a></li>
+                        <!-- <li><a class="menu_exit" href="javascript:;" id="signout">退出</a></li> -->
+                    </ul>
+                    <ul class="menu" id="menusoft"></ul><ul class="menu">
                         <li><a class="menu_exit" href="javascript:;" id="signout">退出</a></li>
                     </ul>
                     <div id="newbtpc"></div>
@@ -65,6 +68,7 @@
             <script src="/static/app/public.js?v={{config.version}}"></script>
             <script src="/static/js/echarts.min.js?v={{config.version}}"></script>
             <script src="/static/js/jquery.dragsort-0.5.2.min.js?v={{config.version}}"></script>
+            <script src="/static/js/vue.min.js?v={{config.version}}"></script>
             
             {% block content %}{% endblock %}
             <div class="footer bgw">mdserver-web &copy;2018-∞ Linux面板 (<a class="btlink" target="_blank" href="//github.com/midoks/mdserver-web">源码</a>) <span style="margin-left:5px;">/</span>
@@ -74,8 +78,10 @@
     </div>
     </div>
 </body>
-
+<script type="text/javascript" src="/static/app/soft.js?v={{config.version}}"></script>
 <script type="text/javascript">
+
+indexSoft();
 
 function showAd(){
     layer.open({

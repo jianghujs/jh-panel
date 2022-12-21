@@ -288,7 +288,8 @@ class plugins_api:
             return mw.returnJson(False, "缺少插件名称!", ())
 
         if version.strip() == '':
-            return mw.returnJson(False, "缺少版本信息!", ())
+            version = '1.0'
+            # return mw.returnJson(False, "缺少版本信息!", ())
 
         infoJsonPos = self.__plugin_dir + '/' + name + '/' + 'info.json'
 

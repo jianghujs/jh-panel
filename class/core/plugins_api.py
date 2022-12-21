@@ -732,12 +732,19 @@ class plugins_api:
                     try:
                         data = json.loads(mw.readFile(json_file))
                         tmp_data = self.makeList(data, sType)
+                        
+                        tmp_data = self.checkStatusMThreads(tmp_data)
 
-                        # 20221219临时增加搜索键，用于软件管理搜索
                         sSearchKey = request.args.get('searchKey', None)
                         sSearchKeyword = request.args.get('searchKeyword', None)
-                        if(sSearchKey is not None and sSearchKeyword is not None):
+                        if sSearchKey is not None and sSearchKeyword is not None:
                             tmp_data = list(filter(lambda item: item[sSearchKey].lower().find(sSearchKeyword.lower()) != -1, tmp_data))
+                        sStatus = request.args.get('status', None)
+                        if sStatus is not None:
+                            if sStatus == 'running':
+                                tmp_data = list(filter(lambda item: item['status'] == True, tmp_data))
+                            if sStatus == 'uninstall':
+                                tmp_data = list(filter(lambda item: item['setup'] == False, tmp_data))
                         
                         for index in range(len(tmp_data)):
                             plugins_info.append(tmp_data[index])
@@ -748,7 +755,7 @@ class plugins_api:
         end = start + pageSize
         _plugins_info = plugins_info[start:end]
 
-        _plugins_info = self.checkStatusMThreads(_plugins_info)
+        # _plugins_info = self.checkStatusMThreads(_plugins_info)
         return (_plugins_info, len(plugins_info))
 
     def makeListThread(self, data, sType='0'):

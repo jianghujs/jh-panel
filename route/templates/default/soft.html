@@ -8,7 +8,12 @@
 				<div class="position f14 c9 pull-left">
 					<a class="plr10 c4" href="/">首页</a>/<span class="plr10 c4">软件管理</span>
 				</div>
-				<div class="search pull-right">
+				<div class="search pull-right" style="display: flex; align-items: center;">
+					<select id="StatusValue" class="bt-input-text mr5 mt10" style="width:100px">
+						<option value="all">全部</option>
+						<option value="running">运行中</option>
+						<option value="uninstall">未安装</option>
+					</select>
 					<input type="text" id="SearchValue" class="ser-text pull-left" placeholder="search" onkeydown="onSearchInputKeydown()"/>
 					<button type="button" class="ser-sub pull-left" onclick='getSList()'></button>
 				</div>

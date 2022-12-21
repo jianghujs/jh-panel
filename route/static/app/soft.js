@@ -39,9 +39,14 @@ function getSList(isdisplay) {
         isdisplay = getCookie('p' + getCookie('soft_type'));
     if (isdisplay == true || isdisplay == 'true') isdisplay = 1;
 
-    var search = $("#SearchValue").val();
-    if (search != '') {
-        search = '&searchKeyword=' + search + '&searchKey=title';
+    var searchParams = '';
+    var searchValue = $("#SearchValue").val();
+    if (searchValue != '') {
+        searchParams += '&searchKeyword=' + search + '&searchKey=title';
+    }
+    var statusValue = $("#StatusValue").val();
+    if (statusValue != '') {
+        searchParams = '&status=' + statusValue;
     }
     var type = '';
     var istype = getCookie('soft_type');
@@ -56,7 +61,7 @@ function getSList(isdisplay) {
         setCookie('p' + getCookie('soft_type'), isdisplay);
     }
 
-    var condition = (search + type + page).slice(1);
+    var condition = (searchParams + type + page).slice(1);
     $.get('/plugins/list?' + condition, '', function(rdata) {
         layer.close(loadT);
         var tBody = '';

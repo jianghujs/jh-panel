@@ -254,7 +254,7 @@ mw_debug(){
     if [ -d /www/server/mdserver-web ];then
         cd /www/server/mdserver-web
     fi
-    gunicorn -b :$port -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1  app:app
+    gunicorn -b :$port -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1  app:app --log-level "debug"  --capture-output
 }
 
 case "$1" in

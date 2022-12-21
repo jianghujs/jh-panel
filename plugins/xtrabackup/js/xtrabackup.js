@@ -26,22 +26,76 @@ function myPost(method,args,callback, title){
     },'json'); 
 }
 
+function doMysqlBackup() {
+    myPost('do_mysql_backup', {}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            layer.msg(rdata.msg,{icon:2, time:2000});
+            return;
+        };
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+        mysqlBackupHtml();
+    });
+}
+
+function doRecoveryBackup(filename) {
+    myPost('do_recovery_backup', {filename}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            layer.msg(rdata.msg,{icon:2, time:2000});
+            return;
+        };
+        mysqlBackupHtml();
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+    });
+}
+
+function doDeleteBackup(filename) {
+    myPost('do_delete_backup', {filename}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            layer.msg(rdata.msg,{icon:2, time:2000});
+            return;
+        };
+        mysqlBackupHtml();
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+    });
+}
 
 function mysqlBackupHtml(){
-    var con = `<div class="line ">
-                    <div class="info-r  ml0">
-                        <button id="btn_mysql_backup" name="btn_mysql_backup" class="btn btn-success btn-sm mr5 ml5 btn_change_port">备份</button>
-                    </div>
-               </div>`;
+    var con = '\
+    <div class="divtable">\
+        <button class="btn btn-default btn-sm va0" onclick="doMysqlBackup();">备份</button>\
+        <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
+            <thead>\
+                <th>备份文件</th>\
+                <th style="text-align: right;" width="150">操作</th></tr>\
+            </thead>\
+            <tbody class="plugin-table-body"></tbody>\
+        </table>\
+    </div>';
     $(".soft-man-con").html(con);
-    $('#btn_mysql_backup').click(function(){
-        myPost('do_mysql_backup', {}, function(data){
-            var rdata = $.parseJSON(data.data);
-            if(!rdata.status) {
-                layer.msg(rdata.msg,{icon:2, time:2000});
-                return;
-            };
-            layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
-        });
-    })
+    
+	myPost('backup_list',{}, function(data){
+		let rdata = $.parseJSON(data.data);
+		console.log(rdata);
+		if (!rdata['status']){
+            layer.msg(rdata['msg'],{icon:2,time:2000,shade: [0.3, '#000']});
+            return;
+        }
+
+        var tbody = '';
+        var tmp = rdata['data'].sort().reverse();
+        tableData = tmp;
+        for(var i=0;i<tmp.length;i++){
+            tbody += '<tr>\
+                        <td style="width: 120px;">'+tmp[i]+'</td>\
+                        <td style="text-align: right;width: 60px;">' + 
+                            '<a href="javascript:doRecoveryBackup(\''+tmp[i]+'\')" class="btlink">恢复</a> | ' +
+                            '<a href="javascript:doDeleteBackup(\''+tmp[i]+'\')" class="btlink">删除</a>' +
+                        '</td>\
+                    </tr>';
+        }
+        $(".plugin-table-body").html(tbody);
+	});
 }

@@ -40,7 +40,7 @@ Install_nodejs()
 	sh ./script/fnm.install.sh
 	source /.bashrc
 	source ~/.bashrc
-	fnm install v16.17.1 && fnm use v16.17.1 && fnm default v16.17.1
+	fnm install v16.17 && fnm use v16.17 && fnm default v16.17
 	
 	mkdir -p $serverPath/nodejs
 	echo '1.0' > $serverPath/nodejs/version.pl

@@ -38,7 +38,8 @@ Install_nodejs()
 	
 	# curl -fsSL https://fnm.vercel.app/install | bash
 	sh ./script/fnm.install.sh
-	source /root/.bashrc
+	source /.bashrc
+	source ~/.bashrc
 	fnm install v16.17.1 && fnm use v16.17.1 && fnm default v16.17.1
 	
 	mkdir -p $serverPath/nodejs

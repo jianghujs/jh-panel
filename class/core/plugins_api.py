@@ -744,6 +744,8 @@ class plugins_api:
                         if sStatus is not None:
                             if sStatus == 'running':
                                 tmp_data = list(filter(lambda item: item['status'] == True, tmp_data))
+                            if sStatus == 'install':
+                                tmp_data = list(filter(lambda item: item['setup'] == True, tmp_data))
                             if sStatus == 'uninstall':
                                 tmp_data = list(filter(lambda item: item['setup'] == False, tmp_data))
                         

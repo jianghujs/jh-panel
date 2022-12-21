@@ -30,7 +30,7 @@ Install_xtrabackup()
 	fi
 	apt-get update
 	apt-get -f install
-	apt-get install percona-xtrabackup-24
+	apt-get install percona-xtrabackup-24 -y
 	mkdir -p /var/run/mysqld
 
 	# mysql全局配置

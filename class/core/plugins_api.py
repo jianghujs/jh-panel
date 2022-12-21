@@ -189,6 +189,8 @@ class plugins_api:
         execstr = 'cd ' + mw.getPluginDir() + '/' + name + ' && bash ' + \
             pluginInfo['shell'] + ' install ' + version
 
+        self.addIndex(name, version)
+
         if mw.isAppleSystem():
             print(execstr)
 

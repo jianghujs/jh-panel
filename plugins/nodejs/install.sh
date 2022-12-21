@@ -2,54 +2,62 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
 rootPath=$(dirname "$rootPath")
 serverPath=$(dirname "$rootPath")
-
+installPath=/www/server/nodejs
+installFnmPath=${installPath}/fnm
+# logPath=${installPath}/nodejs.plugin.log
 install_tmp=${rootPath}/tmp/mw_install.pl
-
-bash ${rootPath}/scripts/getos.sh
-OSNAME=`cat ${rootPath}/data/osname.pl`
-OSNAME_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
+bashrcFile=/root/.bashrc
 
 
 Install_nodejs()
 {
 	echo '正在安装脚本文件...' > $install_tmp
 
+	mkdir -p $installPath
+	OS="$(uname -s)"
+	if [ "$OS" = "Linux" ]; then
+		# Based on https://stackoverflow.com/a/45125525
+		case "$(uname -m)" in
+			arm | armv7*)
+				unzip -q "$curPath/script/fnm-arm32.zip" -d "$installFnmPath"
+				;;
+			aarch* | armv8*)
+				unzip -q "$curPath/script/fnm-arm64.zip" -d "$installFnmPath"
+				;;
+			*)
+				unzip -q "$curPath/script/fnm-linux.zip" -d "$installFnmPath"
+		esac
+	else
+		echo "OS $OS is not supported."
+		echo "If you think that's a bug - please file an issue to https://github.com/Schniz/fnm/issues"
+		exit 1
+	fi
 
-	# curl -o- http://npmjs.org/install.sh | bash
-	# sh ./script/npmjs.install.sh
+	chmod u+x "$installFnmPath/fnm"
+
+	echo "Installing for Bash. Appending the following to $bashrcFile:"
+    echo ""
+    echo '  export PATH="'"$installFnmPath"':$PATH"  #fnm env'
+    echo '  eval "`fnm env`"  #fnm env'
+	echo '' >>$bashrcFile
+    echo 'export PATH="'"$installFnmPath"':$PATH"  #fnm env' >>$bashrcFile
+    echo 'eval "`fnm env`"  #fnm env' >>$bashrcFile
 	
-	# apt install -y nodejs
-	# apt install -y npm
-	# npm install nodejs -g
-	# if [ "$OSNAME" == 'debian' ] && [ "$OSNAME" == 'ubuntu' ];then
-	# 	apt install -y nodejs
-	# 	apt install -y npm
-	# 	npm install nodejs -g
-	# else 
-	# 	yum install -y nodejs
-	# 	yum install -y npm
-	# 	npm install nodejs -g
-	# fi
-	
-	# curl -fsSL https://fnm.vercel.app/install | bash
-	sh ./script/fnm.install.sh
-	source /.bashrc
-	source ~/.bashrc
+	source $bashrcFile
 	fnm install v16.17 && fnm use v16.17 && fnm default v16.17
-	
-	mkdir -p $serverPath/nodejs
-	echo '1.0' > $serverPath/nodejs/version.pl
+	echo '1.0' > $installPath/version.pl
 	echo '安装完成' > $install_tmp
 }
 
 Uninstall_nodejs()
 {	
-	rm -rf $serverPath/nodejs
+	sed -i '/#fnm env/d' /root/.bashrc
+	rm -rf $installPath
+	source $bashrcFile
 	echo "卸载完成" > $install_tmp
 }
 

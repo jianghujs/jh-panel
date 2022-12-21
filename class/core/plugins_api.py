@@ -199,6 +199,7 @@ class plugins_api:
 
         # 任务执行相关
         mw.triggerTask()
+
         return mw.returnJson(True, '已将安装任务添加到队列!')
 
     def hookInstallFile(self, hook_name, info):

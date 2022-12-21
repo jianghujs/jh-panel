@@ -48,6 +48,7 @@ Install_nodejs()
     echo 'eval "`fnm env`"  #fnm env' >>$bashrcFile
 	
 	source $bashrcFile
+	echo "Installing node v16.7: fnm install v16.17 && fnm use v16.17 && fnm default v16.17"
 	fnm install v16.17 && fnm use v16.17 && fnm default v16.17
 	echo '1.0' > $installPath/version.pl
 	echo '安装完成' > $install_tmp

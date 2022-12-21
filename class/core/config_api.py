@@ -338,6 +338,19 @@ class config_api:
         mw.restartMw()
         return mw.returnJson(True, '设置成功!')
 
+    def setEnvToCnApi(self):
+        net_env_cn_file = 'data/net_env_cn.pl'
+        if os.path.exists('data/net_env_cn.pl'):
+            os.remove(net_env_cn_file)
+            mw.writeLog('面板设置', '切换国际源成功!')
+            mw.restartMw()
+            return mw.returnJson(True, '切换国际源成功!')
+        else:
+            mw.writeFile(net_env_cn_file, 'True')
+            mw.writeLog('面板设置', '切换中国源成功!')
+            mw.restartMw()
+            return mw.returnJson(True, '切换中国源成功!')
+
     # 获取面板证书
     def getPanelSslApi(self):
         cert = {}
@@ -687,6 +700,12 @@ class config_api:
             data['ipv6'] = 'checked'
         else:
             data['ipv6'] = ''
+
+        net_env_cn_file = 'data/net_env_cn.pl'
+        if os.path.exists(net_env_cn_file):
+            data['net_env_cn'] = 'checked'
+        else:
+            data['net_env_cn'] = ''
 
         debug_file = 'data/debug.pl'
         if os.path.exists(debug_file):

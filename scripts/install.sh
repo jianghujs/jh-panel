@@ -9,6 +9,7 @@ if [ -f /etc/motd ];then
 fi
 
 startTime=`date +%s`
+netEnvCn="$1"
 
 _os=`uname`
 echo "use system: ${_os}"
@@ -90,6 +91,11 @@ if [ $OSNAME != "macos" ];then
 	# 	rm -rf /tmp/jh-panel-master
 	# fi
 	git clone https://github.com/jianghujs/jh-panel /www/server/mdserver-web
+fi
+
+if [ ${netEnvCn} == 'cn' ]; then
+    mkdir -p /www/server/mdserver-web/data
+    echo "True" > /www/server/mdserver-web/data/net_env_cn.pl
 fi
 
 echo "use system version: ${OSNAME}"

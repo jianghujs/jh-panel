@@ -47,7 +47,7 @@ Install_nodejs()
 }
 
 Uninstall_nodejs()
-{
+{	
 	rm -rf $serverPath/nodejs
 	echo "卸载完成" > $install_tmp
 }

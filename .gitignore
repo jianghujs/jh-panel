@@ -108,7 +108,7 @@ venv.bak/
 tmp/*
 *.swp
 *.pem
-*.zip
+# *.zip
 logs/*
 data/*.db
 data/control.conf

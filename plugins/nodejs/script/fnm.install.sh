@@ -1,5 +1,7 @@
 #!/bin/bash
 
+curPath=$(dirname `pwd`)
+
 set -e
 
 RELEASE="latest"
@@ -61,15 +63,6 @@ set_filename() {
       *)
         FILENAME="fnm-linux"
     esac
-  elif [ "$OS" = "Darwin" ] && [ "$FORCE_INSTALL" = "true" ]; then
-    FILENAME="fnm-macos"
-    USE_HOMEBREW="false"
-    echo "Downloading the latest fnm binary from GitHub..."
-    echo "  Pro tip: it's easier to use Homebrew for managing fnm in macOS."
-    echo "           Remove the \`--force-no-brew\` so it will be easy to upgrade."
-  elif [ "$OS" = "Darwin" ]; then
-    USE_HOMEBREW="true"
-    echo "Downloading fnm using Homebrew..."
   else
     echo "OS $OS is not supported."
     echo "If you think that's a bug - please file an issue to https://github.com/Schniz/fnm/issues"
@@ -78,36 +71,18 @@ set_filename() {
 }
 
 download_fnm() {
-  if [ "$USE_HOMEBREW" = "true" ]; then
-    brew install fnm
+  mkdir -p "$INSTALL_DIR" &>/dev/null
+  DOWNLOAD_DIR=$(mktemp -d)
+
+  unzip -q "$curPath/nodejs/script/$FILENAME.zip" -d "$DOWNLOAD_DIR"
+
+  if [ -f "$DOWNLOAD_DIR/fnm" ]; then
+    mv "$DOWNLOAD_DIR/fnm" "$INSTALL_DIR/fnm"
   else
-    if [ "$RELEASE" = "latest" ]; then
-      URL="https://github.com/Schniz/fnm/releases/latest/download/$FILENAME.zip"
-    else
-      URL="https://github.com/Schniz/fnm/releases/download/$RELEASE/$FILENAME.zip"
-    fi
-
-    DOWNLOAD_DIR=$(mktemp -d)
-
-    echo "Downloading $URL..."
-
-    mkdir -p "$INSTALL_DIR" &>/dev/null
-
-    if ! curl --progress-bar --fail -L "$URL" -o "$DOWNLOAD_DIR/$FILENAME.zip"; then
-      echo "Download failed.  Check that the release/filename are correct."
-      exit 1
-    fi
-
-    unzip -q "$DOWNLOAD_DIR/$FILENAME.zip" -d "$DOWNLOAD_DIR"
-
-    if [ -f "$DOWNLOAD_DIR/fnm" ]; then
-      mv "$DOWNLOAD_DIR/fnm" "$INSTALL_DIR/fnm"
-    else
-      mv "$DOWNLOAD_DIR/$FILENAME/fnm" "$INSTALL_DIR/fnm"
-    fi
-
-    chmod u+x "$INSTALL_DIR/fnm"
+    mv "$DOWNLOAD_DIR/$FILENAME/fnm" "$INSTALL_DIR/fnm"
   fi
+
+  chmod u+x "$INSTALL_DIR/fnm"
 }
 
 check_dependencies() {

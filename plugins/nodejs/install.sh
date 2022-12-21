@@ -20,13 +20,12 @@ Install_nodejs()
 	echo '正在安装脚本文件...' > $install_tmp
 
 
-	curl -o- http://npmjs.org/install.sh | bash
+	# curl -o- http://npmjs.org/install.sh | bash
 	# sh ./script/npmjs.install.sh
 	
-	apt update
-	apt install -y nodejs
-	apt install -y npm
-	npm install nodejs -g
+	# apt install -y nodejs
+	# apt install -y npm
+	# npm install nodejs -g
 	# if [ "$OSNAME" == 'debian' ] && [ "$OSNAME" == 'ubuntu' ];then
 	# 	apt install -y nodejs
 	# 	apt install -y npm
@@ -37,9 +36,11 @@ Install_nodejs()
 	# 	npm install nodejs -g
 	# fi
 	
-	curl -fsSL https://fnm.vercel.app/install | bash
-	# sh ./script/fnm.install.sh
-
+	# curl -fsSL https://fnm.vercel.app/install | bash
+	sh ./script/fnm.install.sh
+	source /root/.bashrc
+	fnm install v16.17.1 && fnm use v16.17.1 && fnm default v16.17.1
+	
 	mkdir -p $serverPath/nodejs
 	echo '1.0' > $serverPath/nodejs/version.pl
 	echo '安装完成' > $install_tmp

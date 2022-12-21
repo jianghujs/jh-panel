@@ -134,7 +134,6 @@ class plugins_api:
                     pn_list.append(info)
             # else:
             #     return mw.returnJson(False, 'ok')
-        # return mw.returnJson(True, 'ok', pn_list)
         return mw.returnJson(True, 'ok', pn_list)
 
     def initInstallApi(self):
@@ -155,7 +154,7 @@ class plugins_api:
                            'execshell', '0', time.strftime('%Y-%m-%d %H:%M:%S'), execstr)
 
                 mw.M('tasks').add('name,type,status,addtime, execstr', taskAdd)
-            os.mkdir(mw.getServerDir() + '/php')
+            # os.mkdir(mw.getServerDir() + '/php')
             # 任务执行相关
             mw.triggerTask()
             return mw.returnJson(True, '添加成功')

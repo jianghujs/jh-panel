@@ -702,6 +702,10 @@ function reBootPanel() {
             layer.close(loadT);
             layer.msg(rdata.msg);
             setTimeout(function () { window.location.reload(); }, 6000);
+            // TODO 接口找不到
+            $.post('/system/restart_status','',function (rdata) {
+                console.log('状态', rdata);
+            },'json');
         },'json');
     });
 }

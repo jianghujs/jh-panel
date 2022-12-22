@@ -112,6 +112,12 @@ class system_api:
         self.restartMw()
         return mw.returnJson(True, '面板已重启!')
 
+    def restartStatusApi(self):
+        restartTip = 'data/restart.pl'
+        if os.path.exists(restartTip):
+            return True
+        return False
+
     def restartServerApi(self):
         if mw.isAppleSystem():
             return mw.returnJson(False, "开发环境不可重起")

@@ -42,11 +42,11 @@ function getSList(isdisplay) {
     var searchParams = '';
     var searchValue = $("#SearchValue").val();
     if (searchValue != '') {
-        searchParams += '&searchKeyword=' + search + '&searchKey=title';
+        searchParams += '&searchKeyword=' + searchValue + '&searchKey=title';
     }
     var statusValue = $("#StatusValue").val();
     if (statusValue != '') {
-        searchParams = '&status=' + statusValue;
+        searchParams += '&status=' + statusValue;
     }
     var type = '';
     var istype = getCookie('soft_type');

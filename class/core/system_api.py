@@ -114,9 +114,7 @@ class system_api:
 
     def restartStatusApi(self):
         restartTip = 'data/restart.pl'
-        if os.path.exists(restartTip):
-            return True
-        return False
+        return mw.returnJson(True, os.path.exists(restartTip))
 
     def restartServerApi(self):
         if mw.isAppleSystem():

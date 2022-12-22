@@ -701,11 +701,15 @@ function reBootPanel() {
         $.post('/system/restart','',function (rdata) {
             layer.close(loadT);
             layer.msg(rdata.msg);
-            setTimeout(function () { window.location.reload(); }, 6000);
-            // TODO 接口找不到
-            $.post('/system/restart_status','',function (rdata) {
-                console.log('状态', rdata);
-            },'json');
+            layer.msg('正在重启面板,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
+            setInterval(function () {
+                $.post('/system/restart_status','',function (rdata) {
+                    if (rdata.status) {
+                        window.location.reload();
+                    }
+                },'json');
+            }, 3000);
+            
         },'json');
     });
 }

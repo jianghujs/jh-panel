@@ -74,11 +74,22 @@ def doRecoveryBackup():
     if not data[0]:
         return data[1]
     filename = args['filename']
-    mw.execShell('mv /www/server/mysql/data /www/server/mysql/data_' + time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())))
-    mw.execShell('mkdir -p /www/server/mysql/data')
-    mw.execShell('tar -zxvf /www/backup/xtrabackup_data_history/' + filename + ' -C /www/server/mysql/data')
+
+    # 获取的mysql目录
+    mysqlDir = ''
+    if os.path.exists('/www/server/mysql-apt/data'):
+        mysqlDir = '/www/server/mysql-apt/data'
+    elif os.path.exists('/www/server/mysql/data'):
+        mysqlDir = '/www/server/mysql/data'
+    else :
+        return mw.returnJson(False, '未检测到安装的mysql插件!')
+
+    mw.execShell('mv %s %s_%s' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
+    mw.execShell('mkdir -p %s' % mysqlDir)
+    mw.execShell('tar -zxvf /www/backup/xtrabackup_data_history/%s -C %s' % (filename, mysqlDir))
     mw.execShell('/etc/init.d/mysqld restart')
     return mw.returnJson(True, '恢复成功!')
+
 
 def doDeleteBackup():
     args = getArgs()

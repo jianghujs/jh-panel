@@ -14,9 +14,7 @@
 resetPluginWinWidth(760);
 $.getScript( "/plugins/file?name=jianghujs&f=js/jianghujs.js", function(){
 	refreshTable();
-	setInterval(function(){
-		refreshTable();
-	}, 5000)
+	startRefreshTableTask();
 });
 </script>
 

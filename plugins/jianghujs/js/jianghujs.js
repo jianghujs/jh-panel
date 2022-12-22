@@ -3,6 +3,7 @@ var addLayer = null; // 添加弹框
 var editLayer = null; // 编辑弹框
 var logLayer = null; // 日志弹框
 var editItem = null; // 编辑项
+var refreshTableTask = null;
 
 function refreshTable() {
     let firstLoad = $('.soft-man-con').html() == '';
@@ -66,6 +67,25 @@ function refreshTable() {
         $(".plugin-table-body").html(tbody);
 	});
 }
+
+function clearRefreshTableTask() {
+    if(refreshTableTask != null) {
+        clearInterval(refreshTableTask);
+        refreshTableTask = null;
+    }
+}
+
+function startRefreshTableTask() {
+    clearRefreshTableTask();
+    refreshTableTask = setInterval(function(){
+        refreshTable();
+    }, 5000);
+}
+
+// 绑定关闭事件
+$(document).on('jianghujsPluginClose', function(e){
+    clearRefreshTableTask();
+});
 
 function openCreateItem() {
     addLayer = layer.open({

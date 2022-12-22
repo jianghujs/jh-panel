@@ -19,7 +19,10 @@ function softMain(name, title, version) {
             title: _title + '【' + version + "】管理",
             closeBtn: 1,
             shift: 0,
-            content: rdata
+            content: rdata,
+            cancel: function(){
+                $(document).trigger(name + 'PluginClose');
+            }
         });
         $(".bt-w-menu p").click(function() {
             $(this).addClass("bgw").siblings().removeClass("bgw");

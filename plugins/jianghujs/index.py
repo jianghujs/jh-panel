@@ -102,10 +102,10 @@ def projectScriptExcute():
     logFile = getServerDir() + '/script/' + data['echo'] + '.log'
     os.system('chmod +x ' + scriptFile)
 
-    os.system('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
+    # os.system('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
     # os.system(scriptFile + ' >> ' + logFile + ' 2>&1')
 
-    # data = mw.execShell(scriptFile + ' >> ' + logFile + ' 2>&1')
+    data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
 
     return mw.returnJson(True, '执行成功!')
     

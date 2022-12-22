@@ -49,7 +49,7 @@ Install_xtrabackup()
 	# 	ln -s /www/server/mysql/etc/my.cnf /etc/my.cnf
 	# fi
 	
-	echo "1.0" > $serverPath/xtrabackup/version.pl
+	echo "2.4" > $serverPath/xtrabackup/version.pl
 	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' >> $install_tmp
 }

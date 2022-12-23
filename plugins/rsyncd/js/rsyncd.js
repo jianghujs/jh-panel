@@ -12,7 +12,7 @@ function rsPost(method,args,callback, title){
         _title = title;
     }
 
-    var loadT = layer.msg(_title, { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg(_title, { icon: 16, time: 0, });
     $.post('/plugins/run', {name:'rsyncd', func:method, args:_args}, function(data) {
         layer.close(loadT);
         if (!data.status){
@@ -664,7 +664,7 @@ function addReceive(name = ""){
                 args['pwd'] = $('#MyPassword').val();
                 args['path'] = $('#inputPath').val();
                 args['ps'] = $('#ps').val();
-                var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+                var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
                 rsPost('add_rec', args, function(data){
                     var rdata = $.parseJSON(data.data);
                     layer.close(loadOpen);

@@ -3,7 +3,7 @@
 
 //memcached负载状态
 function memcachedStatus() {
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
     $.post('/plugins/run', {name:'memcached', func:'run_info'}, function(data) {
     	layer.close(loadT);
 
@@ -43,7 +43,7 @@ function memcachedStatus() {
 
 //memcached性能调整
 function memcachedCache() {
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
     $.post('/plugins/run', {name:'memcached', func:'run_info'}, function(data) {
         layer.close(loadT);
 
@@ -98,7 +98,7 @@ function setMemcachedConf() {
         return;
     }
 
-    var loadT = layer.msg('正在保存...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在保存...', { icon: 16, time: 0, });
     $.post('/plugins/run', {name:'memcached', func:'save_conf',args:JSON.stringify(data) }, function(rdata) {
         layer.close(loadT);
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });

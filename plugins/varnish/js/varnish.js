@@ -11,7 +11,7 @@ function pRead(){
 
 //varnish负载状态  start
 function varnishStatus() {
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
     $.post('/plugins/run', {name:'varnish', func:'run_info'}, function(data) {
         layer.close(loadT);
         if (!data.status){

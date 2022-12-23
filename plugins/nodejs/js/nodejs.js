@@ -19,7 +19,7 @@ function nodejsPost(method,args,callback){
         _args = JSON.stringify(args);
     }
 
-    var loadT = layer.msg('正在获取中...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取中...', { icon: 16, time: 0, });
     $.post('/plugins/run', {name:'nodejs', func:method, args:_args}, function(data) {
         layer.close(loadT);
         if (!data.status){

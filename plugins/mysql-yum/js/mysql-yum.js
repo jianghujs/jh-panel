@@ -13,7 +13,7 @@ function myPost(method,args,callback, title){
         _title = title;
     }
 
-    var loadT = layer.msg(_title, { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg(_title, { icon: 16, time: 0, });
     $.post('/plugins/run', {name:'mysql-yum', func:method, args:_args}, function(data) {
         layer.close(loadT);
         if (!data.status){
@@ -55,7 +55,7 @@ function myAsyncPost(method,args){
         _args = JSON.stringify(args);
     }
 
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
     return syncPost('/plugins/run', {name:'mysql-yum', func:method, args:_args}); 
 }
 

@@ -53,7 +53,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(800);
 
-var loading = layer.msg("资源加载中...", { icon: 16, time: 0, shade: 0.3 });
+var loading = layer.msg("资源加载中...", { icon: 16, time: 0, });
 $.getScript( "/plugins/file?name=mariadb&f=js/mariadb.js", function(){
 	layer.close(loading);
 	pluginService('mariadb',$('.plugin_version').attr('version'));

@@ -10,7 +10,7 @@ function softMain(name, title, version) {
 
     var _title = title.replace('-'+version,'')
 
-    var loadT = layer.msg("正在处理,请稍后...", { icon: 16, time: 0, shade: [0.3, '#000'] });
+    var loadT = layer.msg("正在处理,请稍后...", { icon: 16, time: 0});
     $.get('/plugins/setting?name='+name, function(rdata) {
         layer.close(loadT);
         layer.open({

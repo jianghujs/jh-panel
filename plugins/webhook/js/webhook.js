@@ -1,6 +1,6 @@
 
 function whPost(method, args,callback){
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
 
     var req_data = {};
     req_data['name'] = 'webhook';
@@ -27,7 +27,7 @@ function whPost(method, args,callback){
 }
 
 function whPostCallbak(method, version, args,callback){
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
 
     var req_data = {};
     req_data['name'] = 'webhook';

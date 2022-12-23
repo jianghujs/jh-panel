@@ -36,7 +36,7 @@ function wsOriginPost(method, version, args, callback){
 
 
 function wsPost(method, version, args,callback){
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
     wsOriginPost(method, version, args,function(data){
         layer.close(loadT);
         callback(data);
@@ -44,7 +44,7 @@ function wsPost(method, version, args,callback){
 }
 
 function wsPostCallbak(method, version, args,callback){
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
 
     var req_data = {};
     req_data['name'] = 'webstats';

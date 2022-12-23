@@ -1816,26 +1816,26 @@ function pluginConfig(_name, version, func){
                 </ul>';
     
 
-    var loadT = layer.msg('配置文件路径获取中...',{icon:16,time:0,shade: [0.3, '#000']});
+    var loadT = layer.msg('配置文件路径获取中...',{icon:16,time:0});
     $.post('/plugins/run', {name:_name, func:func_name,version:version},function (data) {
         layer.close(loadT);
 
         try{
         	var jdata = $.parseJSON(data.data);
         	if (!jdata['status']){
-        		layer.msg(jdata.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+        		layer.msg(jdata.msg,{icon:0,time:2000});
                 return;
         	}
 		}catch(err){/*console.log(err);*/}
 
 		$(".soft-man-con").html(con);
 		
-        var loadT2 = layer.msg('文件内容获取中...',{icon:16,time:0,shade: [0.3, '#000']});
+        var loadT2 = layer.msg('文件内容获取中...',{icon:16,time:0});
         var fileName = data.data;
         $.post('/files/get_body', 'path=' + fileName, function(rdata) {
             layer.close(loadT2);
             if (!rdata.status){
-                layer.msg(rdata.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+                layer.msg(rdata.msg,{icon:0,time:2000});
                 return;
             }
             $("#textBody").empty().text(rdata.data.data);

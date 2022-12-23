@@ -20,7 +20,7 @@ var mail  = {
         var args = info['data'];
         var callback = info['success'];
 
-        var loadT = layer.msg(tips, { icon: 16, time: 0, shade: 0.3 });
+        var loadT = layer.msg(tips, { icon: 16, time: 0, });
 
         var data = {};
         data['name'] = 'mail';
@@ -60,7 +60,7 @@ var mail  = {
         var args = info['data'];
         var callback = info['success'];
         
-        var loadT = layer.msg(tips, { icon: 16, time: 0, shade: 0.3 });
+        var loadT = layer.msg(tips, { icon: 16, time: 0, });
 
         var data = {};
         data['name'] = 'mail';

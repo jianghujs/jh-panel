@@ -23,7 +23,7 @@ function gogsPost(method,args,callback, title){
         _title = title;
     }
 
-    var loadT = layer.msg(_title, { icon: 16, time: 0, shade: 0.3 });
+    var loadT = layer.msg(_title, { icon: 16, time: 0, });
     $.post('/plugins/run', {name:'gogs', func:method, args:_args}, function(data) {
         layer.close(loadT);
         if (!data.status){

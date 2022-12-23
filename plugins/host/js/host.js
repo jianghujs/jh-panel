@@ -94,7 +94,7 @@ function openEditItem(original) {
         type: 1,
         skin: 'demo-class',
         area: '640px',
-        title: '编辑项目',
+        title: '编辑Host',
         closeBtn: 1,
         shift: 0,
         shadeClose: false,

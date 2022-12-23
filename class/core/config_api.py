@@ -512,7 +512,9 @@ class config_api:
                         return mw.returnJson(False, '证书错误: <br><a style="color:red;">' + isError.replace("\n", '<br>') + '</a>')
             except Exception as ex:
                 return mw.returnJson(False, '开启失败:' + str(ex))
-            mw.restartWeb()
+            # mw.restartWeb()
+            # mw.restartMw()
+            # os.system('mw 1')
             return mw.returnJson(True, '开启成功，请使用https协议访问面板!')
 
     def getApi(self):

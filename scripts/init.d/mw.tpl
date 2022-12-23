@@ -24,12 +24,17 @@ if [ -f $mw_path/bin/activate ];then
     source $mw_path/bin/activate
 fi
 
+ssl_param=''
+if [ -f /www/server/mdserver-web/data/ssl.pl ];then
+    ssl_param=' --keyfile /www/server/mdserver-web/ssl/private.pem --certfile /www/server/mdserver-web/ssl/cert.pem '
+fi
+
 mw_start_panel()
 {
-    isStart=`ps -ef|grep 'gunicorn -c setting.py app:app' |grep -v grep|awk '{print $2}'`
+    isStart=`ps -ef|grep 'gunicorn -c setting.py app:app $ssl_param ' |grep -v grep|awk '{print $2}'`;
     if [ "$isStart" == '' ];then
         echo -e "starting jh-panel... \c"
-        cd $mw_path &&  gunicorn -c setting.py app:app
+        cd $mw_path &&  gunicorn -c setting.py app:app $ssl_param ;
         port=$(cat ${mw_path}/data/port.pl)
         isStart=""
         while [[ "$isStart" == "" ]];
@@ -106,7 +111,7 @@ mw_stop_task()
 mw_stop_panel()
 {
     echo -e "stopping jh-panel... \c";
-    arr=`ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}'`
+    arr=`ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}'`;
     for p in ${arr[@]}
     do
         kill -9 $p &>/dev/null
@@ -127,7 +132,7 @@ mw_stop()
 
 mw_status()
 {
-    isStart=$(ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}')
+    isStart=$(ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}');
     if [ "$isStart" != '' ];then
         echo -e "\033[32mmw (pid $(echo $isStart)) already running\033[0m"
     else
@@ -145,17 +150,17 @@ mw_status()
 
 mw_reload()
 {
-	isStart=$(ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}')
+	isStart=$(ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}');
     
     if [ "$isStart" != '' ];then
     	echo -e "reload mw... \c";
-	    arr=`ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}'`
+	    arr=`ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}'`;
 		for p in ${arr[@]}
         do
                 kill -9 $p
         done
-        cd $mw_path && gunicorn -c setting.py app:app
-        isStart=`ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}'`
+        cd $mw_path && gunicorn -c setting.py app:app $ssl_param 
+        isStart=`ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}'`;
         if [ "$isStart" == '' ];then
             echo -e "\033[31mfailed\033[0m"
             echo '------------------------------------------------------'
@@ -254,7 +259,7 @@ mw_debug(){
     if [ -d /www/server/mdserver-web ];then
         cd /www/server/mdserver-web
     fi
-    gunicorn -b :$port -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1  app:app --log-level "debug"  --capture-output
+    gunicorn -b :$port -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1  app:app $ssl_param --log-level "debug"  --capture-output;
 }
 
 case "$1" in

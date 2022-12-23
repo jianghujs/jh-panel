@@ -79,7 +79,22 @@ $('input[name="bind_domain"]').change(function(){
 $('input[name="bind_ssl"]').click(function(){
 	var open_ssl = $(this).prop("checked");
 	$.post('/config/set_panel_ssl',{}, function(rdata){
-		showMsg(rdata.msg,function(){window.location.reload();},{icon:rdata.status?1:2},2000);
+		showMsg(rdata.msg,function(){
+			setTimeout(function() {
+				window.location.href = ((window.location.protocol.indexOf('https') != -1) ? 'http://' : 'https://') + window.location.host + window.location.pathname;
+			}, 6000)
+		},{icon:rdata.status?1:2},2000);
+		// $.post('/system/restart','',function (rdata) {
+        //     layer.msg('正在重启面板,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
+        //     setInterval(function () {
+        //         $.post('/system/restart_status','',function (rdata) {
+        //             if (rdata.status) {
+        //                 window.location.href = ((window.location.protocol.indexOf('https') != -1) ? 'http://' : 'https://') + window.location.host + window.location.pathname;
+        //             }
+        //         },'json');
+        //     }, 3000);
+            
+        // },'json');
 	},'json');
 });
 

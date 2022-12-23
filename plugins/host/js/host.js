@@ -149,11 +149,11 @@ function deleteItem(original, ip) {
 
 function editHostFile() {
 	var con = '\
-    <H3>Hosts编辑</H3>\
+    <H3>编辑源文件</H3>\
     <br><br>\
     <textarea id="hostEditTextbox" class="txtsjs bt-input-text"\
     placeholder="127.0.0.1 localhost" name="sBody"\
-    style="line-height:20px; width: 755px; height:310px;"></textarea>\
+    style="line-height:20px; width: 100%; height:310px;"></textarea>\
     <br><br>\
     <button class="btn btn-success btn-sm" id="saveHostsFileBTN" \
     onclick="saveHostFile()">保存</button><br>';

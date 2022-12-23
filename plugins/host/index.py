@@ -140,14 +140,10 @@ def getHostFile():
     return mw.returnJson(True, 'ok', open("/etc/hosts").read())
 
 def saveHostFile():
-    args = getArgs()
-    data = checkArgs(args, ['content'])
-    if not data[0]:
-        return data[1]
-    content = args['content']
+    content = sys.argv[2:][0].strip('{content:').strip("}")
     os.system("cp /etc/hosts /etc/hosts.bak")
     with open('/etc/hosts', 'w') as hostsFile:
-        hostsFile.write(unquote(content.replace('\\n', '\r\n'), 'utf-8'))
+        hostsFile.write(unquote(content.replace('\\n', '\r\n'), 'utf-8').replace('+', ' '))
     return mw.returnJson(True, '编辑hosts成功！')
 
 if __name__ == "__main__":

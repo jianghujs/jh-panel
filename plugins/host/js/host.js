@@ -183,8 +183,8 @@ function saveHostFile() {
             layer.msg(rdata['msg'],{icon:2,time:2000,shade: [0.3, '#000']});
             return;
         }
-
         getHostFile();
+        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
 	});
 }
 

@@ -106,10 +106,10 @@ def initInitD():
     # initd
     if os.path.exists('/etc/rc.d/init.d'):
         initd_bin = '/etc/rc.d/init.d/mw'
-        if not os.path.exists(initd_bin):
-            import shutil
-            shutil.copyfile(script_bin, initd_bin)
-            mw.execShell('chmod +x ' + initd_bin)
+        # if not os.path.exists(initd_bin):
+        import shutil
+        shutil.copyfile(script_bin, initd_bin)
+        mw.execShell('chmod +x ' + initd_bin)
         # 加入自启动
         mw.execShell('which chkconfig && chkconfig --add mw')
 

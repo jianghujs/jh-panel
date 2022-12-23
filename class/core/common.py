@@ -115,10 +115,9 @@ def initInitD():
 
     if os.path.exists('/etc/init.d'):
         initd_bin = '/etc/init.d/mw'
-        if not os.path.exists(initd_bin):
-            import shutil
-            shutil.copyfile(script_bin, initd_bin)
-            mw.execShell('chmod +x ' + initd_bin)
+        import shutil
+        shutil.copyfile(script_bin, initd_bin)
+        mw.execShell('chmod +x ' + initd_bin)
         # 加入自启动
         mw.execShell('which update-rc.d && update-rc.d -f mw defaults')
 

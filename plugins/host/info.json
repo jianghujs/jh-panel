@@ -1,0 +1,15 @@
+{
+	"title":"host编辑器",
+	"tip":"soft",
+	"name":"host",
+	"ps":"host编辑器",
+	"versions":"1.0",
+	"updates":"1.0",
+	"shell":"install.sh",
+	"checks":"server/host",
+	"path": "server/host",
+	"author":"jianghujs",
+	"home":"https://cn.jianghujs.org/",
+	"date":"2022-12-23",
+	"pid": "-1"
+}

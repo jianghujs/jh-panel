@@ -313,6 +313,7 @@ function toIndexDisplay(name, version, coexist) {
         } else {
             layer.msg(rdata.msg, { icon: 2 })
         }
+        indexSoft();
     },'json');
 }
 

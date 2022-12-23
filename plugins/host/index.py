@@ -86,7 +86,7 @@ def hostAdd():
     if not data[0]:
         return data[1]
     ip = args['ip']
-    domain = args['domain']
+    domain = args['domain'].replace("+", " ")
     hostsFile = open("/etc/hosts", "a+")
     hostsFile.write("\r\n%s %s"%(ip, domain))
     hostsFile.close()
@@ -99,7 +99,7 @@ def hostEdit():
         return data[1]
     original = args['original']
     ip = args['ip']
-    domain = args['domain']
+    domain = args['domain'].replace("+", " ")
     hostsFileOld = open("/etc/hosts")
     hostsNew = ''
     while(1):
@@ -107,10 +107,10 @@ def hostEdit():
         if(not line):
             break
         if(not line == '\n'):
-            if(not original in line):
-                hostsNew = hostsNew + line
-            else:
+            if(original.strip() != line.strip()):
                 hostsNew = hostsNew + ip + ' ' + domain + '\r\n'
+            else:
+                hostsNew = hostsNew + line
     hostsFileOld.close()
     with open("/etc/hosts", 'w') as f:
         f.write(hostsNew)
@@ -129,7 +129,7 @@ def hostDelete():
         if(not line):
             break
         if(not line == '\n'):
-            if(not original in line):
+            if(original.strip() != line.strip()):
                 hostsNew = hostsNew + line
     hostsFileOld.close()
     with open("/etc/hosts", 'w') as f:

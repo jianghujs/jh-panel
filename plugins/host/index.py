@@ -126,19 +126,12 @@ def hostDelete():
     hostsNew = ''
     while(1):
         line = hostsFileOld.readline().replace('\t', ' ')
-        # print(line)
         if(not line):
             break
         if(not line == '\n'):
-            # print('-------------------start')
-            # print('original:', original.strip("\n"))
-            # print('line:', line.strip("\n"))
-            # print(original.strip("\n") != line.strip("\n"))
-            # print('-------------------end')
             if(original.strip("\n") != line.strip("\n")):
                 hostsNew = hostsNew + line
     hostsFileOld.close()
-    # print(hostsNew)
     with open("/etc/hosts", 'w') as f:
         f.write(hostsNew)
     return mw.returnJson(True, '成功删除此条hosts')

@@ -1,0 +1,15 @@
+{
+	"ps": "npm私库",
+	"name": "cnpmcore",
+	"title": "cnpmcore",
+	"shell": "install.sh",
+	"versions":["2.9.1"],
+	"updates":["2.9.1"],
+	"tip": "soft",
+	"checks": "server/cnpmcore",
+	"path": "server/cnpmcore",
+	"author": "louis",
+	"date": "2022-12-24",
+	"home": "https://github.com/cnpm/cnpmcore",
+	"pid": "3"
+}

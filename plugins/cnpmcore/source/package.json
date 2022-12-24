@@ -1,0 +1,71 @@
+{
+  "name": "duoxing",
+  "version": "5.0.0",
+  "description": "多星V5",
+  "private": true,
+  "egg": {
+    "declarations": true,
+    "framework": "@jianghujs/jianghu"
+  },
+  "dependencies": {
+    "@socket.io/redis-adapter": "^7.1.0",
+    "ajv": "^8.7.1",
+    "ajv-formats": "^2.1.1",
+    "atob": "^2.1.2",
+    "await-stream-ready": "^1.0.1",
+    "axios": "^0.21.1",
+    "bluebird": "^3.7.2",
+    "dayjs": "^1.10.5",
+    "egg": "^2.15.1",
+    "egg-cors": "^2.2.3",
+    "egg-http-proxy": "^1.0.1",
+    "@jianghujs/jianghu": "3.0.65",
+    "egg-knex": "^3.0.1",
+    "egg-scripts": "^2.11.0",
+    "egg-static": "^2.2.0",
+    "egg-view-nunjucks": "^2.3.0",
+    "geoip-lite": "^1.4.2",
+    "ioredis": "^4.28.2",
+    "koa-send": "^5.0.1",
+    "lodash": "^4.17.21",
+    "md5-node": "^1.0.1",
+    "mime": "3.0.0",
+    "nanoid": "3.3.1",
+    "node-rsa": "^1.1.1",
+    "readable-stream": "^3.6.0",
+    "socket.io": "^4.4.0",
+    "socket.io-client": "^4.4.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.16.0",
+    "@babel/eslint-parser": "^7.16.3",
+    "autod": "^3.0.1",
+    "autod-egg": "^1.1.0",
+    "egg-bin": "^4.11.0",
+    "egg-mock": "^3.21.0",
+    "eslint": "^7.3.0",
+    "eslint-config-egg": "^10.0.0",
+    "eslint-plugin-flow-vars": "^0.5.0",
+    "eslint-plugin-html": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "scripts": {
+    "jianghuConfigImportData": "jianghu jianghuConfigImportData",
+    "jianghuConfigDumpData": "jianghu jianghuConfigDumpData",
+    "start": "egg-scripts start --port=8083 --daemon --title=duoxing_v5",
+    "startd": "DEBUG=knex:* egg-scripts start --port=8083 --daemon --title=duoxing_v5 --ignore-stderr",
+    "stop": "egg-scripts stop --title=duoxing_v5",
+    "restart": "npm run stop && npm run start",
+    "dev": "egg-bin dev --workers=1 --port=8083",
+    "debug": "egg-bin debug",
+    "test": "npm run lint -- --fix && npm run test-local",
+    "test-local": "egg-bin test",
+    "cov": "egg-bin cov",
+    "lint": "eslint .",
+    "autod": "autod"
+  },
+  "author": "FSSL",
+  "license": "MIT"
+}

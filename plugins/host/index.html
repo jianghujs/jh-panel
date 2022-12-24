@@ -1,8 +1,8 @@
 <div class="bt-form">
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
-			<p class="bgw" onclick="editHostFile();">编辑源文件</p>
-			<p onclick="refreshTable();">管理列表</p>
+			<p class="bgw" onclick="refreshTable();">Host列表</p>
+			<p onclick="editHostFile();">编辑源文件</p>
 			<!-- <p onclick="pluginLogs('host','','run_log');">日志</p> -->
 		</div>
 		<div class="bt-w-con pd15">
@@ -14,7 +14,7 @@
 
 resetPluginWinWidth(760);
 $.getScript( "/plugins/file?name=host&f=js/host.js", function(){
-	editHostFile();
+	refreshTable();
 });
 </script>
 

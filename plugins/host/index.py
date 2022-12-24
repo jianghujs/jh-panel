@@ -43,12 +43,11 @@ def getArgs():
     if args_len == 1:
         t = args[0].strip('{').strip('}')
         t = t.split(':')
-        tmp[t[0]] = t[1]
+        tmp[t[0]] = unquote(t[1], 'utf-8')
     elif args_len > 1:
         for i in range(len(args)):
             t = args[i].split(':')
-            tmp[t[0]] = t[1]
-
+            tmp[t[0]] = unquote(t[1], 'utf-8')
     return tmp
 
 
@@ -99,15 +98,16 @@ def hostEdit():
         return data[1]
     original = args['original']
     ip = args['ip']
-    domain = args['domain'].replace("+", " ")
+    domain = args['domain']
+
     hostsFileOld = open("/etc/hosts")
     hostsNew = ''
     while(1):
-        line = hostsFileOld.readline()
+        line = hostsFileOld.readline().replace('\t', ' ')
         if(not line):
             break
         if(not line == '\n'):
-            if(original.strip() != line.strip()):
+            if(original.strip("\n") == line.strip("\n")):
                 hostsNew = hostsNew + ip + ' ' + domain + '\r\n'
             else:
                 hostsNew = hostsNew + line
@@ -125,13 +125,20 @@ def hostDelete():
     hostsFileOld = open("/etc/hosts")
     hostsNew = ''
     while(1):
-        line = hostsFileOld.readline()
+        line = hostsFileOld.readline().replace('\t', ' ')
+        # print(line)
         if(not line):
             break
         if(not line == '\n'):
-            if(original.strip() != line.strip()):
+            # print('-------------------start')
+            # print('original:', original.strip("\n"))
+            # print('line:', line.strip("\n"))
+            # print(original.strip("\n") != line.strip("\n"))
+            # print('-------------------end')
+            if(original.strip("\n") != line.strip("\n")):
                 hostsNew = hostsNew + line
     hostsFileOld.close()
+    # print(hostsNew)
     with open("/etc/hosts", 'w') as f:
         f.write(hostsNew)
     return mw.returnJson(True, '成功删除此条hosts')
@@ -140,7 +147,11 @@ def getHostFile():
     return mw.returnJson(True, 'ok', open("/etc/hosts").read())
 
 def saveHostFile():
-    content = sys.argv[2:][0].strip('{content:').strip("}")
+    args = getArgs()
+    data = checkArgs(args, ['content'])
+    if not data[0]:
+        return data[1]
+    content = args['content']
     os.system("cp /etc/hosts /etc/hosts.bak")
     with open('/etc/hosts', 'w') as hostsFile:
         hostsFile.write(unquote(content.replace('\\n', '\r\n'), 'utf-8').replace('+', ' '))

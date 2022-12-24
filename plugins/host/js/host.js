@@ -76,9 +76,10 @@ function openCreateItem() {
 }
 
 function submitCreateItem(){
-    var data = $("#addForm").serialize();
-
-    requestApi('host_add', data, function(data){
+    requestApi('host_add', {
+        ip: $('#ipInput').val(),
+        domain: $('#domainInput').val()
+    }, function(data){
     	var rdata = $.parseJSON(data.data);
         if(rdata.status) {
             layer.close(addLayer);
@@ -124,9 +125,11 @@ function openEditItem(original) {
 }
 
 function submitEditItem(){
-    var data = $("#editForm").serialize() + '&original=' + editItem.original;
-
-    requestApi('host_edit', data, function(data){
+    requestApi('host_edit', {
+        ip: $('#ipInput').val(),
+        domain: $('#domainInput').val(),
+        original: editItem.original
+    }, function(data){
     	var rdata = $.parseJSON(data.data);
         if(rdata.status) {
             layer.close(editLayer);
@@ -138,8 +141,9 @@ function submitEditItem(){
 
 function deleteItem(original, ip) {
     safeMessage('确认删除host', '删除[' + original + ']后不可恢复，请谨慎操作！', function(){
-        var data = "original="+original;
-        requestApi('host_delete', data, function(data){
+        requestApi('host_delete', {
+            original: original
+        }, function(data){
         	var rdata = $.parseJSON(data.data);
 	        layer.msg(rdata.msg,{icon:rdata.status?1:2});
 	        refreshTable();
@@ -198,14 +202,21 @@ function query2Obj(str){
     return data;
 }
 
+function encodeObjValue(obj){
+    var data = {};
+    for(i in obj){
+        data[i] = encodeURIComponent(obj[i]);
+    }
+    return data;
+}
+
 function requestApi(method,args,callback){
     return new Promise(function(resolve, reject) {
-        var _args = null; 
+        var _args = args; 
         if (typeof(args) == 'string'){
-            _args = JSON.stringify(query2Obj(args));
-        } else {
-            _args = JSON.stringify(args);
+            _args = query2Obj(args);
         }
+        _args = JSON.stringify(encodeObjValue(_args));
         if(args.showLoading != false) {
             var loadT = layer.msg('正在获取中...', { icon: 16, time: 0});
         }

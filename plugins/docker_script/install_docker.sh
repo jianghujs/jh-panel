@@ -6,9 +6,10 @@ apt-get install \
     ca-certificates \
     curl \
     gnupg \
-    lsb-release
+    lsb-release -y
 
 mkdir -p /etc/apt/keyrings
+rm -rf /etc/apt/keyrings/docker.gpg
 curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 
 echo \
@@ -21,14 +22,16 @@ apt-get update
 chmod a+r /etc/apt/keyrings/docker.gpg
 apt-get update
 
-apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+export docker_version=20.10.6
+version=$(apt-cache madison docker-ce | grep ${docker_version} | awk '{print $3}')
+apt-get install docker-ce=${version} -y --allow-downgrades
 
 # docker-compose
 if [ -x "$(command -v docker-compose)" ]; then
   echo "Docker-compose had been installed"
 else
   echo "Installing docker-compose..."
-  sudo cp -r ./docker-compose /usr/local/bin/
-  sudo chmod +x /usr/local/bin/docker-compose
+  cp -r ./docker-compose /usr/local/bin/
+  chmod +x /usr/local/bin/docker-compose
   docker-compose -v
 fi

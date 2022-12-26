@@ -1,12 +1,12 @@
 #!/bin/bash
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/www/server/nodejs/fnm
 export PATH
-
-
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
 rootPath=$(dirname "$rootPath")
 serverPath=$(dirname "$rootPath")
+
+source /root/.bashrc
 
 install_tmp=${rootPath}/tmp/mw_install.pl
 
@@ -25,6 +25,9 @@ Install_cnpmcore()
 	cd $serverPath/cnpmcore
 	unzip $serverPath/cnpmcore/cnpmcore.zip
 	cd $serverPath/cnpmcore/cnpmcore
+	eval 'fnm env'
+	fnm install 16
+	fnm use 16
 	npm install
 	echo '2.9.1' > $serverPath/cnpmcore/version.pl
 	echo '安装完成' > $install_tmp
@@ -32,6 +35,8 @@ Install_cnpmcore()
 
 Uninstall_cnpmcore()
 {
+	cd $serverPath/cnpmcore/cnpmcore
+	npm stop
 	rm -rf $serverPath/cnpmcore
 	echo "卸载完成" > $install_tmp
 }

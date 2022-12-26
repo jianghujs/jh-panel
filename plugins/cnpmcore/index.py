@@ -8,6 +8,7 @@ import re
 import string
 import subprocess
 
+
 sys.path.append(os.getcwd() + "/class/core")
 import mw
 
@@ -15,6 +16,20 @@ app_debug = False
 if mw.isAppleSystem():
     app_debug = True
 
+def rootDir():
+    path = '/root'
+    if mw.isAppleSystem():
+        user = mw.execShell(
+            "who | sed -n '2, 1p' |awk '{print $1}'")[0].strip()
+        path = '/Users/' + user
+    return path
+
+__SR = '''#!/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+export PATH
+export HOME=%s
+source %s/.bashrc
+''' % (rootDir(), rootDir())
 
 def getPluginName():
     return 'cnpmcore'
@@ -30,7 +45,7 @@ def getServerDir():
 
 def status():
     data = mw.execShell(
-        "ps -ef|grep frp |grep -v grep | grep -v python | awk '{print $2}'")
+        "ps -ef|grep cnpmcore |grep -v grep | grep -v python | awk '{print $2}'")
     if data[0] == '':
         return 'stop'
 
@@ -88,40 +103,29 @@ def initDreplace():
         mw.execShell('systemctl daemon-reload')
 
 
-def ftOp(method):
-
-    # initDreplace()
-
-    # if mw.isAppleSystem():
-    #     cmd = getServerDir() + '/init.d/frp ' + method + " &"
-    #     data = mw.execShell(cmd)
-    #     if data[1] != '':
-    #         return 'fail'
-    #     return 'ok'
-
-    cmd = 'npm ' + method
+def startAndRestart(method):
+    cmd = __SR + 'cd ' + getServerDir() + '/cnpmcore' + ' && npm run tsc && npm run ' + method
     data = mw.execShell(cmd)
     if data[1] != '':
         return 'fail'
-
-    # cmd = 'systemctl ' + method + ' frpc'
-    # data = mw.execShell(cmd)
-    # if data[1] != '':
-    #     return 'fail'
+    return 'ok'
 
     return 'ok'
 
-
 def start():
-    return ftOp('start')
+    return startAndRestart('start')
 
 
 def stop():
-    return ftOp('stop')
+    cmd = __SR + 'cd ' + getServerDir() + '/cnpmcore' + ' && npm run stop'
+    data = mw.execShell(cmd)
+    if data[1] != '':
+        return 'fail'
+    return 'ok'
 
 
 def restart():
-    return ftOp('restart')
+    return startAndRestart('restart')
 
 
 def initdStatus():
@@ -223,8 +227,8 @@ if __name__ == "__main__":
         print(stop())
     elif func == 'restart':
         print(restart())
-    # elif func == 'reload':
-    #     print(reload())
+    elif func == 'reload':
+        print(restart())
     # elif func == 'initd_status':
     #     print(initdStatus())
     # elif func == 'initd_install':

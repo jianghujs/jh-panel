@@ -823,6 +823,7 @@ html {
 }
 
 .menu li.current a,
+.menu .layui-this a,
 .menu li a:hover {
     background-color: #2c3138;
     color: #fff;

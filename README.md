@@ -23,3 +23,4 @@ apt update && apt install -y wget && wget -O install.sh https://raw.githubuserco
 - apt 系统级别 安装sh
 - python & JHPanel面板 安装sh
 - 一键安装 插件等等
+

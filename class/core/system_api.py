@@ -1,7 +1,7 @@
 # coding: utf-8
 
 # ---------------------------------------------------------------------------------
-# MW-Linux面板
+# 江湖面板
 # ---------------------------------------------------------------------------------
 # copyright (c) 2018-∞(https://github.com/midoks/mdserver-web) All rights reserved.
 # ---------------------------------------------------------------------------------
@@ -249,7 +249,7 @@ class system_api:
 
     def getTitle(self):
         titlePl = 'data/title.pl'
-        title = 'Linux面板'
+        title = '江湖面板'
         if os.path.exists(titlePl):
             title = mw.readFile(titlePl).strip()
         return title

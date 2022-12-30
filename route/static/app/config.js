@@ -95,7 +95,7 @@ $('input[name="bind_ssl"]').click(function(){
 
 //关闭面板
 function closePanel(){
-	layer.confirm('关闭面板会导致您无法访问面板 ,您真的要关闭Linux面板吗？',{title:'关闭面板',closeBtn:2,icon:13,cancel:function(){
+	layer.confirm('关闭面板会导致您无法访问面板 ,您真的要关闭江湖面板吗？',{title:'关闭面板',closeBtn:2,icon:13,cancel:function(){
 		$("#closePl").prop("checked",false);
 	}}, function() {
 		$.post('/config/close_panel','',function(rdata){

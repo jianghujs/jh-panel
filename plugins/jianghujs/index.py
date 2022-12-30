@@ -104,8 +104,7 @@ def projectScriptExcute():
 
     # os.system('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
     # os.system(scriptFile + ' >> ' + logFile + ' 2>&1')
-
-    data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
+    data = mw.execShell('source /root/.bashrc && nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
 
     return mw.returnJson(True, '执行成功!')
     

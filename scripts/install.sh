@@ -90,7 +90,11 @@ if [ $OSNAME != "macos" ];then
 	# 	rm -rf /tmp/master.zip
 	# 	rm -rf /tmp/jh-panel-master
 	# fi
-	git clone https://github.com/jianghujs/jh-panel /www/server/mdserver-web
+	if [ ${netEnvCn} == 'cn' ]; then
+		git clone https://github.com/jianghujs/jh-panel /www/server/mdserver-web
+	else
+		git clone https://gitee.com/jianghujs/jh-panel /www/server/mdserver-web
+	fi
 fi
 
 if [ ${netEnvCn} == 'cn' ]; then
@@ -101,6 +105,11 @@ fi
 echo "use system version: ${OSNAME}"
 cd /www/server/mdserver-web && bash scripts/install/${OSNAME}.sh
 
+# 安装后文件会被清空
+if [ ${netEnvCn} == 'cn' ]; then
+    mkdir -p /www/server/mdserver-web/data
+    echo "True" > /www/server/mdserver-web/data/net_env_cn.pl
+fi
 
 cd /www/server/mdserver-web && bash cli.sh start
 isStart=`ps -ef|grep 'gunicorn -c setting.py app:app' |grep -v grep|awk '{print $2}'`

@@ -13,6 +13,11 @@
 apt update && apt install -y wget && wget -O install.sh https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/install.sh && sh install.sh
 ```
 
+### 安装（中国源）
+
+```bash
+apt update && apt install -y wget && wget -O install.sh https://gitee.com/jianghujs/jh-panel/raw/master/scripts/install.sh && sh install.sh cn
+```
 
 ### 授权许可
 

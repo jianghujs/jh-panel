@@ -19,6 +19,11 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
+if [ ${netEnvCn} == 'cn' ]; then
+    mkdir -p /www/server/mdserver-web/data
+    echo "True" > /www/server/mdserver-web/data/net_env_cn.pl
+	sed -i 's#http://deb.debian.org#https://mirrors.aliyun.com#g' /etc/apt/sources.list
+fi
 
 
 if [ ${_os} == "Darwin" ]; then
@@ -95,11 +100,6 @@ if [ $OSNAME != "macos" ];then
 	else
 		git clone https://gitee.com/jianghujs/jh-panel /www/server/mdserver-web
 	fi
-fi
-
-if [ ${netEnvCn} == 'cn' ]; then
-    mkdir -p /www/server/mdserver-web/data
-    echo "True" > /www/server/mdserver-web/data/net_env_cn.pl
 fi
 
 echo "use system version: ${OSNAME}"

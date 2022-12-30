@@ -24,7 +24,7 @@ bash ${rootPath}/scripts/getos.sh
 OSNAME=`cat ${rootPath}/data/osname.pl`
 VERSION_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
 
-MYSQL_VER=5.7.39
+MYSQL_VER=5.7.38
 if [ "$OSNAME" == "debian" ];then
 	# mysql5.7现在仅有10的编译版
 	VERSION_ID="10"
@@ -43,7 +43,11 @@ APT_INSTALL()
 mkdir -p $myDir
 mkdir -p $serverPath/mysql-apt/bin
 
-wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+if [ -f /www/server/mdserver-web/data/ssl.pl ];then
+	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+else
+	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+fi
 chmod +x ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 cd ${myDir} && tar vxf ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 

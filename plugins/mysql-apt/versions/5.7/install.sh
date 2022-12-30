@@ -43,7 +43,7 @@ APT_INSTALL()
 mkdir -p $myDir
 mkdir -p $serverPath/mysql-apt/bin
 
-if [ -f /www/server/mdserver-web/data/ssl.pl ];then
+if [ -f /www/server/mdserver-web/data/net_env_cn.pl ];then
 	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 else
 	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar

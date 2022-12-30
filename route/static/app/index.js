@@ -536,7 +536,26 @@ function updateServerCode() {
     var loadT = layer.msg(lan.index.update_server_code, { icon: 16, time: 0, shade: [0.3, '#000'] });
     $.get('/system/update_server_code', function(rdata) {
         layer.close(loadT);
-        layer.msg(rdata.msg, { icon: 1 });
+        if (rdata.status == true) {
+            layer.confirm('即将重启面板服务，继续吗？', { title: '重启面板服务', closeBtn: 1, icon: 3 }, function () {
+                var loadT = layer.load();
+                $.post('/system/restart','',function (rdata) {
+                    layer.close(loadT);
+                    layer.msg(rdata.msg);
+                    layer.msg('正在重启面板,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
+                    setInterval(function () {
+                        $.post('/system/restart_status','',function (rdata) {
+                            if (rdata.status) {
+                                window.location.reload();
+                            }
+                        },'json');
+                    }, 3000);
+                    
+                },'json');
+            });
+        } else {
+            layer.msg(rdata.msg, { icon: 1 });
+        }
     },'json');
 }
 

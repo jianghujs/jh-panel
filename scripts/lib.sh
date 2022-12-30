@@ -59,7 +59,7 @@ fi
 
 which pip && pip install --upgrade pip
 pip3 install --upgrade setuptools
-cd /www/server/mdserver-web && pip3 install -r /www/server/mdserver-web/requirements.txt
+cd /www/server/mdserver-web && pip3 install -r /www/server/mdserver-web/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # pip3 install flask-caching==1.10.1
 # pip3 install mysqlclient
@@ -74,7 +74,7 @@ fi
 
 pip install --upgrade pip
 pip3 install --upgrade setuptools
-cd /www/server/mdserver-web && pip3 install -r /www/server/mdserver-web/requirements.txt
+cd /www/server/mdserver-web && pip3 install -r /www/server/mdserver-web/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 echo "lib ok!"
 # pip3 install flask-caching==1.10.1

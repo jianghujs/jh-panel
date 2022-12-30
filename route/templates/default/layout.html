@@ -127,10 +127,9 @@ function GetUrlRelativePath() {
 // 当前页面路由高亮
 $(document).ready(function () {
     var url = GetUrlRelativePath();
-    var patt1 = new RegExp(url);
     $(document.body).find('.menu a').each(function (i, obj) {
         var str = $(obj).attr('href');
-        if (patt1.test(str)) {
+        if (url === str) {
             $(obj).parent().addClass("layui-this");
         }
     });

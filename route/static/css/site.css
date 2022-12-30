@@ -823,11 +823,16 @@ html {
 }
 
 .menu li.current a,
-.menu .layui-this a,
 .menu li a:hover {
     background-color: #2c3138;
     color: #fff;
-    border-left: #20a53a 2px solid
+    /* border-left: #20a53a 2px solid; */
+}
+
+.menu .layui-this a{
+    background-color: #2c3138;
+    color: #fff;
+    border-left: #20a53a 2px solid;
 }
 
 .menu .menu_home {

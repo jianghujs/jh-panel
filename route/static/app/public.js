@@ -1462,6 +1462,14 @@ function webShell() {
     term.setOption('fontSize', 14);
     gterm = term;
 
+	// 自动跳转到 当前目录
+	setTimeout(function () {
+		var currentDir = $("#PathPlaceBtn").attr('path')
+		if (currentDir && currentDir.startsWith("/")) {
+			socket.emit('webssh', `cd ${currentDir}\n`);
+		}
+	}, 600);
+
     socket.on('server_response', function (data) {
         term.write(data.data);
         if (data.data == '\r\n登出\r\n' || 

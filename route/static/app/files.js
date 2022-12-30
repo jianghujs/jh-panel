@@ -1639,7 +1639,8 @@ function pathPlaceBtn(path){
 		}
 	}
 	
-	html = '<div style="width:1200px;height:26px"><ul>'+html+'</ul></div>';
+	html = `<div style="width:1200px;height:26px"><ul>${html}</ul></div>`;
+	$("#PathPlaceBtn").attr('path', path)
 	$("#PathPlaceBtn").html(html);
 	$("#PathPlaceBtn ul li a").click(function(e){
 		var go_path = $(this).attr("title");

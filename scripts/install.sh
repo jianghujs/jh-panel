@@ -94,11 +94,11 @@ if [ $OSNAME != "macos" ];then
 	# 	rm -rf /tmp/jh-panel-master
 	# fi
 	if [ "$netEnvCn" == "cn" ]; then
-		echo "git clone https://gitee.com/jianghujs/jh-panel /www/server/mdserver-web"
-		git clone https://gitee.com/jianghujs/jh-panel /www/server/mdserver-web
+		echo "git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel"
+		git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel
 	else
-		echo "git clone https://github.com/jianghujs/jh-panel /www/server/mdserver-web"
-		git clone https://github.com/jianghujs/jh-panel /www/server/mdserver-web
+		echo "git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel"
+		git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel
 	fi
 fi
 

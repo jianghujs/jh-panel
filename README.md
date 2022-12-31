@@ -26,5 +26,5 @@ apt update -y && apt install -y wget && wget -O install.sh https://gitee.com/jia
 ### FAQ
 
 - 重命名: 
-    - `curl -fsSL https://gitee.com/jianghujs/jh-panel/raw/master/scripts/update.dirname.sh | bash`
-    - `curl -fsSL https://gitee.com/jianghujs/jh-panel/raw/master/scripts/update.sh | bash`
+    - `mv /www/server/mdserver-web /www/server/jh-panel`
+    - `cd /www/server/jh-panel && git pull && bash /www/server/jh-panel/scripts/update.sh`

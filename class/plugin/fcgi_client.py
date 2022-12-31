@@ -89,7 +89,7 @@ if __debug__:
 
     # Set non-zero to write debug output to a file.
     DEBUG = 0
-    DEBUGLOG = '/www/server/mdserver-web/logs/fastcgi.log'
+    DEBUGLOG = '/www/server/jh-panel/logs/fastcgi.log'
 
     def _debug(level, msg):
         if DEBUG < level:

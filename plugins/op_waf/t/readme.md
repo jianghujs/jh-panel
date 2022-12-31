@@ -24,6 +24,6 @@ stap -v -e 'probe vfs.read {printf("read performed\n"); exit()}'
 # openresty 测试
 ```
 
-cd /www/server/mdserver-web/plugins/op_waf/t && sh ngx_debug.sh lua t1
-cd /www/server/mdserver-web/plugins/op_waf/t && sh ngx_debug.sh c t2
+cd /www/server/jh-panel/plugins/op_waf/t && sh ngx_debug.sh lua t1
+cd /www/server/jh-panel/plugins/op_waf/t && sh ngx_debug.sh c t2
 ```

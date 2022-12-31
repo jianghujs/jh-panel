@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------
 # 江湖面板
 # ---------------------------------------------------------------------------------
-# copyright (c) 2018-∞(https://github.com/midoks/mdserver-web) All rights reserved.
+# copyright (c) 2018-∞(https://github.com/midoks/jh-panel) All rights reserved.
 # ---------------------------------------------------------------------------------
 # Author: midoks <midoks@163.com>
 # ---------------------------------------------------------------------------------
@@ -399,7 +399,7 @@ class plugins_api:
             if not 'author' in data:
                 data['author'] = '未知'
             if not 'home' in data:
-                data['home'] = 'https://github.com/midoks/mdserver-web'
+                data['home'] = 'https://github.com/midoks/jh-panel'
             plugin_path = mw.getPluginDir() + data['name'] + '/info.json'
             data['old_version'] = '0'
             data['tmp_path'] = tmp_path

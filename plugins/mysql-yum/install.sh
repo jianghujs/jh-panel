@@ -8,9 +8,9 @@ rootPath=$(dirname "$rootPath")
 serverPath=$(dirname "$rootPath")
 
 
-# cd /www/server/mdserver-web/plugins/mysql-yum && bash install.sh install 8.0
-# cd /www/server/mdserver-web/plugins/mysql-yum && bash install.sh uninstall 8.0
-# cd /www/server/mdserver-web && python3 /www/server/mdserver-web/plugins/mysql-yum/index.py start 8.0
+# cd /www/server/jh-panel/plugins/mysql-yum && bash install.sh install 8.0
+# cd /www/server/jh-panel/plugins/mysql-yum && bash install.sh uninstall 8.0
+# cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/mysql-yum/index.py start 8.0
 
 install_tmp=${rootPath}/tmp/mw_install.pl
 

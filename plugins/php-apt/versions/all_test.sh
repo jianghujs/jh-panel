@@ -8,22 +8,22 @@ rootPath=$(dirname "$rootPath")
 rootPath=$(dirname "$rootPath")
 serverPath=$(dirname "$rootPath")
 
-# cd /www/server/mdserver-web/plugins/php-apt/versions && /bin/bash all_test.sh
+# cd /www/server/jh-panel/plugins/php-apt/versions && /bin/bash all_test.sh
 
 
-# cd /www/server/mdserver-web && python3 /www/server/mdserver-web/plugins/php-apt/index.py start 5.6
+# cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/php-apt/index.py start 5.6
 
 
-# cd /www/server/mdserver-web
-# cd /www/server/mdserver-web/plugins/php-apt/versions && /bin/bash common.sh  5.6  install yaf
-# cd /www/server/mdserver-web/plugins/php-apt/versions && /bin/bash common.sh  7.1  install swoole
+# cd /www/server/jh-panel
+# cd /www/server/jh-panel/plugins/php-apt/versions && /bin/bash common.sh  5.6  install yaf
+# cd /www/server/jh-panel/plugins/php-apt/versions && /bin/bash common.sh  7.1  install swoole
 
 
 PHP_VER_LIST=(56 70 71 72 73 74 80 81)
 for PHP_VER in ${PHP_VER_LIST[@]}; do
 	echo "php${PHP_VER} -- start"
 	if [ ! -d  /www/server/php-apt/${PHP_VER} ];then
-		cd /www/server/mdserver-web/plugins/php-apt && bash install.sh install ${PHP_VER}
+		cd /www/server/jh-panel/plugins/php-apt && bash install.sh install ${PHP_VER}
 	fi
 	echo "php${PHP_VER} -- end"
 done

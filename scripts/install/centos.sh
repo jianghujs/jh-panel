@@ -151,5 +151,5 @@ if [ "$VERSION_ID" -eq "9" ];then
 fi
 
 
-cd /www/server/mdserver-web/scripts && bash lib.sh
-chmod 755 /www/server/mdserver-web/data
+cd /www/server/jh-panel/scripts && bash lib.sh
+chmod 755 /www/server/jh-panel/data

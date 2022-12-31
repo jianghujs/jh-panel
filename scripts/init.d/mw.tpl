@@ -25,8 +25,8 @@ if [ -f $mw_path/bin/activate ];then
 fi
 
 ssl_param=''
-if [ -f /www/server/mdserver-web/data/ssl.pl ];then
-    ssl_param=' --keyfile /www/server/mdserver-web/ssl/private.pem --certfile /www/server/mdserver-web/ssl/cert.pem '
+if [ -f /www/server/jh-panel/data/ssl.pl ];then
+    ssl_param=' --keyfile /www/server/jh-panel/ssl/private.pem --certfile /www/server/jh-panel/ssl/cert.pem '
 fi
 
 mw_start_panel()
@@ -90,7 +90,7 @@ mw_start()
 	mw_start_panel
 }
 
-# /www/server/mdserver-web/tmp/panelTask.pl && service mw restart_task
+# /www/server/jh-panel/tmp/panelTask.pl && service mw restart_task
 mw_stop_task()
 {
     if [ -f $mw_path/tmp/panelTask.pl ];then
@@ -203,9 +203,9 @@ mw_update()
 {
     cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
     if [ ! -z "$cn" ];then
-        curl -fsSL https://cdn.jsdelivr.net/gh/midoks/mdserver-web@latest/scripts/update.sh | bash
+        curl -fsSL https://cdn.jsdelivr.net/gh/midoks/jh-panel@latest/scripts/update.sh | bash
     else
-        curl -fsSL https://raw.githubusercontent.com/midoks/mdserver-web/master/scripts/update.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/midoks/jh-panel/master/scripts/update.sh | bash
     fi
 }
 
@@ -213,11 +213,11 @@ mw_update_dev()
 {
     cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
     if [ ! -z "$cn" ];then
-        curl -fsSL https://gitee.com/midoks/mdserver-web/raw/dev/scripts/update_dev.sh | bash
+        curl -fsSL https://gitee.com/midoks/jh-panel/raw/dev/scripts/update_dev.sh | bash
     else
-        curl -fsSL https://raw.githubusercontent.com/midoks/mdserver-web/dev/scripts/update_dev.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/midoks/jh-panel/dev/scripts/update_dev.sh | bash
     fi
-    cd /www/server/mdserver-web
+    cd /www/server/jh-panel
 }
 
 mw_install_app()
@@ -256,8 +256,8 @@ mw_debug(){
         port=$(cat $mw_path/data/port.pl)
     fi
 
-    if [ -d /www/server/mdserver-web ];then
-        cd /www/server/mdserver-web
+    if [ -d /www/server/jh-panel ];then
+        cd /www/server/jh-panel
     fi
     gunicorn -b :$port -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1  app:app $ssl_param --log-level "debug"  --capture-output;
 }

@@ -7,7 +7,7 @@ import sys
 import os
 
 if sys.platform != 'darwin':
-    os.chdir('/www/server/mdserver-web')
+    os.chdir('/www/server/jh-panel')
 
 
 chdir = os.getcwd()
@@ -24,7 +24,7 @@ import re
 
 '''
 DEBUG:
-python3 /www/server/mdserver-web/plugins/mysql-yum/scripts/backup.py  database admin 3
+python3 /www/server/jh-panel/plugins/mysql-yum/scripts/backup.py  database admin 3
 '''
 
 

@@ -7,8 +7,8 @@
 	"shell":"install.sh",
 	"checks":"server/pureftp",
 	"path":"server/pureftp",
-	"author":"mdserver-web",
-	"home":"https://github.com/midoks/mdserver-web",
+	"author":"jh-panel",
+	"home":"https://github.com/midoks/jh-panel",
 	"date":"2018-11-30",
 	"dev_update":"2022-6-18",
 	"pid":"3"

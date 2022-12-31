@@ -2,8 +2,8 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-# cd /Users/midoks/Desktop/mwdev/server/mdserver-web/plugins/mongodb && /bin/bash install.sh install 5.0.4
-# cd /www/server/mdserver-web/plugins/mongodb && /bin/bash install.sh install 5.0.4
+# cd /Users/midoks/Desktop/mwdev/server/jh-panel/plugins/mongodb && /bin/bash install.sh install 5.0.4
+# cd /www/server/jh-panel/plugins/mongodb && /bin/bash install.sh install 5.0.4
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")

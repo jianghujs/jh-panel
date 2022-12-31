@@ -20,7 +20,7 @@ bash ${rootPath}/scripts/getos.sh
 OSNAME=`cat ${rootPath}/data/osname.pl`
 VERSION_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
 
-# cd /www/server/mdserver-web/plugins/mysql-apt && bash install.sh install 8.0
+# cd /www/server/jh-panel/plugins/mysql-apt && bash install.sh install 8.0
 
 MYSQL_VER=8.0.30
 SUFFIX_NAME=${MYSQL_VER}-1${OSNAME}${VERSION_ID}_amd64

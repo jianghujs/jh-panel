@@ -134,8 +134,8 @@ if [ "${VERSION_ID}" == "22.04" ];then
     pip3 install -U --force-reinstall --no-binary :all: gevent
 fi
 
-cd /www/server/mdserver-web/scripts && bash lib.sh
-chmod 755 /www/server/mdserver-web/data
+cd /www/server/jh-panel/scripts && bash lib.sh
+chmod 755 /www/server/jh-panel/data
 
 
 if [ "${VERSION_ID}" == "22.04" ];then

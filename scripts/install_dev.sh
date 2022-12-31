@@ -5,7 +5,7 @@ export PATH
 is64bit=`getconf LONG_BIT`
 
 if [ -f /etc/motd ];then
-    echo "welcome to mdserver-web panel" > /etc/motd
+    echo "welcome to jh-panel panel" > /etc/motd
 fi
 
 startTime=`date +%s`
@@ -61,19 +61,19 @@ if [ $OSNAME != "macos" ];then
 	mkdir -p /www/backup/database
 	mkdir -p /www/backup/site
 
-	if [ ! -d /www/server/mdserver-web ];then
-		curl -sSLo /tmp/dev.zip https://github.com/midoks/mdserver-web/archive/refs/heads/dev.zip
+	if [ ! -d /www/server/jh-panel ];then
+		curl -sSLo /tmp/dev.zip https://github.com/midoks/jh-panel/archive/refs/heads/dev.zip
 		cd /tmp && unzip /tmp/dev.zip
-		mv -f /tmp/mdserver-web-dev /www/server/mdserver-web
+		mv -f /tmp/jh-panel-dev /www/server/jh-panel
 		rm -rf /tmp/dev.zip
-		rm -rf /tmp/mdserver-web-dev
+		rm -rf /tmp/jh-panel-dev
 	fi
 fi
 
 echo "use system version: ${OSNAME}"
-cd /www/server/mdserver-web && bash scripts/install/${OSNAME}.sh
+cd /www/server/jh-panel && bash scripts/install/${OSNAME}.sh
 
-cd /www/server/mdserver-web && bash cli.sh start
+cd /www/server/jh-panel && bash cli.sh start
 isStart=`ps -ef|grep 'gunicorn -c setting.py app:app' |grep -v grep|awk '{print $2}'`
 n=0
 while [ ! -f /etc/rc.d/init.d/mw ];
@@ -87,9 +87,9 @@ do
     fi
 done
 
-cd /www/server/mdserver-web && bash /etc/rc.d/init.d/mw stop
-cd /www/server/mdserver-web && bash /etc/rc.d/init.d/mw start
-cd /www/server/mdserver-web && bash /etc/rc.d/init.d/mw default
+cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw stop
+cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw start
+cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw default
 
 sleep 2
 if [ ! -e /usr/bin/mw ]; then

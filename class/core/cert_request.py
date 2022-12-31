@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------
 # 江湖面板
 # ---------------------------------------------------------------------------------
-# copyright (c) 2018-∞(https://github.com/midoks/mdserver-web) All rights reserved.
+# copyright (c) 2018-∞(https://github.com/midoks/jh-panel) All rights reserved.
 # ---------------------------------------------------------------------------------
 # Author: midoks <midoks@163.com>
 # ---------------------------------------------------------------------------------
@@ -24,8 +24,8 @@ import os
 import sys
 import argparse
 
-if os.path.exists('/www/server/mdserver-web'):
-    os.chdir('/www/server/mdserver-web')
+if os.path.exists('/www/server/jh-panel'):
+    os.chdir('/www/server/jh-panel')
 
 import mw
 
@@ -958,7 +958,7 @@ class cert_request:
     # 替换服务器上的同域名同品牌证书
     def subAllCert(self, key_file, pem_file):
         cert_init = self.getCertInit(pem_file)  # 获取新证书的基本信息
-        paths = ['/www/server/mdserver-web/data/letsencrypt']
+        paths = ['/www/server/jh-panel/data/letsencrypt']
         is_panel = False
         for path in paths:
             if not os.path.exists(path):
@@ -1436,9 +1436,9 @@ fullchain.pem       粘贴到证书输入框
 // create
 python3 class/core/cert_request.py --domain=dev38.cachecha.com --type=http --path=/www/wwwroot/dev38.cachecha.com
 // renew
-cd /www/server/mdserver-web && python3 class/core/cert_request.py --renew=1
+cd /www/server/jh-panel && python3 class/core/cert_request.py --renew=1
 // revoke
-cd /www/server/mdserver-web && python3 class/core/cert_request.py --revoke=1 --index=370423ed29481b2caf22e36d90a6894a
+cd /www/server/jh-panel && python3 class/core/cert_request.py --revoke=1 --index=370423ed29481b2caf22e36d90a6894a
 
 python3 class/core/cert_request.py --domain=dev38.cachecha.com --type=http --path=/Users/midoks/Desktop/mwdev/wwwroot/test
 python3 class/core/cert_request.py --renew=1

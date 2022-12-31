@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------
 # 江湖面板
 # ---------------------------------------------------------------------------------
-# copyright (c) 2018-∞(https://github.com/midoks/mdserver-web) All rights reserved.
+# copyright (c) 2018-∞(https://github.com/midoks/jh-panel) All rights reserved.
 # ---------------------------------------------------------------------------------
 # Author: midoks <midoks@163.com>
 # ---------------------------------------------------------------------------------
@@ -1029,14 +1029,14 @@ def isRestart():
 
 def isUpdateLocalSoft():
     num = M('tasks').where('status!=?', ('1',)).count()
-    if os.path.exists('mdserver-web.zip'):
+    if os.path.exists('jh-panel.zip'):
         return True
 
     if num > 0:
         data = M('tasks').where('status!=?', ('1',)).field(
             'id,type,execstr').limit('1').select()
         argv = data[0]['execstr'].split('|dl|')
-        if data[0]['type'] == 'download' and argv[1] == 'mdserver-web.zip':
+        if data[0]['type'] == 'download' and argv[1] == 'jh-panel.zip':
             return True
 
     return False

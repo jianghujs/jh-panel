@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------
 # 江湖面板
 # ---------------------------------------------------------------------------------
-# copyright (c) 2018-∞(https://github.com/midoks/mdserver-web) All rights reserved.
+# copyright (c) 2018-∞(https://github.com/midoks/jh-panel) All rights reserved.
 # ---------------------------------------------------------------------------------
 # Author: midoks <midoks@163.com>
 # ---------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ class system_api:
         return self.updateServer(stype, version)
 
     def updateServerCodeApi(self):
-        mw.execShell("cd /www/server/mdserver-web && git pull")
+        mw.execShell("cd /www/server/jh-panel && git pull")
         return mw.returnJson(True, '更新成功, 请手动重启面板!')
 
     def systemTotalApi(self):
@@ -236,7 +236,7 @@ class system_api:
         data['title'] = self.GetTitle()
         data['network'] = self.GetNetWorkApi(get)
         data['panel_status'] = not os.path.exists(
-            '/www/server/mdserver-web/data/close.pl')
+            '/www/server/jh-panel/data/close.pl')
         import firewalls
         ssh_info = firewalls.firewalls().GetSshInfo(None)
         data['enable_ssh_status'] = ssh_info['status']
@@ -444,10 +444,10 @@ class system_api:
     # 清理其它
     def clearOther(self):
         clearPath = [
-            {'path': '/www/server/mdserver-web', 'find': 'testDisk_'},
+            {'path': '/www/server/jh-panel', 'find': 'testDisk_'},
             {'path': '/www/wwwlogs', 'find': 'log'},
             {'path': '/tmp', 'find': 'panelBoot.pl'},
-            {'path': '/www/server/mdserver-web/install', 'find': '.rpm'}
+            {'path': '/www/server/jh-panel/install', 'find': '.rpm'}
         ]
 
         total = count = 0
@@ -658,7 +658,7 @@ class system_api:
     def getServerInfo(self):
         import urllib.request
         import ssl
-        upAddr = 'https://api.github.com/repos/midoks/mdserver-web/releases/latest'
+        upAddr = 'https://api.github.com/repos/midoks/jh-panel/releases/latest'
         try:
             context = ssl._create_unverified_context()
             req = urllib.request.urlopen(upAddr, context=context, timeout=3)
@@ -713,23 +713,23 @@ class system_api:
                 if not os.path.exists(toPath):
                     mw.execShell('mkdir -p ' + toPath)
 
-                newUrl = "https://github.com/midoks/mdserver-web/archive/refs/tags/" + version + ".zip"
+                newUrl = "https://github.com/midoks/jh-panel/archive/refs/tags/" + version + ".zip"
 
                 dist_mw = toPath + '/mw.zip'
                 if not os.path.exists(dist_mw):
                     mw.execShell(
                         'wget --no-check-certificate -O ' + dist_mw + ' ' + newUrl)
 
-                dist_to = toPath + "/mdserver-web-" + version
+                dist_to = toPath + "/jh-panel-" + version
                 if not os.path.exists(dist_to):
                     os.system('unzip -o ' + toPath +
                               '/mw.zip' + ' -d ' + toPath)
 
-                cmd_cp = 'cp -rf ' + toPath + '/mdserver-web-' + \
-                    version + '/* ' + mw.getServerDir() + '/mdserver-web'
+                cmd_cp = 'cp -rf ' + toPath + '/jh-panel-' + \
+                    version + '/* ' + mw.getServerDir() + '/jh-panel'
                 mw.execShell(cmd_cp)
 
-                mw.execShell('rm -rf ' + toPath + '/mdserver-web-' + version)
+                mw.execShell('rm -rf ' + toPath + '/jh-panel-' + version)
                 mw.execShell('rm -rf ' + toPath + '/mw.zip')
 
                 self.restartMw()
@@ -743,7 +743,7 @@ class system_api:
     # 修复面板
     def repPanel(self, get):
         vp = ''
-        if mw.readFile('/www/server/mdserver-web/class/common.py').find('checkSafe') != -1:
+        if mw.readFile('/www/server/jh-panel/class/common.py').find('checkSafe') != -1:
             vp = '_pro'
         mw.ExecShell("wget -O update.sh " + mw.get_url() +
                      "/install/update" + vp + ".sh && bash update.sh")

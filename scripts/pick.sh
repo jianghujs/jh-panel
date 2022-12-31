@@ -14,11 +14,11 @@ rm -rf ./*/*.pyc
 
 startTime=`date +%s`
 
-zip -r -q -o mdserver-web.zip  ./ -x@$curPath/pick_filter.txt
+zip -r -q -o jh-panel.zip  ./ -x@$curPath/pick_filter.txt
 
 
 
-mv mdserver-web.zip $rootPath/scripts 
+mv jh-panel.zip $rootPath/scripts 
 
 endTime=`date +%s`
 ((outTime=($endTime-$startTime)))

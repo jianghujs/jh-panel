@@ -136,7 +136,7 @@ share
 pip-selfcheck.json
 
 scripts/init.d/mw
-scripts/mdserver-web
+scripts/jh-panel
 
 data/api_login.txt
 data/sessions

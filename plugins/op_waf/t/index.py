@@ -322,6 +322,6 @@ def test_start():
 
 
 if __name__ == "__main__":
-    os.system('cd /Users/midoks/Desktop/mwdev/server/mdserver-web/plugins/op_waf && sh install.sh uninstall 0.2.2 && sh install.sh install 0.2.2')
-    os.system('cd /Users/midoks/Desktop/mwdev/server/mdserver-web/ && python3 plugins/openresty/index.py stop && python3 plugins/openresty/index.py start')
+    os.system('cd /Users/midoks/Desktop/mwdev/server/jh-panel/plugins/op_waf && sh install.sh uninstall 0.2.2 && sh install.sh install 0.2.2')
+    os.system('cd /Users/midoks/Desktop/mwdev/server/jh-panel/ && python3 plugins/openresty/index.py stop && python3 plugins/openresty/index.py start')
     test_start()

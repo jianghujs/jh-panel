@@ -59,22 +59,22 @@ fi
 
 which pip && pip install --upgrade pip
 pip3 install --upgrade setuptools
-cd /www/server/mdserver-web && pip3 install -r /www/server/mdserver-web/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+cd /www/server/jh-panel && pip3 install -r /www/server/jh-panel/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # pip3 install flask-caching==1.10.1
 # pip3 install mysqlclient
 
 
-if [ ! -f /www/server/mdserver-web/bin/activate ];then
-    cd /www/server/mdserver-web && python3 -m venv .
-    cd /www/server/mdserver-web && source /www/server/mdserver-web/bin/activate
+if [ ! -f /www/server/jh-panel/bin/activate ];then
+    cd /www/server/jh-panel && python3 -m venv .
+    cd /www/server/jh-panel && source /www/server/jh-panel/bin/activate
 else
-    cd /www/server/mdserver-web && source /www/server/mdserver-web/bin/activate
+    cd /www/server/jh-panel && source /www/server/jh-panel/bin/activate
 fi
 
 pip install --upgrade pip
 pip3 install --upgrade setuptools
-cd /www/server/mdserver-web && pip3 install -r /www/server/mdserver-web/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+cd /www/server/jh-panel && pip3 install -r /www/server/jh-panel/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 echo "lib ok!"
 # pip3 install flask-caching==1.10.1

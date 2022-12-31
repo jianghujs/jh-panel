@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------
 # 江湖面板
 # ---------------------------------------------------------------------------------
-# copyright (c) 2018-∞(https://github.com/midoks/mdserver-web) All rights reserved.
+# copyright (c) 2018-∞(https://github.com/midoks/jh-panel) All rights reserved.
 # ---------------------------------------------------------------------------------
 # Author: midoks <midoks@163.com>
 # ---------------------------------------------------------------------------------
@@ -501,7 +501,7 @@ fi
             head = head + source_bin_activate + "\n"
             log = '.log'
 
-            script_dir = mw.getServerDir() + "/mdserver-web/scripts"
+            script_dir = mw.getServerDir() + "/jh-panel/scripts"
 
             wheres = {
                 'path': head + "python3 " + script_dir + "/backup.py path " + param['sname'] + " " + str(param['save']),

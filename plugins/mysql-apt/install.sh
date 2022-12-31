@@ -9,9 +9,9 @@ serverPath=$(dirname "$rootPath")
 
 # https://downloads.mysql.com/archives/community/
 
-# cd /www/server/mdserver-web/plugins/mysql-apt && bash install.sh install 8.0
-# cd /www/server/mdserver-web/plugins/mysql-apt && bash install.sh uninstall 8.0
-# cd /www/server/mdserver-web && python3 /www/server/mdserver-web/plugins/mysql-apt/index.py start 8.0
+# cd /www/server/jh-panel/plugins/mysql-apt && bash install.sh install 8.0
+# cd /www/server/jh-panel/plugins/mysql-apt && bash install.sh uninstall 8.0
+# cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/mysql-apt/index.py start 8.0
 
 install_tmp=${rootPath}/tmp/mw_install.pl
 

@@ -5,7 +5,7 @@ export PATH
 is64bit=`getconf LONG_BIT`
 
 if [ -f /etc/motd ];then
-    echo "welcome to jianghu panel (base on mdserver-web)" > /etc/motd
+    echo "welcome to jianghu panel (base on jh-panel)" > /etc/motd
 fi
 
 startTime=`date +%s`
@@ -78,7 +78,7 @@ if [ $OSNAME != "macos" ];then
 
 	# # https://cdn.jsdelivr.net/gh/jianghujs/jh-panel@latest/scripts/install.sh
 
-	# if [ ! -d /www/server/mdserver-web ];then
+	# if [ ! -d /www/server/jh-panel ];then
 
 	# 	cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
 	# 	if [ ! -z "$cn" ];then
@@ -89,27 +89,27 @@ if [ $OSNAME != "macos" ];then
 	# 	fi
 
 	# 	cd /tmp && unzip /tmp/master.zip
-	# 	mv -f /tmp/jh-panel-master /www/server/mdserver-web
+	# 	mv -f /tmp/jh-panel-master /www/server/jh-panel
 	# 	rm -rf /tmp/master.zip
 	# 	rm -rf /tmp/jh-panel-master
 	# fi
 	if [ "$netEnvCn" == "cn" ]; then
-		git clone https://github.com/jianghujs/jh-panel /www/server/mdserver-web
+		git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel
 	else
-		git clone https://gitee.com/jianghujs/jh-panel /www/server/mdserver-web
+		git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel
 	fi
 fi
 
 echo "use system version: ${OSNAME}"
-cd /www/server/mdserver-web && bash scripts/install/${OSNAME}.sh
+cd /www/server/jh-panel && bash scripts/install/${OSNAME}.sh
 
 # 安装后文件会被清空
 if [ "$netEnvCn" == "cn" ]; then
-    mkdir -p /www/server/mdserver-web/data
-    echo "True" > /www/server/mdserver-web/data/net_env_cn.pl
+    mkdir -p /www/server/jh-panel/data
+    echo "True" > /www/server/jh-panel/data/net_env_cn.pl
 fi
 
-cd /www/server/mdserver-web && bash cli.sh start
+cd /www/server/jh-panel && bash cli.sh start
 isStart=`ps -ef|grep 'gunicorn -c setting.py app:app' |grep -v grep|awk '{print $2}'`
 n=0
 while [ ! -f /etc/rc.d/init.d/mw ];
@@ -123,9 +123,9 @@ do
     fi
 done
 
-cd /www/server/mdserver-web && bash /etc/rc.d/init.d/mw stop
-cd /www/server/mdserver-web && bash /etc/rc.d/init.d/mw start
-cd /www/server/mdserver-web && bash /etc/rc.d/init.d/mw default
+cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw stop
+cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw start
+cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw default
 
 sleep 2
 if [ ! -e /usr/bin/mw ]; then

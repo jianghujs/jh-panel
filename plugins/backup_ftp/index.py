@@ -9,7 +9,7 @@ import json
 
 # print(sys.platform)
 if sys.platform != "darwin":
-    os.chdir("/www/server/mdserver-web")
+    os.chdir("/www/server/jh-panel")
 
 
 sys.path.append(os.getcwd() + "/class/core")

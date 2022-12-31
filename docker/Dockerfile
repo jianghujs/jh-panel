@@ -25,25 +25,25 @@ RUN apt update -y && \
 	mkdir -p /www/wwwlogs && \
 	mkdir -p /www/backup/database && \
 	mkdir -p /www/backup/site && \
-	wget -O /tmp/dev.zip https://github.com/midoks/mdserver-web/archive/refs/heads/dev.zip && \
+	wget -O /tmp/dev.zip https://github.com/midoks/jh-panel/archive/refs/heads/dev.zip && \
 	cd /tmp && unzip /tmp/dev.zip && \
-	mv -f /tmp/mdserver-web-dev /www/server/mdserver-web && \
+	mv -f /tmp/jh-panel-dev /www/server/jh-panel && \
 	rm -rf /tmp/dev.zip && \
-	rm -rf /tmp/mdserver-web-dev && \
-    cd /www/server/mdserver-web && \
+	rm -rf /tmp/jh-panel-dev && \
+    cd /www/server/jh-panel && \
     bash scripts/install/debian.sh && \
-    cd /www/server/mdserver-web/ && \
-    /www/server/mdserver-web/bin/python tools.py username username && \
-    cd /www/server/mdserver-web/ && \
-    /www/server/mdserver-web/bin/python tools.py panel password
+    cd /www/server/jh-panel/ && \
+    /www/server/jh-panel/bin/python tools.py username username && \
+    cd /www/server/jh-panel/ && \
+    /www/server/jh-panel/bin/python tools.py panel password
 
-RUN cd /www/server/mdserver-web/plugins/php && \
+RUN cd /www/server/jh-panel/plugins/php && \
     bash install.sh install 74 && \
-    cd /www/server/mdserver-web/plugins/openresty && \
+    cd /www/server/jh-panel/plugins/openresty && \
     bash install.sh install 1.21.4.1 && \
-    cd /www/server/mdserver-web/plugins/mysql && \
+    cd /www/server/jh-panel/plugins/mysql && \
     bash install.sh install 5.6 && \
-    cd /www/server/mdserver-web/plugins/phpmyadmin && \
+    cd /www/server/jh-panel/plugins/phpmyadmin && \
     bash install.sh install 4.4.15 && \
     systemctl enable openresty && \
     systemctl enable php74 && \

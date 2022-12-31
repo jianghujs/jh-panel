@@ -51,24 +51,24 @@ fi
 
 cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
 if [ ! -z "$cn" ];then
-	curl -sSLo /tmp/dev.zip https://gitee.com/midoks/mdserver-web/repository/archive/dev.zip
+	curl -sSLo /tmp/dev.zip https://gitee.com/midoks/jh-panel/repository/archive/dev.zip
 else
-	curl -sSLo /tmp/dev.zip https://github.com/midoks/mdserver-web/archive/refs/heads/dev.zip
+	curl -sSLo /tmp/dev.zip https://github.com/midoks/jh-panel/archive/refs/heads/dev.zip
 fi
 
-# wget -O /tmp/dev.zip https://github.com/midoks/mdserver-web/archive/refs/heads/dev.zip
+# wget -O /tmp/dev.zip https://github.com/midoks/jh-panel/archive/refs/heads/dev.zip
 cd /tmp && unzip /tmp/dev.zip
-cp -rf /tmp/mdserver-web-dev/* /www/server/mdserver-web
+cp -rf /tmp/jh-panel-dev/* /www/server/jh-panel
 rm -rf /tmp/dev.zip
-rm -rf /tmp/mdserver-web-dev
+rm -rf /tmp/jh-panel-dev
 
 if [ -f /etc/rc.d/init.d/mw ];then
-    sh /etc/rc.d/init.d/mw stop && rm -rf /www/server/mdserver-web/scripts/init.d/mw && rm -rf /etc/rc.d/init.d/mw
+    sh /etc/rc.d/init.d/mw stop && rm -rf /www/server/jh-panel/scripts/init.d/mw && rm -rf /etc/rc.d/init.d/mw
 fi
 
 #pip uninstall public
 echo "use system version: ${OSNAME}"
-cd /www/server/mdserver-web && bash scripts/update/${OSNAME}.sh
+cd /www/server/jh-panel && bash scripts/update/${OSNAME}.sh
 
 bash /etc/rc.d/init.d/mw restart
 bash /etc/rc.d/init.d/mw default

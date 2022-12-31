@@ -1,6 +1,13 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
+
+
+if [ -d "/www/server/mdserver-web" ];then
+	echo 'rename to jh-panel'
+	mv /www/server/mdserver-web /www/server/jh-panel
+fi
+
 # LANG=en_US.UTF-8
 is64bit=`getconf LONG_BIT`
 

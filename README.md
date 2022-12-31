@@ -23,9 +23,6 @@ apt update -y && apt install -y wget && wget -O install.sh https://gitee.com/jia
 
 本项目采用 Apache 开源授权许可证，完整的授权说明已放置在 [LICENSE](https://github.com/midoks/jh-panel/blob/master/LICENSE) 文件中。
 
-### TODO
+### FAQ
 
-- apt 系统级别 安装sh
-- python & JHPanel面板 安装sh
-- 一键安装 插件等等
-
+- 重命名: `curl -fsSL https://gitee.com/jianghujs/jh-panel/raw/master/scripts/update.dirname.sh | bash`

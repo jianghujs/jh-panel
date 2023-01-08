@@ -24,31 +24,16 @@ Install_xtrabackup()
 	if [[ `arch` =~ "x86_64" ]];then
 		echo $(date "+%Y-%m-%d %H:%M:%S") 'this is x86_64' >> $install_tmp
 		dpkg -i percona-xtrabackup.amd.deb
+		apt-get update
+		apt-get install percona-xtrabackup-24 -y
 	elif [[ `arch` =~ "aarch64" ]];then
 		echo $(date "+%Y-%m-%d %H:%M:%S") 'this is arm64' >> $install_tmp
 		dpkg -i percona-xtrabackup.arm.deb
+		apt-get update
+		apt-get install percona-xtrabackup -y
 	else
 		echo $(date "+%Y-%m-%d %H:%M:%S") '不支持的设备类型 $(arch)' >> $install_tmp
 	fi
-	apt-get update
-	apt-get install percona-xtrabackup -y
-	mkdir -p /var/run/mysqld
-
-	# mysql全局配置
-	# if [ -d "/www/server/mysql-apt/" ];then
-	# 	echo $(date "+%Y-%m-%d %H:%M:%S") 'mysql-apt适配' >> $install_tmp
-	# 	rm -rf /usr/bin/mysql
-	# 	rm -rf /etc/my.cnf
-	# 	ln -s /www/server/mysql-apt/bin/usr/bin/mysql /usr/bin
-	# 	ln -s /www/server/mysql-apt/etc/my.cnf /etc/my.cnf
-	# fi
-	# if [ -d "/www/server/mysql/mysql/" ];then
-	# 	echo $(date "+%Y-%m-%d %H:%M:%S") 'mysql适配' >> $install_tmp
-	# 	rm -rf /usr/bin/mysql
-	# 	rm -rf /etc/my.cnf
-	# 	ln -s /www/server/mysql/bin/mysql /usr/bin
-	# 	ln -s /www/server/mysql/etc/my.cnf /etc/my.cnf
-	# fi
 	
 	echo "2.4" > $serverPath/xtrabackup/version.pl
 	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh

@@ -43,11 +43,14 @@ APT_INSTALL()
 mkdir -p $myDir
 mkdir -p $serverPath/mysql-apt/bin
 
-if [ -f /www/server/jh-panel/data/net_env_cn.pl ];then
-	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
-else
-	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
-fi
+# 阿里里找不到对应的版本
+# if [ -f /www/server/jh-panel/data/net_env_cn.pl ];then
+# 	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+# else
+# 	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+# fi
+wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+
 chmod +x ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 cd ${myDir} && tar vxf ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 

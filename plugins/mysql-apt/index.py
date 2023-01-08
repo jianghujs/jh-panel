@@ -1232,7 +1232,8 @@ def fixDbAccess(version):
         isError = isSqlError(data)
         if isError != None:
             appCMD(version, 'stop')
-            mw.execShell("rm -rf " + getServerDir() + "/data")
+            # Error: 导致mysql挂了
+            # mw.execShell("rm -rf " + getServerDir() + "/data")
             appCMD(version, 'start')
             return mw.returnJson(True, '修复成功!')
         return mw.returnJson(True, '正常无需修复!')

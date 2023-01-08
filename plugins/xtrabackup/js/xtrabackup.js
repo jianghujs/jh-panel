@@ -71,6 +71,7 @@ function mysqlBackupHtml(){
     var con = '\
     <div class="divtable">\
         <button class="btn btn-default btn-sm va0" onclick="doMysqlBackup();">备份</button>\
+        <div style="padding-top:5px;">存放目录: /www/backup/xtrabackup_data_history</div>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
                 <th>备份文件</th>\

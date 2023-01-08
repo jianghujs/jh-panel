@@ -19,6 +19,8 @@ Install_xtrabackup()
 	mkdir -p $serverPath/source/xtrabackup
 	# wget -O ./percona-xtrabackup.amd.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb
 	# wget -O ./percona-xtrabackup.arm.deb http://ports.ubuntu.com/pool/universe/p/percona-xtrabackup/percona-xtrabackup_2.4.9-0ubuntu2_arm64.deb
+	apt-get update
+	apt-get install -f -y
 	if [[ `arch` =~ "x86_64" ]];then
 		echo $(date "+%Y-%m-%d %H:%M:%S") 'this is x86_64' >> $install_tmp
 		dpkg -i percona-xtrabackup.amd.deb
@@ -29,8 +31,7 @@ Install_xtrabackup()
 		echo $(date "+%Y-%m-%d %H:%M:%S") '不支持的设备类型 $(arch)' >> $install_tmp
 	fi
 	apt-get update
-	apt-get -f install
-	apt-get install percona-xtrabackup-24 -y
+	apt-get install percona-xtrabackup -y
 	mkdir -p /var/run/mysqld
 
 	# mysql全局配置

@@ -124,6 +124,9 @@ data/default.pl
 data/backup.pl
 data/debug.pl
 data/default_site.pl
+data/net_env_cn.pl
+data/recycle_bin.pl
+data/*.pl
 
 ssl/input.pl
 

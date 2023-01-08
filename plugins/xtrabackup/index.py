@@ -77,17 +77,21 @@ def doRecoveryBackup():
 
     # 获取的mysql目录
     mysqlDir = ''
-    if os.path.exists('/www/server/mysql-apt/data'):
+    if os.path.exists('/www/server/mysql-apt'):
         mysqlDir = '/www/server/mysql-apt/data'
-    elif os.path.exists('/www/server/mysql/data'):
+    elif os.path.exists('/www/server/mysql'):
         mysqlDir = '/www/server/mysql/data'
     else :
         return mw.returnJson(False, '未检测到安装的mysql插件!')
 
     mw.execShell('mv %s %s_%s' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
-    mw.execShell('mkdir -p %s' % mysqlDir)
-    mw.execShell('tar -zxvf /www/backup/xtrabackup_data_history/%s -C %s' % (filename, mysqlDir))
-    mw.execShell('/etc/init.d/mysqld restart')
+
+    mw.execShell('rm -rf /www/backup/xtrabackup_data_restore')
+    mw.execShell('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s' % (filename))
+    mw.execShell('mv /www/backup/xtrabackup_data_restore/www/backup/xtrabackup_data %s' % (mysqlDir))
+    mw.execShell('chown -R mysql:mysql %s' % (mysqlDir))
+    mw.execShell('systemctl restart mysql')
+
     return mw.returnJson(True, '恢复成功!')
 
 

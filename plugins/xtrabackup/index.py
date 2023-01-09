@@ -50,8 +50,23 @@ def checkArgs(data, ck=[]):
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
 
-def saveXtrabackupCron():
-    return mw.returnJson(True, '保存成功!')
+def checkXtrabackupCronExist():
+    args = getArgs()
+    data = checkArgs(args, ['xtrabackupCronName'])
+    if not data[0]:
+        return data[1]
+    xtrabackupCronName = args['xtrabackupCronName']
+    cronCount = mw.M('crontab').where('name=?', (xtrabackupCronName,)).count()
+    cronList = mw.M('crontab').where('name=?', (xtrabackupCronName,)).field('id,name,type,where_hour,where_minute').select()
+    if cronCount > 0:
+        return mw.returnJson(True,  xtrabackupCronName + ' 已存在', { 
+            'id': cronList[0]['id'],
+            'name': cronList[0]['name'],
+            'type': cronList[0]['type'],
+            'hour': cronList[0]['where_hour'],
+            'minute': cronList[0]['where_minute'],
+        })
+    return mw.returnJson(False, xtrabackupCronName + ' 不存在')    
 
 def getSetting():
     file = getConf()
@@ -147,8 +162,8 @@ if __name__ == "__main__":
         print(runLog())
     elif func == 'conf':
         print(getConf())     
-    elif func == 'save_xtrabackup_cron':
-        print(saveXtrabackupCron())
+    elif func == 'check_xtrabackup_cron_exist':
+        print(checkXtrabackupCronExist())
     elif func == 'get_setting':
         print(getSetting())     
     elif func == 'do_mysql_backup':

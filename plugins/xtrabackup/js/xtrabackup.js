@@ -65,13 +65,49 @@ function setting(){
 }
 
 function saveXtrabackupCron() {
-    myPost('save_xtrabackup_cron', {}, function(data){
+    /**
+     * name=test
+     * type=day
+     * where1=
+     * hour=20
+     * minute=30
+     * week=
+     * sType=toShell
+     * sBody=echo "666"   encodeURIComponent('echo "666"')
+     * sName=&
+     * backupTo=localhost
+     * urladdress=
+     * save=
+     * urladdress=
+     */
+    var xtrabackupCronName = '[勿删]xtrabackup-cron'
+    var params = { 
+        name: xtrabackupCronName,
+        type: 'day',
+        hour: $("#xtrabackup-cron input[name='hour']").val(),
+        minute: $("#xtrabackup-cron input[name='minute']").val(),
+        stype: 'toShell',
+        sbody: 'bash /www/server/xtrabackup/xtrabackup.sh \necho "xtrabackup定时执行成功" \necho $(date "+%Y-%m-%d_%H-%M-%S")',
+        backupTo: 'localhost'
+     }
+    myPost('check_xtrabackup_cron_exist', { xtrabackupCronName }, function(data){
         var rdata = $.parseJSON(data.data);
+        // 定时任务不存在
         if(!rdata.status) {
-            layer.msg(rdata.msg,{icon:2, time:2000});
+            $.post('/crontab/add', params,function(rdata){
+                layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+            },'json');
             return;
         };
-        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+
+        // 定时任务存在
+        if(rdata.status) {
+            const { id,name,type,hour,minute } = rdata.data;
+            $.post('/crontab/modify_crond', { ...params, id },function(rdata){
+                layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+            },'json');
+            return;
+        };
     });
 }
 
@@ -128,9 +164,9 @@ function mysqlBackupHtml(){
     <div id="xtrabackup-cron">
         <span>每天</span>
         <span>
-            <input type="number" name="hour" disabled="disabled" value="20" maxlength="2" max="23" min="0">
+            <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">
             <span class="name">:</span>
-            <input type="number" name="minute" disabled="disabled" value="30" maxlength="2" max="59" min="0">
+            <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">
         </span>
         <span>定时执行备份</span>
         <button class="btn btn-success btn-sm va0" onclick="saveXtrabackupCron();">保存</button>

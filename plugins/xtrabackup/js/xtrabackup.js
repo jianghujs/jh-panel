@@ -29,19 +29,19 @@ function myPost(method,args,callback, title){
 
 function setting(){
     myPost('get_setting','',function(data){
-        let result = JSON.stringify(data.data)
+        let result = JSON.parse(data.data)
         var con = '<div class="line ">\
             <div class="info-r  m5">\
                 <span class="tname">端口</span>\
-                <input name="port" class="bt-input-text mr5 port" type="text" style="width:100px" value="'+result.port+'">\
+                <input name="port" class="bt-input-text mr5 port" type="text" style="width:100px" value="'+result.data.port+'">\
             </div>\
             <div class="info-r  m5">\
                 <span class="tname">用户名</span>\
-                <input name="user" class="bt-input-text mr5" type="text" style="width:100px" value="'+result.user+'">\
+                <input name="user" class="bt-input-text mr5" type="text" style="width:100px" value="'+result.data.user+'">\
             </div>\
             <div class="info-r  m5">\
                 <span class="tname">密码</span>\
-                <input name="password" class="bt-input-text mr5" type="password" style="width:100px" value="'+result.password+'">\
+                <input name="password" class="bt-input-text mr5" type="password" style="width:100px" value="'+result.data.password+'">\
             </div>\
             <div class="info-r  m5 mt5">\
                 <span class="tname"></span>\
@@ -180,6 +180,8 @@ function mysqlBackupHtml(){
                     备份文件
                     <button class="btn btn-default btn-sm va0" onclick="doMysqlBackup();">备份</button>
                 </th>\
+                <th> 文件大小</th>\
+                <th> 创建时间</th>\
                 <th style="text-align: right;" width="150">操作</th></tr>\
             </thead>\
             <tbody class="plugin-table-body"></tbody>\

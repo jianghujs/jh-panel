@@ -147,13 +147,10 @@ if __name__ == "__main__":
         print(runLog())
     elif func == 'conf':
         print(getConf())     
-<<<<<<< HEAD
     elif func == 'save_xtrabackup_cron':
         print(saveXtrabackupCron())
-=======
     elif func == 'get_setting':
         print(getSetting())     
->>>>>>> d4e83569aedc9993ea00402a79cfd866caa61b2f
     elif func == 'do_mysql_backup':
         print(doMysqlBackup())
     elif func == 'backup_list':

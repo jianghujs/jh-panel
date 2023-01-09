@@ -1,6 +1,7 @@
 <div class="bt-form">
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
+			<p onclick="setting();">mysql配置</p>
 			<p onclick="pluginConfig('xtrabackup');">mysql备份脚本</p>
 			<p id="mysqlBackup" onclick="mysqlBackupHtml();">mysql备份</p>
 			<p onclick="pluginLogs('xtrabackup','','run_log');">日志</p>
@@ -12,7 +13,7 @@
 </div>
 <script type="text/javascript">
 	
-resetPluginWinWidth(760);
+resetPluginWinWidth(800);
 $.getScript( "/plugins/file?name=xtrabackup&f=js/xtrabackup.js", function(){
 	document.getElementById("mysqlBackup").click();
 });

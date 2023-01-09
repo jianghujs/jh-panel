@@ -26,15 +26,41 @@ function myPost(method,args,callback, title){
     },'json'); 
 }
 
-saveXtrabackupCron
-function saveXtrabackupCron() {
-    myPost('save_xtrabackup_cron', {}, function(data){
-        var rdata = $.parseJSON(data.data);
-        if(!rdata.status) {
-            layer.msg(rdata.msg,{icon:2, time:2000});
-            return;
-        };
-        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+
+function setting(){
+    myPost('get_setting','',function(data){
+        let result = JSON.stringify(data.data)
+        var con = '<div class="line ">\
+            <div class="info-r  m5">\
+                <span class="tname">端口</span>\
+                <input name="port" class="bt-input-text mr5 port" type="text" style="width:100px" value="'+result.port+'">\
+            </div>\
+            <div class="info-r  m5">\
+                <span class="tname">用户名</span>\
+                <input name="user" class="bt-input-text mr5" type="text" style="width:100px" value="'+result.user+'">\
+            </div>\
+            <div class="info-r  m5">\
+                <span class="tname">密码</span>\
+                <input name="password" class="bt-input-text mr5" type="password" style="width:100px" value="'+result.password+'">\
+            </div>\
+            <div class="info-r  m5 mt5">\
+                <span class="tname"></span>\
+                <button id="btn_change_port" name="btn_change_port" class="btn btn-success btn-sm btn_change_port">保存</button>\
+            </div>\
+        </div>';
+        $(".soft-man-con").html(con);
+
+        $('#btn_change_port').click(function(){
+            var port = $("input[name='port']").val();
+            myPost('set_my_port','port='+port,function(data){
+                var rdata = $.parseJSON(data.data);
+                if (rdata.status){
+                    layer.msg('修改成功!',{icon:1,time:2000,shade: [0.3, '#000']});
+                } else {
+                    layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+                }
+            });
+        });
     });
 }
 
@@ -127,7 +153,7 @@ function mysqlBackupHtml(){
         for(var i=0;i<tmp.length;i++){
             tbody += '<tr>\
                         <td style="width: 120px;">'+tmp[i].filename+'</td>\
-                        <td style="width: 120px;' + (tmp[i].size < 1024? 'color: red;': '') + '">'+tmp[i].sizeTxt+'</td>\
+                        <td style="width: 240px;' + (tmp[i].size < 1024? 'color: red;': '') + '">'+tmp[i].sizeTxt+(tmp[i].size < 1024? '（无效的备份文件）': '')+'</td>\
                         <td style="width: 180px;">'+getFormatTime(tmp[i].createTime)+'</td>\
                         <td style="text-align: right;width: 60px;">' + 
                             '<a href="javascript:doRecoveryBackup(\''+tmp[i]+'\')" class="btlink">恢复</a> | ' +

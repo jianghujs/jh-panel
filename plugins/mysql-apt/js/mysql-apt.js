@@ -1139,7 +1139,7 @@ function dbList(page, search){
             list += '<td>' + rdata.data[i]['name'] +'</td>';
             list += '<td>' + rdata.data[i]['username'] +'</td>';
             list += '<td>' + 
-                        '<span class="password" data-pw="'+rdata.data[i]['password']+'">***</span>' +
+                        '<span class="password" data-pw="'+rdata.data[i]['password']+`">${rdata.data[i]['password'] ? '***' : '<font color="red">密码未记录</font>'}</span>` +
                         '<span onclick="showHidePass(this)" class="glyphicon glyphicon-eye-open cursor pw-ico" style="margin-left:10px"></span>'+
                         '<span class="ico-copy cursor btcopy" style="margin-left:10px" title="复制密码" onclick="copyPass(\''+rdata.data[i]['password']+'\')"></span>'+
                     '</td>';

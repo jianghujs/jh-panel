@@ -1064,7 +1064,6 @@ def setUserPwd(version=''):
         pdb = pMysqlDb()
         psdb = pSqliteDb('databases')
         name = psdb.where('id=?', (uid,)).getField('name')
-
         if version.find('5.7') > -1 or version.find('8.0') > -1:
             accept = pdb.query(
                 "select Host from mysql.user where User='" + name + "' AND Host!='localhost'")

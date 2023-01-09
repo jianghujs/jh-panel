@@ -697,7 +697,7 @@ function setDbPass(id, username, password){
             var data = {};
             data['name'] = $('input[name=name]').val();
             data['password'] = $('#MyPassword').val();
-            data['id'] = $('input[name=id]').val();
+            data['id'] = $('#mod_pwd input[name=id]').val();
             myPost('set_user_pwd', data, function(data){
                 var rdata = $.parseJSON(data.data);
                 showMsg(rdata.msg,function(){

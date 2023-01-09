@@ -63,9 +63,17 @@ def doMysqlBackup():
 
 def backupList():
     result = []
-    for d_walk in os.walk('/www/backup/xtrabackup_data_history'):
+    xtrabackup_data_history_path = '/www/backup/xtrabackup_data_history'
+    for d_walk in os.walk(xtrabackup_data_history_path):
         for d_list in d_walk[2]:
-            result.append(d_list)
+            if mw.getFileSuffix(d_list) == 'zip': 
+                filepath = '%s/%s' % (xtrabackup_data_history_path, d_list)
+                result.append({
+                    'filename': d_list,
+                    'size': mw.getPathSize(filepath),
+                    'sizeTxt': mw.toSize(mw.getPathSize(filepath)),
+                    'createTime': os.path.getctime(filepath)
+                })
     return mw.returnJson(True, 'ok', result)
 
 def doRecoveryBackup():

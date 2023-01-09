@@ -83,10 +83,16 @@ function mysqlBackupHtml(){
         <div style="padding-top:5px;">存放目录: /www/backup/xtrabackup_data_history</div>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
+<<<<<<< HEAD
                 <th>
                     备份文件
                     <button class="btn btn-default btn-sm va0" onclick="doMysqlBackup();">备份</button>
                 </th>\
+=======
+                <th>备份文件</th>\
+                <th>文件大小</th>\
+                <th>创建时间</th>\
+>>>>>>> 80dd2d99129691cf8ddd3333f3404423ceb504aa
                 <th style="text-align: right;" width="150">操作</th></tr>\
             </thead>\
             <tbody class="plugin-table-body"></tbody>\
@@ -103,11 +109,13 @@ function mysqlBackupHtml(){
         }
 
         var tbody = '';
-        var tmp = rdata['data'].sort().reverse();
+        var tmp = rdata['data'].sort((a, b) => b.createTime - a.createTime);
         tableData = tmp;
         for(var i=0;i<tmp.length;i++){
             tbody += '<tr>\
-                        <td style="width: 120px;">'+tmp[i]+'</td>\
+                        <td style="width: 120px;">'+tmp[i].filename+'</td>\
+                        <td style="width: 120px;' + (tmp[i].size < 1024? 'color: red;': '') + '">'+tmp[i].sizeTxt+'</td>\
+                        <td style="width: 180px;">'+getFormatTime(tmp[i].createTime)+'</td>\
                         <td style="text-align: right;width: 60px;">' + 
                             '<a href="javascript:doRecoveryBackup(\''+tmp[i]+'\')" class="btlink">恢复</a> | ' +
                             '<a href="javascript:doDeleteBackup(\''+tmp[i]+'\')" class="btlink">删除</a>' +

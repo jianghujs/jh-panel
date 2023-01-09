@@ -92,7 +92,7 @@ def doRecoveryBackup():
     mw.execShell('chown -R mysql:mysql %s' % (mysqlDir))
     mw.execShell('systemctl restart mysql')
 
-    return mw.returnJson(True, '恢复成功!')
+    return mw.returnJson(True, '恢复成功，请到mysql插件的管理列表-点击【修复ROOT密码】更新ROOT密码!!')
 
 
 def doDeleteBackup():

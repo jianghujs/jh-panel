@@ -519,7 +519,7 @@ function fixRootPwd(type){
         content: "<form class='bt-form pd20' id='mod_pwd'>\
                     <div class='line'>\
                         <span class='tname'>root密码</span>\
-                        <div class='info-r'><input class='bt-input-text mr5' placeholder='更新真实root密码到江湖面板' type='text' name='password' id='FixPassword' style='width:330px' value='' /></div>\
+                        <div class='info-r'><input class='bt-input-text mr5' placeholder='更新真实ROOT密码到江湖面板' type='text' name='password' id='FixPassword' style='width:330px' value='' /></div>\
                     </div>\
                   </form>",
         yes:function(){

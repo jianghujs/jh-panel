@@ -1003,16 +1003,22 @@ def setRootPwd(version=''):
         if isError != None:
             return isError
 
-        if version.find('5.7') > -1 or version.find('8.0') > -1:
-            pdb.execute(
-                "UPDATE mysql.user SET authentication_string='' WHERE user='root'")
-            pdb.execute(
-                "ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'" % password)
-            pdb.execute(
-                "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '%s'" % password)
+        if version.find('8.0') > -1:
+            result = pdb.execute(
+                "update mysql.user set password=password('" + password + "') where user='root'")
+            # Old code    
+            # pdb.execute(
+            #     "UPDATE mysql.user SET authentication_string='' WHERE user='root'")
+            # pdb.execute(
+            #     "ALTER USER 'root'@'localhost' IDENTIFIED BY '%s'" % password)
+            # pdb.execute(
+            #     "ALTER USER 'root'@'127.0.0.1' IDENTIFIED BY '%s'" % password)
         else:
             result = pdb.execute(
-                "update mysql.user set Password=password('" + password + "') where User='root'")
+                "update mysql.user set authentication_string=password('" + password + "') where user='root'")
+            # Old code    
+            # result = pdb.execute(
+            #     "update mysql.user set Password=password('" + password + "') where User='root'")
         pdb.execute("flush privileges")
         pSqliteDb('config').where('id=?', (1,)).save('mysql_root', (password,))
         return mw.returnJson(True, '数据库root密码修改成功!')

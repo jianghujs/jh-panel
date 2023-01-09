@@ -90,9 +90,14 @@ def doRecoveryBackup():
     mw.execShell('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s' % (filename))
     mw.execShell('mv /www/backup/xtrabackup_data_restore/www/backup/xtrabackup_data %s' % (mysqlDir))
     mw.execShell('chown -R mysql:mysql %s' % (mysqlDir))
-    mw.execShell('systemctl restart mysql')
 
-    return mw.returnJson(True, '恢复成功，请到mysql插件的管理列表-点击【修复ROOT密码】更新ROOT密码!!')
+    if os.path.exists('/www/server/mysql-apt'):
+        mw.execShell('systemctl restart mysql-apt')
+    elif os.path.exists('/www/server/mysql'):
+        mw.execShell('systemctl restart mysql')
+
+    return mw.returnJson(True, '恢复成功; 请前往Mysql插件 <br/>- "从服务器获取"  <br/>- 如果ROOT密码有变动👉"修复ROOT密码"')
+    # return mw.returnJson(True, '恢复成功\n \nt\t- 若root密码有 请到mysql插件的管理列表-点击【修复ROOT密码】更新ROOT密码!!')
 
 
 def doDeleteBackup():

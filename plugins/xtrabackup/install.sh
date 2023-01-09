@@ -16,6 +16,7 @@ Install_xtrabackup()
 {
 	echo '正在安装脚本文件...' > $install_tmp
 	mkdir -p $serverPath/xtrabackup
+	mkdir -p /www/backup/xtrabackup_data_history
 	# wget -O ./percona-xtrabackup.amd.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb
 	# wget -O ./percona-xtrabackup.arm.deb http://ports.ubuntu.com/pool/universe/p/percona-xtrabackup/percona-xtrabackup_2.4.9-0ubuntu2_arm64.deb
 	apt-get update

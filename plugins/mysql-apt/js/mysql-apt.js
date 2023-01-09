@@ -557,17 +557,17 @@ function copyPass(password){
 
 function checkSelect(){
     setTimeout(function () {
-        var num = $('input[type="checkbox"].check:checked').length;
+        var num = $('#DataBody input[type="checkbox"].check:checked').length;
         // console.log(num);
         if (num == 1) {
-            $('button[batch="true"]').hide();
-            $('button[batch="false"]').show();
+            $('#DataBody button[batch="true"]').hide();
+            $('#DataBody button[batch="false"]').show();
         }else if (num>1){
-            $('button[batch="true"]').show();
-            $('button[batch="false"]').show();
+            $('#DataBody button[batch="true"]').show();
+            $('#DataBody button[batch="false"]').show();
         }else{
-            $('button[batch="true"]').hide();
-            $('button[batch="false"]').hide();
+            $('#DataBody button[batch="true"]').hide();
+            $('#DataBody button[batch="false"]').hide();
         }
     },5)
 }

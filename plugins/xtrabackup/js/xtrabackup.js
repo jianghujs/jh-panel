@@ -64,6 +64,18 @@ function setting(){
     });
 }
 
+function saveXtrabackupCron() {
+    myPost('save_xtrabackup_cron', {}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            layer.msg(rdata.msg,{icon:2, time:2000});
+            return;
+        };
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+    });
+}
+
+
 function doMysqlBackup() {
     myPost('do_mysql_backup', {}, function(data){
         var rdata = $.parseJSON(data.data);

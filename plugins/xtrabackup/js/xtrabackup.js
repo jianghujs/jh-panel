@@ -26,6 +26,18 @@ function myPost(method,args,callback, title){
     },'json'); 
 }
 
+saveXtrabackupCron
+function saveXtrabackupCron() {
+    myPost('save_xtrabackup_cron', {}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            layer.msg(rdata.msg,{icon:2, time:2000});
+            return;
+        };
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+    });
+}
+
 function doMysqlBackup() {
     myPost('do_mysql_backup', {}, function(data){
         var rdata = $.parseJSON(data.data);
@@ -75,8 +87,15 @@ function doDeleteBackup(filename) {
 
 function mysqlBackupHtml(){
     var con = `\
-    <div>
-        <label><input class="mui-switch" type="checkbox" checked>定时备份</label>
+    <div id="xtrabackup-cron">
+        <span>每天</span>
+        <span>
+            <input type="number" name="hour" disabled="disabled" value="20" maxlength="2" max="23" min="0">
+            <span class="name">:</span>
+            <input type="number" name="minute" disabled="disabled" value="30" maxlength="2" max="59" min="0">
+        </span>
+        <span>定时执行备份</span>
+        <button class="btn btn-success btn-sm va0" onclick="saveXtrabackupCron();">保存</button>
     </div>
     <div class="divtable">\
         \

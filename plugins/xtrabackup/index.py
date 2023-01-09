@@ -50,6 +50,9 @@ def checkArgs(data, ck=[]):
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
 
+def saveXtrabackupCron():
+    return mw.returnJson(True, '保存成功!')
+
 def doMysqlBackup():
     log_file = runLog()
     xtrabackupScript = getServerDir() + '/xtrabackup.sh'
@@ -129,6 +132,8 @@ if __name__ == "__main__":
         print(runLog())
     elif func == 'conf':
         print(getConf())     
+    elif func == 'save_xtrabackup_cron':
+        print(saveXtrabackupCron())
     elif func == 'do_mysql_backup':
         print(doMysqlBackup())
     elif func == 'backup_list':

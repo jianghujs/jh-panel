@@ -43,11 +43,17 @@ function doRecoveryBackup(filename) {
         myPost('do_recovery_backup', {filename}, function(data){
             var rdata = $.parseJSON(data.data);
             if(!rdata.status) {
-                layer.msg(rdata.msg,{icon:2, time: 9000});
+                layer.msg(rdata.msg,{icon:2, time: 6000});
                 return;
             };
             mysqlBackupHtml();
-            layer.msg(rdata.msg,{icon:1,time: 9000,shade: [0.3, '#000']});
+            layer.open({
+                area: ['500px', '300px'],
+                title: '恢复成功',
+                content: rdata.msg,
+                btn: []
+            });    
+            // layer.msg(rdata.msg,{icon:1,time: 9000,shade: [0.3, '#000']});
         });
     });
     

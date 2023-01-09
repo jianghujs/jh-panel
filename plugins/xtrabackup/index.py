@@ -96,7 +96,7 @@ def doRecoveryBackup():
     elif os.path.exists('/www/server/mysql'):
         mw.execShell('systemctl restart mysql')
 
-    return mw.returnJson(True, '恢复成功; 请前往Mysql插件 <br/>- "从服务器获取"  <br/>- 如果ROOT密码有变动👉"修复ROOT密码"')
+    return mw.returnJson(True, '恢复成功; 请前往Mysql插件 <br/>- "从服务器获取"  <br/>- 如果ROOT密码有变动👉"修复ROOT密码" <br/>Tip: 若无法找回密码, 可以使用无密码模式启动mysql, 然后再使用mysql的sql脚本设置密码。')
     # return mw.returnJson(True, '恢复成功\n \nt\t- 若root密码有 请到mysql插件的管理列表-点击【修复ROOT密码】更新ROOT密码!!')
 
 

@@ -144,6 +144,8 @@ function mysqlBackupHtml(){
                     备份文件
                     <button class="btn btn-default btn-sm va0" onclick="doMysqlBackup();">备份</button>
                 </th>\
+                <th> 文件大小</th>\
+                <th> 创建时间</th>\
                 <th style="text-align: right;" width="150">操作</th></tr>\
             </thead>\
             <tbody class="plugin-table-body"></tbody>\

@@ -896,6 +896,9 @@ def getDbList():
 def syncGetDatabases():
     pdb = pMysqlDb()
     psdb = pSqliteDb('databases')
+    # 测试代码
+    # psdb.delete()
+    
     data = pdb.query('show databases')
     isError = isSqlError(data)
     if isError != None:

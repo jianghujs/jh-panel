@@ -16,7 +16,7 @@ mw_start_task()
 {
     isStart=$(ps aux |grep 'task.py'|grep -v grep|awk '{print $2}')
     if [ "$isStart" == '' ];then
-        echo -e "Starting mw-tasks... \c"
+        echo -e "Starting jh-tasks... \c"
         cd $DIR && python3 task.py >> ${DIR}/logs/task.log 2>&1 &
         sleep 0.3
         isStart=$(ps aux |grep 'task.py'|grep -v grep|awk '{print $2}')
@@ -25,12 +25,12 @@ mw_start_task()
                 echo '------------------------------------------------------'
                 tail -n 20 $DIR/logs/task.log
                 echo '------------------------------------------------------'
-                echo -e "\033[31mError: mw-tasks service startup failed.\033[0m"
+                echo -e "\033[31mError: jh-tasks service startup failed.\033[0m"
                 return;
         fi
         echo -e "\033[32mdone\033[0m"
     else
-        echo "Starting mw-tasks... mw-tasks (pid $(echo $isStart)) already running"
+        echo "Starting jh-tasks... jh-tasks (pid $(echo $isStart)) already running"
     fi
 }
 

@@ -64,6 +64,27 @@ function setting(){
     });
 }
 
+const xtrabackupCronName = '[勿删]xtrabackup-cron';
+
+function checkXtrabackupCronExist() {
+    myPost('check_xtrabackup_cron_exist', { xtrabackupCronName }, function(data){
+        var rdata = $.parseJSON(data.data);
+        // 定时任务不存在
+        if(!rdata.status) {
+            // TODO: 显示一下
+            return;
+        };
+
+        // 定时任务存在
+        if(rdata.status) {
+            const { id,name,type,hour,minute } = rdata.data;
+            $("#xtrabackup-cron input[name='hour']").val(hour);
+            $("#xtrabackup-cron input[name='minute']").val(minute);
+            return;
+        };
+    });
+}
+
 function saveXtrabackupCron() {
     /**
      * name=test
@@ -80,7 +101,6 @@ function saveXtrabackupCron() {
      * save=
      * urladdress=
      */
-    var xtrabackupCronName = '[勿删]xtrabackup-cron'
     var params = { 
         name: xtrabackupCronName,
         type: 'day',
@@ -188,6 +208,9 @@ function mysqlBackupHtml(){
         </table>\
     </div>`;
     $(".soft-man-con").html(con);
+    setTimeout(() => {
+        checkXtrabackupCronExist();
+    }, 300)
     
 	myPost('backup_list',{}, function(data){
 		let rdata = $.parseJSON(data.data);

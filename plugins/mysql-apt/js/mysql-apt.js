@@ -556,20 +556,11 @@ function copyPass(password){
 }
 
 function checkSelect(){
-    setTimeout(function () {
-        var num = $('#DataBody input[type="checkbox"].check:checked').length;
-        // console.log(num);
-        if (num == 1) {
-            $('#DataBody button[batch="true"]').hide();
-            $('#DataBody button[batch="false"]').show();
-        }else if (num>1){
-            $('#DataBody button[batch="true"]').show();
-            $('#DataBody button[batch="false"]').show();
-        }else{
-            $('#DataBody button[batch="true"]').hide();
-            $('#DataBody button[batch="false"]').hide();
-        }
-    },5)
+    $('#DataBody').find('tr').each(function(i,obj){
+        var fin = $(this).find('td')[0];
+        checked = $(fin).find('input').prop('checked');
+        $(fin).find('input').prop('checked',!checked);
+    });
 }
 
 function setDbRw(id,username,val){
@@ -1144,7 +1135,7 @@ function dbList(page, search){
         var list = '';
         for(i in rdata.data){
             list += '<tr>';
-            list +='<td><input value="'+rdata.data[i]['id']+'" class="check" onclick="checkSelect();" type="checkbox"></td>';
+            list +='<td><input value="'+rdata.data[i]['id']+'" class="check" type="checkbox"></td>';
             list += '<td>' + rdata.data[i]['name'] +'</td>';
             list += '<td>' + rdata.data[i]['username'] +'</td>';
             list += '<td>' + 
@@ -1200,14 +1191,14 @@ function dbList(page, search){
             <div class="divtable mtb10">\
                 <div class="tablescroll">\
                     <table id="DataBody" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
-                    <thead><tr><th width="30"><input class="check" onclick="checkSelect();" type="checkbox"></th>\
+                    <tr><th width="30"><input class="check" onclick="checkSelect();" type="checkbox"></th>\
                     <th>数据库名</th>\
                     <th>用户名</th>\
                     <th>密码</th>\
                     '+
                     // '<th>备份</th>'+
                     '<th>备注</th>\
-                    <th style="text-align:right;">操作</th></tr></thead>\
+                    <th style="text-align:right;">操作</th></tr>\
                     <tbody>\
                     '+ list +'\
                     </tbody></table>\

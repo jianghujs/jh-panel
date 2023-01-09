@@ -50,6 +50,22 @@ def checkArgs(data, ck=[]):
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
 
+
+def getSetting():
+    file = getConf()
+    content = mw.readFile(file)
+    port_rep = '--port\s*=\s*(.*?) '
+    port_tmp = re.search(port_rep, content).groups()[0].strip()
+    user_rep = '--user\s*=\s*(.*?) '
+    user_tmp = re.search(user_rep, content).groups()[0].strip()
+    password_rep = '--password\s*=\s*(.*?) '
+    password_tmp = re.search(password_rep, content).groups()[0].strip()
+    return mw.returnJson(True, 'ok', {
+        'port': port_tmp,
+        'user': user_tmp,
+        'password': password_tmp
+    })
+
 def doMysqlBackup():
     log_file = runLog()
     xtrabackupScript = getServerDir() + '/xtrabackup.sh'
@@ -129,6 +145,8 @@ if __name__ == "__main__":
         print(runLog())
     elif func == 'conf':
         print(getConf())     
+    elif func == 'get_setting':
+        print(getSetting())     
     elif func == 'do_mysql_backup':
         print(doMysqlBackup())
     elif func == 'backup_list':

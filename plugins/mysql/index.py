@@ -782,7 +782,7 @@ def isSqlError(mysqlMsg):
     if "2003," in mysqlMsg:
         return mw.returnJson(False, "Can't connect to MySQL server on '127.0.0.1' (61)")
     if "using password:" in mysqlMsg:
-        return mw.returnJson(False, '数据库密码错误,在管理列表-点击【修复】!')
+        return mw.returnJson(False, '数据库密码错误,在管理列表-点击【修复ROOT密码】!')
     if "1045" in mysqlMsg:
         return mw.returnJson(False, '连接错误!')
     if "SQL syntax" in mysqlMsg:
@@ -1185,6 +1185,27 @@ def setRootPwd(version=''):
     except Exception as ex:
         return mw.returnJson(False, '修改错误:' + str(ex))
 
+def fixRootPwd(version=''):
+    args = getArgs()
+    data = checkArgs(args, ['password'])
+    if not data[0]:
+        return data[1]
+
+    password = args['password']
+    try:
+        pdb = pMysqlDb()
+        pdb.setPwd(password)
+        result = pdb.query("show databases")
+        isError = isSqlError(result)
+        if isError != None:
+            if "using password:" in str(result):
+                return mw.returnJson(False, '请输入正确的ROOT密码!')
+            else:
+                return isError
+        pSqliteDb('config').where('id=?', (1,)).save('mysql_root', (password,))
+        return mw.returnJson(True, '数据库root密码修复成功!')
+    except Exception as ex:
+        return mw.returnJson(False, '修改错误:' + str(ex))
 
 def setUserPwd(version=''):
     args = getArgs()
@@ -2592,6 +2613,8 @@ if __name__ == "__main__":
         print(syncToDatabases())
     elif func == 'set_root_pwd':
         print(setRootPwd(version))
+    elif func == 'fix_root_pwd':
+        print(fixRootPwd(version))
     elif func == 'set_user_pwd':
         print(setUserPwd(version))
     elif func == 'get_db_access':

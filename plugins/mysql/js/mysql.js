@@ -495,6 +495,40 @@ function setRootPwd(type, pwd){
     });
 }
 
+
+function fixRootPwd(type){
+    if (type==1){
+        var password = $("#FixPassword").val();
+        myPost('fix_root_pwd', {password:password}, function(data){
+            var rdata = $.parseJSON(data.data);
+            showMsg(rdata.msg,function(){
+                dbList();
+                $('.layui-layer-close1').click();
+            },{icon: rdata.status ? 1 : 2});   
+        });
+        return;
+    }
+
+    var index = layer.open({
+        type: 1,
+        area: '500px',
+        title: '修复ROOT密码',
+        closeBtn: 1,
+        shift: 5,
+        btn:["提交","关闭"],
+        shadeClose: true,
+        content: "<form class='bt-form pd20' id='mod_pwd'>\
+                    <div class='line'>\
+                        <span class='tname'>root密码</span>\
+                        <div class='info-r'><input class='bt-input-text mr5' placeholder='请输入正确的root密码' type='text' name='password' id='FixPassword' style='width:330px' value='' /></div>\
+                    </div>\
+                  </form>",
+        yes:function(){
+            fixRootPwd(1);
+        }
+    });
+}
+
 function showHidePass(obj){
     var a = "glyphicon-eye-open";
     var b = "glyphicon-eye-close";
@@ -1155,11 +1189,12 @@ function dbList(page, search){
         }
 
         //<button onclick="" id="dataRecycle" title="删除选中项" class="btn btn-default btn-sm" style="margin-left: 5px;"><span class="glyphicon glyphicon-trash" style="margin-right: 5px;"></span>回收站</button>
+        //<button onclick="fixDbAccess(\'root\')" title="修复" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">修复</button>\
         var con = '<div class="safe bgw">\
             <button onclick="addDatabase()" title="添加数据库" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;">添加数据库</button>\
             <button onclick="setRootPwd(0,\''+rdata.info['root_pwd']+'\')" title="设置MySQL管理员密码" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">root密码</button>\
+            <button onclick="fixRootPwd(0)" title="修复ROOT密码" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">修复ROOT密码</button>\
             <button onclick="setDbAccess(\'root\')" title="ROOT权限" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">ROOT权限</button>\
-            <button onclick="fixDbAccess(\'root\')" title="修复" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">修复</button>\
             <span style="float:right">              \
                 <button batch="true" style="float: right;display: none;margin-left:10px;" onclick="delDbBatch();" title="删除选中项" class="btn btn-default btn-sm">删除选中</button>\
             </span>\

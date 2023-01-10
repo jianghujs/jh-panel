@@ -30,7 +30,7 @@ function myPost(method,args,callback, title){
 function setting(){
     myPost('get_setting','',function(data){
         let result = JSON.parse(data.data)
-        var con = '<div class="line ">\
+        var con = '<div class="line setting">\
             <div class="info-r  m5">\
                 <span class="tname">端口</span>\
                 <input name="port" class="bt-input-text mr5 port" type="text" style="width:100px" value="'+result.data.port+'">\
@@ -45,19 +45,35 @@ function setting(){
             </div>\
             <div class="info-r  m5 mt5">\
                 <span class="tname"></span>\
-                <button id="btn_change_port" name="btn_change_port" class="btn btn-success btn-sm btn_change_port">保存</button>\
+                <button id="btn_change_setting" name="btn_change_setting" class="btn btn-success btn-sm btn_change_port">保存</button>\
+                <button id="btn_test_setting" name="btn_test_setting" class="btn btn-sm btn_change_port">测试连接</button>\
             </div>\
         </div>';
         $(".soft-man-con").html(con);
 
-        $('#btn_change_port').click(function(){
-            var port = $("input[name='port']").val();
-            myPost('set_my_port','port='+port,function(data){
+        $('#btn_change_setting').click(function(){
+            var port = $(".setting input[name='port']").val();
+            var user = $(".setting input[name='user']").val();
+            var password = $(".setting input[name='password']").val();
+            myPost('change_setting','port='+port+'&user='+user+'&password='+password,function(data){
                 var rdata = $.parseJSON(data.data);
                 if (rdata.status){
                     layer.msg('修改成功!',{icon:1,time:2000,shade: [0.3, '#000']});
                 } else {
                     layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+                }
+            });
+        });
+        $('#btn_test_setting').click(function(){
+            var port = $(".setting input[name='port']").val();
+            var user = $(".setting input[name='user']").val();
+            var password = $(".setting input[name='password']").val();
+            myPost('test_setting','port='+port+'&user='+user+'&password='+password,function(data){
+                var rdata = $.parseJSON(data.data);
+                if (rdata.status){
+                    layer.msg('连接成功!',{icon:1,time:2000,shade: [0.3, '#000']});
+                } else {
+                    layer.msg(rdata.msg,{icon:2,time:2000,shade: [0.3, '#000']});
                 }
             });
         });

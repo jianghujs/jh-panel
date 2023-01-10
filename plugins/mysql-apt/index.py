@@ -686,7 +686,7 @@ def setDbStatusBySystemMemory(version):
             'binlog_cache_size': 32, 
             'thread_cache_size': 4, 
             'table_open_cache': 32, 
-            'max_connections': 100, 
+            'max_connections': 500, 
         }
 
 
@@ -704,6 +704,7 @@ def setDbStatusBySystemMemory(version):
     emptys = ['max_connections', 'thread_cache_size', 'table_open_cache']
     # args = getArgs()
     conFile = getConf()
+    print(conFile)
     content = mw.readFile(conFile)
     n = 0
     for g in gets:

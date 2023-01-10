@@ -232,8 +232,8 @@ function mysqlBackupHtml(){
                         <td style="width: 240px;' + (tmp[i].size < 1024? 'color: red;': '') + '">'+tmp[i].sizeTxt+(tmp[i].size < 1024? '（无效的备份文件）': '')+'</td>\
                         <td style="width: 180px;">'+getFormatTime(tmp[i].createTime)+'</td>\
                         <td style="text-align: right;width: 60px;">' + 
-                            '<a href="javascript:doRecoveryBackup(\''+tmp[i]+'\')" class="btlink">恢复</a> | ' +
-                            '<a href="javascript:doDeleteBackup(\''+tmp[i]+'\')" class="btlink">删除</a>' +
+                            '<a href="javascript:doRecoveryBackup(\''+tmp[i].filename+'\')" class="btlink">恢复</a> | ' +
+                            '<a href="javascript:doDeleteBackup(\''+tmp[i].filename+'\')" class="btlink">删除</a>' +
                         '</td>\
                     </tr>';
         }

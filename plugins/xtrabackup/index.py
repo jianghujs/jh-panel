@@ -126,12 +126,11 @@ def doRecoveryBackup():
         return mw.returnJson(False, '未检测到安装的mysql插件!')
 
     mw.execShell('mv %s %s_%s' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
-
     mw.execShell('rm -rf /www/backup/xtrabackup_data_restore')
     mw.execShell('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s' % (filename))
     mw.execShell('mv /www/backup/xtrabackup_data_restore/www/backup/xtrabackup_data %s' % (mysqlDir))
     mw.execShell('chown -R mysql:mysql %s' % (mysqlDir))
-
+    mw.execShell('chmod -R 755 ' + mysqlDir)
     if os.path.exists('/www/server/mysql-apt'):
         mw.execShell('systemctl restart mysql-apt')
     elif os.path.exists('/www/server/mysql'):

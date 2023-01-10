@@ -50,7 +50,7 @@ def checkArgs(data, ck=[]):
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
 
-def checkXtrabackupCronExist():
+def getXtrabackupCron():
     args = getArgs()
     data = checkArgs(args, ['xtrabackupCronName'])
     if not data[0]:
@@ -201,8 +201,8 @@ if __name__ == "__main__":
         print(runLog())
     elif func == 'conf':
         print(getConf())     
-    elif func == 'check_xtrabackup_cron_exist':
-        print(checkXtrabackupCronExist())
+    elif func == 'get_xtrabackup_cron':
+        print(getXtrabackupCron())
     elif func == 'get_setting':
         print(getSetting())     
     elif func == 'change_setting':

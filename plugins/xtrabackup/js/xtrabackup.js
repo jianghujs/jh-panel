@@ -80,20 +80,41 @@ function setting(){
     });
 }
 
-const xtrabackupCronName = '[勿删]xtrabackup-cron';
-
-function checkXtrabackupCronExist() {
-    myPost('check_xtrabackup_cron_exist', { xtrabackupCronName }, function(data){
+const xtrabackupCron = {        
+    name: '[勿删]xtrabackup-cron',
+    type: 'day',
+    where1: '',
+    hour: $("#xtrabackup-cron input[name='hour']").val(),
+    minute: $("#xtrabackup-cron input[name='minute']").val(),
+    week: '',
+    sType: 'toShell',
+    stype: 'toShell',
+    sBody: 'bash /www/server/xtrabackup/xtrabackup.sh \necho "xtrabackup定时执行成功" \necho $(date "+%Y-%m-%d_%H-%M-%S")',
+    sbody: 'bash /www/server/xtrabackup/xtrabackup.sh \necho "xtrabackup定时执行成功" \necho $(date "+%Y-%m-%d_%H-%M-%S")',
+    sName: '',
+    backupTo: 'localhost' 
+}
+function getXtrabackupCron() {
+    myPost('get_xtrabackup_cron', { xtrabackupCronName: xtrabackupCron.name }, function(data){
         var rdata = $.parseJSON(data.data);
         // 定时任务不存在
         if(!rdata.status) {
-            // TODO: 显示一下
+            $("#xtrabackup-cron #xtrabackup-cron-add").css("display", "inline-block");
+            $("#xtrabackup-cron #xtrabackup-cron-update").css("display", "none");
+            $("#xtrabackup-cron #xtrabackup-cron-delete").css("display", "none");
+            $("#xtrabackup-cron input[name='id']").val("");
+            $("#xtrabackup-cron input[name='hour']").val(20);
+            $("#xtrabackup-cron input[name='minute']").val(30);
             return;
         };
 
         // 定时任务存在
         if(rdata.status) {
             const { id,name,type,hour,minute } = rdata.data;
+            $("#xtrabackup-cron #xtrabackup-cron-add").css("display", "none");
+            $("#xtrabackup-cron #xtrabackup-cron-update").css("display", "inline-block");
+            $("#xtrabackup-cron #xtrabackup-cron-delete").css("display", "inline-block");
+            $("#xtrabackup-cron input[name='id']").val(id);
             $("#xtrabackup-cron input[name='hour']").val(hour);
             $("#xtrabackup-cron input[name='minute']").val(minute);
             return;
@@ -101,50 +122,36 @@ function checkXtrabackupCronExist() {
     });
 }
 
-function saveXtrabackupCron() {
-    /**
-     * name=test
-     * type=day
-     * where1=
-     * hour=20
-     * minute=30
-     * week=
-     * sType=toShell
-     * sBody=echo "666"   encodeURIComponent('echo "666"')
-     * sName=&
-     * backupTo=localhost
-     * urladdress=
-     * save=
-     * urladdress=
-     */
-    var params = { 
-        name: xtrabackupCronName,
-        type: 'day',
-        hour: $("#xtrabackup-cron input[name='hour']").val(),
-        minute: $("#xtrabackup-cron input[name='minute']").val(),
-        stype: 'toShell',
-        sbody: 'bash /www/server/xtrabackup/xtrabackup.sh \necho "xtrabackup定时执行成功" \necho $(date "+%Y-%m-%d_%H-%M-%S")',
-        backupTo: 'localhost'
-     }
-    myPost('check_xtrabackup_cron_exist', { xtrabackupCronName }, function(data){
-        var rdata = $.parseJSON(data.data);
-        // 定时任务不存在
-        if(!rdata.status) {
-            $.post('/crontab/add', params,function(rdata){
+function deleteXtrabackupCron() {
+    var id = $("#xtrabackup-cron input[name='id']").val();
+    if (id) {
+        safeMessage('确认删除', '确定删除 xtrabackup 定时任务吗', function(){
+            $.post('/crontab/del', { id },function(rdata){
+                getXtrabackupCron();
                 layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
             },'json');
-            return;
-        };
+        })
+    }
+}
+function addXtrabackupCron() {
+    var hour =  $("#xtrabackup-cron input[name='hour']").val();
+    var minute =  $("#xtrabackup-cron input[name='minute']").val();
+    $.post('/crontab/add', { ...xtrabackupCron, hour, minute },function(rdata){
+        getXtrabackupCron();
+        layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+    },'json');
+}
 
-        // 定时任务存在
-        if(rdata.status) {
-            const { id,name,type,hour,minute } = rdata.data;
-            $.post('/crontab/modify_crond', { ...params, id },function(rdata){
-                layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
-            },'json');
-            return;
-        };
-    });
+function updateXtrabackupCron() {
+    var id = $("#xtrabackup-cron input[name='id']").val();
+    var hour =  $("#xtrabackup-cron input[name='hour']").val();
+    var minute =  $("#xtrabackup-cron input[name='minute']").val();
+    if (id) {
+        $.post('/crontab/modify_crond', { ...xtrabackupCron, id, hour, minute },function(rdata){
+            getXtrabackupCron();
+            layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+        },'json');
+    }
 }
 
 
@@ -203,12 +210,18 @@ function mysqlBackupHtml(){
     <div id="xtrabackup-cron">
         <span>每天</span>
         <span>
+            <input type="hidden" name="id" value="">
             <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">
             <span class="name">:</span>
             <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">
         </span>
         <span>定时执行备份</span>
-        <button class="btn btn-success btn-sm va0" onclick="saveXtrabackupCron();">保存</button>
+        <button id="xtrabackup-cron-add" style="display: none;"
+            class="btn btn-success btn-sm va0" onclick="addXtrabackupCron();">创建</button>
+        <button id="xtrabackup-cron-update" style="display: none;"
+            class="btn btn-success btn-sm va0" onclick="updateXtrabackupCron();">修改</button>
+        <button id="xtrabackup-cron-delete" style="display: none;"
+            class="btn btn-danger btn-sm va0" onclick="deleteXtrabackupCron();">删除</button>
     </div>
     <div class="divtable">\
         \
@@ -228,7 +241,7 @@ function mysqlBackupHtml(){
     </div>`;
     $(".soft-man-con").html(con);
     setTimeout(() => {
-        checkXtrabackupCronExist();
+        getXtrabackupCron();
     }, 300)
     
 	myPost('backup_list',{}, function(data){

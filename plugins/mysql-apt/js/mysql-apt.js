@@ -341,6 +341,7 @@ function mySQLMemOpt(opt) {
             if (query_size) $("input[name='query_cache_size']").val(64);
             $("input[name='tmp_table_size']").val(64);
             $("input[name='innodb_buffer_pool_size']").val(256);
+            $("input[name='innodb_log_buffer_size']").val(32);
             $("input[name='sort_buffer_size']").val(768);
             $("input[name='read_buffer_size']").val(768);
             $("input[name='read_rnd_buffer_size']").val(512);
@@ -356,6 +357,7 @@ function mySQLMemOpt(opt) {
             if (query_size) $("input[name='query_cache_size']").val(128);
             $("input[name='tmp_table_size']").val(384);
             $("input[name='innodb_buffer_pool_size']").val(384);
+            $("input[name='innodb_log_buffer_size']").val(32);
             $("input[name='sort_buffer_size']").val(768);
             $("input[name='read_buffer_size']").val(768);
             $("input[name='read_rnd_buffer_size']").val(512);
@@ -371,6 +373,7 @@ function mySQLMemOpt(opt) {
             if (query_size) $("input[name='query_cache_size']").val(192);
             $("input[name='tmp_table_size']").val(512);
             $("input[name='innodb_buffer_pool_size']").val(512);
+            $("input[name='innodb_log_buffer_size']").val(32);
             $("input[name='sort_buffer_size']").val(1024);
             $("input[name='read_buffer_size']").val(1024);
             $("input[name='read_rnd_buffer_size']").val(768);
@@ -386,6 +389,7 @@ function mySQLMemOpt(opt) {
             if (query_size) $("input[name='query_cache_size']").val(256);
             $("input[name='tmp_table_size']").val(1024);
             $("input[name='innodb_buffer_pool_size']").val(1024);
+            $("input[name='innodb_log_buffer_size']").val(32);
             $("input[name='sort_buffer_size']").val(2048);
             $("input[name='read_buffer_size']").val(2048);
             $("input[name='read_rnd_buffer_size']").val(1024);
@@ -401,6 +405,7 @@ function mySQLMemOpt(opt) {
             if (query_size) $("input[name='query_cache_size']").val(384);
             $("input[name='tmp_table_size']").val(2048);
             $("input[name='innodb_buffer_pool_size']").val(4096);
+            $("input[name='innodb_log_buffer_size']").val(32);
             $("input[name='sort_buffer_size']").val(4096);
             $("input[name='read_buffer_size']").val(4096);
             $("input[name='read_rnd_buffer_size']").val(2048);

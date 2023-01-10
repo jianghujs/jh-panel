@@ -585,6 +585,7 @@ def setDbStatusBySystemMemory(version):
             'key_buffer_size': 1024,
             'query_cache_size': 384, 
             'tmp_table_size': 2048, 
+            'max_heap_table_size': 2048, 
             'innodb_buffer_pool_size': 4096, 
             'innodb_log_buffer_size': 32, 
             'sort_buffer_size': 4096, 
@@ -602,6 +603,7 @@ def setDbStatusBySystemMemory(version):
             'key_buffer_size': 512,
             'query_cache_size': 256, 
             'tmp_table_size': 1024, 
+            'max_heap_table_size': 1024, 
             'innodb_buffer_pool_size': 1024, 
             'innodb_log_buffer_size': 32, 
             'sort_buffer_size': 2048, 
@@ -619,6 +621,7 @@ def setDbStatusBySystemMemory(version):
             'key_buffer_size': 384,
             'query_cache_size': 192, 
             'tmp_table_size': 512, 
+            'max_heap_table_size': 512, 
             'innodb_buffer_pool_size': 512, 
             'innodb_log_buffer_size': 32, 
             'sort_buffer_size': 1024, 
@@ -636,6 +639,7 @@ def setDbStatusBySystemMemory(version):
             'key_buffer_size': 256,
             'query_cache_size': 128, 
             'tmp_table_size': 384, 
+            'max_heap_table_size': 384, 
             'innodb_buffer_pool_size': 384, 
             'innodb_log_buffer_size': 32, 
             'sort_buffer_size': 768, 
@@ -653,6 +657,7 @@ def setDbStatusBySystemMemory(version):
             'key_buffer_size': 128,
             'query_cache_size': 64, 
             'tmp_table_size': 64, 
+            'max_heap_table_size': 64, 
             'innodb_buffer_pool_size': 256, 
             'innodb_log_buffer_size': 32, 
             'sort_buffer_size': 768, 
@@ -670,6 +675,7 @@ def setDbStatusBySystemMemory(version):
             'key_buffer_size': 8,
             'query_cache_size': 4, 
             'tmp_table_size': 8, 
+            'max_heap_table_size': 8, 
             'innodb_buffer_pool_size': 16, 
             'innodb_log_buffer_size': 32, 
             'sort_buffer_size': 256, 
@@ -682,6 +688,7 @@ def setDbStatusBySystemMemory(version):
             'table_open_cache': 32, 
             'max_connections': 100, 
         }
+
 
     gets = ['key_buffer_size', 'tmp_table_size', 'max_heap_table_size', 'innodb_buffer_pool_size', 'innodb_log_buffer_size', 'max_connections',
             'table_open_cache', 'thread_cache_size', 'sort_buffer_size', 'read_buffer_size', 'read_rnd_buffer_size', 'join_buffer_size', 'thread_stack', 'binlog_cache_size']
@@ -706,7 +713,7 @@ def setDbStatusBySystemMemory(version):
         if g in emptys:
             s = ''
         rep = '\s*' + g + '\s*=\s*\d+(M|K|k|m|G)?\n'
-        c = g + ' = ' + args[g] + s + '\n'
+        c = g + ' = ' + str(args[g]) + s + '\n'
         if content.find(g) != -1:
             content = re.sub(rep, '\n' + c, content, 1)
         else:
@@ -2558,7 +2565,7 @@ if __name__ == "__main__":
     elif func == 'initd_status':
         print(initdStatus())
     elif func == 'set_db_status_by_system_memory':
-        print(setDbStatusBySystemMemory())    
+        print(setDbStatusBySystemMemory(version))    
     elif func == 'initd_install':
         print(initdInstall())
     elif func == 'initd_uninstall':

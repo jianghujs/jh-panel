@@ -49,6 +49,7 @@ sh -x $curPath/versions/$2/install.sh $1
 
 if [ "${action}" == "install" ];then
 # 	#初始化 
+	cd ${rootPath} && python3 ${rootPath}/plugins/mysql-apt/index.py set_db_status_by_system_memory ${type}
 	cd ${rootPath} && python3 ${rootPath}/plugins/mysql-apt/index.py start ${type}
 	cd ${rootPath} && python3 ${rootPath}/plugins/mysql-apt/index.py initd_install ${type}
 fi

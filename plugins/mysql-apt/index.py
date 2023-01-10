@@ -7,6 +7,7 @@ import time
 import subprocess
 import re
 import json
+import psutil
 
 
 # reload(sys)
@@ -574,6 +575,145 @@ def myDbStatus(version):
                 result['mem'][g] = d["Value"]
     return mw.getJson(result)
 
+def setDbStatusBySystemMemory(version):
+    pc_mem =psutil.virtual_memory()
+    div_gb_factor =(1024.0 ** 3)
+    pc_mem_g = float('%.2f' % (pc_mem.total/div_gb_factor))
+    args = {}
+    if pc_mem_g > 16:
+        args = {
+            'key_buffer_size': 1024,
+            'query_cache_size': 384, 
+            'tmp_table_size': 2048, 
+            'innodb_buffer_pool_size': 4096, 
+            'innodb_log_buffer_size': 32, 
+            'sort_buffer_size': 4096, 
+            'read_buffer_size': 4096, 
+            'read_rnd_buffer_size': 2048, 
+            'join_buffer_size': 8192, 
+            'thread_stack': 512, 
+            'binlog_cache_size': 256, 
+            'thread_cache_size': 256, 
+            'table_open_cache': 2048, 
+            'max_connections': 500, 
+        }
+    elif pc_mem_g > 8:
+        args = {
+            'key_buffer_size': 512,
+            'query_cache_size': 256, 
+            'tmp_table_size': 1024, 
+            'innodb_buffer_pool_size': 1024, 
+            'innodb_log_buffer_size': 32, 
+            'sort_buffer_size': 2048, 
+            'read_buffer_size': 2048, 
+            'read_rnd_buffer_size': 1024, 
+            'join_buffer_size': 4096, 
+            'thread_stack': 384, 
+            'binlog_cache_size': 192, 
+            'thread_cache_size': 192, 
+            'table_open_cache': 1024, 
+            'max_connections': 400, 
+        }
+    elif pc_mem_g > 4:
+        args = {
+            'key_buffer_size': 384,
+            'query_cache_size': 192, 
+            'tmp_table_size': 512, 
+            'innodb_buffer_pool_size': 512, 
+            'innodb_log_buffer_size': 32, 
+            'sort_buffer_size': 1024, 
+            'read_buffer_size': 1024, 
+            'read_rnd_buffer_size': 768, 
+            'join_buffer_size': 2048, 
+            'thread_stack': 256, 
+            'binlog_cache_size': 128, 
+            'thread_cache_size': 128, 
+            'table_open_cache': 384, 
+            'max_connections': 300, 
+        }
+    elif pc_mem_g > 1.7:    
+        args = {
+            'key_buffer_size': 256,
+            'query_cache_size': 128, 
+            'tmp_table_size': 384, 
+            'innodb_buffer_pool_size': 384, 
+            'innodb_log_buffer_size': 32, 
+            'sort_buffer_size': 768, 
+            'read_buffer_size': 768, 
+            'read_rnd_buffer_size': 512, 
+            'join_buffer_size': 2048, 
+            'thread_stack': 256, 
+            'binlog_cache_size': 64, 
+            'thread_cache_size': 96, 
+            'table_open_cache': 192, 
+            'max_connections': 200, 
+        }
+    elif pc_mem_g > 0.8:    
+        args = {
+            'key_buffer_size': 128,
+            'query_cache_size': 64, 
+            'tmp_table_size': 64, 
+            'innodb_buffer_pool_size': 256, 
+            'innodb_log_buffer_size': 32, 
+            'sort_buffer_size': 768, 
+            'read_buffer_size': 768, 
+            'read_rnd_buffer_size': 512, 
+            'join_buffer_size': 1024, 
+            'thread_stack': 256, 
+            'binlog_cache_size': 64, 
+            'thread_cache_size': 64, 
+            'table_open_cache': 128, 
+            'max_connections': 100, 
+        }
+    else: 
+        args = {
+            'key_buffer_size': 8,
+            'query_cache_size': 4, 
+            'tmp_table_size': 8, 
+            'innodb_buffer_pool_size': 16, 
+            'innodb_log_buffer_size': 32, 
+            'sort_buffer_size': 256, 
+            'read_buffer_size': 256, 
+            'read_rnd_buffer_size': 128, 
+            'join_buffer_size': 128, 
+            'thread_stack': 256, 
+            'binlog_cache_size': 32, 
+            'thread_cache_size': 4, 
+            'table_open_cache': 32, 
+            'max_connections': 100, 
+        }
+
+    gets = ['key_buffer_size', 'tmp_table_size', 'max_heap_table_size', 'innodb_buffer_pool_size', 'innodb_log_buffer_size', 'max_connections',
+            'table_open_cache', 'thread_cache_size', 'sort_buffer_size', 'read_buffer_size', 'read_rnd_buffer_size', 'join_buffer_size', 'thread_stack', 'binlog_cache_size']
+
+    if version != "8.0":
+        # gets.append('query_cache_size')
+        gets = ['key_buffer_size', 'query_cache_size', 'tmp_table_size', 'max_heap_table_size', 'innodb_buffer_pool_size', 'innodb_log_buffer_size', 'max_connections',
+                'table_open_cache', 'thread_cache_size', 'sort_buffer_size', 'read_buffer_size', 'read_rnd_buffer_size', 'join_buffer_size', 'thread_stack', 'binlog_cache_size']
+
+
+
+    # print(gets)
+    emptys = ['max_connections', 'thread_cache_size', 'table_open_cache']
+    # args = getArgs()
+    conFile = getConf()
+    content = mw.readFile(conFile)
+    n = 0
+    for g in gets:
+        s = 'M'
+        if n > 5:
+            s = 'K'
+        if g in emptys:
+            s = ''
+        rep = '\s*' + g + '\s*=\s*\d+(M|K|k|m|G)?\n'
+        c = g + ' = ' + args[g] + s + '\n'
+        if content.find(g) != -1:
+            content = re.sub(rep, '\n' + c, content, 1)
+        else:
+            content = content.replace('[mysqld]\n', '[mysqld]\n' + c)
+        n += 1
+    mw.writeFile(conFile, content)
+    return mw.returnJson(True, '设置成功!')
 
 def setDbStatus(version):
     gets = ['key_buffer_size', 'tmp_table_size', 'max_heap_table_size', 'innodb_buffer_pool_size', 'innodb_log_buffer_size', 'max_connections',
@@ -2417,6 +2557,8 @@ if __name__ == "__main__":
         print(reload(version))
     elif func == 'initd_status':
         print(initdStatus())
+    elif func == 'set_db_status_by_system_memory':
+        print(setDbStatusBySystemMemory())    
     elif func == 'initd_install':
         print(initdInstall())
     elif func == 'initd_uninstall':

@@ -3,6 +3,11 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 rm -rf /www/backup/xtrabackup_data/
 mkdir -p /www/backup/xtrabackup_data
 xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=/www/backup/xtrabackup_data &>> /www/wwwlogs/xtrabackup.log
-mkdir -p /www/backup/xtrabackup_data_history
-zip -q -r /www/backup/xtrabackup_data_history/xtrabackup_data_$timestamp.zip /www/backup/xtrabackup_data
-echo "  backup file output====>  /www/backup/xtrabackup_data_history/xtrabackup_data_$timestamp.zip"
+if [ -d "/www/backup/xtrabackup_data/mysql" ];then
+    mkdir -p /www/backup/xtrabackup_data_history
+    zip -q -r /www/backup/xtrabackup_data_history/xtrabackup_data_$timestamp.zip /www/backup/xtrabackup_data
+    echo "backup file output====>  /www/backup/xtrabackup_data_history/xtrabackup_data_$timestamp.zip"
+    echo "备份成功 $timestamp"
+else
+    echo "备份失败 $timestamp"
+fi

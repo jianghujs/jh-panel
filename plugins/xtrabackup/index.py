@@ -127,11 +127,11 @@ def doMysqlBackup():
     log_file = runLog()
     xtrabackupScript = getServerDir() + '/xtrabackup.sh'
     mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份开始" >> ' + log_file)
-    execResult = mw.execShell("sh %(xtrabackupScript)s >> %(logFile)s" % {'xtrabackupScript': xtrabackupScript, 'logFile': log_file })
-    if execResult[1]:
-        return mw.returnJson(False, '备份失败!' + execResult[1])
-    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份成功" >> ' + log_file)
-    return mw.returnJson(True, '备份成功!')
+    mw.execShell("sh %(xtrabackupScript)s >> %(logFile)s" % {'xtrabackupScript': xtrabackupScript, 'logFile': log_file })
+    execResult = mw.execShell("tail -n 1 " + log_file)
+    if "备份成功" in execResult[0]:
+        return mw.returnJson(True, execResult[0])
+    return mw.returnJson(False, execResult[0])
 
 
 def backupList():

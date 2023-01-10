@@ -129,8 +129,14 @@ def doMysqlBackup():
     mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份开始" >> ' + log_file)
     mw.execShell("sh %(xtrabackupScript)s >> %(logFile)s" % {'xtrabackupScript': xtrabackupScript, 'logFile': log_file })
     execResult = mw.execShell("tail -n 1 " + log_file)
+    
     if "备份成功" in execResult[0]:
         return mw.returnJson(True, execResult[0])
+
+    # Tip: 兼容 老版本的 xtrabackup.sh; 未来可以删除
+    if os.path.exists('/www/backup/xtrabackup_data/mysql'):
+        return mw.returnJson(True, '备份成功')    
+        
     return mw.returnJson(False, execResult[0])
 
 

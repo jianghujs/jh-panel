@@ -160,6 +160,7 @@ function doMysqlBackup() {
         var rdata = $.parseJSON(data.data);
         if(!rdata.status) {
             layer.msg(rdata.msg,{icon:2, time:2000});
+            mysqlBackupHtml();
             return;
         };
         layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
@@ -192,17 +193,26 @@ function doRecoveryBackup(filename) {
 }
 
 function doDeleteBackup(filename) {
-    safeMessage('确认删除备份文件', '确认后[' + filename + ']文件不可恢复，请谨慎操作！', function(){
-        myPost('do_delete_backup', {filename}, function(data){
-            var rdata = $.parseJSON(data.data);
-            if(!rdata.status) {
-                layer.msg(rdata.msg,{icon:2, time:2000});
-                return;
-            };
-            mysqlBackupHtml();
-            layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
-        });
+    myPost('do_delete_backup', {filename}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            layer.msg(rdata.msg,{icon:2, time:2000});
+            return;
+        };
+        mysqlBackupHtml();
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
     });
+    // safeMessage('确认删除备份文件', '确认后[' + filename + ']文件不可恢复，请谨慎操作！', function(){
+    //     myPost('do_delete_backup', {filename}, function(data){
+    //         var rdata = $.parseJSON(data.data);
+    //         if(!rdata.status) {
+    //             layer.msg(rdata.msg,{icon:2, time:2000});
+    //             return;
+    //         };
+    //         mysqlBackupHtml();
+    //         layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+    //     });
+    // });
 }
 
 function mysqlBackupHtml(){

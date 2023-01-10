@@ -325,6 +325,7 @@ function mySQLMemOpt(opt) {
             if (query_size) $("input[name='query_cache_size']").val(4);
             $("input[name='tmp_table_size']").val(8);
             $("input[name='innodb_buffer_pool_size']").val(16);
+            $("input[name='innodb_log_buffer_size']").val(32);
             $("input[name='sort_buffer_size']").val(256);
             $("input[name='read_buffer_size']").val(256);
             $("input[name='read_rnd_buffer_size']").val(128);

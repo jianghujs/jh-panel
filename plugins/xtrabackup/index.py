@@ -83,6 +83,46 @@ def getSetting():
         'password': password_tmp
     })
 
+def changeSetting():
+    args = getArgs()
+    data = checkArgs(args, ['port', 'user', 'password'])
+    if not data[0]:
+        return data[1]
+
+    port = args['port']
+    user = args['user']
+    password = args['password']
+    file = getConf()
+    content = mw.readFile(file)
+    
+    port_rep = '--port\s*=\s*(.*?) '
+    content = re.sub(port_rep, '--port=' + port + ' ', content)
+    user_rep = '--user\s*=\s*(.*?) '
+    content = re.sub(user_rep, '--user=' + user + ' ', content)
+    password_rep = '--password\s*=\s*(.*?) '
+    content = re.sub(password_rep, '--password=' + password + ' ', content)
+    mw.writeFile(file, content)
+    return mw.returnJson(True, '编辑成功!')
+
+def testSetting():
+    args = getArgs()
+    data = checkArgs(args, ['port', 'user', 'password'])
+    if not data[0]:
+        return data[1]
+
+    port = args['port']
+    user = args['user']
+    password = args['password']
+    db = mw.getMyORM()
+    db.setPort(port)
+    # db.setSocket(getSocketFile())
+    db.setPwd(password)
+    mysqlMsg = str(db.query('show databases'))
+    if mysqlMsg != None:
+        if "1045" in mysqlMsg:
+            return mw.returnJson(False, '连接错误!')
+    return mw.returnJson(True, '连接成功!')
+
 def doMysqlBackup():
     log_file = runLog()
     xtrabackupScript = getServerDir() + '/xtrabackup.sh'
@@ -165,6 +205,10 @@ if __name__ == "__main__":
         print(checkXtrabackupCronExist())
     elif func == 'get_setting':
         print(getSetting())     
+    elif func == 'change_setting':
+        print(changeSetting())   
+    elif func == 'test_setting':
+        print(testSetting())     
     elif func == 'do_mysql_backup':
         print(doMysqlBackup())
     elif func == 'backup_list':

@@ -1,0 +1,15 @@
+{
+	"title":"Docker管理器",
+	"tip":"soft",
+	"name":"docker",
+	"ps":"Docker 是一个开源的应用容器引擎",
+	"versions":"20.10.6",
+	"updates":"20.10.6",
+	"shell":"install.sh",
+	"checks":"server/docker",
+	"path": "server/docker",
+	"author":"jianghujs",
+	"home":"https://cn.jianghujs.org/",
+	"date":"2023-01-11",
+	"pid": "-1"
+}

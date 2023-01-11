@@ -1,16 +1,16 @@
-# host
+# docker
 
 ## 执行脚本
-1. host列表
+1. 仓库列表
 ```
-python3 /www/server/jh-panel/plugins/host/index.py host_list 
+python3 /www/server/mdserver-web/plugins/docker/index.py repository_list 
 ```
-2. host文件内容
+2. 添加仓库
 ```
-python3 /www/server/jh-panel/plugins/host/index.py host_file
+python3 /www/server/mdserver-web/plugins/docker/index.py repository_add {"user_name":"","user_pass":"","registry":"","hub_name":"test","namespace":"","repository_name":"DockerHub2"}
 ```
-3. 编辑host
+
+9. 删除
 ```
-python3 /www/server/jh-panel/plugins/host/index.py host_edit {"ip":"::1","domain":"localhost ip6-localhost ip6-loopback","original":"::1     
-localhost ip6-localhost ip6-loopback"}
+python3 /www/server/jh-panel/plugins/jianghujs/index.py repository_delete {id:1}
 ```

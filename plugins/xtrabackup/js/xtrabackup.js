@@ -159,8 +159,8 @@ function doMysqlBackup() {
     myPost('do_mysql_backup', {}, function(data){
         var rdata = $.parseJSON(data.data);
         if(!rdata.status) {
-            layer.msg(rdata.msg,{icon:2, time:2000});
             mysqlBackupHtml();
+            layer.msg(rdata.msg,{icon:2, time:2000});
             return;
         };
         mysqlBackupHtml();

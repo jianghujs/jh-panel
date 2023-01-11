@@ -163,8 +163,8 @@ function doMysqlBackup() {
             mysqlBackupHtml();
             return;
         };
-        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
         mysqlBackupHtml();
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
     });
 }
 

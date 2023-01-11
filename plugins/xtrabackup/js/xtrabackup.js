@@ -160,11 +160,15 @@ function doMysqlBackup() {
         var rdata = $.parseJSON(data.data);
         if(!rdata.status) {
             mysqlBackupHtml();
-            layer.msg(rdata.msg,{icon:2, time:2000});
+            setTimeout(() => {
+                layer.msg(rdata.msg,{icon:2, time:2000});
+            }, 500)
             return;
         };
         mysqlBackupHtml();
-        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+        setTimeout(() => {
+            layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+        }, 500)
     });
 }
 

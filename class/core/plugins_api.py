@@ -108,7 +108,7 @@ class plugins_api:
 
         plugin_names = {
             'openresty': '1.21.4.1',
-            'swap': '1.1',
+            # 'swap': '1.1',
             'mysql-apt': '5.7',
             # 'mysql': '5.7',
             'xtrabackup': '1.0',
@@ -149,6 +149,8 @@ class plugins_api:
                 self.hookInstall(pluginInfo)
                 execstr = 'cd ' + mw.getPluginDir() + '/' + name + ' && bash ' + \
                     pluginInfo['shell'] + ' install ' + version
+    
+                self.addIndex(name, version)
 
                 taskAdd = ('安装[' + name + '-' + version + ']',
                            'execshell', '0', time.strftime('%Y-%m-%d %H:%M:%S'), execstr)

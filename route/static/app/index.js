@@ -948,6 +948,7 @@ function pluginInit(){
                             if (data.status){
                                 layer.closeAll();
                                 messageBox();
+                                indexSoft();
                             }
                         },{ icon: data.status ? 1 : 2 },2000);
                     },'json');

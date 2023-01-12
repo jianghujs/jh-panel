@@ -90,10 +90,8 @@ def getSqliteDb(tablename='tablename'):
     return conn
 
 def status():
-    status_test = mw.execShell('systemctl status docker')
-    ret = 'active (running)'
-    ret2 = re.findall(ret, str(status_test))
-    return 'start' if len(ret2) == 0 else 'stop'
+    status_exec = mw.execShell('systemctl status docker | grep running')
+    return 'stop' if status_exec[0] == '' else 'start'
 
 def start():
     getSqliteDb()

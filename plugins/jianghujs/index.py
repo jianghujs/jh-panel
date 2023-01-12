@@ -104,7 +104,10 @@ def projectScriptExcute():
 
     # os.system('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
     # os.system(scriptFile + ' >> ' + logFile + ' 2>&1')
-    data = mw.execShell('source /root/.bashrc && nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
+
+    # data = mw.execShell('source /root/.bashrc && nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
+    
+    data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
 
     return mw.returnJson(True, '执行成功!')
     
@@ -197,6 +200,13 @@ def projectList():
         statusCmd = "ps -ef|grep " + path + " |grep -v grep | grep -v python | awk '{print $2}'"
         statusExec = mw.execShell(statusCmd)
         item['status'] = 'stop' if statusExec[0] == '' else 'start'
+
+        # loadingStatus
+        loadingStatusCmd = "ls -R %s/script | grep %s_status" % (getServerDir() , echo) 
+        loadingStatusExec = mw.execShell(loadingStatusCmd)
+        if loadingStatusExec[0] != '':
+            item['loadingStatus'] = mw.readFile(getServerDir() + '/script/' + echo + '_status')
+
     return mw.returnJson(True, 'ok', data)
 
 def projectToggleAutostart():
@@ -245,9 +255,11 @@ def projectAdd():
         'name,path,start_script,reload_script,stop_script,autostart_script,create_time,echo',
         ( name, path, startScript, reloadScript, stopScript, autostartScript, int(time.time()), echo )
     )
-    makeScriptFile(echo + '_start.sh', startScript)
-    makeScriptFile(echo + '_reload.sh', reloadScript)
-    makeScriptFile(echo + '_stop.sh', stopScript)
+    statusFile = '%s/script/%s_status' % (getServerDir(), echo)
+    makeScriptFile(echo + '_start.sh', 'touch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
+    makeScriptFile(echo + '_reload.sh', 'touch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))
+    makeScriptFile(echo + '_stop.sh', 'touch %s\necho "停止中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, stopScript, statusFile))
+    
     return mw.returnJson(True, '添加成功!')
 
 def projectEdit():
@@ -263,6 +275,7 @@ def projectEdit():
     stopScript = getScriptArg('stopScript')
     autostartScript = getScriptArg('autostartScript')
     conn = getSqliteDb('project')
+    echo = conn.where('id=?', (id,)).getField('echo')
     conn.where('id=?', (id,)).update({
         'name': name,
         'path': path,
@@ -271,9 +284,10 @@ def projectEdit():
         'stop_script': stopScript,
         'autostart_script': autostartScript
     })
-    makeScriptFile(echo + '_start.sh', startScript)
-    makeScriptFile(echo + '_reload.sh', reloadScript)
-    makeScriptFile(echo + '_stop.sh', stopScript)
+    statusFile = '%s/script/%s_status' % (getServerDir(), echo)
+    makeScriptFile(echo + '_start.sh', 'touch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
+    makeScriptFile(echo + '_reload.sh', 'touch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))
+    makeScriptFile(echo + '_stop.sh', 'touch %s\necho "停止中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, stopScript, statusFile))
     return mw.returnJson(True, '修改成功!')
 
 def getScriptArg(arg):

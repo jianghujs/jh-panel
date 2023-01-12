@@ -39,18 +39,27 @@ function refreshTable() {
         tableData = tmp;
         for(var i=0;i<tmp.length;i++){
             var opt = '';
-            if(tmp[i].status != 'start'){
-                opt += '<a href="javascript:projectScriptExcute(\'start\', \''+tmp[i].id+'\')" class="btlink">启动</a> | ';
-            }else{
-                opt += '<a href="javascript:projectScriptExcute(\'stop\', \''+tmp[i].id+'\')" class="btlink">停止</a> | ';
-                opt += '<a href="javascript:projectScriptExcute(\'reload\', \''+tmp[i].id+'\')" class="btlink">重启</a> | ';
+            if(!tmp[i].loadingStatus) {
+                if(tmp[i].status != 'start'){
+                    opt += '<a href="javascript:projectScriptExcute(\'start\', \''+tmp[i].id+'\')" class="btlink">启动</a> | ';
+                }else{
+                    opt += '<a href="javascript:projectScriptExcute(\'stop\', \''+tmp[i].id+'\')" class="btlink">停止</a> | ';
+                    opt += '<a href="javascript:projectScriptExcute(\'reload\', \''+tmp[i].id+'\')" class="btlink">重启</a> | ';
+                }
             }
             tmp[i].path = tmp[i].path.replace('//','');
             
-            var status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
-            if(tmp[i].status != 'start'){
-                status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
+            var status = '';
+            if(tmp[i].loadingStatus) {
+                status = '<span style="color:#cecece;">' + tmp[i].loadingStatus + '</span>';
+            } else {
+                if(tmp[i].status != 'start'){
+                    status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
+                } else {
+                    status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
+                }
             }
+            
 
             var autostart = '';
             var autostartChecked = tmp[i].autostartStatus == 'start'? 'checked' : '';
@@ -62,7 +71,7 @@ function refreshTable() {
                         <td style="width: 180px;">'+tmp[i].path+'</td>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>\
                         <td style="width: 100px;">'+autostart+'</td>\
-                        <td style="width: 60px;">'+status+'</td>\
+                        <td style="width: 100px;">'+status+'</td>\
                         <td style="text-align: right;width: 280px;">\
                             '+opt+
                             '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 

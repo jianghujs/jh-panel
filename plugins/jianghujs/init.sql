@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `project` (
     `start_script` TEXT,
     `reload_script` TEXT,
     `stop_script` TEXT,
+    `autostart_script` TEXT,
     `echo` TEXT,
     `create_time` INTEGER
 );

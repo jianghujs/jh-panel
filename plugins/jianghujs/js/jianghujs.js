@@ -8,12 +8,13 @@ var refreshTableTask = null;
 function refreshTable() {
     let firstLoad = $('.soft-man-con').html() == '';
 	var con = '\
-    <div class="divtable" style="width:620px;">\
+    <div class="divtable">\
         <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">添加项目</button>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
                 <th>目录</th>\
                 <th>名称</th>\
+                <th>开机自启</th>\
                 <th>状态</th>\
                 <th style="text-align: right;" width="150">操作</th></tr>\
             </thead>\
@@ -50,12 +51,19 @@ function refreshTable() {
             if(tmp[i].status != 'start'){
                 status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
             }
+
+            var autostart = '';
+            var autostartChecked = tmp[i].autostartStatus == 'start'? 'checked' : '';
+            autostart = '<div class="autostart-item">\
+                <input class="btswitch btswitch-ios" id="autostart_' + tmp[i].id + '" type="checkbox" ' + autostartChecked + '>\
+                <label class="btswitch-btn" for="autostart_' + tmp[i].id + '" onclick="toggleAutostart(\'' + tmp[i].id + '\')"></label></div>';
             
             tbody += '<tr>\
                         <td style="width: 180px;">'+tmp[i].path+'</td>\
-                        <td style="width: 150px;">'+tmp[i].name+'</td>\
+                        <td style="width: 180px;">'+tmp[i].name+'</td>\
+                        <td style="width: 100px;">'+autostart+'</td>\
                         <td style="width: 60px;">'+status+'</td>\
-                        <td style="text-align: right;width: 260px;">\
+                        <td style="text-align: right;width: 280px;">\
                             '+opt+
                             '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
                             '<a href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
@@ -86,6 +94,17 @@ function startRefreshTableTask() {
 $(document).on('jianghujsPluginClose', function(e){
     clearRefreshTableTask();
 });
+
+function toggleAutostart(id) {
+    requestApi('project_toggle_autostart', {id}, function(data){
+    	var rdata = $.parseJSON(data.data);
+        if(rdata.status) {
+            layer.close(addLayer);
+            refreshTable();
+        }
+        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+    });
+}
 
 function openCreateItem() {
     addLayer = layer.open({
@@ -127,6 +146,12 @@ function openCreateItem() {
                 <span class='tname'>停止脚本</span>\
                 <div class='info-r c4'>\
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>自启动脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
             </div>\
             <div class='bt-form-submit-btn'>\
@@ -194,6 +219,12 @@ function openEditItem(id) {
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
             </div>\
+            <div class='line'>\
+                <span class='tname'>自启动脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                </div>\
+            </div>\
             <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(editLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitEditItem()\">提交</button>\
@@ -204,6 +235,7 @@ function openEditItem(id) {
     $('#projectStartScript').val(editItem.start_script);
     $('#projectReloadScript').val(editItem.reload_script);
     $('#projectStopScript').val(editItem.stop_script);
+    $('#projectAutostartScript').val(editItem.autostart_script);
 }
 
 function submitEditItem(){
@@ -272,10 +304,27 @@ function handlePathChange() {
     let startScript = 'cd ' + path + '\nnpm i\nnpm start';
     let reloadScript = 'cd ' + path + '\nnpm stop\nnpm start';
     let stopScript = 'cd ' + path + '\nnpm stop';
+    let autostartScript = '\
+#! /bin/sh\n\
+### BEGIN INIT INFO\n\
+# Provides: OnceDoc\n\
+# Required-Start: $network $remote_fs $local_fs\n\
+# Required-Stop: $network $remote_fs $local_fs\n\
+# Default-Start: 2 3 4 5\n\
+# Default-Stop: 0 1 6\n\
+# Short-Description: start and stop node\n\
+# Description: OnceDoc\n\
+### END INIT INFO\n\
+NPM_EXE=/usr/bin/npm\n\
+WEB_DIR=' + path + '\n\
+cd $WEB_DIR\n\
+$NPM_EXE start\n\
+    ';
     $('#projectName').val(name);
     $('#projectStartScript').val(startScript);
     $('#projectReloadScript').val(reloadScript);
     $('#projectStopScript').val(stopScript);
+    $('#projectAutostartScript').val(autostartScript);
 }
 
 function openProjectLogs(id){

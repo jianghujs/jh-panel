@@ -183,19 +183,54 @@ def projectUpdate():
 
 def projectList():
     conn = getSqliteDb('project')
-    data = conn.field('id,name,path,start_script,reload_script,stop_script,create_time').select()
+    data = conn.field('id,name,path,start_script,reload_script,stop_script,autostart_script,echo,create_time').select()
     for item in data:
         path = item['path']
-        cmd = "ps -ef|grep " + path + " |grep -v grep | grep -v python | awk '{print $2}'"
-        exec = mw.execShell(cmd)
-        item['status'] = 'stop' if exec[0] == '' else 'start'
+        echo = item['echo']
+
+        # autostartStatus
+        autostartStatusCmd = "ls -R /etc/rc4.d | grep " + echo
+        autostartStatusExec = mw.execShell(autostartStatusCmd)
+        item['autostartStatus'] = 'stop' if autostartStatusExec[0] == '' else 'start'
+
+        # status
+        statusCmd = "ps -ef|grep " + path + " |grep -v grep | grep -v python | awk '{print $2}'"
+        statusExec = mw.execShell(statusCmd)
+        item['status'] = 'stop' if statusExec[0] == '' else 'start'
     return mw.returnJson(True, 'ok', data)
 
+def projectToggleAutostart():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    conn = getSqliteDb('project')
+    project = conn.where('id=?', (id,)).field('id,name,path,start_script,reload_script,stop_script,autostart_script,create_time,echo').find()
+    if not project:
+        return mw.returnJson(False, '项目不存在!')
+    echo = project['echo']
+    autostart_script = project['autostart_script']
+
+    # 创建自启动脚本文件
+    autostartFile = '/etc/init.d/' +  echo
+    if not os.path.exists(autostartFile):
+        mw.writeFile(autostartFile, autostart_script)
+        mw.execShell('chmod 755 ' + autostartFile)
+    
+    # 判断自启动脚本是否启用
+    autostartStatusFile = '/etc/rc4.d/S01' + echo
+    if os.path.exists(autostartStatusFile):
+        mw.execShell('update-rc.d -f ' + echo + ' remove')
+        return mw.returnJson(True, '已关闭自启动!')
+    else:
+        mw.execShell('update-rc.d ' + echo + ' defaults')
+        return mw.returnJson(True, '已开启自启动!')
 
 
 def projectAdd():
     args = getArgs()
-    data = checkArgs(args, ['name', 'path', 'startScript', 'reloadScript', 'stopScript'])
+    data = checkArgs(args, ['name', 'path', 'startScript', 'reloadScript', 'stopScript', 'autostartScript'])
     if not data[0]:
         return data[1]
     name = args['name']
@@ -203,11 +238,12 @@ def projectAdd():
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
+    autostartScript = getScriptArg('autostartScript')
     echo =  mw.md5(str(time.time()) + '_jianghujs')
     conn = getSqliteDb('project')
     data = conn.add(
-        'name,path,start_script,reload_script,stop_script,create_time,echo',
-        ( name, path, startScript, reloadScript, stopScript, int(time.time()), echo )
+        'name,path,start_script,reload_script,stop_script,autostart_script,create_time,echo',
+        ( name, path, startScript, reloadScript, stopScript, autostartScript, int(time.time()), echo )
     )
     makeScriptFile(echo + '_start.sh', startScript)
     makeScriptFile(echo + '_reload.sh', reloadScript)
@@ -216,7 +252,7 @@ def projectAdd():
 
 def projectEdit():
     args = getArgs()
-    data = checkArgs(args, ['id', 'name', 'path', 'startScript', 'reloadScript', 'stopScript'])
+    data = checkArgs(args, ['id', 'name', 'path', 'startScript', 'reloadScript', 'stopScript', 'autostartScript'])
     if not data[0]:
         return data[1]
     id = args['id']
@@ -225,14 +261,19 @@ def projectEdit():
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
+    autostartScript = getScriptArg('autostartScript')
     conn = getSqliteDb('project')
     conn.where('id=?', (id,)).update({
         'name': name,
         'path': path,
         'start_script': startScript,
         'reload_script': reloadScript,
-        'stop_script': stopScript
+        'stop_script': stopScript,
+        'autostart_script': autostartScript
     })
+    makeScriptFile(echo + '_start.sh', startScript)
+    makeScriptFile(echo + '_reload.sh', reloadScript)
+    makeScriptFile(echo + '_stop.sh', stopScript)
     return mw.returnJson(True, '修改成功!')
 
 def getScriptArg(arg):
@@ -312,6 +353,8 @@ if __name__ == "__main__":
         print(projectUpdate())
     elif func == 'project_list':
         print(projectList())
+    elif func == 'project_toggle_autostart':
+        print(projectToggleAutostart())
     elif func == 'project_add':
         print(projectAdd())
     elif func == 'project_edit':

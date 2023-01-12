@@ -90,12 +90,28 @@ def getSqliteDb(tablename='tablename'):
     return conn
 
 def status():
-    return 'start'
+    status_test = mw.execShell('systemctl status docker')
+    ret = 'active (running)'
+    ret2 = re.findall(ret, str(status_test))
+    return 'start' if len(ret2) == 0 else 'stop'
 
 def start():
     getSqliteDb()
 
     mw.restartWeb()
+    return 'ok'
+
+def serviceCtl():
+    args = getArgs()
+    data = checkArgs(args, ['s_type'])
+    if not data[0]:
+        return data[1]
+    s_type = args['s_type']
+    if s_type not in ['start', 'stop', 'restart']:
+        return mw.returnJson(False, '操作不正确')
+    exec_str = 'systemctl {} docker'.format(s_type)
+    print(exec_str)
+    mw.execShell(exec_str)
     return 'ok'
 
 def repositoryList():
@@ -157,6 +173,8 @@ if __name__ == "__main__":
         print(reload())
     elif func == 'stop':
         print(pm2Stop())
+    elif func == 'service_ctl':
+        print(serviceCtl())
     elif func == 'repository_list':
         print(repositoryList())
     elif func == 'repository_add':

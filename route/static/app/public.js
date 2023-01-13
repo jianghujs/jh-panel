@@ -224,7 +224,7 @@ function changePath(d) {
 	setCookie('SetName', '');
 	var c = layer.open({
 		type: 1,
-		area: "650px",
+		area: "680px",
 		title: '选择目录',
 		closeBtn: 1,
 		shift: 5,

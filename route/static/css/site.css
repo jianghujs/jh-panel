@@ -1699,7 +1699,8 @@ html .menu .menu_exit:hover {
 }
 
 .bt-form {
-    height: 100%
+    height: 100%;
+    overflow: auto;
 }
 
 .bt-w-menu {

@@ -517,7 +517,7 @@ class config_api:
 
     # 更新面板SSL证书
     def updatePanelSslApi(self):
-        mw.execShell('rm -f ssl/input.ssl')
+        mw.execShell('rm -f %s/ssl/input.pl' % mw.getRunDir())
         mw.createSSL()
         return mw.returnJson(True, '更新SSL证书成功!')
 

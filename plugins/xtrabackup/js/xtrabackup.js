@@ -1,3 +1,4 @@
+var mysqlBackupLayer = null; // 执行备份弹窗
 function myPost(method,args,callback, title){
 
     var _args = null; 
@@ -154,9 +155,24 @@ function updateXtrabackupCron() {
     }
 }
 
+function openMysqlBackup() {
+    myPost('conf_content','', function(data) {
+		let rdata = $.parseJSON(data.data);
+        openEditCode({
+            title: '执行备份',
+            content: rdata.data,
+            width: '640px',
+            height: '400px',
+            submitBtn: '执行',
+            onSubmit: (content) => {
+                doMysqlBackup(content)
+            }
+        })
+    });
+}
 
-function doMysqlBackup() {
-    myPost('do_mysql_backup', {}, function(data){
+function doMysqlBackup(content) {
+    myPost('do_mysql_backup', {content: encodeURIComponent(content)}, function(data){
         var rdata = $.parseJSON(data.data);
         if(!rdata.status) {
             mysqlBackupHtml();
@@ -168,6 +184,9 @@ function doMysqlBackup() {
         mysqlBackupHtml();
         setTimeout(() => {
             layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+            setTimeout(() => {
+                $("#openEditCodeCloseBtn").click();
+            }, 2000)
         }, 500)
     });
 }
@@ -244,7 +263,7 @@ function mysqlBackupHtml(){
             <thead>\
                 <th>
                     备份文件
-                    <button class="btn btn-default btn-sm va0" onclick="doMysqlBackup();">备份</button>
+                    <button class="btn btn-default btn-sm va0" onclick="openMysqlBackup();">备份</button>
                 </th>\
                 <th> 文件大小</th>\
                 <th> 创建时间</th>\

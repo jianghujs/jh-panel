@@ -402,6 +402,7 @@ function getPanelSSL(){
 				</div>\
 				<div class="ssl-btn pull-left mtb15" style="width:100%">\
 					<button class="btn btn-success btn-sm" onclick="savePanelSSL()">保存</button>\
+					<button class="btn btn-sm" onclick="updatePanelSSL()">重新生成自签证书</button>\
 				</div>\
 			</div>\
 			<ul class="help-info-text c7 pull-left">\
@@ -421,6 +422,18 @@ function getPanelSSL(){
 	},'json');
 }
 
+function updatePanelSSL() {
+	var loadT = layer.msg('正在更新自签证书...',{icon:16,time:0,shade: [0.3, '#000']});
+	$.post('/config/update_panel_ssl',{},function(rdata){
+		layer.close(loadT);
+		if(rdata.status){
+			setTimeout(() => {
+				layer.closeAll();
+			}, 2000)
+		}
+		layer.msg(rdata.msg,{icon:rdata.status?1:2});
+	},'json');
+}
 
 function savePanelSSL(){
 	var data = {

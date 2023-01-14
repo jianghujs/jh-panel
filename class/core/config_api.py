@@ -515,6 +515,11 @@ class config_api:
             mw.restartMw()
             return mw.returnJson(True, '开启SSL成功，即将跳转https协议访问面板!')
 
+    # 更新面板SSL证书
+    def updatePanelSslApi(self):
+        mw.createSSL()
+        return mw.returnJson(True, '更新SSL证书成功!')
+
     def getApi(self):
         data = {}
         return mw.getJson(data)

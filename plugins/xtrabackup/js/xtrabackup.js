@@ -191,28 +191,45 @@ function doMysqlBackup(content) {
     });
 }
 
-function doRecoveryBackup(filename) {
-    safeMessage('确认恢复备份', '确认后[' + filename + ']内容将会覆盖mysql目录下的data内容，请谨慎操作！', function(){
-        myPost('do_recovery_backup', {filename}, function(data){
-            var rdata = $.parseJSON(data.data);
-            if(!rdata.status) {
-                layer.msg(rdata.msg,{icon:2, time: 6000});
-                return;
-            };
-            layer.open({
-                area: ['500px', '300px'],
-                title: '恢复成功',
-                content: rdata.msg,
-                btn: [],
-                // cancel: function(index, layero){ 
-                //     layer.close(index);
-                //     mysqlBackupHtml();
-                // } 
-            });    
-            // layer.msg(rdata.msg,{icon:1,time: 9000,shade: [0.3, '#000']});
-        });
+
+function openRecoveryBackup(filename) {
+    myPost('get_recovery_backup_script',{filename}, function(data) {
+		let rdata = $.parseJSON(data.data);
+        openEditCode({
+            title: '执行恢复',
+            content: rdata.data,
+            width: '640px',
+            height: '400px',
+            submitBtn: '执行',
+            onSubmit: (content) => {
+                doRecoveryBackup(content)
+            }
+        })
     });
-    
+}
+
+function doRecoveryBackup(content) {
+    myPost('do_recovery_backup', {content: encodeURIComponent(content)}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            mysqlBackupHtml();
+            setTimeout(() => {
+                layer.msg(rdata.msg,{icon:2, time:2000});
+            }, 500)
+            return;
+        };
+        layer.open({
+            area: ['500px', '300px'],
+            title: '恢复成功',
+            content: rdata.msg,
+            btn: [],
+            // cancel: function(index, layero){ 
+            //     layer.close(index);
+            //     mysqlBackupHtml();
+            // } 
+        });    
+        $("#openEditCodeCloseBtn").click();
+    });
 }
 
 function doDeleteBackup(filename) {
@@ -294,7 +311,7 @@ function mysqlBackupHtml(){
                         <td style="width: 240px;' + (tmp[i].size < 1024? 'color: red;': '') + '">'+tmp[i].sizeTxt+(tmp[i].size < 1024? '（无效的备份文件）': '')+'</td>\
                         <td style="width: 180px;">'+getFormatTime(tmp[i].createTime)+'</td>\
                         <td style="text-align: right;width: 60px;">' + 
-                            '<a href="javascript:doRecoveryBackup(\''+tmp[i].filename+'\')" class="btlink">恢复</a> | ' +
+                            '<a href="javascript:openRecoveryBackup(\''+tmp[i].filename+'\')" class="btlink">恢复</a> | ' +
                             '<a href="javascript:doDeleteBackup(\''+tmp[i].filename+'\')" class="btlink">删除</a>' +
                         '</td>\
                     </tr>';

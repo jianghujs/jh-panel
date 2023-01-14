@@ -133,8 +133,7 @@ def doMysqlBackup():
 
     # 写入临时文件用于执行
     tempFilePath = getServerDir() + '/xtrabackup_temp.sh'
-    # mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s\necho 备份成功' % {'content': content, 'tempFilePath': tempFilePath})
-    mw.writeFile(tempFilePath, '%(content)s\necho 备份成功' % {'content': content, 'tempFilePath': tempFilePath})
+    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s\necho 备份成功' % {'content': content, 'tempFilePath': tempFilePath})
     mw.execShell('chmod 750 ' + tempFilePath)
     # 执行脚本
     log_file = runLog()
@@ -167,7 +166,7 @@ def backupList():
                 })
     return mw.returnJson(True, 'ok', result)
 
-def doRecoveryBackup():
+def getRecoveryBackupScript():
     args = getArgs()
     data = checkArgs(args, ['filename'])
     if not data[0]:
@@ -183,20 +182,40 @@ def doRecoveryBackup():
     else :
         return mw.returnJson(False, '未检测到安装的mysql插件!')
 
-    mw.execShell('mv %s %s_%s' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
-    mw.execShell('rm -rf /www/backup/xtrabackup_data_restore')
-    mw.execShell('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s' % (filename))
-    mw.execShell('mv /www/backup/xtrabackup_data_restore/www/backup/xtrabackup_data %s' % (mysqlDir))
-    mw.execShell('chown -R mysql:mysql %s' % (mysqlDir))
-    mw.execShell('chmod -R 755 ' + mysqlDir)
+    recoveryScript = '#!/bin/bash\n'
+    recoveryScript += ('mv %s %s_%s\n' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
+    recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
+    recoveryScript += ('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s\n' % (filename))
+    recoveryScript += ('mv /www/backup/xtrabackup_data_restore/www/backup/xtrabackup_data %s \n' % (mysqlDir))
+    recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
+    recoveryScript += ('chmod -R 755 ' + mysqlDir + '\n')
     if os.path.exists('/www/server/mysql-apt'):
-        mw.execShell('systemctl restart mysql-apt')
+        recoveryScript += ('systemctl restart mysql-apt\n')
     elif os.path.exists('/www/server/mysql'):
-        mw.execShell('systemctl restart mysql')
+        recoveryScript += ('systemctl restart mysql\n')
+    return mw.returnJson(True, 'ok', recoveryScript)
 
-    return mw.returnJson(True, '恢复成功; 请前往Mysql插件 <br/>- "从服务器获取"  <br/>- 如果ROOT密码有变动👉"修复ROOT密码" <br/>Tip: 若无法找回密码, 可以使用无密码模式启动mysql, 然后再使用mysql的sql脚本设置密码。')
-    # return mw.returnJson(True, '恢复成功\n \nt\t- 若root密码有 请到mysql插件的管理列表-点击【修复ROOT密码】更新ROOT密码!!')
+def doRecoveryBackup():
+    args = getArgs()
+    content = mw.readFile(getConf())
 
+    if args['content'] is not None:
+        content = unquote(str(args['content']), 'utf-8').replace("\\n", "\n")
+
+    # 写入临时文件用于执行
+    tempFilePath = getServerDir() + '/recovery_temp.sh'
+    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s\necho 恢复成功' % {'content': content, 'tempFilePath': tempFilePath})
+    mw.execShell('chmod 750 ' + tempFilePath)
+    # 执行脚本
+    log_file = runLog()
+    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "恢复开始" >> ' + log_file)
+    mw.execShell("sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file })
+    execResult = mw.execShell("tail -n 1 " + log_file)
+    
+    if "恢复成功" in execResult[0]:
+        return mw.returnJson(True, '恢复成功; 请前往Mysql插件 <br/>- "从服务器获取"  <br/>- 如果ROOT密码有变动👉"修复ROOT密码" <br/>Tip: 若无法找回密码, 可以使用无密码模式启动mysql, 然后再使用mysql的sql脚本设置密码。')
+    
+    return mw.returnJson(False, execResult[0])
 
 def doDeleteBackup():
     args = getArgs()
@@ -236,6 +255,8 @@ if __name__ == "__main__":
         print(doMysqlBackup())
     elif func == 'backup_list':
         print(backupList())
+    elif func == 'get_recovery_backup_script':
+        print(getRecoveryBackupScript())
     elif func == 'do_recovery_backup':
         print(doRecoveryBackup())
     elif func == 'do_delete_backup':

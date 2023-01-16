@@ -170,4 +170,5 @@ plugins/v2ray
 plugins/frp
 debug.out
 
+ddb_storage/*
 

@@ -1,0 +1,13 @@
+{
+  "1673878851": {
+    "autostart_script": "#! /bin/sh\n### BEGIN INIT INFO\n# Provides: OnceDoc\n# Required-Start: $network $remote_fs $local_fs\n# Required-Stop: $network $remote_fs $local_fs\n# Default-Start: 2 3 4 5\n# Default-Stop: 0 1 6\n# Short-Description: start and stop node\n# Description: OnceDoc\n### END INIT INFO\nNPM_EXE=/usr/bin/npm\nWEB_DIR=/www/wwwroot/jianghujs-1table-crud\ncd $WEB_DIR\n$NPM_EXE start\n    ",
+    "create_time": 1673878851,
+    "echo": "c65da50d5c5498da2baa206305d35d77",
+    "id": "1673878851",
+    "name": "jianghujs-1table-crud",
+    "path": "/www/wwwroot/jianghujs-1table-crud",
+    "reload_script": "cd /www/wwwroot/jianghujs-1table-crud\nnpm stop\nnpm start",
+    "start_script": "cd /www/wwwroot/jianghujs-1table-crud\nnpm start",
+    "stop_script": "cd /www/wwwroot/jianghujs-1table-crud\nnpm stop"
+  }
+}

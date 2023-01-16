@@ -212,7 +212,7 @@ def projectUpdate():
 def projectList():
     data = getAll('project')
     for item in data:
-        path = item['path']
+        path = item['path'] 
         echo = item['echo']
 
         # autostartStatus
@@ -356,7 +356,7 @@ def projectLogs():
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
-    logFile = logPath + '/' + echo['echo'] + '.log'
+    logFile = logPath + '/' + echo + '.log'
     if not os.path.exists(logFile):
         return mw.returnJson(False, '当前日志为空!')
     log = mw.getLastLine(logFile, 500)
@@ -375,7 +375,7 @@ def projectLogsClear():
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
-    logFile = logPath + '/' + echo['echo'] + '.log'
+    logFile = logPath + '/' + echo + '.log'
     if not os.path.exists(logFile):
         return mw.returnJson(False, '当前日志为空!')
     os.system('echo "" > ' + logFile)

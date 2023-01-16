@@ -1,9 +1,7 @@
 <div class="bt-form">
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
-			<!-- <p class="bgw" onclick="refreshTable();">Host列表</p> -->
-			<!-- <p onclick="editHostFile();">编辑源文件</p> -->
-			<!-- <p onclick="pluginLogs('host','','run_log');">日志</p> -->
+			<p class="bgw" onclick="refreshTable();">脚本列表</p>
 		</div>
 		<div class="bt-w-con pd15">
 			<div class="soft-man-con"></div>
@@ -13,7 +11,7 @@
 <script type="text/javascript">
 
 resetPluginWinWidth(760);
-$.getScript( "/plugins/file?name=host&f=js/host.js", function(){
+$.getScript( "/plugins/file?name=docker&f=js/docker.js", function(){
 	// refreshTable();
 });
 </script>

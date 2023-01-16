@@ -112,11 +112,13 @@ def serviceCtl():
     mw.execShell(exec_str)
     return 'ok'
 
+# 仓库列表
 def repositoryList():
     conn = getSqliteDb('repository')
     data = conn.field('id,hub_name,registry,namespace,repository_name,create_time').select()
     return mw.returnJson(True, 'ok', data)
 
+# 检查仓库连接
 def checkRepositoryLogin(user_name, user_pass, registry):
     login_test = mw.execShell('docker login -u=%s -p %s %s' % (user_name, user_pass, registry))
     ret = 'required$|Error|未找到命令'
@@ -126,6 +128,7 @@ def checkRepositoryLogin(user_name, user_pass, registry):
     else:
         return False
 
+# 添加仓库
 def repositoryAdd():
     args = getArgs()
     # data = checkArgs(args, ['user_name', 'user_pass', 'registry', 'hub_name', 'namespace'])
@@ -148,6 +151,7 @@ def repositoryAdd():
         return mw.returnJson(True, '登陆成功')
     return mw.returnJson(False, '登陆失败')
 
+# 删除仓库
 def repositoryDelete():
     args = getArgs()
     data = checkArgs(args, ['id'])
@@ -158,6 +162,8 @@ def repositoryDelete():
     conn = getSqliteDb('repository')
     conn.delete(id)
     return mw.returnJson(True, '删除成功!')
+
+
 
 if __name__ == "__main__":
     func = sys.argv[1]

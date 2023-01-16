@@ -99,6 +99,7 @@ def start():
     mw.restartWeb()
     return 'ok'
 
+# 服务控制
 def serviceCtl():
     args = getArgs()
     data = checkArgs(args, ['s_type'])
@@ -163,7 +164,160 @@ def repositoryDelete():
     conn.delete(id)
     return mw.returnJson(True, '删除成功!')
 
+# 脚本列表
+def scriptList():
+    conn = getSqliteDb('script')
+    data = conn.field('id,name,script,echo,create_time').select()
+    for item in data:
+        echo = item['echo']
 
+        # loadingStatus
+        loadingStatusCmd = "ls -R %s/script | grep %s_status" % (getServerDir() , echo) 
+        loadingStatusExec = mw.execShell(loadingStatusCmd)
+        if loadingStatusExec[0] != '':
+            item['loadingStatus'] = mw.readFile(getServerDir() + '/script/' + echo + '_status')
+
+    return mw.returnJson(True, 'ok', data)
+
+def scriptAdd():
+    args = getArgs()
+    data = checkArgs(args, ['name', 'script'])
+    if not data[0]:
+        return data[1]
+    name = args['name']
+    script = getScriptArg('script')
+    echo =  mw.md5(str(time.time()) + '_docker')
+    conn = getSqliteDb('script')
+    data = conn.add(
+        'name,script,create_time,echo',
+        ( name, script, int(time.time()), echo )
+    )
+    statusFile = '%s/script/%s_status' % (getServerDir(), echo)
+    finalScript = """
+{ 
+    touch %(statusFile)s\n
+    echo "执行中..." >> %(statusFile)s\n
+    cat /dev/null > %(statusFile)s\n
+    {
+        %(script)s\n
+    } && {
+        echo "执行成功" >> %(statusFile)s\n
+    }
+} || { 
+    echo "执行失败" >> %(statusFile)s\n
+}
+    """ % {"statusFile": statusFile, "script": script}
+    makeScriptFile(echo + '.sh', finalScript)
+    return mw.returnJson(True, '添加成功!')
+
+def scriptEdit():
+    args = getArgs()
+    data = checkArgs(args, ['id', 'name', 'script'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    name = args['name']
+    script = getScriptArg('script')
+    conn = getSqliteDb('script')
+    echo = conn.where('id=?', (id,)).getField('echo')
+    conn.where('id=?', (id,)).update({
+        'name': name,
+        'script': script
+    })
+    statusFile = '%s/script/%s_status' % (getServerDir(), echo)
+    finalScript = """
+{ 
+    touch %(statusFile)s\n
+    echo "执行中..." >> %(statusFile)s\n
+    cat /dev/null > %(statusFile)s\n
+    {
+        %(script)s\n
+    } && {
+        echo "执行成功" >> %(statusFile)s\n
+    }
+} || { 
+    echo "执行失败" >> %(statusFile)s\n
+}
+    """ % {"statusFile": statusFile, "script": script}
+    makeScriptFile(echo + '.sh', finalScript)
+    return mw.returnJson(True, '修改成功!')
+
+def getScriptArg(arg):
+    args = getArgs()
+    return unquote(args[arg], 'utf-8').replace('+', ' ').replace("\r\n", "\n")
+
+def makeScriptFile(filename, content):
+    scriptPath = getServerDir() + '/script'
+    if not os.path.exists(scriptPath):
+        mw.execShell('mkdir -p ' + scriptPath)
+    scriptFile = scriptPath + '/' + filename
+    mw.writeFile(scriptFile, content)
+    mw.execShell('chmod 750 ' + scriptFile)
+
+def scriptDelete():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+
+    id = args['id']    
+    conn = getSqliteDb('script')
+    conn.delete(id)
+    return mw.returnJson(True, '删除成功!')
+
+def scriptExcute():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    conn = getSqliteDb('script')
+    data = conn.where('id=?', (id,)).field('id,name,script,create_time,echo').find()
+    if not data:
+        return mw.returnJson(False, '脚本项不存在!')
+    scriptFile = getServerDir() + '/script/' + data['echo'] + ".sh"
+    if not os.path.exists(scriptFile):
+        return mw.returnJson(False, '脚本不存在!')
+    logFile = getServerDir() + '/script/' + data['echo'] + '.log'
+    os.system('chmod +x ' + scriptFile)
+
+    data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
+
+    return mw.returnJson(True, '执行成功!')
+    
+def scriptLogs():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    conn = getSqliteDb('script')
+    echo = conn.where('id=?', (id,)).field('echo').find()  
+    logPath = getServerDir() + '/script'
+    if not os.path.exists(logPath):
+        os.system('mkdir -p ' + logPath)
+    logFile = logPath + '/' + echo['echo'] + '.log'
+    if not os.path.exists(logFile):
+        return mw.returnJson(False, '当前日志为空!')
+    log = mw.getLastLine(logFile, 500)
+    return mw.returnJson(True, log)
+
+def scriptLogsClear():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+    id = args['id']  
+    conn = getSqliteDb('script')
+    echo = conn.where('id=?', (id,)).field('echo').find()
+    logPath = getServerDir() + '/script'
+    if not os.path.exists(logPath):
+        os.system('mkdir -p ' + logPath)
+    logFile = logPath + '/' + echo['echo'] + '.log'
+    if not os.path.exists(logFile):
+        return mw.returnJson(False, '当前日志为空!')
+    os.system('echo "" > ' + logFile)
+    return mw.returnJson(True, '清空成功!')
 
 if __name__ == "__main__":
     func = sys.argv[1]
@@ -185,5 +339,21 @@ if __name__ == "__main__":
         print(repositoryAdd())
     elif func == 'repository_delete':
         print(repositoryDelete())
+    elif func == 'repository_edit':
+        print(repositoryEdit())
+    elif func == 'script_list':
+        print(scriptList())
+    elif func == 'script_add':
+        print(scriptAdd())
+    elif func == 'script_edit':
+        print(scriptEdit())
+    elif func == 'script_delete':
+        print(scriptDelete())
+    elif func == 'script_excute':
+        print(scriptExcute())
+    elif func == 'script_logs':
+        print(scriptLogs())
+    elif func == 'script_logs_clear':
+        print(scriptLogsClear())
     else:
         print('error')

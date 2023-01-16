@@ -17,7 +17,6 @@ if mw.isAppleSystem():
 
 
 def getPluginName():
-
     return 'host'
 
 

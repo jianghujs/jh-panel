@@ -164,7 +164,7 @@ def runInfo():
     import re
     port = getMemPort()
     try:
-        tn = telnetlib.Telnet('127.0.0.1', int(port))
+        tn =.Telnet('127.0.0.1', int(port))
         tn.write(b"stats\n")
         tn.write(b"quit\n")
         data = tn.read_all()

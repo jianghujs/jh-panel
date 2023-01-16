@@ -10,6 +10,12 @@ from urllib.parse import unquote
 sys.path.append(os.getcwd() + "/class/core")
 import mw
 
+try:
+    import dictdatabase as DDB
+except:
+    mw.execShell("pip install dictdatabase")
+    import dictdatabase as DDB
+
 app_debug = False
 if mw.isAppleSystem():
     app_debug = True
@@ -58,30 +64,50 @@ def checkArgs(data, ck=[]):
     return (True, mw.returnJson(True, 'ok'))
 
 
-def getSqliteDb(tablename='tablename'):
-    name = "jianghujs"
-    db_dir = getServerDir() + '/data/'
+# https://github.com/mkrd/DictDataBase
+def getDb(table):
+    if not DDB.at(table).exists():
+        DDB.at(table).create({})
+    return DDB.at(table)
 
-    if not os.path.exists(db_dir):
-        mw.execShell('mkdir -p ' + db_dir)
-
-    file = db_dir + name + '.db'
-    if not os.path.exists(file):
-        conn = mw.M(tablename).dbPos(db_dir, name)
-        sql = mw.readFile(getPluginDir() + '/init.sql')
-        sql_list = sql.split(';')
-        for index in range(len(sql_list)):
-            conn.execute(sql_list[index])
+def saveOne(table, id, data):
+    if type(id) is not str:
+        id = str(id)
+    exist = getOne(table, id)
+    if exist:
+        data = {'id': id, **exist, **data}
     else:
-        conn = mw.M(tablename).dbPos(db_dir, name)
-    return conn
-    
+        data = {'id': id, **data}
+    with getDb(table).session() as (session, db):
+        db[id] = data
+        session.write()
+
+def getAll(table):
+    result = getDb(table).read()
+    if result:
+        return list(result.values())
+    return []
+
+def getOne(table, id):
+    if type(id) is not str:
+        id = str(id)
+    for item in getAll(table):
+        if item['id'] == id:
+            return item
+    return None
+
+def deleteOne(table, id):
+    if type(id) is not str:
+        id = str(id)
+    with getDb(table).session() as (session, db):
+        del db[id]
+        session.write()
+
+
 def status():
     return 'start'
 
 def start():
-    getSqliteDb()
-    
     mw.restartWeb()
     return 'ok'
     
@@ -92,8 +118,7 @@ def projectScriptExcute():
         return data[1]
     id = args['id']
     scriptKey = args['scriptKey']
-    conn = getSqliteDb('project')
-    data = conn.where('id=?', (id,)).field('id,name,path,start_script,reload_script,stop_script,create_time,echo').find()
+    data = getOne('project', id)
     if not data:
         return mw.returnJson(False, '项目不存在!')
     scriptFile = getServerDir() + '/script/' + data['echo'] + "_" + scriptKey + ".sh"
@@ -185,8 +210,7 @@ def projectUpdate():
     return mw.returnJson(True, '更新成功!')
 
 def projectList():
-    conn = getSqliteDb('project')
-    data = conn.field('id,name,path,start_script,reload_script,stop_script,autostart_script,echo,create_time').select()
+    data = getAll('project')
     for item in data:
         path = item['path']
         echo = item['echo']
@@ -215,8 +239,7 @@ def projectToggleAutostart():
     if not data[0]:
         return data[1]
     id = args['id']
-    conn = getSqliteDb('project')
-    project = conn.where('id=?', (id,)).field('id,name,path,start_script,reload_script,stop_script,autostart_script,create_time,echo').find()
+    project = getOne('project', id)
     if not project:
         return mw.returnJson(False, '项目不存在!')
     echo = project['echo']
@@ -250,11 +273,17 @@ def projectAdd():
     stopScript = getScriptArg('stopScript')
     autostartScript = getScriptArg('autostartScript')
     echo =  mw.md5(str(time.time()) + '_jianghujs')
-    conn = getSqliteDb('project')
-    data = conn.add(
-        'name,path,start_script,reload_script,stop_script,autostart_script,create_time,echo',
-        ( name, path, startScript, reloadScript, stopScript, autostartScript, int(time.time()), echo )
-    )
+    id = int(time.time())
+    saveOne('project', id, {
+        'name': name,
+        'path': path,
+        'start_script': startScript,
+        'reload_script': reloadScript,
+        'stop_script': stopScript,
+        'autostart_script': autostartScript,
+        'create_time': int(time.time()),
+        'echo': echo
+    })
     statusFile = '%s/script/%s_status' % (getServerDir(), echo)
     makeScriptFile(echo + '_start.sh', 'touch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
     makeScriptFile(echo + '_reload.sh', 'touch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))
@@ -274,9 +303,11 @@ def projectEdit():
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
     autostartScript = getScriptArg('autostartScript')
-    conn = getSqliteDb('project')
-    echo = conn.where('id=?', (id,)).getField('echo')
-    conn.where('id=?', (id,)).update({
+    project = getOne('project', id)
+    if not project:
+        return mw.returnJson(False, '项目不存在!')
+    echo = project['echo']
+    saveOne('project', id, {
         'name': name,
         'path': path,
         'start_script': startScript,
@@ -309,8 +340,7 @@ def projectDelete():
         return data[1]
 
     id = args['id']    
-    conn = getSqliteDb('project')
-    conn.delete(id)
+    deleteOne('project', id)
     return mw.returnJson(True, '删除成功!')
 
 def projectLogs():
@@ -319,8 +349,10 @@ def projectLogs():
     if not data[0]:
         return data[1]
     id = args['id']
-    conn = getSqliteDb('project')
-    echo = conn.where('id=?', (id,)).field('echo').find()  
+    project = getOne('project', id)
+    if not project:
+        return mw.returnJson(False, '项目不存在!')
+    echo = project['echo']
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
@@ -336,8 +368,10 @@ def projectLogsClear():
     if not data[0]:
         return data[1]
     id = args['id']  
-    conn = getSqliteDb('project')
-    echo = conn.where('id=?', (id,)).field('echo').find()
+    project = getOne('project', id)
+    if not project:
+        return mw.returnJson(False, '项目不存在!')
+    echo = project['echo']
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)

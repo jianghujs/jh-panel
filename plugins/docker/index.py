@@ -11,6 +11,12 @@ import re
 sys.path.append(os.getcwd() + "/class/core")
 import mw
 
+try:
+    import dictdatabase as DDB
+except:
+    mw.execShell("pip install dictdatabase")
+    import dictdatabase as DDB
+
 app_debug = False
 if mw.isAppleSystem():
     app_debug = True
@@ -56,31 +62,51 @@ def checkArgs(data, ck=[]):
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
 
-def getSqliteDb(tablename='tablename'):
-    name = "docker"
-    db_dir = getServerDir() + '/data/'
+# https://github.com/mkrd/DictDataBase
+def getDb(table):
+    if not DDB.at(table).exists():
+        DDB.at(table).create({})
+    return DDB.at(table)
 
-    if not os.path.exists(db_dir):
-        mw.execShell('mkdir -p ' + db_dir)
-
-    file = db_dir + name + '.db'
-    if not os.path.exists(file):
-        conn = mw.M(tablename).dbPos(db_dir, name)
-        sql = mw.readFile(getPluginDir() + '/init.sql')
-        sql_list = sql.split(';')
-        for index in range(len(sql_list)):
-            conn.execute(sql_list[index])
+def saveOne(table, id, data):
+    if type(id) is not str:
+        id = str(id)
+    exist = getOne(table, id)
+    if exist:
+        data = {'id': id, **exist, **data}
     else:
-        conn = mw.M(tablename).dbPos(db_dir, name)
-    return conn
+        data = {'id': id, **data}
+    with getDb(table).session() as (session, db):
+        db[id] = data
+        session.write()
+
+def getAll(table):
+    result = getDb(table).read()
+    if result:
+        return list(result.values())
+    return []
+
+def getOne(table, id):
+    if type(id) is not str:
+        id = str(id)
+    for item in getAll(table):
+        if item['id'] == id:
+            return item
+    return None
+
+def deleteOne(table, id):
+    if type(id) is not str:
+        id = str(id)
+    with getDb(table).session() as (session, db):
+        del db[id]
+        session.write()
+
 
 def status():
     status_exec = mw.execShell('systemctl status docker | grep running')
     return 'stop' if status_exec[0] == '' else 'start'
 
 def start():
-    getSqliteDb()
-
     mw.restartWeb()
     return 'ok'
 
@@ -100,8 +126,7 @@ def serviceCtl():
 
 # 仓库列表
 def repositoryList():
-    conn = getSqliteDb('repository')
-    data = conn.field('id,hub_name,registry,namespace,repository_name,create_time').select()
+    data = getAll('repository')
     return mw.returnJson(True, 'ok', data)
 
 # 检查仓库连接
@@ -130,10 +155,16 @@ def repositoryAdd():
         registry = "docker.io"
     checkResult = checkRepositoryLogin(user_name, user_pass, registry)
     if checkResult:
-        conn = getSqliteDb('repository')
-        data = conn.add('user_name,user_pass,registry,hub_name,namespace,repository_name,create_time',
-            (user_name, user_pass, registry, hub_name, namespace, repository_name, int(time.time()))
-        )
+        id = int(time.time())
+        saveOne('project', id, {
+            'user_name': user_name,
+            'user_pass': user_pass,
+            'registry': registry,
+            'hub_name': hub_name,
+            'namespace': namespace,
+            'repository_name': repository_name,
+            'create_time': int(time.time())
+        })
         return mw.returnJson(True, '登陆成功')
     return mw.returnJson(False, '登陆失败')
 
@@ -145,14 +176,12 @@ def repositoryDelete():
         return data[1]
 
     id = args['id']    
-    conn = getSqliteDb('repository')
-    conn.delete(id)
+    deleteOne('repository', id)
     return mw.returnJson(True, '删除成功!')
 
 # 脚本列表
 def scriptList():
-    conn = getSqliteDb('script')
-    data = conn.field('id,name,script,echo,create_time').select()
+    data = getAll('script')
     for item in data:
         echo = item['echo']
 
@@ -172,11 +201,13 @@ def scriptAdd():
     name = args['name']
     script = getScriptArg('script')
     echo =  mw.md5(str(time.time()) + '_docker')
-    conn = getSqliteDb('script')
-    data = conn.add(
-        'name,script,create_time,echo',
-        ( name, script, int(time.time()), echo )
-    )
+    id = int(time.time())
+    saveOne('project', id, {
+        'name': name,
+        'script': script,
+        'create_time': int(time.time()),
+        'echo': echo
+    })
     statusFile = '%s/script/%s_status' % (getServerDir(), echo)
     finalScript = """
 { 
@@ -203,9 +234,11 @@ def scriptEdit():
     id = args['id']
     name = args['name']
     script = getScriptArg('script')
-    conn = getSqliteDb('script')
-    echo = conn.where('id=?', (id,)).getField('echo')
-    conn.where('id=?', (id,)).update({
+    scriptData = getOne('script', id)
+    if not scriptData:
+        return mw.returnJson(False, '脚本不存在!')
+    echo = scriptData['echo']
+    saveOne('script', id, {
         'name': name,
         'script': script
     })
@@ -246,8 +279,7 @@ def scriptDelete():
         return data[1]
 
     id = args['id']    
-    conn = getSqliteDb('script')
-    conn.delete(id)
+    deleteOne('script', id)
     return mw.returnJson(True, '删除成功!')
 
 def scriptExcute():
@@ -256,8 +288,7 @@ def scriptExcute():
     if not data[0]:
         return data[1]
     id = args['id']
-    conn = getSqliteDb('script')
-    data = conn.where('id=?', (id,)).field('id,name,script,create_time,echo').find()
+    data = getOne('script', id)
     if not data:
         return mw.returnJson(False, '脚本项不存在!')
     scriptFile = getServerDir() + '/script/' + data['echo'] + ".sh"
@@ -276,8 +307,10 @@ def scriptLogs():
     if not data[0]:
         return data[1]
     id = args['id']
-    conn = getSqliteDb('script')
-    echo = conn.where('id=?', (id,)).field('echo').find()  
+    scriptData = getOne('script', id)
+    if not scriptData:
+        return mw.returnJson(False, '脚本不存在!')
+    echo = scriptData['echo']
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
@@ -293,8 +326,10 @@ def scriptLogsClear():
     if not data[0]:
         return data[1]
     id = args['id']  
-    conn = getSqliteDb('script')
-    echo = conn.where('id=?', (id,)).field('echo').find()
+    scriptData = getOne('script', id)
+    if not scriptData:
+        return mw.returnJson(False, '脚本不存在!')
+    echo = scriptData['echo']
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)

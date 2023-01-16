@@ -156,7 +156,7 @@ def repositoryAdd():
     checkResult = checkRepositoryLogin(user_name, user_pass, registry)
     if checkResult:
         id = int(time.time())
-        saveOne('project', id, {
+        saveOne('script', id, {
             'user_name': user_name,
             'user_pass': user_pass,
             'registry': registry,
@@ -202,7 +202,7 @@ def scriptAdd():
     script = getScriptArg('script')
     echo =  mw.md5(str(time.time()) + '_docker')
     id = int(time.time())
-    saveOne('project', id, {
+    saveOne('script', id, {
         'name': name,
         'script': script,
         'create_time': int(time.time()),
@@ -314,7 +314,7 @@ def scriptLogs():
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
-    logFile = logPath + '/' + echo['echo'] + '.log'
+    logFile = logPath + '/' + echo + '.log'
     if not os.path.exists(logFile):
         return mw.returnJson(False, '当前日志为空!')
     log = mw.getLastLine(logFile, 500)
@@ -333,7 +333,7 @@ def scriptLogsClear():
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
-    logFile = logPath + '/' + echo['echo'] + '.log'
+    logFile = logPath + '/' + echo + '.log'
     if not os.path.exists(logFile):
         return mw.returnJson(False, '当前日志为空!')
     os.system('echo "" > ' + logFile)

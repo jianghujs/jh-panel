@@ -61,7 +61,14 @@ def checkArgs(data, ck=[]):
 
 
 # https://github.com/mkrd/DictDataBase
+def initDb():
+    db_dir = getServerDir() + '/data/'
+    if not os.path.exists(db_dir):
+        mw.execShell('mkdir -p ' + db_dir)
+    DDB.config.storage_directory = db_dir
+
 def getDb(table):
+    DDB.config.storage_directory = getServerDir() + '/data/'
     if not DDB.at(table).exists():
         DDB.at(table).create({})
     return DDB.at(table)
@@ -104,6 +111,7 @@ def status():
     return 'start'
 
 def start():
+    initDb()
     mw.restartWeb()
     return 'ok'
     

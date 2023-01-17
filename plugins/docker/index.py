@@ -7,15 +7,11 @@ import time
 import shutil
 from urllib.parse import unquote
 import re
+import dictdatabase as DDB
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
 
-try:
-    import dictdatabase as DDB
-except:
-    mw.execShell("pip install dictdatabase")
-    import dictdatabase as DDB
 
 app_debug = False
 if mw.isAppleSystem():

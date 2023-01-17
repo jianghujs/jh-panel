@@ -139,11 +139,11 @@ def projectScriptExcute():
 
 def projectStart():
     args = getArgs()
-    data = checkArgs(args, .get('path', ''))
+    data = checkArgs(args, ['path'])
     if not data[0]:
         return data[1]
 
-    path = args.get('path', '')
+    path = args['path']
     cmd = """
     cd %s
     npm i
@@ -154,11 +154,11 @@ def projectStart():
 
 def projectStop():
     args = getArgs()
-    data = checkArgs(args, .get('path', ''))
+    data = checkArgs(args, ['path'])
     if not data[0]:
         return data[1]
 
-    path = args.get('path', '')
+    path = args['path']
     cmd = """
     cd %s
     npm stop
@@ -168,11 +168,11 @@ def projectStop():
 
 def projectRestart():
     args = getArgs()
-    data = checkArgs(args, .get('path', ''))
+    data = checkArgs(args, ['path'])
     if not data[0]:
         return data[1]
 
-    path = args.get('path', '')
+    path = args['path']
     cmd = """
     cd %s
     npm stop
@@ -197,11 +197,11 @@ def projectStatus():
 
 def projectUpdate():
     args = getArgs()
-    data = checkArgs(args, .get('path', ''))
+    data = checkArgs(args, ['path'])
     if not data[0]:
         return data[1]
 
-    path = args.get('path', '')
+    path = args['path']
     cmd = """
     cd %s
     git pull
@@ -267,7 +267,7 @@ def projectAdd():
     if not data[0]:
         return data[1]
     name = args['name']
-    path = unquote(args.get('path', ''), 'utf-8')
+    path = unquote(args['path'], 'utf-8')
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
@@ -298,7 +298,7 @@ def projectEdit():
         return data[1]
     id = args['id']
     name = args['name']
-    path = unquote(args.get('path', ''), 'utf-8')
+    path = unquote(args['path'], 'utf-8')
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')

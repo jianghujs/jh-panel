@@ -183,7 +183,7 @@ def repositoryDelete():
 def scriptList():
     data = getAll('script')
     for item in data:
-        echo = item['echo']
+        echo = item.get('echo', '')
 
         # loadingStatus
         loadingStatusCmd = "ls -R %s/script | grep %s_status" % (getServerDir() , echo) 
@@ -237,7 +237,7 @@ def scriptEdit():
     scriptData = getOne('script', id)
     if not scriptData:
         return mw.returnJson(False, '脚本不存在!')
-    echo = scriptData['echo']
+    echo = scriptData.get('echo', '')
     saveOne('script', id, {
         'name': name,
         'script': script
@@ -291,10 +291,10 @@ def scriptExcute():
     data = getOne('script', id)
     if not data:
         return mw.returnJson(False, '脚本项不存在!')
-    scriptFile = getServerDir() + '/script/' + data['echo'] + ".sh"
+    scriptFile = getServerDir() + '/script/' + data.get('echo', '') + ".sh"
     if not os.path.exists(scriptFile):
         return mw.returnJson(False, '脚本不存在!')
-    logFile = getServerDir() + '/script/' + data['echo'] + '.log'
+    logFile = getServerDir() + '/script/' + data.get('echo', '') + '.log'
     os.system('chmod +x ' + scriptFile)
 
     data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
@@ -310,7 +310,7 @@ def scriptLogs():
     scriptData = getOne('script', id)
     if not scriptData:
         return mw.returnJson(False, '脚本不存在!')
-    echo = scriptData['echo']
+    echo = scriptData.get('echo', '')
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
@@ -329,7 +329,7 @@ def scriptLogsClear():
     scriptData = getOne('script', id)
     if not scriptData:
         return mw.returnJson(False, '脚本不存在!')
-    echo = scriptData['echo']
+    echo = scriptData.get('echo', '')
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)

@@ -121,10 +121,10 @@ def projectScriptExcute():
     data = getOne('project', id)
     if not data:
         return mw.returnJson(False, '项目不存在!')
-    scriptFile = getServerDir() + '/script/' + data['echo'] + "_" + scriptKey + ".sh"
+    scriptFile = getServerDir() + '/script/' + data.get('echo', '') + "_" + scriptKey + ".sh"
     if not os.path.exists(scriptFile):
         return mw.returnJson(False, '脚本不存在!')
-    logFile = getServerDir() + '/script/' + data['echo'] + '.log'
+    logFile = getServerDir() + '/script/' + data.get('echo', '') + '.log'
     os.system('chmod +x ' + scriptFile)
 
     # os.system('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
@@ -139,11 +139,11 @@ def projectScriptExcute():
 
 def projectStart():
     args = getArgs()
-    data = checkArgs(args, ['path'])
+    data = checkArgs(args, .get('path', ''))
     if not data[0]:
         return data[1]
 
-    path = args['path']
+    path = args.get('path', '')
     cmd = """
     cd %s
     npm i
@@ -154,11 +154,11 @@ def projectStart():
 
 def projectStop():
     args = getArgs()
-    data = checkArgs(args, ['path'])
+    data = checkArgs(args, .get('path', ''))
     if not data[0]:
         return data[1]
 
-    path = args['path']
+    path = args.get('path', '')
     cmd = """
     cd %s
     npm stop
@@ -168,11 +168,11 @@ def projectStop():
 
 def projectRestart():
     args = getArgs()
-    data = checkArgs(args, ['path'])
+    data = checkArgs(args, .get('path', ''))
     if not data[0]:
         return data[1]
 
-    path = args['path']
+    path = args.get('path', '')
     cmd = """
     cd %s
     npm stop
@@ -197,11 +197,11 @@ def projectStatus():
 
 def projectUpdate():
     args = getArgs()
-    data = checkArgs(args, ['path'])
+    data = checkArgs(args, .get('path', ''))
     if not data[0]:
         return data[1]
 
-    path = args['path']
+    path = args.get('path', '')
     cmd = """
     cd %s
     git pull
@@ -212,8 +212,8 @@ def projectUpdate():
 def projectList():
     data = getAll('project')
     for item in data:
-        path = item['path'] 
-        echo = item['echo']
+        path = item.get('path', '') 
+        echo = item.get('echo', '')
 
         # autostartStatus
         autostartStatusCmd = "ls -R /etc/rc4.d | grep " + echo
@@ -242,7 +242,7 @@ def projectToggleAutostart():
     project = getOne('project', id)
     if not project:
         return mw.returnJson(False, '项目不存在!')
-    echo = project['echo']
+    echo = project.get('echo', '')
     autostart_script = project['autostart_script']
 
     # 创建自启动脚本文件
@@ -267,7 +267,7 @@ def projectAdd():
     if not data[0]:
         return data[1]
     name = args['name']
-    path = unquote(args['path'], 'utf-8')
+    path = unquote(args.get('path', ''), 'utf-8')
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
@@ -298,7 +298,7 @@ def projectEdit():
         return data[1]
     id = args['id']
     name = args['name']
-    path = unquote(args['path'], 'utf-8')
+    path = unquote(args.get('path', ''), 'utf-8')
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
@@ -306,7 +306,7 @@ def projectEdit():
     project = getOne('project', id)
     if not project:
         return mw.returnJson(False, '项目不存在!')
-    echo = project['echo']
+    echo = project.get('echo', '')
     saveOne('project', id, {
         'name': name,
         'path': path,
@@ -352,7 +352,7 @@ def projectLogs():
     project = getOne('project', id)
     if not project:
         return mw.returnJson(False, '项目不存在!')
-    echo = project['echo']
+    echo = project.get('echo', '')
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)
@@ -371,7 +371,7 @@ def projectLogsClear():
     project = getOne('project', id)
     if not project:
         return mw.returnJson(False, '项目不存在!')
-    echo = project['echo']
+    echo = project.get('echo', '')
     logPath = getServerDir() + '/script'
     if not os.path.exists(logPath):
         os.system('mkdir -p ' + logPath)

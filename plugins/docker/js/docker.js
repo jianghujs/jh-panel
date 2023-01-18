@@ -189,6 +189,9 @@ function deleteItem(id, name) {
 }
 
 function scriptExcute(id) {
+    setTimeout(function() {
+        refreshTable()
+    }, 100)
     requestApi('script_excute', {
         id: id,
     }, function(data){

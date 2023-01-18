@@ -109,9 +109,9 @@ function toggleAutostart(id) {
     	var rdata = $.parseJSON(data.data);
         if(rdata.status) {
             layer.close(addLayer);
-            refreshTable();
         }
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+        refreshTable();
     });
 }
 
@@ -273,6 +273,9 @@ function deleteItem(id, name) {
 
 function projectScriptExcute(scriptKey, id) {
     var data = "id="+id+"&scriptKey="+scriptKey;
+    setTimeout(function() {
+        refreshTable()
+    }, 100)
     requestApi('project_script_excute', data, function(data){
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});

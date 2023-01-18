@@ -301,7 +301,8 @@ def scriptExcute():
     logFile = getServerDir() + '/script/' + data.get('echo', '') + '.log'
     os.system('chmod +x ' + scriptFile)
 
-    data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
+    data = mw.execShell('source /root/.bashrc && nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1')
+    # data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
 
     return mw.returnJson(True, '执行成功!')
     

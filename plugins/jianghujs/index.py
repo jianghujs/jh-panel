@@ -246,14 +246,15 @@ def projectToggleAutostart():
     project = getOne('project', id)
     if not project:
         return mw.returnJson(False, '项目不存在!')
-    echo = project.get('echo', '')
+    echo = 'jianghujs_' + project.get('echo', '')
     autostart_script = project['autostart_script']
+    if autostart_script == '':
+        return mw.returnJson(False, '请配置项目自启动脚本!')
 
     # 创建自启动脚本文件
     autostartFile = '/etc/init.d/' +  echo
-    if not os.path.exists(autostartFile):
-        mw.writeFile(autostartFile, autostart_script)
-        mw.execShell('chmod 755 ' + autostartFile)
+    mw.writeFile(autostartFile, autostart_script)
+    mw.execShell('chmod 755 ' + autostartFile)
     
     # 判断自启动脚本是否启用
     autostartStatusFile = '/etc/rc4.d/S01' + echo

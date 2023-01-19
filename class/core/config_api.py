@@ -27,7 +27,7 @@ from flask import request
 
 class config_api:
 
-    __version = '1.1.4'
+    __version = '1.1.5'
     __api_addr = 'data/api.json'
 
     def __init__(self):

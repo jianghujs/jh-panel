@@ -279,7 +279,9 @@ function projectScriptExcute(scriptKey, id) {
     requestApi('project_script_excute', data, function(data){
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        refreshTable();
+        setTimeout(() => {
+            refreshTable();
+        }, 700)
     });
 }
 

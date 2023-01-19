@@ -191,13 +191,13 @@ function deleteItem(id, name) {
 function scriptExcute(id) {
     setTimeout(function() {
         refreshTable()
-    }, 100)
+    }, 10)
     requestApi('script_excute', {
         id: id,
     }, function(data){
         var rdata = $.parseJSON(data.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
         refreshTable();
+        layer.msg(rdata.msg,{icon:rdata.status?1:2});
     });
 }
 

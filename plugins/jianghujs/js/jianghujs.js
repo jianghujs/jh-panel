@@ -275,13 +275,11 @@ function projectScriptExcute(scriptKey, id) {
     var data = "id="+id+"&scriptKey="+scriptKey;
     setTimeout(function() {
         refreshTable()
-    }, 100)
+    }, 10)
     requestApi('project_script_excute', data, function(data){
         var rdata = $.parseJSON(data.data);
+        refreshTable();
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        setTimeout(() => {
-            refreshTable();
-        }, 1000)
     });
 }
 

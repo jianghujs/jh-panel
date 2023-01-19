@@ -276,7 +276,7 @@ def projectAdd():
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
-    autostartScript = getScriptArg('autostartScript')
+    # autostartScript = getScriptArg('autostartScript')
     echo =  mw.md5(str(time.time()) + '_jianghujs')
     id = int(time.time())
     saveOne('project', id, {
@@ -285,7 +285,7 @@ def projectAdd():
         'start_script': startScript,
         'reload_script': reloadScript,
         'stop_script': stopScript,
-        'autostart_script': autostartScript,
+        # 'autostart_script': autostartScript,
         'create_time': int(time.time()),
         'echo': echo
     })
@@ -307,7 +307,7 @@ def projectEdit():
     startScript = getScriptArg('startScript')
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
-    autostartScript = getScriptArg('autostartScript')
+    # autostartScript = getScriptArg('autostartScript')
     project = getOne('project', id)
     if not project:
         return mw.returnJson(False, '项目不存在!')
@@ -318,7 +318,7 @@ def projectEdit():
         'start_script': startScript,
         'reload_script': reloadScript,
         'stop_script': stopScript,
-        'autostart_script': autostartScript
+        # 'autostart_script': autostartScript
     })
     statusFile = '%s/script/%s_status' % (getServerDir(), echo)
     makeScriptFile(echo + '_start.sh', 'touch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))

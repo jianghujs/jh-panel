@@ -13,9 +13,9 @@ function refreshTable() {
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
                 <th>目录</th>\
-                <th>名称</th>\
-                <th>开机自启</th>\
-                <th>状态</th>\
+                <th>名称</th>' +
+                // '<th>开机自启</th>' +
+                '<th>状态</th>\
                 <th style="text-align: right;" width="150">操作</th></tr>\
             </thead>\
             <tbody class="plugin-table-body"></tbody>\
@@ -69,9 +69,9 @@ function refreshTable() {
             
             tbody += '<tr>\
                         <td style="width: 180px;">'+tmp[i].path+'</td>\
-                        <td style="width: 180px;">'+tmp[i].name+'</td>\
-                        <td style="width: 100px;">'+autostart+'</td>\
-                        <td style="width: 100px;">'+status+'</td>\
+                        <td style="width: 180px;">'+tmp[i].name+'</td>' +
+                        // '<td style="width: 100px;">'+autostart+'</td>' +
+                        '<td style="width: 100px;">'+status+'</td>\
                         <td style="text-align: right;width: 280px;">\
                             '+opt+
                             '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
@@ -156,14 +156,14 @@ function openCreateItem() {
                 <div class='info-r c4'>\
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>自启动脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
-                </div>\
-            </div>\
-            <div class='bt-form-submit-btn'>\
+            </div>" + 
+            // "<div class='line'>\
+            //     <span class='tname'>自启动脚本</span>\
+            //     <div class='info-r c4'>\
+            //         <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+            //     </div>\
+            // </div>" +
+            "<div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(addLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitCreateItem()\">提交</button>\
             </div>\
@@ -227,14 +227,14 @@ function openEditItem(id) {
                 <div class='info-r c4'>\
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>自启动脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
-                </div>\
-            </div>\
-            <div class='bt-form-submit-btn'>\
+            </div>" +  
+            // "<div class='line'>\
+            //     <span class='tname'>自启动脚本</span>\
+            //     <div class='info-r c4'>\
+            //         <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+            //     </div>\
+            // </div>" +
+            "<div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(editLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitEditItem()\">提交</button>\
             </div>\

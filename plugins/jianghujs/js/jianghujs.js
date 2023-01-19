@@ -281,7 +281,7 @@ function projectScriptExcute(scriptKey, id) {
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
         setTimeout(() => {
             refreshTable();
-        }, 700)
+        }, 1000)
     });
 }
 

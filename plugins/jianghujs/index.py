@@ -134,7 +134,7 @@ def projectScriptExcute():
     # os.system('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
     # os.system(scriptFile + ' >> ' + logFile + ' 2>&1')
 
-    data = mw.execShell('source /root/.bashrc && nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1')
+    data = mw.execShell('source /root/.bashrc && ' + scriptFile + ' >> ' + logFile )
     
     # data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
 

@@ -262,7 +262,8 @@ def projectToggleAutostart():
         mw.execShell('update-rc.d -f ' + echo + ' remove')
         return mw.returnJson(True, '已关闭自启动!')
     else:
-        mw.execShell('update-rc.d ' + echo + ' defaults')
+        mw.execShell('update-rc.d ' + echo + ' defaults 80 80')
+        update-rc.d jianghujs_08e244766f4a4bd4b9fa74b9bb8522ed defaults
         return mw.returnJson(True, '已开启自启动!')
 
 

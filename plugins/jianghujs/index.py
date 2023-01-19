@@ -268,7 +268,7 @@ def projectToggleAutostart():
 
 def projectAdd():
     args = getArgs()
-    data = checkArgs(args, ['name', 'path', 'startScript', 'reloadScript', 'stopScript', 'autostartScript'])
+    data = checkArgs(args, ['name', 'path', 'startScript', 'reloadScript', 'stopScript'])
     if not data[0]:
         return data[1]
     name = args['name']
@@ -298,7 +298,7 @@ def projectAdd():
 
 def projectEdit():
     args = getArgs()
-    data = checkArgs(args, ['id', 'name', 'path', 'startScript', 'reloadScript', 'stopScript', 'autostartScript'])
+    data = checkArgs(args, ['id', 'name', 'path', 'startScript', 'reloadScript', 'stopScript'])
     if not data[0]:
         return data[1]
     id = args['id']

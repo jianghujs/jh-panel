@@ -74,7 +74,8 @@ Install_openresty()
 	--with-http_slice_module \
 	--with-http_stub_status_module \
 	--with-http_sub_module \
-	--with-http_realip_module
+	--with-http_realip_module \
+	--with-stream_realip_module
 	# --without-luajit-gc64
 	# --with-debug
 	# 用于调式

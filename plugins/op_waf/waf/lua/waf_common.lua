@@ -1,3 +1,14 @@
+local waf_root = "{$WAF_ROOT}"
+local waf_cpath = waf_root.."/waf/lua/?.lua;"..waf_root.."/waf/conf/?.lua;"..waf_root.."/waf/html/?.lua;"
+local waf_sopath = waf_root.."/waf/conf/?.so;"
+
+if not package.path:find(waf_cpath) then
+    package.path = waf_cpath  .. package.path
+end
+
+if not package.cpath:find(waf_sopath) then
+    package.cpath = waf_sopath .. package.cpath
+end
 
 local setmetatable = setmetatable
 local _M = { _VERSION = '0.02' }
@@ -6,10 +17,11 @@ local mt = { __index = _M }
 local json = require "cjson"
 local sqlite3 = require "lsqlite3"
 
+local ngx_re = require "ngx.re"
 local ngx_match = ngx.re.find
+
 local debug_mode = false
 
-local waf_root = "{$WAF_ROOT}"
 local cpath = waf_root.."/waf/"
 local log_dir = waf_root.."/logs/"
 local rpath = cpath.."/rule/"
@@ -31,43 +43,26 @@ function _M.new(self)
 end
 
 
-function _M.getInstance(self)
-    if rawget(self, "instance") == nil then
-        rawset(self, "instance", self:new())
+-- function _M.getInstance(self)
+--     if rawget(self, "instance") == nil then
+--         rawset(self, "instance", self.new())
+--     end
+--     assert(self.instance ~= nil)
+--     return self.instance
+-- end
 
-        if 0 == ngx.worker.id() then
-            self:cron()
-        end
+function _M.getInstance(self)
+    if self.instance == nil then
+        self.instance = self:new()
     end
     assert(self.instance ~= nil)
     return self.instance
 end
 
-function _M.initDB(self)
-    local path = log_dir .. "/waf.db"
-    db, err = sqlite3.open(path)
-
-    if err then
-        self:D("initDB err:"..tostring(err))
-        return nil
-    end
-
-    db:exec([[PRAGMA synchronous = 0]])
-    db:exec([[PRAGMA cache_size = 8000]])
-    db:exec([[PRAGMA page_size = 32768]])
-    db:exec([[PRAGMA journal_mode = wal]])
-    db:exec([[PRAGMA journal_size_limit = 1073741824]])
-    return db
-end
-
 -- 后台任务
 function _M.cron(self)
-    local timer_every_get_data = function (premature)
-        self.clean_log()
-    end
-    ngx.timer.every(10, timer_every_get_data)
-
-    local timer_every_import_data = function (premature)
+    
+    local timer_every_import_data = function(premature)
 
         local llen, _ = ngx.shared.waf_limit:llen('waf_limit_logs')
         if llen == 0 then
@@ -80,7 +75,6 @@ function _M.cron(self)
 
         local stmt2 = db:prepare[[INSERT INTO logs(time, ip, domain, server_name, method, status_code, uri, user_agent, rule_name, reason) 
             VALUES(:time, :ip, :domain, :server_name, :method, :status_code, :uri, :user_agent, :rule_name, :reason)]]
-
 
         if not stmt2 then
             self:D("waf timer db:prepare fail!:"..tostring(stmt2))
@@ -126,6 +120,22 @@ function _M.cron(self)
     ngx.timer.every(0.5, timer_every_import_data)
 end
 
+function _M.initDB(self)
+    local path = log_dir .. "/waf.db"
+    db, err = sqlite3.open(path)
+
+    if err then
+        self:D("initDB err:"..tostring(err))
+        return nil
+    end
+
+    db:exec([[PRAGMA synchronous = 0]])
+    db:exec([[PRAGMA cache_size = 8000]])
+    db:exec([[PRAGMA page_size = 32768]])
+    db:exec([[PRAGMA journal_mode = wal]])
+    db:exec([[PRAGMA journal_size_limit = 1073741824]])
+    return db
+end
 
 function _M.clean_log(self)
     local db = self:initDB()
@@ -380,6 +390,12 @@ function _M.read_file(self, name)
 
     local data = json.decode(fbody)
     return data
+end
+
+function _M.file_exists(self,path)
+  local file = io.open(path, "rb")
+  if file then file:close() end
+  return file ~= nil
 end
 
 
@@ -680,12 +696,6 @@ end
 
 function _M.get_real_ip(self, server_name)
     local client_ip = "unknown"
-
-    -- proxy_protocol_addr 优先级最高
-    if not ngx.re.match(ngx.var.proxy_protocol_addr,"\\d+\\.\\d+\\.\\d+\\.\\d+") == nil and self:is_ipaddr(ngx.var.proxy_protocol_addr) then
-        return ngx.var.proxy_protocol_addr
-    end
-
     local site_config = self.site_config
     if site_config[server_name] then
         if site_config[server_name]['cdn'] then
@@ -755,6 +765,34 @@ function _M.is_key(self, arr, key)
         end
     end
     return false
+end
+
+function _M.get_cpu_stat(self)
+    local cpu_total = 0
+    local fp = io.open('/proc/stat','r')
+    local cpu_line = fp:read()
+    fp:close()
+
+    local list = ngx_re.split(cpu_line," ")
+    table.remove(list,1)
+    table.remove(list,1)
+
+    local idie = list[4]
+    for i,v in pairs(list)
+    do
+        cpu_total = cpu_total + v
+    end
+
+    local use_percent = tonumber(100-(idie/cpu_total)*100)
+    return cpu_total,idie,use_percent
+end
+
+function _M.get_cpu_percent(self)
+    local cpu_total,idie,use_percent = self:get_cpu_stat()
+    ngx.sleep(2)
+    local cpu_total2,idie2,use_percent2 = self:get_cpu_stat()
+    local cpu_usage_percent = tonumber(100-(((idie2-idie)/(cpu_total2-cpu_total))*100))
+    return cpu_usage_percent
 end
 
 

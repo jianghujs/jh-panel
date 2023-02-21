@@ -6,6 +6,7 @@ import os
 import time
 import subprocess
 import json
+import re
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -224,21 +225,13 @@ def initTotalInfo():
             _name[name] = tmp
             total_contents['sites'] = _name
 
+    total_contents['start_time'] = str(time.time())
     cjson = mw.getJson(total_contents)
     mw.writeFile(path_total, cjson)
 
 
-def status():
-    path = getConf()
-    if not os.path.exists(path):
-        return 'stop'
-
-    conf = mw.readFile(path)
-    if conf.find("#include luawaf.conf;") != -1:
-        return 'stop'
-    if conf.find("luawaf.conf;") == -1:
-        return 'stop'
-    return 'start'
+def dstWafConf():
+    return mw.getServerDir() + "/web_conf/nginx/vhost/opwaf.conf"
 
 
 def contentReplace(content):
@@ -328,11 +321,45 @@ def autoMakeConfig():
 
 def restartWeb():
     autoMakeConfig()
-    mw.restartWeb()
+    mw.opWeb('stop')
+    mw.opWeb('start')
+
+
+def makeDstLua():
+    root_init_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_by_lua_file'
+    root_worker_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_worker_by_lua_file'
+    root_access_dir = mw.getServerDir() + '/web_conf/nginx/lua/access_by_lua_file'
+    path = getServerDir()
+    path_tpl = getPluginDir()
+
+    waf_common_tpl = path_tpl + "/waf/lua/waf_common.lua"
+    waf_common_dst = path + "/waf/lua/waf_common.lua"
+    content = mw.readFile(waf_common_tpl)
+    content = contentReplace(content)
+    mw.writeFile(waf_common_dst, content)
+
+    waf_init_tpl = path_tpl + "/waf/lua/init_preload.lua"
+    waf_init_dst = root_init_dir + "/waf_init_preload.lua"
+    content = mw.readFile(waf_init_tpl)
+    content = contentReplace(content)
+    mw.writeFile(waf_init_dst, content)
+
+    init_worker_tpl = path_tpl + "/waf/lua/init_worker.lua"
+    init_worker_dst = root_worker_dir + '/opwaf_init_worker.lua'
+    content = mw.readFile(init_worker_tpl)
+    content = contentReplace(content)
+    mw.writeFile(init_worker_dst, content)
+
+    access_file_tpl = path_tpl + "/waf/lua/init.lua"
+    access_file_dst = root_access_dir + '/opwaf_init.lua'
+    content = mw.readFile(access_file_tpl)
+    content = contentReplace(content)
+    mw.writeFile(access_file_dst, content)
+
+    mw.opLuaMakeAll()
 
 
 def initDreplace():
-
     path = getServerDir()
     if not os.path.exists(path + '/waf/lua'):
         sdir = getPluginDir() + '/waf'
@@ -355,26 +382,14 @@ def initDreplace():
     content['reqfile_path'] = wfDir
     mw.writeFile(config, mw.getJson(content))
 
-    config = path + "/waf/lua/init.lua"
-    content = mw.readFile(config)
-    content = contentReplace(content)
-    mw.writeFile(config, content)
+    makeDstLua()
 
-    config_common = path + "/waf/lua/common.lua"
-    content = mw.readFile(config_common)
-    content = contentReplace(content)
-    mw.writeFile(config_common, content)
-
-    init_worker = path + "/waf/lua/init_worker.lua"
-    content = mw.readFile(init_worker)
-    content = contentReplace(content)
-    mw.writeFile(init_worker, content)
-
-    waf_conf = mw.getServerDir() + "/openresty/nginx/conf/luawaf.conf"
-    waf_tpl = getPluginDir() + "/conf/luawaf.conf"
-    content = mw.readFile(waf_tpl)
-    content = contentReplace(content)
-    mw.writeFile(waf_conf, content)
+    waf_conf = dstWafConf()
+    if not os.path.exists(waf_conf):
+        waf_tpl = getPluginDir() + "/conf/luawaf.conf"
+        content = mw.readFile(waf_tpl)
+        content = contentReplace(content)
+        mw.writeFile(waf_conf, content)
 
     initDomainInfo()
     initSiteInfo()
@@ -388,56 +403,73 @@ def initDreplace():
         mw.execShell("chown -R www:www " + path)
 
 
+def status():
+    path = getConf()
+    if not os.path.exists(path):
+        return 'stop'
+
+    waf_conf = dstWafConf()
+    if not os.path.exists(waf_conf):
+        return 'stop'
+    return 'start'
+
+
 def start():
     initDreplace()
-
-    path = getConf()
-    conf = mw.readFile(path)
-    conf = conf.replace('#include luawaf.conf;', "include luawaf.conf;")
-    mw.writeFile(path, conf)
 
     import tool_task
     tool_task.createBgTask()
 
-    mw.restartWeb()
+    restartWeb()
     return 'ok'
 
 
 def stop():
-    path = getConf()
-    conf = mw.readFile(path)
-    conf = conf.replace('include luawaf.conf;', "#include luawaf.conf;")
+    root_init_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_by_lua_file'
+    root_worker_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_worker_by_lua_file'
+    root_access_dir = mw.getServerDir() + '/web_conf/nginx/lua/access_by_lua_file'
 
-    mw.writeFile(path, conf)
+    waf_init_dst = root_init_dir + "/waf_init_preload.lua"
+    if os.path.exists(waf_init_dst):
+        os.remove(waf_init_dst)
+
+    init_worker_dst = root_worker_dir + '/opwaf_init_worker.lua'
+    if os.path.exists(init_worker_dst):
+        os.remove(init_worker_dst)
+
+    access_file_dst = root_access_dir + '/opwaf_init.lua'
+    if os.path.exists(access_file_dst):
+        os.remove(access_file_dst)
+
+    wafconf = dstWafConf()
+    if os.path.exists(wafconf):
+        os.remove(wafconf)
 
     import tool_task
     tool_task.removeBgTask()
 
-    mw.restartWeb()
+    mw.opLuaMakeAll()
+
+    restartWeb()
     return 'ok'
 
 
 def restart():
-    mw.restartWeb()
+    restartWeb()
     return 'ok'
 
 
 def reload():
     stop()
 
-    path = getServerDir()
-    path_tpl = getPluginDir()
-
-    config = path + "/waf/lua/init.lua"
-    config_tpl = path_tpl + "/waf/lua/init.lua"
-    content = mw.readFile(config_tpl)
-    content = contentReplace(content)
-    mw.writeFile(config, content)
+    makeDstLua()
 
     errlog = mw.getServerDir() + "/openresty/nginx/logs/error.log"
     mw.execShell('rm -rf ' + errlog)
 
     start()
+
+    restartWeb()
     return 'ok'
 
 
@@ -1022,24 +1054,41 @@ def removeSiteCdnHeader():
 
 def outputData():
     args = getArgs()
-    data = checkArgs(args, ['s_Name'])
+    data = checkArgs(args, ['sname'])
     if not data[0]:
         return data[1]
 
-    path = getRuleJsonPath(args['s_Name'])
+    path = getRuleJsonPath(args['sname'])
     content = mw.readFile(path)
     return mw.returnJson(True, 'ok', content)
 
 
 def importData():
     args = getArgs()
-    data = checkArgs(args, ['s_Name', 'pdata'])
+    data = checkArgs(args, ['sname', 'pdata'])
     if not data[0]:
         return data[1]
 
-    path = getRuleJsonPath(args['s_Name'])
-    mw.writeFile(path, args['pdata'])
-    restartWeb()
+    path = getRuleJsonPath(args['sname'])
+
+    source_data = mw.readFile(path)
+    source_data = json.loads(source_data)
+
+    save_data = []
+    save_data.append(source_data[0])
+    pdata = args['pdata'].strip()
+    try:
+        pdata = json.loads(pdata)
+        mw.writeFile(path, json.dumps(pdata))
+    except Exception as e:
+        pdata = pdata.split("\\n")
+        for x in pdata:
+            pval = x.strip()
+            if pval != "":
+                vv = json.loads(pval)
+                save_data.append(vv[0])
+        mw.writeFile(path, json.dumps(save_data))
+    # restartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -1167,17 +1216,33 @@ def getWafConf():
     return mw.readFile(conf)
 
 
+def cleanDropIp():
+    url = "http://127.0.0.1/clean_waf_drop_ip"
+    data = mw.httpGet(url)
+    return mw.returnJson(True, 'ok!', data)
+
+
+def testRun():
+    # args = getArgs()
+    # data = checkArgs(args, ['siteName'])
+    # if not data[0]:
+    #     return data[1]
+
+    conf_json = getServerDir() + "/waf/default.json"
+    data = mw.readFile(conf_json)
+    pdata = json.loads(data)
+    default_site = pdata['default']
+
+    url = "http://" + default_site + '/?t=../etc/passwd'
+    returnData = mw.httpGet(url, 10)
+    return mw.returnJson(True, '测试运行成功!', returnData)
+
+
 def installPreInspection():
     check_op = mw.getServerDir() + "/openresty"
     if not os.path.exists(check_op):
         return "请先安装OpenResty"
     return 'ok'
-
-
-def cleanDropIp():
-    url = "http://127.0.0.1/clean_waf_drop_ip"
-    data = mw.httpGet(url)
-    return mw.returnJson(True, 'ok!', data)
 
 
 if __name__ == "__main__":
@@ -1268,5 +1333,7 @@ if __name__ == "__main__":
         print(getWafSite())
     elif func == 'clean_drop_ip':
         print(cleanDropIp())
+    elif func == 'test_run':
+        print(testRun())
     else:
         print('error')

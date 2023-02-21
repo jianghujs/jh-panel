@@ -2,7 +2,7 @@
 local json = require "cjson"
 local ngx_match = ngx.re.find
 
-local __WAF = require "common"
+local __WAF = require "waf_common"
 
 -- print(json.encode(__C))
 local C = __WAF:getInstance()
@@ -11,11 +11,11 @@ local config = require "waf_config"
 local site_config = require "waf_site"
 local config_domains = require "waf_domains"
 
--- C:D("config:"..C:to_json(config))
 
 C:setConfData(config, site_config)
 C:setDebug(true)
 
+-- C:D("config:"..C:to_json(config))
 
 local get_html = require "html_get"
 local post_html = require "html_post"
@@ -36,7 +36,8 @@ local url_rules = require "rule_url"
 local url_white_rules = require "rule_url_white"
 
 
-local server_name = string.gsub(C:get_sn(config_domains),'_','.')
+-- local server_name = string.gsub(C:get_sn(config_domains),'_','.')
+local server_name = C:get_sn(config_domains)
 
 local function initParams()
     local data = {}
@@ -246,7 +247,8 @@ local function waf_drop_ip()
 end
 
 local function waf_cc()
-    if not config['cc']['open'] or not C:is_site_config('cc') then return false end
+    if not config['cc']['open'] then return false end
+    if not C:is_site_config('cc') then return false end
 
     local ip = params['ip']
 
@@ -521,43 +523,58 @@ end
 
 function waf()
     min_route()
-
+    -- C:D("min_route")
     -- white ip
     if waf_ip_white() then return true end
+    -- C:D("waf_ip_white")
 
     -- url white
     if waf_url_white() then return true end
+    -- C:D("waf_url_white")
 
     -- black ip
     if waf_ip_black() then return true end
+    -- C:D("waf_ip_black")
 
     -- 封禁ip返回
     if waf_drop_ip() then return true end
+    -- C:D("waf_drop_ip")
 
     -- ua check
     if waf_user_agent() then return true end
+    -- C:D("waf_user_agent")
     if waf_url() then return true end
+    -- C:D("waf_url")
 
     -- cc setting
     if waf_cc_increase() then return true end
+    -- C:D("waf_cc_increase")
     if waf_cc() then return true end
+    -- C:D("waf_cc")
 
     -- cookie检查
     if waf_cookie() then return true end
+    -- C:D("waf_cookie")
     
     -- args参数拦截
     if waf_get_args() then return true end
+    -- C:D("waf_get_args")
 
     -- 扫描软件禁止
     if waf_scan_black() then return true end
-
+    -- C:D("waf_scan_black")
     if waf_post() then return true end
-    
+    -- C:D("waf_post")
+
     if site_config[server_name] and site_config[server_name]['open'] then
         if X_Forwarded() then return true end
+        -- C:D("X_Forwarded")
         if post_X_Forwarded() then return true end
+        -- C:D("post_X_Forwarded")
         if url_ext() then return true end
+        -- C:D("url_ext")
         if post_data() then return true end 
+        -- C:D("post_data")
     end
 end
 

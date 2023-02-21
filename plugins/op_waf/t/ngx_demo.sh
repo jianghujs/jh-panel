@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# cd /www/server/jh-panel/plugins/op_waf/t && sh ngx_demo.sh
+# cd /www/server/mdserver-web/plugins/op_waf/t && sh ngx_demo.sh
 # cd /www/wwwroot/dev156.cachecha.com && sh ngx_demo.sh
 
 

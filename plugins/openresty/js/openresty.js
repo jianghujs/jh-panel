@@ -1,5 +1,5 @@
 function orPost(method, args, callback){
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0 });
+    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
     $.post('/plugins/run', {name:'openresty', func:method, args:JSON.stringify(args)}, function(data) {
         layer.close(loadT);
         if (!data.status){
@@ -112,7 +112,7 @@ function orPluginOpServiceOp(a,b,c,d,a,v,request_callback){
 
 //查看Nginx负载状态
 function getOpStatus() {
-    var loadT = layer.msg('正在处理，请稍后...', { icon: 16, time: 0, });
+    var loadT = layer.msg('正在处理，请稍后...', { icon: 16, time: 0, shade: 0.3 });
     $.post('/plugins/run', {name:'openresty', func:'run_info'}, function(data) {
         layer.close(loadT);
         if (!data.status){

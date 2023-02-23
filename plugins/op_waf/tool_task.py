@@ -164,7 +164,8 @@ def getCpuUsed():
         used = psutil.cpu_percent(interval=1)
         mw.writeFile(path, str(int(used)))
     else:
-        cmd = "top -bn 1 | fgrep 'Cpu(s)' | awk '{print 100 -$8}' | awk -F . '{print $1}'"
+        # 兼容 100% id 时的切割问题
+        cmd = "top -bn 1 | fgrep 'Cpu(s)' | awk -F 'ni' '{print $2}' | awk -F ',' '{print $2}' | awk -F ' ' '{print 100 - $1}'"
         data = mw.execShell(cmd)
         mw.writeFile(path, str(int(data[0].strip())))
 

@@ -696,6 +696,14 @@ end
 
 function _M.get_real_ip(self, server_name)
     local client_ip = "unknown"
+    local client_ip = "unknown"
+
+    _M.D('ngx.var.proxy_protocol_addr', ngx.var.proxy_protocol_addr)
+    -- proxy_protocol_addr 优先级最高
+    if not ngx.re.match(ngx.var.proxy_protocol_addr,"\\d+\\.\\d+\\.\\d+\\.\\d+") == nil and self:is_ipaddr(ngx.var.proxy_protocol_addr) then
+        return ngx.var.proxy_protocol_addr
+    end
+
     local site_config = self.site_config
     if site_config[server_name] then
         if site_config[server_name]['cdn'] then

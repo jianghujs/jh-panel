@@ -1031,7 +1031,7 @@ class site_api:
                 return mw.returnJson(False, '当前未开启SSL')
             to = "#error_page 404/404.html;\n\
     #HTTP_TO_HTTPS_START\n\
-    if ($server_port !~ 443){\n\
+    if ($server_port !~ 44[23]){\n\
         rewrite ^(/.*)$ https://$host$1 permanent;\n\
     }\n\
     #HTTP_TO_HTTPS_END"
@@ -2373,7 +2373,7 @@ location ^~ {from} {\n\
         if conf:
             # if conf.find('HTTP_TO_HTTPS_START') != -1:
             #     return True
-            if conf.find('$server_port !~ 443') != -1:
+            if conf.find('$server_port !~ 44') != -1:
                 return True
         return False
 

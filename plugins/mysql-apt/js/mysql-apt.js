@@ -1204,7 +1204,7 @@ function dbList(page, search){
                     '+
                     // '<th>备份</th>'+
                     '<th>备注</th>\
-                    <th style="text-align:right; min-width: 270px;">操作</th></tr>\
+                    <th style="text-align:right; min-width: 154px;" width="154px" fixed="true">操作</th></tr>\
                     <tbody>\
                     '+ list +'\
                     </tbody></table>\

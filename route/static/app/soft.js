@@ -346,6 +346,9 @@ function indexSoftHtml(callback){
         $("#menusoft").html('');
         for (var i = 0; i < rdata.length; i++) {
             var plugin = rdata[i];
+            if (!plugin.status) {
+              continue;
+            }
             var len = plugin.versions.length;
             var version_info = '';
 

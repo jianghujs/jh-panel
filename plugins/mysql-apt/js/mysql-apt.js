@@ -1200,11 +1200,11 @@ function dbList(page, search){
                     <tr><th width="30"><input class="check" onclick="checkSelect();" type="checkbox"></th>\
                     <th>数据库名</th>\
                     <th>用户名</th>\
-                    <th>密码</th>\
+                    <th style="min-width: 180px;">密码</th>\
                     '+
                     // '<th>备份</th>'+
                     '<th>备注</th>\
-                    <th style="text-align:right;">操作</th></tr>\
+                    <th style="text-align:right; min-width: 270px;">操作</th></tr>\
                     <tbody>\
                     '+ list +'\
                     </tbody></table>\

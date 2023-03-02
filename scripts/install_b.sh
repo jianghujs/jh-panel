@@ -20,10 +20,10 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
-if [ ${_os} == "Darwin" ]; then
-	OSNAME='macos'
-elif grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release; then
+if [ grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release ]; then
 	OSNAME='debian'
+elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
+	OSNAME='ubuntu'
 else
 	OSNAME='unknow'
 fi

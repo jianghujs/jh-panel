@@ -71,7 +71,7 @@ function refreshTable() {
                         <td style="width: 180px;">'+tmp[i].path+'</td>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>' +
                         // '<td style="width: 100px;">'+autostart+'</td>' +
-                        '<td style="width: 100px;">'+status+'</td>\
+                        '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
                         <td style="text-align: right;width: 280px;">\
                             '+opt+
                             '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
@@ -273,6 +273,12 @@ function deleteItem(id, name) {
 
 function projectScriptExcute(scriptKey, id) {
     var data = "id="+id+"&scriptKey="+scriptKey;
+
+    if (scriptKey === 'stop') {
+        var status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
+        $("#S" + id).html(status);
+    }
+
     setTimeout(function() {
         refreshTable()
     }, 10)

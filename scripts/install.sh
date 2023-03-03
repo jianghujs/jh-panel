@@ -10,107 +10,35 @@ fi
 
 startTime=`date +%s`
 netEnvCn="$1"
-
+echo "netEnvCn: ${netEnvCn}"
 _os=`uname`
 echo "use system: ${_os}"
 
+# 必须以root用户运行
 if [ "$EUID" -ne 0 ]
   then echo "Please run as root!"
   exit
 fi
 
-if [ "$netEnvCn" == "cn" ]; then
-	sed -i 's#http://deb.debian.org#https://mirrors.aliyun.com#g' /etc/apt/sources.list
-fi
-
-
-if [ ${_os} == "Darwin" ]; then
-	OSNAME='macos'
-elif grep -Eq "openSUSE" /etc/*-release; then
-	OSNAME='opensuse'
-	zypper refresh
-elif grep -Eq "FreeBSD" /etc/*-release; then
-	OSNAME='freebsd'
-elif grep -Eqi "CentOS" /etc/issue || grep -Eq "CentOS" /etc/*-release; then
-	OSNAME='centos'
-	yum install -y wget zip unzip git
-elif grep -Eqi "Fedora" /etc/issue || grep -Eq "Fedora" /etc/*-release; then
-	OSNAME='fedora'
-	yum install -y wget zip unzip git
-elif grep -Eqi "Rocky" /etc/issue || grep -Eq "Rocky" /etc/*-release; then
-	OSNAME='rocky'
-	yum install -y wget zip unzip git
-elif grep -Eqi "AlmaLinux" /etc/issue || grep -Eq "AlmaLinux" /etc/*-release; then
-	OSNAME='alma'
-	yum install -y wget zip unzip git
-elif grep -Eqi "Amazon Linux" /etc/issue || grep -Eq "Amazon Linux" /etc/*-release; then
-	OSNAME='amazon'
-	yum install -y wget zip unzip git
-elif grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release; then
+if [ grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release ]; then
 	OSNAME='debian'
-	apt update -y
-	apt install -y devscripts
-	apt install -y wget zip unzip
-	apt install -y git
 elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
 	OSNAME='ubuntu'
-	apt install -y wget zip unzip
-	apt install -y git
+elif grep -Eqi "CentOS" /etc/issue || grep -Eq "CentOS" /etc/*-release; then
+	OSNAME='centos'
 else
 	OSNAME='unknow'
 fi
 
 
-if [ $OSNAME != "macos" ];then
-	if id www &> /dev/null ;then 
-	    echo ""
-	else
-	    groupadd www
-		useradd -g www -s /bin/bash www
-	fi
-
-	mkdir -p /www/server
-	mkdir -p /www/wwwroot
-	mkdir -p /www/wwwlogs
-	mkdir -p /www/backup/database
-	mkdir -p /www/backup/site
-
-
-	# # https://cdn.jsdelivr.net/gh/jianghujs/jh-panel@latest/scripts/install.sh
-
-	# if [ ! -d /www/server/jh-panel ];then
-
-	# 	cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
-	# 	if [ ! -z "$cn" ];then
-	# 		# curl -sSLo /tmp/master.zip https://gitee.com/jianghujs/jh-panel/repository/archive/master.zip
-	# 		curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/master
-	# 	else
-	# 		curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/master
-	# 	fi
-
-	# 	cd /tmp && unzip /tmp/master.zip
-	# 	mv -f /tmp/jh-panel-master /www/server/jh-panel
-	# 	rm -rf /tmp/master.zip
-	# 	rm -rf /tmp/jh-panel-master
-	# fi
-	if [ "$netEnvCn" == "cn" ]; then
-		echo "git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel"
-		git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel
-	else
-		echo "git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel"
-		git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel
-	fi
-fi
-
 echo "use system version: ${OSNAME}"
-cd /www/server/jh-panel && bash scripts/install/${OSNAME}.sh
-
-# 安装后文件会被清空
 if [ "$netEnvCn" == "cn" ]; then
-    mkdir -p /www/server/jh-panel/data
-    echo "True" > /www/server/jh-panel/data/net_env_cn.pl
+  wget -O ${OSNAME}_cn.sh https://gitee.com/jianghujs/jh-panel/raw/master/scripts/install/${OSNAME}_cn.sh && bash ${OSNAME}_cn.sh
+else
+  wget -O ${OSNAME}.sh https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/install/${OSNAME}.sh && bash ${OSNAME}.sh
 fi
 
+# 启动面板
 cd /www/server/jh-panel && bash cli.sh start
 isStart=`ps -ef|grep 'gunicorn -c setting.py app:app' |grep -v grep|awk '{print $2}'`
 n=0
@@ -125,6 +53,7 @@ do
     fi
 done
 
+# 启动面板
 cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw stop
 cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw start
 cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw default
@@ -132,11 +61,12 @@ cd /www/server/jh-panel && bash /etc/rc.d/init.d/mw default
 sleep 2
 if [ ! -e /usr/bin/mw ]; then
 	if [ -f /etc/rc.d/init.d/mw ];then
+    # 添加软连接
 		ln -s /etc/rc.d/init.d/mw /usr/bin/mw
+    ln -s /etc/rc.d/init.d/mw /usr/bin/jh
 	fi
 fi
 
 endTime=`date +%s`
 ((outTime=(${endTime}-${startTime})/60))
 echo -e "Time consumed:\033[32m $outTime \033[0mMinute!"
-

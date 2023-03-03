@@ -3,19 +3,45 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 export LANG=en_US.UTF-8
 
-# RED='\e[1;31m'    # 红色
-# GREEN='\e[1;32m'  # 绿色
-# YELLOW='\e[1;33m' # 黄色
-# BLUE='\e[1;34m'   # 蓝色
-# PURPLE='\e[1;35m' # 紫色
-# CYAN='\e[1;36m'   # 蓝绿色
-# WHITE='\e[1;37m'  # 白色
-# NC='\e[0m' # 没有颜色
-
-if grep -Eq "Debian" /etc/*-release; then
-    ln -sf /bin/bash /bin/sh
+# 检查是否为root用户
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root!"
+  exit
 fi
 
+# apt 更新
+apt update -y
+apt-get update -y 
+# apt 安装相应工具
+apt install -y devscripts
+apt install -y wget zip unzip
+apt install -y git
+
+
+# 创建www用户组
+if id www &> /dev/null ;then 
+	echo ""
+else
+	groupadd www
+	useradd -g www -s /bin/bash www
+fi
+
+# 创建www目录
+mkdir -p /www/server
+mkdir -p /www/wwwroot
+mkdir -p /www/wwwlogs
+mkdir -p /www/backup/database
+mkdir -p /www/backup/site
+
+# git clone jh-panel from github
+echo "git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel"
+git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel
+
+
+# 创建软连接，将bash指向sh
+ln -sf /bin/bash /bin/sh
+
+# 32位系统需要安装rust
 __GET_BIT=`getconf LONG_BIT`
 if [ "$__GET_BIT" == "32" ];then
 	# install rust | 32bit need
@@ -27,10 +53,7 @@ fi
 apt-get install ntpdate -y
 ntpdate time.nist.gov | logger -t NTP
 
-apt update -y
-apt-get update -y 
-
-
+# 继续安装工具及环境
 apt install -y wget curl lsof unzip
 apt install -y python3-pip
 apt install -y python3-dev
@@ -42,12 +65,13 @@ apt install -y locate
 locale-gen en_US.UTF-8
 localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
 
+# 安装acme.sh(创建和配置https证书)
 if [ ! -d /root/.acme.sh ];then	
 	curl  https://get.acme.sh | sh
 fi
 
+# 防火墙开放端口
 if [ -f /usr/sbin/ufw ];then
-
 	ufw allow 22/tcp
 	ufw allow 80/tcp
 	ufw allow 443/tcp
@@ -58,16 +82,12 @@ if [ -f /usr/sbin/ufw ];then
 	# ufw allow 7200/tcp
 	# ufw allow 3306/tcp
 	# ufw allow 30000:40000/tcp
-
-fi
-
-if [ -f /usr/sbin/ufw ];then
-
+	
+	# 关闭防火墙（安装时先关闭）
 	ufw disable
-
 fi
 
-
+# 若防火墙不存在，则安装firewalld
 if [ ! -f /usr/sbin/ufw ];then
 	apt install -y firewalld
 	systemctl enable firewalld
@@ -88,14 +108,14 @@ if [ ! -f /usr/sbin/ufw ];then
 	# https://kawsing.gitbook.io/opensystem/andoid-shou-ji/untitled/fang-huo-qiang#debian-10-firewalld-0.6.3-error-commandfailed-usrsbinip6tablesrestorewn-failed-ip6tablesrestore-v1.8
 	sed -i 's#IndividualCalls=no#IndividualCalls=yes#g' /etc/firewalld/firewalld.conf
 
+	# 重启防火墙
 	firewall-cmd --reload
 fi
 
-#安装时不开启
+# 安装时不开启防火墙
 systemctl stop firewalld
 
-
-#fix zlib1g-dev fail
+# fix zlib1g-dev fail
 echo -e "\e[0;32mfix zlib1g-dev install question start\e[0m"
 Install_TmpFile=/tmp/debian-fix-zlib1g-dev.txt
 apt install -y zlib1g-dev > ${Install_TmpFile}
@@ -131,6 +151,7 @@ apt install -y libfreetype6-dev
 
 sudo localedef -i en_US -f UTF-8 en_US.UTF-8
 
+# debian 版本
 VERSION_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
 if [ "$VERSION_ID" == "9" ];then
 	sed "s/flask==2.0.3/flask==1.1.1/g" -i /www/server/jh-panel/requirements.txt
@@ -198,7 +219,13 @@ apt install -y libmariadb-dev
 #apt install -y libmysqlclient-dev   
 apt install -y libmariadb-dev-compat
 #apt install -y libmariadbclient-dev
-    
-cd /www/server/jh-panel/scripts && bash lib.sh
+
+# 安装pip3
+if [ ! -f /usr/local/bin/pip3 ];then
+  python3 -m pip install --upgrade pip setuptools wheel
+fi
+
+# 安装python依赖
+cd /www/server/jh-panel/scripts/install && bash lib.sh
 chmod 755 /www/server/jh-panel/data
 

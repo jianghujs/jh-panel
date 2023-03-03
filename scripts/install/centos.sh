@@ -3,6 +3,36 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 LANG=en_US.UTF-8
 
+# 检查是否为root用户
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root!"
+  exit
+fi
+
+# 安装相应工具 zip, unzip, git
+yum install -y wget zip unzip git
+
+
+# 创建www用户组
+if id www &> /dev/null ;then 
+  echo ""
+else
+	groupadd www
+	useradd -g www -s /bin/bash www
+fi
+
+# 创建www目录
+mkdir -p /www/server
+mkdir -p /www/wwwroot
+mkdir -p /www/wwwlogs
+mkdir -p /www/backup/database
+mkdir -p /www/backup/site
+
+# git clone jh-panel from github
+echo "git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel"
+git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel
+
+
 if [ ! -f /usr/bin/applydeltarpm ];then
 	yum -y provides '*/applydeltarpm'
 	yum -y install deltarpm
@@ -150,6 +180,17 @@ if [ "$VERSION_ID" -eq "9" ];then
 	# yum remove -y chardet
 fi
 
+# 安装pip3
+if [ ! -f /usr/local/bin/pip3 ];then
+  python3 -m pip install --upgrade pip setuptools wheel
+fi
 
+# 安装python依赖
 cd /www/server/jh-panel/scripts && bash lib.sh
 chmod 755 /www/server/jh-panel/data
+
+
+# 安装后文件会被清空(cn only)
+mkdir -p /www/server/jh-panel/data
+echo "True" > /www/server/jh-panel/data/net_env_cn.pl
+

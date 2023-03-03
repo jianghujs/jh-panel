@@ -9,6 +9,9 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
+# apt 修改为阿里源(cn only)
+sed -i 's#http://deb.debian.org#https://mirrors.aliyun.com#g' /etc/apt/sources.list
+
 # apt 更新
 apt update -y
 apt-get update -y 
@@ -20,7 +23,7 @@ apt install -y git
 
 # 创建www用户组
 if id www &> /dev/null ;then 
-	echo ""
+  echo ""
 else
 	groupadd www
 	useradd -g www -s /bin/bash www
@@ -33,9 +36,9 @@ mkdir -p /www/wwwlogs
 mkdir -p /www/backup/database
 mkdir -p /www/backup/site
 
-# git clone jh-panel from github
-echo "git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel"
-git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel
+# git clone jh-panel from gitee (cn only)
+echo "git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel"
+git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel
 
 
 # 创建软连接，将bash指向sh
@@ -159,7 +162,6 @@ if [ "$VERSION_ID" == "9" ];then
 	sed "s/configparser==5.2.0/configparser==4.0.2/g" -i /www/server/jh-panel/requirements.txt
 	sed "s/flask-socketio==5.2.0/flask-socketio==4.2.0/g" -i /www/server/jh-panel/requirements.txt
 	sed "s/python-engineio==4.3.2/python-engineio==3.9.0/g" -i /www/server/jh-panel/requirements.txt
-	# pip3 install -r /www/server/jh-panel/requirements.txt
 fi
 
 apt install -y devscripts
@@ -222,10 +224,16 @@ apt install -y libmariadb-dev-compat
 
 # 安装pip3
 if [ ! -f /usr/local/bin/pip3 ];then
-  python3 -m pip install --upgrade pip setuptools wheel
+  python3 -m pip install --upgrade pip setuptools wheel -i https://pypi.tuna.tsinghua.edu.cn/simple
 fi
+# pip 设置清华源(cn only)
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 安装python依赖
-cd /www/server/jh-panel/scripts/install_b && bash lib.sh
+cd /www/server/jh-panel/scripts/install && bash lib.sh
 chmod 755 /www/server/jh-panel/data
 
+# 安装后文件会被清空(cn only)
+mkdir -p /www/server/jh-panel/data
+echo "True" > /www/server/jh-panel/data/net_env_cn.pl

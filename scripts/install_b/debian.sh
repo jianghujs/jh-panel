@@ -220,6 +220,11 @@ apt install -y libmariadb-dev
 apt install -y libmariadb-dev-compat
 #apt install -y libmariadbclient-dev
 
+# 安装pip3
+if [ ! -f /usr/local/bin/pip3 ];then
+    python3 -m pip install --upgrade pip setuptools wheel
+fi
+
 # 安装python依赖
 cd /www/server/jh-panel/scripts/install_b && bash lib.sh
 chmod 755 /www/server/jh-panel/data

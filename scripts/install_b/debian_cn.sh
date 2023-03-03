@@ -222,10 +222,11 @@ apt install -y libmariadb-dev
 apt install -y libmariadb-dev-compat
 #apt install -y libmariadbclient-dev
 
-# pip 设置清华源(cn only)
+# 安装pip3
 if [ ! -f /usr/local/bin/pip3 ];then
     python3 -m pip install --upgrade pip setuptools wheel
 fi
+# pip 设置清华源(cn only)
 pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 

@@ -182,7 +182,7 @@ fi
 
 # 安装pip3
 if [ ! -f /usr/local/bin/pip3 ];then
-    python3 -m pip install --upgrade pip setuptools wheel
+  python3 -m pip install --upgrade pip setuptools wheel
 fi
 
 # 安装python依赖

@@ -12,14 +12,7 @@ mkdir -p $libPath
 rm -rf ${libPath}/lib.pl
 
 
-bash ${rootPath}/scripts/getos.sh
-OSNAME=`cat ${rootPath}/data/osname.pl`
-VERSION_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
-echo "${OSNAME}:${VERSION_ID}"
-
-
 #面板需要的库
-
 which pip && pip install --upgrade pip
 pip3 install --upgrade setuptools
 cd /www/server/jh-panel && pip3 install -r /www/server/jh-panel/requirements.txt

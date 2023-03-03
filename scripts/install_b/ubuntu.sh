@@ -164,7 +164,7 @@ fi
 
 # 安装pip3
 if [ ! -f /usr/local/bin/pip3 ];then
-    python3 -m pip install --upgrade pip setuptools wheel
+  python3 -m pip install --upgrade pip setuptools wheel
 fi
 
 # 安装python依赖
@@ -174,5 +174,10 @@ chmod 755 /www/server/jh-panel/data
 
 if [ "${VERSION_ID}" == "22.04" ];then
 	apt install -y python3-cffi
-    pip3 install -U --force-reinstall --no-binary :all: gevent
+  pip3 install -U --force-reinstall --no-binary :all: gevent
 fi
+
+
+# 安装后文件会被清空(cn only)
+mkdir -p /www/server/jh-panel/data
+echo "True" > /www/server/jh-panel/data/net_env_cn.pl

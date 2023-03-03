@@ -24,6 +24,8 @@ if [ grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release ]; then
 	OSNAME='debian'
 elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
 	OSNAME='ubuntu'
+elif grep -Eqi "CentOS" /etc/issue || grep -Eq "CentOS" /etc/*-release; then
+	OSNAME='centos'
 else
 	OSNAME='unknow'
 fi
@@ -61,6 +63,7 @@ if [ ! -e /usr/bin/mw ]; then
 	if [ -f /etc/rc.d/init.d/mw ];then
     # 添加软连接
 		ln -s /etc/rc.d/init.d/mw /usr/bin/mw
+    ln -s /etc/rc.d/init.d/mw /usr/bin/jh
 	fi
 fi
 

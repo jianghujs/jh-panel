@@ -224,7 +224,7 @@ apt install -y libmariadb-dev-compat
 
 # 安装pip3
 if [ ! -f /usr/local/bin/pip3 ];then
-    python3 -m pip install --upgrade pip setuptools wheel
+  python3 -m pip install --upgrade pip setuptools wheel -i https://pypi.tuna.tsinghua.edu.cn/simple
 fi
 # pip 设置清华源(cn only)
 pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple

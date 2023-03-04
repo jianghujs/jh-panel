@@ -4,14 +4,44 @@ export PATH
 export LANG=en_US.UTF-8
 export DEBIAN_FRONTEND=noninteractive
 
-if grep -Eq "Ubuntu" /etc/*-release; then
-    sudo ln -sf /bin/bash /bin/sh
-    #sudo dpkg-reconfigure dash
+# 检查是否为root用户
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root!"
+  exit
 fi
 
+# apt 更新
 apt update -y
 apt-get update -y 
+# install git, zip, unzip, wget
+apt install -y wget zip unzip
+apt install -y git
 
+
+# 创建www用户组
+if id www &> /dev/null ;then 
+  echo ""
+else
+	groupadd www
+	useradd -g www -s /bin/bash www
+fi
+
+# 创建www目录
+mkdir -p /www/server
+mkdir -p /www/wwwroot
+mkdir -p /www/wwwlogs
+mkdir -p /www/backup/database
+mkdir -p /www/backup/site
+
+# git clone jh-panel from github
+echo "git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel"
+git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel
+
+
+# 添加软连接, bash指向sh
+sudo ln -sf /bin/bash /bin/sh
+
+# install lib
 apt install -y wget curl lsof unzip
 apt install -y python3-pip
 apt install -y python3-venv
@@ -24,7 +54,7 @@ apt install -y locate
 locale-gen en_US.UTF-8
 localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
 
-
+# 设置防火墙开放端口
 if [ -f /usr/sbin/ufw ];then
 
 	ufw allow 22/tcp
@@ -34,14 +64,12 @@ if [ -f /usr/sbin/ufw ];then
 	# ufw allow 7200/tcp
 	# ufw allow 3306/tcp
 	# ufw allow 30000:40000/tcp
-
+  
+  # 关闭防火墙（安装时先关闭）
+  ufw disable
 fi
 
-
-if [ -f /usr/sbin/ufw ];then
-	ufw disable
-fi
-
+# 若防火墙不存在则安装firewalld
 if [ ! -f /usr/sbin/ufw ];then
 	apt install -y firewalld
 	systemctl enable firewalld
@@ -58,11 +86,11 @@ if [ ! -f /usr/sbin/ufw ];then
 	# fix:debian10 firewalld faq
 	# https://kawsing.gitbook.io/opensystem/andoid-shou-ji/untitled/fang-huo-qiang#debian-10-firewalld-0.6.3-error-commandfailed-usrsbinip6tablesrestorewn-failed-ip6tablesrestore-v1.8
 	sed -i 's#IndividualCalls=no#IndividualCalls=yes#g' /etc/firewalld/firewalld.conf
-
+  # 重载防火墙
 	firewall-cmd --reload
 fi
 
-#安装时不开启
+#安装时不开启防火墙
 systemctl stop firewalld
 
 
@@ -134,11 +162,22 @@ if [ "${VERSION_ID}" == "22.04" ];then
     pip3 install -U --force-reinstall --no-binary :all: gevent
 fi
 
-cd /www/server/jh-panel/scripts && bash lib.sh
+# 安装pip3
+if [ ! -f /usr/local/bin/pip3 ];then
+  python3 -m pip install --upgrade pip setuptools wheel
+fi
+
+# 安装python依赖
+cd /www/server/jh-panel/scripts/install && bash lib.sh
 chmod 755 /www/server/jh-panel/data
 
 
 if [ "${VERSION_ID}" == "22.04" ];then
 	apt install -y python3-cffi
-    pip3 install -U --force-reinstall --no-binary :all: gevent
+  pip3 install -U --force-reinstall --no-binary :all: gevent
 fi
+
+
+# 安装后文件会被清空(cn only)
+mkdir -p /www/server/jh-panel/data
+echo "True" > /www/server/jh-panel/data/net_env_cn.pl

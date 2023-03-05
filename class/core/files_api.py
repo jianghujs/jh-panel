@@ -170,10 +170,11 @@ class files_api:
             _path = os.path.dirname(file)
             if not os.path.exists(_path):
                 os.makedirs(_path)
-            open(file, 'w+').close()
+            open(file, 'w+', encoding='utf-8').close()
             self.setFileAccept(file)
             msg = mw.getInfo('创建文件[{1}]成功!', (file,))
             mw.writeLog('文件管理', msg)
+            
             return mw.returnJson(True, '文件创建成功!')
         except Exception as e:
             return mw.returnJson(True, '文件创建失败!')
@@ -691,10 +692,10 @@ class files_api:
                 detector.close()
                 char = detector.result
                 data['encoding'] = char['encoding']
-                if char['encoding'] == 'GB2312' or not char['encoding'] or char[
+                if char['encoding'] == 'GB2312'  or char[
                         'encoding'] == 'TIS-620' or char['encoding'] == 'ISO-8859-9':
                     data['encoding'] = 'GBK'
-                if char['encoding'] == 'ascii' or char[
+                if not char['encoding'] or char['encoding'] == 'ascii' or char[
                         'encoding'] == 'ISO-8859-1':
                     data['encoding'] = 'utf-8'
                 if char['encoding'] == 'Big5':

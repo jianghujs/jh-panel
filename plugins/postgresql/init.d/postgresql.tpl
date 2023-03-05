@@ -19,8 +19,8 @@ export LC_ALL="en_US.UTF-8"
 MW_PATH={$SERVER_PATH}
 PATH=$PATH:$MW_PATH/bin
 
-if [ -f $MW_PATH/bin/activate ];then
-    source $MW_PATH/bin/activate
+if [ -f $MW_PATH/venv/bin/activate ];then
+    source $MW_PATH/venv/bin/activate
 fi
 
 pg_start()

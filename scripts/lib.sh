@@ -65,11 +65,11 @@ cd /www/server/jh-panel && pip3 install -r /www/server/jh-panel/requirements.txt
 # pip3 install mysqlclient
 
 
-if [ ! -f /www/server/jh-panel/bin/activate ];then
+if [ ! -f /www/server/jh-panel/venv/bin/activate ];then
     cd /www/server/jh-panel && python3 -m venv .
-    cd /www/server/jh-panel && source /www/server/jh-panel/bin/activate
+    cd /www/server/jh-panel && source /www/server/jh-panel/venv/bin/activate
 else
-    cd /www/server/jh-panel && source /www/server/jh-panel/bin/activate
+    cd /www/server/jh-panel && source /www/server/jh-panel/venv/bin/activate
 fi
 
 pip install --upgrade pip

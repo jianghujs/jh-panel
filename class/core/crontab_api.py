@@ -492,7 +492,7 @@ class crontab_api:
 
             source_bin_activate = '''
 export LANG=en_US.UTF-8
-MW_PATH=%s/bin/activate
+MW_PATH=%s/venv/bin/activate
 if [ -f $MW_PATH ];then
     source $MW_PATH
 fi

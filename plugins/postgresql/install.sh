@@ -14,8 +14,8 @@ action=$1
 type=$2
 
 pip install psycopg2-binary
-if [ -f ${rootPath}/bin/activate ];then
-	source ${rootPath}/bin/activate
+if [ -f ${rootPath}/venv/bin/activate ];then
+	source ${rootPath}/venv/bin/activate
 	pip install psycopg2-binary
 fi
 

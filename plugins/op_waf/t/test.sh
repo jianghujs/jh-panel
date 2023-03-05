@@ -15,8 +15,8 @@ rootPath=$(dirname "$curPath")
 rootPath=$(dirname "$rootPath")
 rootPath=$(dirname "$rootPath")
 
-if [ -f ${rootPath}/bin/activate ];then
-	source ${rootPath}/bin/activate
+if [ -f ${rootPath}/venv/bin/activate ];then
+	source ${rootPath}/venv/bin/activate
 fi
 
 python3 index.py

@@ -16,8 +16,8 @@ OSNAME=`cat ${rootPath}/data/osname.pl`
 OSNAME_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
 
 
-if [ -f ${rootPath}/bin/activate ];then
-	source ${rootPath}/bin/activate
+if [ -f ${rootPath}/venv/bin/activate ];then
+	source ${rootPath}/venv/bin/activate
 fi
 
 Install_app()

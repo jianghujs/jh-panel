@@ -13,8 +13,8 @@ serverPath=$(dirname "$rootPath")
 install_tmp=${rootPath}/tmp/mw_install.pl
 VERSION=$2
 
-if [ -f ${rootPath}/bin/activate ];then
-	source ${rootPath}/bin/activate
+if [ -f ${rootPath}/venv/bin/activate ];then
+	source ${rootPath}/venv/bin/activate
 fi
 
 

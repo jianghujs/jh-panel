@@ -5,8 +5,8 @@ MDIR=$(dirname "$DIR")
 
 
 PATH=$PATH:$DIR/bin
-if [ -f bin/activate ];then
-	source bin/activate
+if [ -f venv/bin/activate ];then
+	source venv/bin/activate
 fi
 
 export LC_ALL="en_US.UTF-8"

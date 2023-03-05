@@ -148,8 +148,8 @@ dst_dir=%s
 logs_file=%s
 cd $dst_dir
 
-if [ -f bin/activate ];then
-    source bin/activate
+if [ -f venv/bin/activate ];then
+    source venv/bin/activate
 fi
 
 ''' % (mw.getRunDir(), logs_file)

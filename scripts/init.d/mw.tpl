@@ -20,8 +20,8 @@ mw_path={$SERVER_PATH}
 PATH=$PATH:$mw_path/bin
 
 
-if [ -f $mw_path/bin/activate ];then
-    source $mw_path/bin/activate
+if [ -f $mw_path/venv/bin/activate ];then
+    source $mw_path/venv/bin/activate
 fi
 
 ssl_param=''

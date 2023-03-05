@@ -13,8 +13,8 @@ action=$1
 version=$2
 sys_os=`uname`
 
-if [ -f ${rootPath}/bin/activate ];then
-	source ${rootPath}/bin/activate
+if [ -f ${rootPath}/venv/bin/activate ];then
+	source ${rootPath}/venv/bin/activate
 fi
 
 if [ "$sys_os" == "Darwin" ];then

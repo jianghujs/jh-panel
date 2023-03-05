@@ -955,11 +955,12 @@ function pluginInit(){
                 });   
             },
             cancel:function(){
-                layer.confirm('是否不再显示推荐安装套件?', {btn : ['确定', '取消'],title: "不再显示推荐?"}, function() {
-                    $.post('/files/create_dir', 'path=/www/server/php', function(rdata) {
-                        layer.closeAll();
-                    },'json');
-                });
+                layer.closeAll();
+                // layer.confirm('是否不再显示推荐安装套件?', {btn : ['确定', '取消'],title: "不再显示推荐?"}, function() {
+                //     $.post('/files/create_dir', 'path=/www/server/php', function(rdata) {
+                //         layer.closeAll();
+                //     },'json');
+                // });
             }
         });
     },'json');

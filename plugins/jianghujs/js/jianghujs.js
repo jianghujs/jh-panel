@@ -14,7 +14,7 @@ function refreshTable() {
             <thead>\
                 <th>目录</th>\
                 <th>名称</th>' +
-                // '<th>开机自启</th>' +
+                '<th>开机自启</th>' +
                 '<th>状态</th>\
                 <th style="text-align: right;" width="150">操作</th></tr>\
             </thead>\
@@ -70,7 +70,7 @@ function refreshTable() {
             tbody += '<tr>\
                         <td style="width: 180px;">'+tmp[i].path+'</td>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>' +
-                        // '<td style="width: 100px;">'+autostart+'</td>' +
+                        '<td style="width: 100px;">'+autostart+'</td>' +
                         '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
                         <td style="text-align: right;width: 280px;">\
                             '+opt+
@@ -157,12 +157,12 @@ function openCreateItem() {
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
                 </div>\
             </div>" + 
-            // "<div class='line'>\
-            //     <span class='tname'>自启动脚本</span>\
-            //     <div class='info-r c4'>\
-            //         <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
-            //     </div>\
-            // </div>" +
+            "<div class='line'>\
+                <span class='tname'>自启动脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                </div>\
+            </div>" +
             "<div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(addLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitCreateItem()\">提交</button>\
@@ -228,12 +228,12 @@ function openEditItem(id) {
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
             </div>" +  
-            // "<div class='line'>\
-            //     <span class='tname'>自启动脚本</span>\
-            //     <div class='info-r c4'>\
-            //         <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
-            //     </div>\
-            // </div>" +
+            "<div class='line'>\
+                <span class='tname'>自启动脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                </div>\
+            </div>" +
             "<div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(editLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitEditItem()\">提交</button>\
@@ -323,7 +323,7 @@ function handlePathChange() {
     let reloadScript = 'cd ' + path + '\nnpm stop\nnpm start';
     let stopScript = 'cd ' + path + '\nnpm stop';
     let autostartScript = '\
-#! /bin/sh\n\
+#! /bin/bash\n\
 ### BEGIN INIT INFO\n\
 # Provides: OnceDoc\n\
 # Required-Start: $network $remote_fs $local_fs\n\
@@ -333,10 +333,17 @@ function handlePathChange() {
 # Short-Description: start and stop node\n\
 # Description: OnceDoc\n\
 ### END INIT INFO\n\
-NPM_EXE=/usr/bin/npm\n\
+if [ -e "/www/server/nodejs/fnm" ];then\n\
+  export PATH="/www/server/nodejs/fnm:$PATH"\n\
+  eval "$(fnm env --use-on-cd --shell bash)"\n\
+fi\n\
+if ! command -v npm > /dev/null;then\n\
+  echo "No npm"\n\
+  exit 1\n\
+fi\n\
 WEB_DIR=' + path + '\n\
 cd $WEB_DIR\n\
-$NPM_EXE start\n\
+npm start\n\
     ';
     $('#projectName').val(name);
     $('#projectStartScript').val(startScript);

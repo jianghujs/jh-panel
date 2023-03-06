@@ -321,6 +321,9 @@ function searchFile(p){
 	getFiles(p);
 }
 
+const sortColumnStorageName='filesSortColumn';
+const sortTypeStorageName='filesSortType';
+
 //取数据
 function getFiles(Path) {
 	var searchtype = Path;
@@ -343,7 +346,11 @@ function getFiles(Path) {
 		showRow = '100';
 	}
 	var body = '';
-	var data = 'path=' + Path;
+	var data = {
+		path: Path,
+		sortColumn: sessionStorage.getItem(sortColumnStorageName),
+		sortType: sessionStorage.getItem(sortTypeStorageName)
+	};
 	var loadT = layer.load();
 	var totalSize = 0;
 

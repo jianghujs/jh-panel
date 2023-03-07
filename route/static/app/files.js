@@ -321,6 +321,11 @@ function searchFile(p){
 	getFiles(p);
 }
 
+const sortColumnStorageName = 'filesSortColumn';
+const sortTypeStorageName = 'filesSortType';
+const defaultSortColumn = 'name';
+const defaultSortType = 'asc';
+
 //取数据
 function getFiles(Path) {
 	var searchtype = Path;
@@ -343,7 +348,22 @@ function getFiles(Path) {
 		showRow = '100';
 	}
 	var body = '';
-	var data = 'path=' + Path;
+	var sortColumn = localStorage.getItem(sortColumnStorageName);
+	if (!sortColumn) {
+		sortColumn = defaultSortColumn;
+		localStorage.setItem(sortColumnStorageName, sortColumn);
+	}
+	var sortType = localStorage.getItem(sortTypeStorageName);
+	if (!sortType) {
+		sortType = defaultSortType;
+		localStorage.setItem(sortTypeStorageName, sortType);
+	}
+	var isAsc = sortType.toLowerCase() !== 'asc' ? false : true;
+	var data = {
+		path: Path,
+		sortColumn: sortColumn,
+		sortType: sortType 
+	};
 	var loadT = layer.load();
 	var totalSize = 0;
 
@@ -477,9 +497,15 @@ function getFiles(Path) {
 						<thead>\
 							<tr>\
 								<th width="30"><input type="checkbox" id="setBox" placeholder=""></th>\
-								<th>文件名</th>\
+								<th class="th-sort" data-sort-name="name" data-sort-type="asc">\
+								<span>文件名</span>\
+								<div class="icon-sort"/>\
+								</th>\
 								<th>大小</th>\
-								<th>修改时间</th>\
+								<th class="th-sort" data-sort-name="mtime" data-sort-type="desc">\
+								<span>修改时间</span>\
+								<div class="icon-sort"/>\
+                                </th>\
 								<th>权限</th>\
 								<th>所有者</th>\
 								<th style="text-align: right;" width="330">操作</th>\
@@ -488,6 +514,34 @@ function getFiles(Path) {
 						<tbody id="filesBody" class="list-list">'+body+'</tbody>\
 					</table>';
 			$("#fileCon").removeClass("fileList").html(tablehtml);
+
+			var sortTh = $('#fileCon .th-sort[data-sort-name="' + sortColumn + '"]');
+			var iconSortDiv = $(sortTh).find('.icon-sort');
+			if (isAsc) {
+				iconSortDiv.addClass("glyphicon glyphicon-menu-up active");
+			} else {
+				iconSortDiv.addClass("glyphicon glyphicon-menu-down active");
+			}
+			$("#fileCon .th-sort").on('click', function (event) {
+				event.stopPropagation();
+
+				var savedSortColumn = localStorage.getItem(sortColumnStorageName);
+				var savedSortType = localStorage.getItem(sortTypeStorageName);
+				var sortColumn = $(this).attr('data-sort-name');
+				localStorage.setItem(sortTypeStorageName, savedSortType.toLowerCase() === "asc" ? "desc" : "asc");
+				if (sortColumn !== savedSortColumn) {
+					localStorage.setItem(sortColumnStorageName, sortColumn);
+					localStorage.setItem(sortTypeStorageName, $(this).attr('data-sort-type'));
+				}
+
+				var searchV = $("#SearchValue").val();
+				if (searchV.trim()) {
+					getFiles(1);
+				} else {
+					getFiles(getCookie("open_dir_path"));
+				}
+			});
+
 			$("#tipTools").width($("#fileCon").width());
 		} else {
 			$("#fileCon").addClass("fileList").html(body);
@@ -619,36 +673,36 @@ function totalFile(){
 }
 //绑定操作
 function bindselect(){
-	$("#filesBody,#fileCon").selectable({
-		autoRefresh: false,
-		filter:"tr,.folderBox",
-		cancel: "a,span,input,.ico-folder",
-		selecting:function(e){
-			$(".ui-selecting").find("input").prop("checked", true);
-			showSeclect();
-		},
-		selected:function(e){
-			$(".ui-selectee").find("input").prop("checked", false);
-			$(".ui-selected", this).each(function() {
-				$(this).find("input").prop("checked", true);
-				showSeclect();
-			});
-		},
-		unselecting:function(e){
-			$(".ui-selectee").find("input").prop("checked", false);
-			$(".ui-selecting").find("input").prop("checked", true);
-			showSeclect();
-			$("#rmenu").hide()
-		}
-	});
-	$("#filesBody,#fileCon").selectable("refresh");
-	//重绑图标点击事件
-	$(".ico-folder").click(function(){
-		$(this).parent().addClass("ui-selected").siblings().removeClass("ui-selected");
-		$(".ui-selectee").find("input").prop("checked", false);
-		$(this).prev("input").prop("checked", true);
-		showSeclect();
-	})
+	// $("#filesBody,#fileCon").selectable({
+	// 	autoRefresh: false,
+	// 	filter:"tr,.folderBox",
+	// 	cancel: "a,span,input,.ico-folder",
+	// 	selecting:function(e){
+	// 		$(".ui-selecting").find("input").prop("checked", true);
+	// 		showSeclect();
+	// 	},
+	// 	selected:function(e){
+	// 		$(".ui-selectee").find("input").prop("checked", false);
+	// 		$(".ui-selected", this).each(function() {
+	// 			$(this).find("input").prop("checked", true);
+	// 			showSeclect();
+	// 		});
+	// 	},
+	// 	unselecting:function(e){
+	// 		$(".ui-selectee").find("input").prop("checked", false);
+	// 		$(".ui-selecting").find("input").prop("checked", true);
+	// 		showSeclect();
+	// 		$("#rmenu").hide()
+	// 	}
+	// });
+	// $("#filesBody,#fileCon").selectable("refresh");
+	// //重绑图标点击事件
+	// $(".ico-folder").click(function(){
+	// 	$(this).parent().addClass("ui-selected").siblings().removeClass("ui-selected");
+	// 	$(".ui-selectee").find("input").prop("checked", false);
+	// 	$(this).prev("input").prop("checked", true);
+	// 	showSeclect();
+	// })
 }
 //选择操作
 function showSeclect(){

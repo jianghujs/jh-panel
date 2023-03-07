@@ -609,7 +609,8 @@ function onlineEditFile(k, f) {
 			lineNumbers: true,
 			matchBrackets: true,
 			matchtags: true,
-			autoMatchParens: true
+			autoMatchParens: true,
+			theme: 'monokai'
 		});
 		t.focus();
 		t.setSize("auto", q - 150);

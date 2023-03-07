@@ -32,9 +32,6 @@ from flask import session
 class files_api:
 
     rPath = None
-    sortable_column = dict(name=0, mtime=2)
-    # mtime
-    default_sort_key = 2
 
     def __init__(self):
         self.rPath = mw.getRootDir() + '/recycle_bin/'
@@ -148,9 +145,9 @@ class files_api:
 
     def getDirApi(self):
         path = request.form.get('path', '')
-        sort_column = request.form.get('sortColumn', '')
-        desc = request.form.get('sortType', True)
-        desc = True if desc.lower() == 'true' else False
+        sort_stat_field = request.form.get('sortColumn', self.default_sort_stat_field)
+        sort_type = request.form.get('sortType', self.default_sort_type)
+        desc = True if sort_type.lower() == 'desc' else False
         if not os.path.exists(path):
             path = mw.getRootDir() + "/wwwroot"
         search = request.args.get('search', '').strip().lower()
@@ -163,8 +160,8 @@ class files_api:
 
         # return self.getAllDir(path, int(page), int(row), "wp-inlcude")
         if search_all == 'yes' and search != '':
-            return self.getAllDir(path, int(page), int(row), search, sort_column, desc)
-        return self.getDir(path, int(page), int(row), search, sort_column, desc)
+            return self.getAllDir(path, int(page), int(row), search, sort_stat_field, desc)
+        return self.getDir(path, int(page), int(row), search, sort_stat_field, desc)
 
     def createFileApi(self):
         file = request.form.get('path', '')
@@ -851,7 +848,7 @@ class files_api:
             i += 1
         return i
 
-    def getAllDir(self, path, page=1, page_size=10, search=None, sort_column=None, desc=True):
+    def getAllDir(self, path, page=1, page_size=10, search=None, sort_stat_field=None, desc=True):
         # print("search:", search)
         data = {}
         dirnames = []
@@ -885,8 +882,8 @@ class files_api:
                     filenames.append(self.__get_stats(filename, path))
                     count += 1
 
-        data['DIR'] = self.__sort_files(dirnames, sort_column, desc)
-        data['FILES'] = self.__sort_files(filenames, sort_column, desc)
+        data['DIR'] = self.__sort_files(dirnames, sort_stat_field, desc)
+        data['FILES'] = self.__sort_files(filenames, sort_stat_field, desc)
         data['PATH'] = path.replace('//', '/')
 
         info = {}
@@ -899,7 +896,7 @@ class files_api:
 
         return mw.getJson(data)
 
-    def getDir(self, path, page=1, page_size=10, search=None, sort_column=None, desc=True):
+    def getDir(self, path, page=1, page_size=10, search=None, sort_stat_field=None, desc=True):
         data = {}
         dirnames = []
         filenames = []
@@ -936,28 +933,34 @@ class files_api:
                 n += 1
             except Exception as e:
                 continue
-        data['DIR'] = self.__sort_files(dirnames, sort_column, desc)
-        data['FILES'] = self.__sort_files(filenames, sort_column, desc)
+        data['DIR'] = self.__sort_files(dirnames, sort_stat_field, desc)
+        data['FILES'] = self.__sort_files(filenames, sort_stat_field, desc)
         data['PATH'] = path.replace('//', '/')
 
         return mw.getJson(data)
 
-    def __sort_files(self, files, sort_column, desc):
-        sort_key = self.sortable_column[sort_column] if sort_column in self.sortable_column else self.default_sort_key
-        sorted_files = sorted(files, key=lambda x: x[sort_key], reverse = desc)
-        sort_keys = str(sort_key) * len(sorted_files)
-        return list(map(self.__format_stat, sort_keys, sorted_files))
+    def __sort_files(self, files, sort_stat_field, desc):
+        sort_key = self.sortable_stat_fields[sort_stat_field] if sort_stat_field in self.sortable_stat_fields else self.default_sort_key
+        sorted_files = sorted(files, key=lambda x: x[sort_key], reverse=desc)
+        return list(map(self.__format_stat, sorted_files))
 
-    def __format_stat(self, sort_key, stat):
-        if(len(stat) == 0):
-            return ';'*self.__get_stats_num
+    def __format_stat(self, stat):
+        if (len(stat) == 0):
+            return ';'*self.stat_fields_num
 
-        sort_key = int(sort_key)
-        stat[sort_key] = str(stat[sort_key])
+        stat[self.mtime_offset] = str(stat[self.mtime_offset])
         return ';'.join(stat)
 
-    def __get_stats_num(self):
-        return 6
+    default_sort_stat_field = 'name'
+    default_sort_type = 'asc'
+
+    # value: stat offset, based on __get_stats()
+    stat_fields_num = 6
+    sortable_stat_fields = dict(name=0, mtime=2)
+    # name
+    default_sort_key = 0
+    mtime_offset = 2
+
 
     def __get_stats(self, filename, path=None):
         filename = filename.replace('//', '/')

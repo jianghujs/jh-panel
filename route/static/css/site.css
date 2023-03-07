@@ -4880,3 +4880,19 @@ select[disabled]{
   font-weight: 400;
 }
 
+#fileCon thead tr th.th-sort {
+    cursor: pointer;
+}
+
+#fileCon thead tr th.th-sort:hover {
+    background: #eee;
+}
+
+#fileCon thead tr th .icon-sort {
+    display: none;
+    float: right
+}
+
+#fileCon thead tr th .icon-sort.active {
+    display: block;
+}

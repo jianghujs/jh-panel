@@ -331,16 +331,14 @@ function getFiles(Path) {
 	var searchtype = Path;
 	if(isNaN(Path)){
 		var p = 1;
-		Path = encodeURIComponent(Path);
 	} else {
 		var p = Path;
 		Path = getCookie('open_dir_path');
-		Path = encodeURIComponent(Path);
 	}
 	
 	var search = '';
 	var searchV = $("#SearchValue").val();
-	if(searchV.length > 1 && searchtype == '1'){
+	if(searchV.length > 1){
 		search = "&search="+searchV;
 	}
 	var showRow = getCookie('showRow');
@@ -534,12 +532,7 @@ function getFiles(Path) {
 					localStorage.setItem(sortTypeStorageName, $(this).attr('data-sort-type'));
 				}
 
-				var searchV = $("#SearchValue").val();
-				if (searchV.trim()) {
-					getFiles(1);
-				} else {
-					getFiles(getCookie("open_dir_path"));
-				}
+				getFiles(p);
 			});
 
 			$("#tipTools").width($("#fileCon").width());
@@ -673,36 +666,36 @@ function totalFile(){
 }
 //绑定操作
 function bindselect(){
-	// $("#filesBody,#fileCon").selectable({
-	// 	autoRefresh: false,
-	// 	filter:"tr,.folderBox",
-	// 	cancel: "a,span,input,.ico-folder",
-	// 	selecting:function(e){
-	// 		$(".ui-selecting").find("input").prop("checked", true);
-	// 		showSeclect();
-	// 	},
-	// 	selected:function(e){
-	// 		$(".ui-selectee").find("input").prop("checked", false);
-	// 		$(".ui-selected", this).each(function() {
-	// 			$(this).find("input").prop("checked", true);
-	// 			showSeclect();
-	// 		});
-	// 	},
-	// 	unselecting:function(e){
-	// 		$(".ui-selectee").find("input").prop("checked", false);
-	// 		$(".ui-selecting").find("input").prop("checked", true);
-	// 		showSeclect();
-	// 		$("#rmenu").hide()
-	// 	}
-	// });
-	// $("#filesBody,#fileCon").selectable("refresh");
-	// //重绑图标点击事件
-	// $(".ico-folder").click(function(){
-	// 	$(this).parent().addClass("ui-selected").siblings().removeClass("ui-selected");
-	// 	$(".ui-selectee").find("input").prop("checked", false);
-	// 	$(this).prev("input").prop("checked", true);
-	// 	showSeclect();
-	// })
+	$("#filesBody").selectable({
+		autoRefresh: false,
+		filter:"tr,.folderBox",
+		cancel: "a,span,input,.ico-folder",
+		selecting:function(e){
+			$(".ui-selecting").find("input").prop("checked", true);
+			showSeclect();
+		},
+		selected:function(e){
+			$(".ui-selectee").find("input").prop("checked", false);
+			$(".ui-selected", this).each(function() {
+				$(this).find("input").prop("checked", true);
+				showSeclect();
+			});
+		},
+		unselecting:function(e){
+			$(".ui-selectee").find("input").prop("checked", false);
+			$(".ui-selecting").find("input").prop("checked", true);
+			showSeclect();
+			$("#rmenu").hide()
+		}
+	});
+	$("#filesBody").selectable("refresh");
+	//重绑图标点击事件
+	$(".ico-folder").click(function(){
+		$(this).parent().addClass("ui-selected").siblings().removeClass("ui-selected");
+		$(".ui-selectee").find("input").prop("checked", false);
+		$(this).prev("input").prop("checked", true);
+		showSeclect();
+	})
 }
 //选择操作
 function showSeclect(){

@@ -848,11 +848,12 @@ class files_api:
             i += 1
         return i
 
-    def getAllDir(self, path, page=1, page_size=10, search=None, sort_stat_field=None, desc=True):
+    def getAllDir(self, path, page=1, page_size=10, search=None, sort_stat_field=None, desc=False):
         # print("search:", search)
         data = {}
         dirnames = []
         filenames = []
+        total_files = []
 
         count = 0
         max_limit = 3000
@@ -868,7 +869,7 @@ class files_api:
                     filename = d_list[0] + '/' + d
                     if not os.path.exists(filename):
                         continue
-                    dirnames.append(self.__get_stats(filename, path))
+                    total_files.append((filename, self.__get_stats(filename, path)))
                     count += 1
 
             for f in d_list[2]:
@@ -879,74 +880,86 @@ class files_api:
                     filename = d_list[0] + '/' + f
                     if not os.path.exists(filename):
                         continue
-                    filenames.append(self.__get_stats(filename, path))
+                    total_files.append((filename, self.__get_stats(filename, path)))
                     count += 1
 
-        data['DIR'] = self.__sort_files(dirnames, sort_stat_field, desc)
-        data['FILES'] = self.__sort_files(filenames, sort_stat_field, desc)
-        data['PATH'] = path.replace('//', '/')
+        total_files = self.__sort_files(total_files, sort_stat_field, desc)
 
         info = {}
-        info['count'] = len(dirnames) + len(filenames)
+        info['count'] = len(total_files)
         info['row'] = page_size
         info['p'] = page
         info['tojs'] = 'getFiles'
         pageObj = mw.getPageObject(info, '1,2,3,4,5,6,7,8')
         data['PAGE'] = pageObj[0]
+
+        one_page_files = total_files[pageObj[1].SHIFT : pageObj[1].SHIFT + pageObj[1].ROW]
+        for file_info in one_page_files:
+            if os.path.isdir(file_info[0]):
+                dirnames.append(file_info[1])
+            else:
+                filenames.append(file_info[1])
+
+        data['DIR'] = self.__format_files(dirnames)
+        data['FILES'] = self.__format_files(filenames)
+        data['PATH'] = path.replace('//', '/')
 
         return mw.getJson(data)
 
-    def getDir(self, path, page=1, page_size=10, search=None, sort_stat_field=None, desc=True):
+    def getDir(self, path, page=1, page_size=10, search=None, sort_stat_field=None, desc=False):
         data = {}
         dirnames = []
         filenames = []
+        total_files = []
 
-        info = {}
-        info['count'] = self.getCount(path, search)
-        info['row'] = page_size
-        info['p'] = page
-        info['tojs'] = 'getFiles'
-        pageObj = mw.getPageObject(info, '1,2,3,4,5,6,7,8')
-        data['PAGE'] = pageObj[0]
-
-        i = 0
-        n = 0
         for filename in os.listdir(path):
             if search:
                 if filename.lower().find(search) == -1:
                     continue
-            i += 1
-            if n >= pageObj[1].ROW:
-                break
-            if i < pageObj[1].SHIFT:
-                continue
             try:
                 filePath = path + '/' + filename
                 if not os.path.exists(filePath):
                     continue
 
                 file_stats = self.__get_stats(filePath, path)
-                if os.path.isdir(filePath):
-                    dirnames.append(file_stats)
-                else:
-                    filenames.append(file_stats)
-                n += 1
+                total_files.append((filePath, file_stats))
             except Exception as e:
                 continue
-        data['DIR'] = self.__sort_files(dirnames, sort_stat_field, desc)
-        data['FILES'] = self.__sort_files(filenames, sort_stat_field, desc)
+
+        total_files = self.__sort_files(total_files, sort_stat_field, desc)
+
+        info = {}
+        info['count'] = len(total_files)
+        info['row'] = page_size
+        info['p'] = page
+        info['tojs'] = 'getFiles'
+        pageObj = mw.getPageObject(info, '1,2,3,4,5,6,7,8')
+        data['PAGE'] = pageObj[0]
+
+        one_page_files = total_files[pageObj[1].SHIFT : pageObj[1].SHIFT + pageObj[1].ROW]
+
+        for file_info in one_page_files:
+            if os.path.isdir(file_info[0]):
+                dirnames.append(file_info[1])
+            else:
+                filenames.append(file_info[1])
+
+        data['DIR'] = self.__format_files(dirnames)
+        data['FILES'] = self.__format_files(filenames)
         data['PATH'] = path.replace('//', '/')
 
         return mw.getJson(data)
 
     def __sort_files(self, files, sort_stat_field, desc):
         sort_key = self.sortable_stat_fields[sort_stat_field] if sort_stat_field in self.sortable_stat_fields else self.default_sort_key
-        sorted_files = sorted(files, key=lambda x: x[sort_key], reverse=desc)
-        return list(map(self.__format_stat, sorted_files))
+        return sorted(files, key=lambda x: x[1][sort_key], reverse=desc)
+
+    def __format_files(self, files):
+        return list(map(self.__format_stat, files))
 
     def __format_stat(self, stat):
         if (len(stat) == 0):
-            return ';'*self.stat_fields_num
+            return ';' * (self.stat_fields_num - 1)
 
         stat[self.mtime_offset] = str(stat[self.mtime_offset])
         return ';'.join(stat)
@@ -960,7 +973,6 @@ class files_api:
     # name
     default_sort_key = 0
     mtime_offset = 2
-
 
     def __get_stats(self, filename, path=None):
         filename = filename.replace('//', '/')

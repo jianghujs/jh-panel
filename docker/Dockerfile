@@ -25,7 +25,7 @@ RUN apt update -y && \
 	mkdir -p /www/wwwlogs && \
 	mkdir -p /www/backup/database && \
 	mkdir -p /www/backup/site && \
-	wget -O /tmp/dev.zip https://github.com/midoks/jh-panel/archive/refs/heads/dev.zip && \
+	wget -O /tmp/dev.zip https://github.com/jianghujs/jh-panel/archive/refs/heads/dev.zip && \
 	cd /tmp && unzip /tmp/dev.zip && \
 	mv -f /tmp/jh-panel-dev /www/server/jh-panel && \
 	rm -rf /tmp/dev.zip && \

@@ -62,7 +62,7 @@ if [ $OSNAME != "macos" ];then
 	mkdir -p /www/backup/site
 
 	if [ ! -d /www/server/jh-panel ];then
-		curl -sSLo /tmp/dev.zip https://github.com/midoks/jh-panel/archive/refs/heads/dev.zip
+		curl -sSLo /tmp/dev.zip https://github.com/jianghujs/jh-panel/archive/refs/heads/dev.zip
 		cd /tmp && unzip /tmp/dev.zip
 		mv -f /tmp/jh-panel-dev /www/server/jh-panel
 		rm -rf /tmp/dev.zip

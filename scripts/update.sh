@@ -55,9 +55,9 @@ fi
 
 # cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
 # if [ ! -z "$cn" ];then
-# 	curl -sSLo /tmp/master.zip https://gitee.com/midoks/jh-panel/repository/archive/master.zip
+# 	curl -sSLo /tmp/master.zip https://gitee.com/jianghujs/jh-panel/repository/archive/master.zip
 # else
-# 	curl -sSLo /tmp/master.zip https://codeload.github.com/midoks/jh-panel/zip/master
+# 	curl -sSLo /tmp/master.zip https://codeload.github.com/jianghujs/jh-panel/zip/master
 # fi
 
 

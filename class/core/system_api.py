@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------
 # 江湖面板
 # ---------------------------------------------------------------------------------
-# copyright (c) 2018-∞(https://github.com/midoks/jh-panel) All rights reserved.
+# copyright (c) 2018-∞(https://github.com/jianghujs/jh-panel) All rights reserved.
 # ---------------------------------------------------------------------------------
 # Author: midoks <midoks@163.com>
 # ---------------------------------------------------------------------------------
@@ -658,7 +658,7 @@ class system_api:
     def getServerInfo(self):
         import urllib.request
         import ssl
-        upAddr = 'https://api.github.com/repos/midoks/jh-panel/releases/latest'
+        upAddr = 'https://api.github.com/repos/jianghujs/jh-panel/releases/latest'
         try:
             context = ssl._create_unverified_context()
             req = urllib.request.urlopen(upAddr, context=context, timeout=3)
@@ -713,7 +713,7 @@ class system_api:
                 if not os.path.exists(toPath):
                     mw.execShell('mkdir -p ' + toPath)
 
-                newUrl = "https://github.com/midoks/jh-panel/archive/refs/tags/" + version + ".zip"
+                newUrl = "https://github.com/jianghujs/jh-panel/archive/refs/tags/" + version + ".zip"
 
                 dist_mw = toPath + '/mw.zip'
                 if not os.path.exists(dist_mw):

@@ -203,9 +203,9 @@ mw_update()
 {
     cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
     if [ ! -z "$cn" ];then
-        curl -fsSL https://cdn.jsdelivr.net/gh/midoks/jh-panel@latest/scripts/update.sh | bash
+        curl -fsSL https://cdn.jsdelivr.net/gh/jianghujs/jh-panel@latest/scripts/update.sh | bash
     else
-        curl -fsSL https://raw.githubusercontent.com/midoks/jh-panel/master/scripts/update.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/update.sh | bash
     fi
 }
 
@@ -213,9 +213,9 @@ mw_update_dev()
 {
     cn=$(curl -fsSL -m 10 http://ipinfo.io/json | grep "\"country\": \"CN\"")
     if [ ! -z "$cn" ];then
-        curl -fsSL https://gitee.com/midoks/jh-panel/raw/dev/scripts/update_dev.sh | bash
+        curl -fsSL https://gitee.com/jianghujs/jh-panel/raw/dev/scripts/update_dev.sh | bash
     else
-        curl -fsSL https://raw.githubusercontent.com/midoks/jh-panel/dev/scripts/update_dev.sh | bash
+        curl -fsSL https://raw.githubusercontent.com/jianghujs/jh-panel/dev/scripts/update_dev.sh | bash
     fi
     cd /www/server/jh-panel
 }

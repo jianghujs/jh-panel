@@ -592,9 +592,9 @@ def connect_ssh():
     try:
         ssh.connect(mw.getHostAddr(), mw.getSSHPort(), username='root', timeout=5)
     except Exception as e:
-        ssh.connect('127.0.0.1', username='root', mw.getSSHPort())
+        ssh.connect('127.0.0.1', mw.getSSHPort(), username='root')
     except Exception as e:
-        ssh.connect('localhost', username='root', mw.getSSHPort())
+        ssh.connect('localhost', mw.getSSHPort(), username='root')
     except Exception as e:
         return False
 

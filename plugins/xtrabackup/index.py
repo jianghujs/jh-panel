@@ -124,6 +124,18 @@ def testSetting():
             return mw.returnJson(False, '连接错误!')
     return mw.returnJson(True, '连接成功!')
 
+def getBackupPathConf():
+    return getServerDir() + '/backup-path.conf'
+
+def getBackupPath():
+    path = mw.readFile(getBackupPathConf())
+    if(path == False):
+        path = '/www/backup/xtrabackup_data'
+    else:
+        path = path.strip()
+
+    return path
+
 def doMysqlBackup():
     args = getArgs()
     content = mw.readFile(getConf())
@@ -145,7 +157,7 @@ def doMysqlBackup():
         return mw.returnJson(True, execResult[0])
 
     # Tip: 兼容 老版本的 xtrabackup.sh; 未来可以删除
-    if os.path.exists('/www/backup/xtrabackup_data/mysql'):
+    if os.path.exists(os.path.join(getBackupPath(), 'mysql')):
         return mw.returnJson(True, '备份成功')    
         
     return mw.returnJson(False, execResult[0])
@@ -183,16 +195,21 @@ def getRecoveryBackupScript():
         return mw.returnJson(False, '未检测到安装的mysql插件!')
 
     recoveryScript = '#!/bin/bash\n'
+    if os.path.exists('/www/server/mysql-apt'):
+        recoveryScript += ('systemctl stop mysql-apt\n')
+    elif os.path.exists('/www/server/mysql'):
+        recoveryScript += ('systemctl stop mysql\n')
     recoveryScript += ('mv %s %s_%s\n' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
     recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
     recoveryScript += ('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s\n' % (filename))
-    recoveryScript += ('mv /www/backup/xtrabackup_data_restore/www/backup/xtrabackup_data %s \n' % (mysqlDir))
+    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore' + getBackupPath() + ' &>> /www/wwwlogs/xtrabackup.log\n')
+    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore' + getBackupPath() + ' &>> /www/wwwlogs/xtrabackup.log\n')
     recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
     recoveryScript += ('chmod -R 755 ' + mysqlDir + '\n')
     if os.path.exists('/www/server/mysql-apt'):
-        recoveryScript += ('systemctl restart mysql-apt\n')
+        recoveryScript += ('systemctl start mysql-apt\n')
     elif os.path.exists('/www/server/mysql'):
-        recoveryScript += ('systemctl restart mysql\n')
+        recoveryScript += ('systemctl start mysql\n')
     return mw.returnJson(True, 'ok', recoveryScript)
 
 def doRecoveryBackup():
@@ -230,6 +247,19 @@ def getConf():
     path = getServerDir() + "/xtrabackup.sh"
     return path
 
+def returnBackupPath():
+    return mw.returnJson(True, 'ok',  getBackupPath())
+
+def setBackupPath():
+    args = getArgs()
+    data = checkArgs(args, ['path'])
+    if not data[0]:
+        return data[1]
+
+    path = args['path']
+    mw.writeFile(getBackupPathConf(), path)
+    return mw.returnJson(True, '修改成功!')
+
 def getConfContent():
     return mw.returnJson(True, 'ok',  mw.readFile(getConf()))
 
@@ -241,6 +271,10 @@ if __name__ == "__main__":
         print(runLog())
     elif func == 'conf':
         print(getConf()) 
+    elif func == 'get_backup_path':
+        print(returnBackupPath())
+    elif func == 'set_backup_path':
+        print(setBackupPath())
     elif func == 'conf_content':
         print(getConfContent())
     elif func == 'get_xtrabackup_cron':

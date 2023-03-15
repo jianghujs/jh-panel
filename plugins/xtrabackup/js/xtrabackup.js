@@ -81,6 +81,27 @@ function setting(){
     });
 }
 
+function backupPath(){
+    myPost('get_backup_path','',function(data){
+        data = JSON.parse(data.data)
+        var con = '<div class="line ">\
+            <div class="info-r  ml0">\
+            <input id="datadir" name="datadir" class="bt-input-text mr5 port" type="text" style="width:330px" value="'+data.data+'">\
+            <span class="glyphicon cursor mr5 glyphicon-folder-open icon_datadir" onclick="changePath(\'datadir\')"></span>\
+            <button id="btn_change_path" name="btn_change_path" class="btn btn-success btn-sm mr5 ml5 btn_change_port">保存</button>\
+            </div></div>';
+        $(".soft-man-con").html(con);
+
+        $('#btn_change_path').click(function(){
+            var path = $("input[name='datadir']").val();
+            myPost('set_backup_path','path='+path,function(data){
+                var rdata = $.parseJSON(data.data);
+                layer.msg(rdata.msg,{icon:rdata.status ? 1 : 5,time:2000,shade: [0.3, '#000']});
+            });
+        });
+    });
+}
+
 const xtrabackupCron = {        
     name: '[勿删]xtrabackup-cron',
     type: 'day',

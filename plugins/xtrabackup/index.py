@@ -145,12 +145,13 @@ def doMysqlBackup():
 
     # 写入临时文件用于执行
     tempFilePath = getServerDir() + '/xtrabackup_temp.sh'
-    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s\necho 备份成功' % {'content': content, 'tempFilePath': tempFilePath})
+    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s' % {'content': content, 'tempFilePath': tempFilePath})
     mw.execShell('chmod 750 ' + tempFilePath)
     # 执行脚本
     log_file = runLog()
     mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份开始" >> ' + log_file)
-    mw.execShell("sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file })
+    # sync the backup path to the backup script
+    mw.execShell("BACKUP_PATH=%(backupPath)s sh %(tempFilePath)s >> %(logFile)s" % {'backupPath':getBackupPath(), 'tempFilePath': tempFilePath, 'logFile': log_file })
     execResult = mw.execShell("tail -n 1 " + log_file)
     
     if "备份成功" in execResult[0]:
@@ -202,8 +203,8 @@ def getRecoveryBackupScript():
     recoveryScript += ('mv %s %s_%s\n' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
     recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
     recoveryScript += ('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s\n' % (filename))
-    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore' + getBackupPath() + ' &>> /www/wwwlogs/xtrabackup.log\n')
-    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore' + getBackupPath() + ' &>> /www/wwwlogs/xtrabackup.log\n')
+    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup.log\n')
+    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup.log\n')
     recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
     recoveryScript += ('chmod -R 755 ' + mysqlDir + '\n')
     if os.path.exists('/www/server/mysql-apt'):

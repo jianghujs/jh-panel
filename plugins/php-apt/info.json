@@ -5,7 +5,7 @@
 	"name": "php-apt",
 	"title": "PHP[APT]",
 	"coexist": true,
-	"versions": ["80"],
+	"versions": ["74", "80"],
 	"install_pre_inspection":true,
 	"tip": "soft",
 	"checks": "server/php-apt/VERSION",

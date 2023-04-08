@@ -46,8 +46,6 @@ else
     DEFAULT_CHOICE=$1
 fi
 
-echo "$DEFAULT_CHOICE"
-
 # 显示源列表
 echo "请选择一个 apt 源:"
 for i in "${!OPTIONS[@]}"; do 
@@ -60,7 +58,7 @@ done
 
 #等待用户输入
 while true; do
-    read -p "请输入选项（数字）[$DEFAULT_CHOICE]: " CHOICE
+    read -p "请输入选项（数字）[默认 $DEFAULT_CHOICE]: " CHOICE
     CHOICE=${CHOICE:-$DEFAULT_CHOICE}
     if [[ "$CHOICE" =~ ^[1-5]$ ]]; then
         break

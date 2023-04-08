@@ -33,6 +33,16 @@ mkdir -p /www/wwwlogs
 mkdir -p /www/backup/database
 mkdir -p /www/backup/site
 
+# 判断是否存在jh-panel目录，存在则删除
+if [ -d "/www/server/jh-panel" ]; then
+  echo "目录 /www/server/jh-panel 存在"
+  read -p "是否删除该目录？[y/n]: " answer
+  if [[ $answer == 'y' ]]; then
+    rm -rf "/www/server/jh-panel"
+    echo "目录已删除"
+  fi
+fi
+
 # git clone jh-panel from github
 echo "git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel"
 git clone https://github.com/jianghujs/jh-panel /www/server/jh-panel

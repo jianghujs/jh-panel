@@ -5,6 +5,7 @@ OPTIONS=(
     "官方源 (http://deb.debian.org/debian)"
     "科大源 (https://mirrors.ustc.edu.cn/debian/)"
     "网易源 (https://mirrors.163.com/debian/)"
+    "保持原配置"
 )
 
 #定义源地址
@@ -83,6 +84,8 @@ elif [[ "$CHOSEN_OPTION" =~ "网易源" ]]; then
     echo "正在将新源地址添加到 $DEBIAN_SOURCES_FILE 文件中..."
     echo "$NETEASE_SOURCES" > "$DEBIAN_SOURCES_FILE"
     echo "源地址更改完成。"
+elif [[ "$CHOSEN_OPTION" =~ "保持原配置" ]]; then
+    echo "保持原配置"
 else
     #添加源地址到$DEBIAN_SOURCES_FILE文件末尾
     echo "正在将新源地址添加到 $DEBIAN_SOURCES_FILE 文件中..."

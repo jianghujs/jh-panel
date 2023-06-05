@@ -17,6 +17,7 @@ import sys
 import os
 import json
 import time
+import socket
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -177,6 +178,16 @@ def getServerIp():
         "curl -{} -sS --connect-timeout 5 -m 60 https://v6r.ipip.net/?format=text".format(version))
     print(ip[0])
 
+def getLocalIp():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # The IP address isn't really important here, we just need to select a valid IP address
+        # to allow the socket to be bound correctly
+        sock.connect(("8.8.8.8", 80))
+        local_ip = sock.getsockname()[0]
+    finally:
+        sock.close()
+    print(local_ip) 
 
 if __name__ == "__main__":
     method = sys.argv[1]
@@ -191,6 +202,8 @@ if __name__ == "__main__":
         show_panel_pwd()
     elif method == 'getServerIp':
         getServerIp()
+    elif method == 'getLocalIp':
+        getLocalIp()
     elif method == "cli":
         clinum = 0
         try:

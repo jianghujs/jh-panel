@@ -101,9 +101,11 @@ def execShell(cmdstring, cwd=None, timeout=None, shell=True):
 
         if isinstance(data[1], bytes):
             t2 = str(data[1], encoding='utf-8')
-        return (t1, t2)
+        mw.writeFile('/root/1.txt', '执行成功:' + str(t1 + t2))
+        return True
     except Exception as e:
-        return (None, None)
+        mw.writeFile('/root/1.txt', '执行失败:' + str(e))
+        return False
 
 
 def downloadFile(url, filename):
@@ -171,7 +173,7 @@ def runTask():
                     argv = value['execstr'].split('|mw|')
                     downloadFile(argv[0], argv[1])
                 elif value['type'] == 'execshell':
-                    execShell(value['execstr'])
+                    execStatus = execShell(value['execstr'])
                 end = int(time.time())
                 sql.table('tasks').where("id=?", (value['id'],)).save(
                     'status,end', ('1', end))

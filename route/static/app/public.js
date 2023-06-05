@@ -1,3 +1,5 @@
+var messageBoxLayer = null;
+var autoCloseMessageBox = false;
 
 $(document).ready(function() {
 	$(".sub-menu a.sub-menu-a").click(function() {
@@ -1190,9 +1192,14 @@ function getSpeed(sele){
 	},'json');
 }
 //消息盒子
-function messageBox(timeout) {
+function messageBox(options) {
+	if(typeof options != 'object') {
+		options = { timeout: options || 0, autoClose: false }
+	}
+	let timeout = options.timeout;
+	autoCloseMessageBox = options.autoClose;
 	setTimeout(function() {
-		layer.open({
+		messageBoxLayer = layer.open({
 			type: 1,
 			title: '消息盒子',
 			area: "670px",
@@ -1215,7 +1222,14 @@ function messageBox(timeout) {
 			$(this).addClass("bgw").siblings().removeClass("bgw");
 		});
 		tasklist();
-	}, timeout || 0);
+	}, timeout);
+}
+
+// 关闭消息弹框
+function closeMessageBoxLayer() {
+	if (messageBoxLayer) {
+		layer.close(messageBoxLayer);
+	}
 }
 
 //取执行日志
@@ -1322,6 +1336,7 @@ function getReloads() {
 				clearInterval(speed);
 				speed = null;
 				a = 0;
+				autoCloseMessageBox && closeMessageBoxLayer();
 				return;
 			}
 			var b = "";

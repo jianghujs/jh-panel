@@ -26,6 +26,24 @@ def getServerDir():
 def runLog():
     return getServerDir() + '/xtrabackup.log'  
 
+def initdInstall():
+    updateCurrentMysqlPswInConf()
+    return 'ok'
+
+
+def updateCurrentMysqlPswInConf():
+    try:
+        mysqlConn = mw.M('config').dbPos(mw.getServerDir() + '/mysql-apt', 'mysql')
+        password = mysqlConn.where(
+            'id=?', (1,)).getField('mysql_root')
+        file = getConf()
+        content = mw.readFile(file)
+        password_rep = '--password\s*=\s*(.*?) '
+        content = re.sub(password_rep, '--password=' + password + ' ', content)
+        mw.writeFile(file, content)
+    except Exception as e:
+        return str(e)
+
 def status():
     return 'start'
 
@@ -270,6 +288,8 @@ if __name__ == "__main__":
         print(status())
     elif func == 'run_log':
         print(runLog())
+    elif func == 'initd_install':
+        print(initdInstall())
     elif func == 'conf':
         print(getConf()) 
     elif func == 'get_backup_path':

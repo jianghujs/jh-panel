@@ -128,13 +128,13 @@ def triggerTask():
     writeFile(isTask, 'True')
 
 def addAndTriggerTask(
-    taskName = '', 
-    taskType = 'execshell', 
-    taskStatus = '0', 
-    taskAddtime =  time.strftime('%Y-%m-%d %H:%M:%S'), 
-    taskExecstr = ''
+    name = '', 
+    execstr = '',
+    type = 'execshell', 
+    status = '0', 
+    addtime =  time.strftime('%Y-%m-%d %H:%M:%S')
 ):
-    taskAdd = (taskName, taskType, taskStatus, taskAddtime, taskExecstr)
+    taskAdd = (name, type, status, addtime, execstr)
     M('tasks').add('name,type,status,addtime, execstr', taskAdd)
     triggerTask()
 

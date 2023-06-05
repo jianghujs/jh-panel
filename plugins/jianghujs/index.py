@@ -134,8 +134,8 @@ def projectScriptExcute():
     # data = mw.execShell('source /root/.bashrc && ' + scriptFile + ' >> ' + logFile )
 
     mw.addAndTriggerTask(
-        taskName = '执行江湖管理器命令[' + scriptKey + '-' + data.get('name', '') + ']',
-        taskExecstr = 'source /root/.bashrc && ' + scriptFile + ' >> ' + logFile
+        name = '执行江湖管理器命令[' + scriptKey + ': ' + data.get('name', '') + ']',
+        execstr = 'source /root/.bashrc && ' + scriptFile + ' >> ' + logFile
     )
 
     return mw.returnJson(True, '添加执行任务成功!')

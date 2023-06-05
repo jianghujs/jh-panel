@@ -1331,12 +1331,14 @@ function getReloads() {
 		a++;
 		$.post('/task/get_task_speed', '', function(h) {
 			if(h.task == undefined) {
-				$(".task_count").text(0);
-				$(".cmdlist").html(lan.bt.task_not_list);
-				clearInterval(speed);
-				speed = null;
-				a = 0;
-				autoCloseMessageBox && closeMessageBoxLayer();
+				setTimeout(function() {
+					$(".task_count").text(0);
+					$(".cmdlist").html(lan.bt.task_not_list);
+					clearInterval(speed);
+					speed = null;
+					a = 0;
+					autoCloseMessageBox && closeMessageBoxLayer();
+				}, 3000);
 				return;
 			}
 			var b = "";

@@ -131,14 +131,14 @@ def projectScriptExcute():
     logFile = getServerDir() + '/script/' + data.get('echo', '') + '.log'
     os.system('chmod +x ' + scriptFile)
 
-    # os.system('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
-    # os.system(scriptFile + ' >> ' + logFile + ' 2>&1')
+    # data = mw.execShell('source /root/.bashrc && ' + scriptFile + ' >> ' + logFile )
 
-    data = mw.execShell('source /root/.bashrc && ' + scriptFile + ' >> ' + logFile )
-    
-    # data = mw.execShell('nohup ' + scriptFile + ' >> ' + logFile + ' 2>&1 &')
+    mw.addAndTriggerTask(
+        taskName = '执行江湖管理器命令[' + scriptKey + '-' + id + ']',
+        taskExecstr = 'source /root/.bashrc && ' + scriptFile + ' >> ' + logFile
+    )
 
-    return mw.returnJson(True, '执行成功!')
+    return mw.returnJson(True, '添加执行任务成功!')
     
 
 def projectStart():

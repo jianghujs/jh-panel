@@ -127,6 +127,17 @@ def triggerTask():
     isTask = getRunDir() + '/tmp/panelTask.pl'
     writeFile(isTask, 'True')
 
+def addAndTriggerTask(
+    taskName = '', 
+    taskType = 'execshell', 
+    taskStatus = '0', 
+    taskAddtime =  time.strftime('%Y-%m-%d %H:%M:%S'), 
+    taskExecstr = ''
+):
+    taskAdd = (taskName, taskType, taskStatus, taskAddtime, taskExecstr)
+    M('tasks').add('name,type,status,addtime, execstr', taskAdd)
+    triggerTask()
+
 
 def systemdCfgDir():
     # ubuntu

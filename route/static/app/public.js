@@ -865,7 +865,7 @@ function GetTaskList(a) {
 				case "-1":
 					f = true;
 					if(g.data[d].type != "download") {
-						b = "<li><span class='titlename'>" + g.data[d].name + "</span><span class='state'>正在安装 <img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + g.data[d].id + ")\">关闭</a></span><span class='opencmd'></span><pre class='cmd'></pre></li>"
+						b = "<li><span class='titlename'>" + g.data[d].name + "</span><span class='state'>正在执行 <img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + g.data[d].id + ")\">关闭</a></span><span class='opencmd'></span><pre class='cmd'></pre></li>"
 					} else {
 						b = "<li><div class='line-progress' style='width:0%'></div><span class='titlename'>" + g.data[d].name + "<a id='speed' style='margin-left:130px;'>0.0M/12.5M</a></span><span class='com-progress'>0%</span><span class='state'>下载中 <img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + g.data[d].id + ")\">"+lan.public.close+"</a></span></li>"
 					}
@@ -1190,30 +1190,32 @@ function getSpeed(sele){
 	},'json');
 }
 //消息盒子
-function messageBox() {
-	layer.open({
-		type: 1,
-		title: '消息盒子',
-		area: "670px",
-		closeBtn: 1,
-		shadeClose: false,
-		content: '<div class="bt-form">\
-					<div class="bt-w-main">\
-						<div class="bt-w-menu">\
-							<p class="bgw" id="taskList" onclick="tasklist()">任务列表(<span class="task_count">0</span>)</p>\
-							<p onclick="remind()">消息列表(<span class="msg_count">0</span>)</p>\
-							<p onclick="execLog()">执行日志</p>\
+function messageBox(timeout) {
+	setTimeout(function() {
+		layer.open({
+			type: 1,
+			title: '消息盒子',
+			area: "670px",
+			closeBtn: 1,
+			shadeClose: false,
+			content: '<div class="jh-message-box bt-form">\
+						<div class="bt-w-main">\
+							<div class="bt-w-menu">\
+								<p class="bgw" id="taskList" onclick="tasklist()">任务列表(<span class="task_count">0</span>)</p>\
+								<p id="remind" onclick="remind()">消息列表(<span class="msg_count">0</span>)</p>\
+								<p onclick="execLog()">执行日志</p>\
+							</div>\
+							<div class="bt-w-con pd15">\
+								<div class="taskcon"></div>\
+							</div>\
 						</div>\
-						<div class="bt-w-con pd15">\
-							<div class="taskcon"></div>\
-						</div>\
-					</div>\
-				</div>'
-	});
-	$(".bt-w-menu p").click(function(){
-		$(this).addClass("bgw").siblings().removeClass("bgw");
-	});
-	tasklist();
+					</div>'
+		});
+		$(".bt-w-menu p").click(function(){
+			$(this).addClass("bgw").siblings().removeClass("bgw");
+		});
+		tasklist();
+	}, timeout || 0);
 }
 
 //取执行日志
@@ -1296,7 +1298,7 @@ function remind(a){
 
 function getReloads() {
 	var a = 0;
-	var mm = $(".bt-w-menu .bgw").html()
+	var mm = $(".jh-message-box .bt-w-menu .bgw").html()
 	if(mm == undefined || mm.indexOf(lan.bt.task_list) == -1) {
 		clearInterval(speed);
 		a = 0;
@@ -1305,7 +1307,7 @@ function getReloads() {
 	}
 	if(speed) {return;}
 	speed = setInterval(function() {
-		var mm = $(".bt-w-menu .bgw").html()
+		var mm = $(".jh-message-box .bt-w-menu .bgw").html()
 		if(mm == undefined || mm.indexOf(lan.bt.task_list) == -1) {
 			clearInterval(speed);
 			speed = null;
@@ -1315,7 +1317,11 @@ function getReloads() {
 		a++;
 		$.post('/task/get_task_speed', '', function(h) {
 			if(h.task == undefined) {
+				$(".task_count").text(0);
 				$(".cmdlist").html(lan.bt.task_not_list);
+				clearInterval(speed);
+				speed = null;
+				a = 0;
 				return;
 			}
 			var b = "";
@@ -1386,7 +1392,7 @@ function tasklist(a){
 				case "-1":
 					f = true;
 					if(g.data[d].type != "download") {
-						b = "<li><span class='titlename'>" + g.data[d].name + "</span><span class='state pull-right c6'>正在安装<img src='/static/img/ing.gif'> | <a class='btlink' href=\"javascript:removeTask(" + g.data[d].id + ")\">关闭</a></span><span class='opencmd'></span><pre class='cmd'></pre></li>"
+						b = "<li><span class='titlename'>" + g.data[d].name + "</span><span class='state pull-right c6'>正在执行<img src='/static/img/ing.gif'> | <a class='btlink' href=\"javascript:removeTask(" + g.data[d].id + ")\">关闭</a></span><span class='opencmd'></span><pre class='cmd'></pre></li>"
 					} else {
 						b = "<li><div class='line-progress' style='width:0%'></div><span class='titlename'>" + g.data[d].name + "<a id='speed' style='margin-left:130px;'>0.0M/12.5M</a></span><span class='com-progress'>0%</span><span class='state'>下载中 <img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + g.data[d].id + ")\">关闭</a></span></li>"
 					}

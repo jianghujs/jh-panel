@@ -528,8 +528,11 @@ def index(reqClass=None, reqAction=None, reqData=None):
 
 
 ##################### ssh  start ###########################
-ssh = None
-shell = None
+import paramiko
+
+
+ssh_dict = {}
+shell_dict = {}
 
 
 def create_rsa():
@@ -570,10 +573,14 @@ done
         print(info[0], info[1])
 
 
-def connect_ssh():
+def connect_ssh(session_id):
     # print 'connect_ssh ....'
     # clear_ssh()
-    global shell, ssh
+    global shell_dict, ssh_dict
+    
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
     if not os.path.exists('/root/.ssh/id_rsa') or not os.path.exists('/root/.ssh/id_rsa.pub'):
         create_rsa()
 
@@ -600,6 +607,9 @@ def connect_ssh():
 
     shell = ssh.invoke_shell(term='xterm', width=83, height=21)
     shell.setblocking(0)
+
+    ssh_dict[session_id] = ssh
+    shell_dict[session_id] = shell
     return True
 
 
@@ -609,15 +619,21 @@ def webssh(msg):
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
-    global shell, ssh
+    
+    session_id = request.sid
+
+    global shell_dict, ssh_dict
     ssh_success = True
+    shell = shell_dict.get(session_id)
+    ssh = ssh_dict.get(session_id)
+
     if not shell:
-        ssh_success = connect_ssh()
+        ssh_success = connect_ssh(session_id)
     if not shell:
         emit('server_response', {'data': '连接SSH服务失败!\r\n'})
         return
     if shell.exit_status_ready():
-        ssh_success = connect_ssh()
+        ssh_success = connect_ssh(session_id)
     if not ssh_success:
         emit('server_response', {'data': '连接SSH服务失败!\r\n'})
         return
@@ -636,10 +652,15 @@ def connected_msg(msg):
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
-    global shell, ssh
+    
+    session_id = request.sid
+    global shell_dict, ssh_dict
     ssh_success = True
+    shell = shell_dict.get(session_id)
+    ssh = ssh_dict.get(session_id)
+
     if not shell:
-        ssh_success = connect_ssh()
+        ssh_success = connect_ssh(session_id)
         # print(ssh_success)
     if not ssh_success:
         emit('server_response', {'data': '连接SSH服务失败!\r\n'})
@@ -655,9 +676,9 @@ def connected_msg(msg):
 
 if not mw.isAppleSystem():
     try:
-        import paramiko
-        ssh = paramiko.SSHClient()
-
+        print("终端启动成功")
+        # import paramiko
+        # ssh = paramiko.SSHClient()
         # 启动尝试时连接
         # connect_ssh()
     except Exception as e:

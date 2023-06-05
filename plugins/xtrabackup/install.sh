@@ -38,6 +38,7 @@ Install_xtrabackup()
 	echo "2.4" > $serverPath/xtrabackup/version.pl
 	echo $(date "+%Y-%m-%d %H:%M:%S") 'xtrabackup 安装成功' >> $serverPath/xtrabackup/xtrabackup.log
 	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh
+	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup/index.py initd_install
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' >> $install_tmp
 }
 

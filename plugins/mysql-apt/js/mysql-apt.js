@@ -80,7 +80,6 @@ function vaildPhpmyadmin(url,username,password){
 
 function runInfo(){
     myPost('run_info','',function(data){
-
         var rdata = $.parseJSON(data.data);
         if (typeof(rdata['status']) != 'undefined'){
             layer.msg(rdata['msg'],{icon:0,time:2000,shade: [0.3, '#000']});

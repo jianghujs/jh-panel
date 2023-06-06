@@ -1,5 +1,6 @@
 var messageBoxLayer = null;
-var autoCloseMessageBox = false;
+var messageBoxAutoClose = false;
+var messageBoxToLogAfterComplete = false;
 
 $(document).ready(function() {
 	$(".sub-menu a.sub-menu-a").click(function() {
@@ -1194,10 +1195,11 @@ function getSpeed(sele){
 //消息盒子
 function messageBox(options) {
 	if(typeof options != 'object') {
-		options = { timeout: options || 0, autoClose: false }
+		options = { timeout: options }
 	}
-	let timeout = options.timeout;
-	autoCloseMessageBox = options.autoClose;
+	let timeout = options.timeout || 0;
+	messageBoxAutoClose = options.autoClose || false;
+	messageBoxToLogAfterComplete = options.toLogAfterComplete || false;
 	setTimeout(function() {
 		messageBoxLayer = layer.open({
 			type: 1,
@@ -1210,7 +1212,7 @@ function messageBox(options) {
 							<div class="bt-w-menu">\
 								<p class="bgw" id="taskList" onclick="tasklist()">任务列表(<span class="task_count">0</span>)</p>\
 								<p id="remind" onclick="remind()">消息列表(<span class="msg_count">0</span>)</p>\
-								<p onclick="execLog()">执行日志</p>\
+								<p id="execLog" onclick="execLog()">执行日志</p>\
 							</div>\
 							<div class="bt-w-con pd15">\
 								<div class="taskcon"></div>\
@@ -1331,14 +1333,19 @@ function getReloads() {
 		a++;
 		$.post('/task/get_task_speed', '', function(h) {
 			if(h.task == undefined) {
-				setTimeout(function() {
-					$(".task_count").text(0);
-					$(".cmdlist").html(lan.bt.task_not_list);
-					clearInterval(speed);
-					speed = null;
-					a = 0;
-					autoCloseMessageBox && closeMessageBoxLayer();
-				}, 3000);
+				$(".task_count").text(0);
+				$(".cmdlist").html(lan.bt.task_not_list);
+				clearInterval(speed);
+				speed = null;
+				a = 0;
+				if (messageBoxToLogAfterComplete) {
+					$(".jh-message-box .bt-w-menu #execLog").click()
+				}
+				if (messageBoxAutoClose) {
+					setTimeout(function() {
+						closeMessageBoxLayer();
+					}, 3000);
+				}
 				return;
 			}
 			var b = "";

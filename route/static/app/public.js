@@ -1410,7 +1410,7 @@ function getReloads() {
 						if(h.task[g].name.indexOf("扫描") != -1) {
 							b = "<li><span class='titlename'>" + h.task[g].name + "</span><span class='state'>正在扫描<img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + h.task[g].id + ")\">关闭</a></span><span class='opencmd'></span><div class='cmd'>" + c + "</div></li>"
 						} else {
-							b = "<li><span class='titlename'>" + h.task[g].name + "</span><span class='state'>正在安装<img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + h.task[g].id + ")\">关闭</a></span><div class='cmd'>" + c + "</div></li>"
+							b = "<li><span class='titlename'>" + h.task[g].name + "</span><span class='state'>正在执行<img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + h.task[g].id + ")\">关闭</a></span><div class='cmd'>" + c + "</div></li>"
 						}
 					} else {
 						b = "<li><div class='line-progress' style='width:" + h.msg.pre + "%'></div><span class='titlename'>" + h.task[g].name + "<a style='margin-left:130px;'>" + (toSize(h.msg.used) + "/" + toSize(h.msg.total)) + "</a></span><span class='com-progress'>" + h.msg.pre + "%</span><span class='state'>"+lan.bt.task_downloading+" <img src='/static/img/ing.gif'> | <a href=\"javascript:removeTask(" + h.task[g].id + ")\">"+lan.public.close+"</a></span></li>"

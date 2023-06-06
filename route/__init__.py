@@ -570,7 +570,7 @@ def get_shell(session_id):
 def connect_ssh(session_id):
     global shell_dict, ssh_dict
 
-    for host in [mw.getHostAddr(), '127.0.0.1', 'localhost']:
+    for host in ['127.0.0.1', mw.getHostAddr(), 'localhost']:
         try:
             ssh.connect(host, mw.getSSHPort(), username='root', timeout=5)
             break

@@ -1153,7 +1153,7 @@ def setRootPwd(version=''):
         isError = isSqlError(result)
         if isError != None:
             return isError
-
+        
         if version.find('8.0') > -1:
             result = pdb.execute(
                 "update mysql.user set password=password('" + password + "') where user='root'")
@@ -1205,29 +1205,32 @@ def setUserPwd(version=''):
     if not data[0]:
         return data[1]
 
+
     newpassword = args['password']
     username = args['name']
     uid = args['id']
+
     try:
         pdb = pMysqlDb()
         psdb = pSqliteDb('databases')
         name = psdb.where('id=?', (uid,)).getField('name')
-        if version.find('5.7') > -1 or version.find('8.0') > -1:
-            accept = pdb.query(
-                "select Host from mysql.user where User='" + name + "' AND Host!='localhost'")
-            t1 = pdb.execute(
-                "update mysql.user set authentication_string='' where User='" + username + "'")
-            # print(t1)
-            result = pdb.execute(
-                "ALTER USER `%s`@`localhost` IDENTIFIED BY '%s'" % (username, newpassword))
-            # print(result)
-            for my_host in accept:
-                t2 = pdb.execute("ALTER USER `%s`@`%s` IDENTIFIED BY '%s'" % (
-                    username, my_host["Host"], newpassword))
+        # if version.find('5.7') > -1 or version.find('8.0') > -1:
+        
+        accept = pdb.query(
+            "select Host from mysql.user where User='" + name + "' AND Host!='localhost'")
+        t1 = pdb.execute(
+            "update mysql.user set authentication_string='' where User='" + username + "'")
+        # print(t1)
+        result = pdb.execute(
+            "ALTER USER `%s`@`localhost` IDENTIFIED BY '%s'" % (username, newpassword))
+        # print(result)
+        for my_host in accept:
+            t2 = pdb.execute("ALTER USER `%s`@`%s` IDENTIFIED BY '%s'" % (
+                username, my_host["Host"], newpassword))
                 # print(t2)
-        else:
-            result = pdb.execute("update mysql.user set Password=password('" +
-                                 newpassword + "') where User='" + username + "'")
+        # else:
+        #     result = pdb.execute("update mysql.user set Password=password('" +
+        #                          newpassword + "') where User='" + username + "'")
 
         pdb.execute("flush privileges")
         psdb.where("id=?", (uid,)).setField('password', newpassword)
@@ -2549,6 +2552,7 @@ if __name__ == "__main__":
     version_pl = getServerDir() + "/version.pl"
     if os.path.exists(version_pl):
         version = mw.readFile(version_pl).strip()
+
 
     if (len(sys.argv) > 2):
         version = sys.argv[2]

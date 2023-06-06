@@ -1250,7 +1250,7 @@ function messageBox(options) {
 	setTimeout(function() {
 		messageBoxLayer = layer.open({
 			type: 1,
-			title: '消息盒子',
+			title: '任务消息',
 			area: "670px",
 			closeBtn: 1,
 			shadeClose: false,

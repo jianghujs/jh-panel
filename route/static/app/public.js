@@ -472,6 +472,11 @@ function openPath(a) {
 	window.location.href = "/files/"
 }
 
+function openNewWindowPath(a) {
+	setCookie("open_dir_path", a);
+	window.open(location.origin + "/files/")
+}
+
 function onlineEditFile(k, f) {
 	if(k != 0) {
 		var l = $("#PathPlace input").val();

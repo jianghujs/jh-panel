@@ -478,6 +478,44 @@ function openNewWindowPath(a) {
 	window.open(location.origin + "/files/")
 }
 
+/**
+ * 打开超时自动执行任务弹框
+ * @param {*} tip 弹框提示
+ * @param {*} onTimeout 超时执行方法
+ * @param {*} extParams 其他参数 { timeout, cancelBtn }
+ */
+function openTimoutLayer(tip, onTimeout, extParams) {
+	const { timeout, cancelBtn } = extParams || {};
+	var i = timeout || 5;
+	var interval;
+	let timeoutLayer = layer.confirm(tip,{
+		title: '提示',
+		btn: [cancelBtn || '取消'],//按钮
+		skin: 'layui-layer-molv',success: function(a,b){  
+			var updateTitle = function() {         
+			  layer.title('自动执行倒计时：' + i +' 秒',b);      
+			};
+			updateTitle();
+			interval = setInterval(function(){
+				i--;
+				updateTitle();
+				if(i === 0){// 倒计时结束后执行             
+					layer.title('',b);
+					layer.close(timeoutLayer);
+					clearInterval(interval);
+					onTimeout && onTimeout();
+				}
+			},1000);
+		},end:function(){
+			clearInterval(interval);
+			layer.close(timeoutLayer);
+		}
+		},function(){
+			clearInterval(interval);
+			layer.close(timeoutLayer);
+		});
+}
+
 function onlineEditFile(k, f) {
 	if(k != 0) {
 		var l = $("#PathPlace input").val();
@@ -1347,9 +1385,9 @@ function getReloads() {
 					$(".jh-message-box .bt-w-menu #execLog").click()
 				}
 				if (messageBoxAutoClose) {
-					setTimeout(function() {
+					openTimoutLayer('任务执行完毕，即将自动关闭消息盒子', () => {
 						closeMessageBoxLayer();
-					}, 3000);
+					})
 				}
 				return;
 			}

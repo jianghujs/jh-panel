@@ -289,7 +289,7 @@ function projectScriptExcute(scriptKey, id) {
         var rdata = $.parseJSON(data.data);
         refreshTable();
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        messageBox({timeout: 300, autoClose: false, toLogAfterComplete: true});
+        messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });
 }
 

@@ -4896,3 +4896,11 @@ select[disabled]{
 #fileCon thead tr th .icon-sort.active {
     display: block;
 }
+
+.jhlink {
+    color: #20a53a;
+    font-style: inherit;
+}
+.jhlink:hover {
+    cursor: pointer;
+}

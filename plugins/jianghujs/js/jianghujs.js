@@ -47,7 +47,10 @@ function refreshTable() {
                     opt += '<a href="javascript:projectScriptExcute(\'reload\', \''+tmp[i].id+'\')" class="btlink">重启</a> | ';
                 }
             }
-            tmp[i].path = tmp[i].path.replace('//','');
+
+            const temPath = tmp[i].path.replace('//','')
+            tmp[i].temPath = temPath
+            tmp[i].path = '<a class="jhlink" href="javascript:openNewWindowPath(\'' + temPath + '\')">' + temPath + '</a>';
             
             var status = '';
             if(tmp[i].loadingStatus) {
@@ -74,7 +77,7 @@ function refreshTable() {
                         '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
                         <td style="text-align: right;width: 280px;">\
                             '+opt+
-                            '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
+                            '<a href="javascript:projectUpdate(\''+tmp[i].temPath+'\')" class="btlink">git pull</a> | ' + 
                             '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
                             '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
                             '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\

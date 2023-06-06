@@ -530,79 +530,53 @@ def index(reqClass=None, reqAction=None, reqData=None):
 ##################### ssh  start ###########################
 import paramiko
 
-
 ssh_dict = {}
 shell_dict = {}
 
+# 在程序启动时预先创建RSA密钥
+if not os.path.exists('/root/.ssh/id_rsa') or not os.path.exists('/root/.ssh/id_rsa.pub'):
+    os.system('ssh-keygen -q -t rsa -P "" -f /root/.ssh/id_rsa')
+    os.system('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
+    os.system('chmod 600 /root/.ssh/authorized_keys')
 
-def create_rsa():
-    # mw.execShell("rm -f /root/.ssh/*")
-    if not os.path.exists('/root/.ssh/authorized_keys'):
-        mw.execShell('touch /root/.ssh/authorized_keys')
-
-    if not os.path.exists('/root/.ssh/id_rsa.pub') and os.path.exists('/root/.ssh/id_rsa'):
-        mw.execShell(
-            'echo y | ssh-keygen -q -t rsa -P "" -f /root/.ssh/id_rsa')
-    else:
-        mw.execShell('ssh-keygen -q -t rsa -P "" -f /root/.ssh/id_rsa')
-
-    mw.execShell('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
-    mw.execShell('chmod 600 /root/.ssh/authorized_keys')
+# 在程序启动时预先初始化SSH客户端
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 
-def clear_ssh():
-    # 服务器IP
-    ip = mw.getHostAddr()
-    sh = '''
-#!/bin/bash
-PLIST=`who | grep localhost | awk '{print $2}'`
-for i in $PLIST
-do
-    ps -t /dev/$i |grep -v TTY | awk '{print $1}' | xargs kill -9
-done
+def clear_ssh(session_id):
+    if session_id in ssh_dict:
+        ssh_dict[session_id].close()
+        del ssh_dict[session_id]
+    if session_id in shell_dict:
+        del shell_dict[session_id]
 
-#getHostAddr
-PLIST=`who | grep "${ip}" | awk '{print $2}'`
-for i in $PLIST
-do
-    ps -t /dev/$i |grep -v TTY | awk '{print $1}' | xargs kill -9
-done
-'''
-    if not mw.isAppleSystem():
-        info = mw.execShell(sh)
-        print(info[0], info[1])
+def get_shell(session_id):
+    global shell_dict, ssh_dict
+    shell = shell_dict.get(session_id)
 
+    if shell and shell.exit_status_ready():
+        clear_ssh(session_id)
+        shell = None
+
+    if not shell:
+        if connect_ssh(session_id):
+            shell = shell_dict.get(session_id)
+        else:
+            emit('server_response', {'data': '连接SSH服务失败!\r\n'})
+
+    return shell
 
 def connect_ssh(session_id):
-    # print 'connect_ssh ....'
-    # clear_ssh()
     global shell_dict, ssh_dict
-    
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    if not os.path.exists('/root/.ssh/id_rsa') or not os.path.exists('/root/.ssh/id_rsa.pub'):
-        create_rsa()
-
-    # 检查是否写入authorized_keys
-    data = mw.execShell("cat /root/.ssh/id_rsa.pub | awk '{print $3}'")
-    if data[0] != "":
-        ak_data = mw.execShell(
-            "cat /root/.ssh/authorized_keys | grep " + data[0])
-        if ak_data[0] == "":
-            mw.execShell(
-                'cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
-            mw.execShell('chmod 600 /root/.ssh/authorized_keys')
-
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-    try:
-        ssh.connect(mw.getHostAddr(), mw.getSSHPort(), username='root', timeout=5)
-    except Exception as e:
-        ssh.connect('127.0.0.1', mw.getSSHPort(), username='root')
-    except Exception as e:
-        ssh.connect('localhost', mw.getSSHPort(), username='root')
-    except Exception as e:
+    for host in [mw.getHostAddr(), '127.0.0.1', 'localhost']:
+        try:
+            ssh.connect(host, mw.getSSHPort(), username='root', timeout=5)
+            break
+        except Exception as e:
+            continue
+    else:
         return False
 
     shell = ssh.invoke_shell(term='xterm', width=83, height=21)
@@ -612,77 +586,44 @@ def connect_ssh(session_id):
     shell_dict[session_id] = shell
     return True
 
-
 @socketio.on('webssh')
 def webssh(msg):
-    # print('webssh ...')
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
-    
+
     session_id = request.sid
+    shell = get_shell(session_id)
 
-    global shell_dict, ssh_dict
-    ssh_success = True
-    shell = shell_dict.get(session_id)
-    ssh = ssh_dict.get(session_id)
-
-    if not shell:
-        ssh_success = connect_ssh(session_id)
-    if not shell:
-        emit('server_response', {'data': '连接SSH服务失败!\r\n'})
-        return
-    if shell.exit_status_ready():
-        ssh_success = connect_ssh(session_id)
-    if not ssh_success:
-        emit('server_response', {'data': '连接SSH服务失败!\r\n'})
-        return
-    shell.send(msg)
-    try:
-        time.sleep(0.005)
-        recv = shell.recv(4096)
-        emit('server_response', {'data': recv.decode("utf-8")})
-    except Exception as ex:
-        pass
-        # print 'webssh:' + str(ex)
-
+    if shell:
+        shell.send(msg)
+        try:
+            time.sleep(0.005)
+            recv = shell.recv(4096)
+            emit('server_response', {'data': recv.decode("utf-8")})
+        except Exception as ex:
+            pass
 
 @socketio.on('connect_event')
 def connected_msg(msg):
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
-    
+
     session_id = request.sid
-    global shell_dict, ssh_dict
-    ssh_success = True
-    shell = shell_dict.get(session_id)
-    ssh = ssh_dict.get(session_id)
+    shell = get_shell(session_id)
 
-    if not shell:
-        ssh_success = connect_ssh(session_id)
-        # print(ssh_success)
-    if not ssh_success:
-        emit('server_response', {'data': '连接SSH服务失败!\r\n'})
-        return
-    try:
-        recv = shell.recv(8192)
-        # print recv.decode("utf-8")
-        emit('server_response', {'data': recv.decode("utf-8")})
-    except Exception as e:
-        pass
-        # print 'connected_msg:' + str(e)
-
+    if shell:
+        try:
+            recv = shell.recv(8192)
+            emit('server_response', {'data': recv.decode("utf-8")})
+        except Exception as e:
+            pass
 
 if not mw.isAppleSystem():
     try:
         print("终端启动成功")
-        # import paramiko
-        # ssh = paramiko.SSHClient()
-        # 启动尝试时连接
-        # connect_ssh()
     except Exception as e:
         print("本地终端无法使用")
-
 
 ##################### ssh  end ###########################

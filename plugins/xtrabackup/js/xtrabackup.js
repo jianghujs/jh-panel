@@ -203,12 +203,12 @@ function doMysqlBackup(content) {
             return;
         };
         mysqlBackupHtml();
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
         setTimeout(() => {
-            layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
-            setTimeout(() => {
-                $("#openEditCodeCloseBtn").click();
-            }, 2000)
-        }, 500)
+            $("#openEditCodeCloseBtn").click();
+            messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+        }, 1000)
+        
     });
 }
 
@@ -241,7 +241,7 @@ function doRecoveryBackup(content) {
         };
         layer.open({
             area: ['500px', '300px'],
-            title: '恢复成功',
+            title: '添加恢复任务成功',
             content: rdata.msg,
             btn: [],
             // cancel: function(index, layero){ 
@@ -250,6 +250,7 @@ function doRecoveryBackup(content) {
             // } 
         });    
         $("#openEditCodeCloseBtn").click();
+        messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });
 }
 

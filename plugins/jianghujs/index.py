@@ -215,27 +215,35 @@ def projectUpdate():
 
 def projectList():
     data = getAll('project')
+    echos = {item.get('echo', '') for item in data}
+
+    # autostartStatus
+    autostartStatusCmd = "ls -R /etc/rc4.d"
+    autostartStatusExec = mw.execShell(autostartStatusCmd)
+    autostartStatusMap = {echo: ('start' if echo in autostartStatusExec[0] else 'stop') for echo in echos}
+
+    # status
+    statusMap = {}
+    for item in data:
+        path = item.get('path', '') 
+        statusCmd = "ps -ef|grep " + path + " |grep -v grep |grep -v python | awk '{print $0}'"
+        statusExec = mw.execShell(statusCmd)
+        statusMap[path] = 'start' if statusExec[0] != '' else 'stop'
+
+    # loadingStatus
+    loadingStatusCmd = "ls -R %s/script" % getServerDir()
+    loadingStatusExec = mw.execShell(loadingStatusCmd)
+    loadingStatusMap = {echo: (mw.readFile(getServerDir() + '/script/' + echo + '_status') if echo + "_status" in loadingStatusExec[0] else '') for echo in echos}
+
     for item in data:
         path = item.get('path', '') 
         echo = item.get('echo', '')
-
-        # autostartStatus
-        autostartStatusCmd = "ls -R /etc/rc4.d | grep " + echo
-        autostartStatusExec = mw.execShell(autostartStatusCmd)
-        item['autostartStatus'] = 'stop' if autostartStatusExec[0] == '' else 'start'
-
-        # status
-        statusCmd = "ps -ef|grep " + path + " |grep -v grep | grep -v python | awk '{print $2}'"
-        statusExec = mw.execShell(statusCmd)
-        item['status'] = 'stop' if statusExec[0] == '' else 'start'
-
-        # loadingStatus
-        loadingStatusCmd = "ls -R %s/script | grep %s_status" % (getServerDir() , echo) 
-        loadingStatusExec = mw.execShell(loadingStatusCmd)
-        if loadingStatusExec[0] != '':
-            item['loadingStatus'] = mw.readFile(getServerDir() + '/script/' + echo + '_status')
+        item['autostartStatus'] = autostartStatusMap[echo]
+        item['status'] = statusMap[path]
+        item['loadingStatus'] = loadingStatusMap[echo]
 
     return mw.returnJson(True, 'ok', data)
+
 
 def projectToggleAutostart():
     args = getArgs()

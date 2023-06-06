@@ -1,5 +1,6 @@
 var messageBoxLayer = null;
-var autoCloseMessageBox = false;
+var messageBoxAutoClose = false;
+var messageBoxToLogAfterComplete = false;
 
 $(document).ready(function() {
 	$(".sub-menu a.sub-menu-a").click(function() {
@@ -475,6 +476,44 @@ function openPath(a) {
 function openNewWindowPath(a) {
 	setCookie("open_dir_path", a);
 	window.open(location.origin + "/files/")
+}
+
+/**
+ * 打开超时自动执行任务弹框
+ * @param {*} tip 弹框提示
+ * @param {*} onTimeout 超时执行方法
+ * @param {*} extParams 其他参数 { timeout, cancelBtn }
+ */
+function openTimoutLayer(tip, onTimeout, extParams) {
+	const { timeout, cancelBtn } = extParams || {};
+	var i = timeout || 5;
+	var interval;
+	let timeoutLayer = layer.confirm(tip,{
+		title: '提示',
+		btn: [cancelBtn || '取消'],//按钮
+		skin: 'layui-layer-molv',success: function(a,b){  
+			var updateTitle = function() {         
+			  layer.title('自动执行倒计时：' + i +' 秒',b);      
+			};
+			updateTitle();
+			interval = setInterval(function(){
+				i--;
+				updateTitle();
+				if(i === 0){// 倒计时结束后执行             
+					layer.title('',b);
+					layer.close(timeoutLayer);
+					clearInterval(interval);
+					onTimeout && onTimeout();
+				}
+			},1000);
+		},end:function(){
+			clearInterval(interval);
+			layer.close(timeoutLayer);
+		}
+		},function(){
+			clearInterval(interval);
+			layer.close(timeoutLayer);
+		});
 }
 
 function onlineEditFile(k, f) {
@@ -1199,10 +1238,11 @@ function getSpeed(sele){
 //消息盒子
 function messageBox(options) {
 	if(typeof options != 'object') {
-		options = { timeout: options || 0, autoClose: false }
+		options = { timeout: options }
 	}
-	let timeout = options.timeout;
-	autoCloseMessageBox = options.autoClose;
+	let timeout = options.timeout || 0;
+	messageBoxAutoClose = options.autoClose || false;
+	messageBoxToLogAfterComplete = options.toLogAfterComplete || false;
 	setTimeout(function() {
 		messageBoxLayer = layer.open({
 			type: 1,
@@ -1215,7 +1255,7 @@ function messageBox(options) {
 							<div class="bt-w-menu">\
 								<p class="bgw" id="taskList" onclick="tasklist()">任务列表(<span class="task_count">0</span>)</p>\
 								<p id="remind" onclick="remind()">消息列表(<span class="msg_count">0</span>)</p>\
-								<p onclick="execLog()">执行日志</p>\
+								<p id="execLog" onclick="execLog()">执行日志</p>\
 							</div>\
 							<div class="bt-w-con pd15">\
 								<div class="taskcon"></div>\
@@ -1336,14 +1376,19 @@ function getReloads() {
 		a++;
 		$.post('/task/get_task_speed', '', function(h) {
 			if(h.task == undefined) {
-				setTimeout(function() {
-					$(".task_count").text(0);
-					$(".cmdlist").html(lan.bt.task_not_list);
-					clearInterval(speed);
-					speed = null;
-					a = 0;
-					autoCloseMessageBox && closeMessageBoxLayer();
-				}, 3000);
+				$(".task_count").text(0);
+				$(".cmdlist").html(lan.bt.task_not_list);
+				clearInterval(speed);
+				speed = null;
+				a = 0;
+				if (messageBoxToLogAfterComplete) {
+					$(".jh-message-box .bt-w-menu #execLog").click()
+				}
+				if (messageBoxAutoClose) {
+					openTimoutLayer('任务执行完毕，即将自动关闭消息盒子', () => {
+						closeMessageBoxLayer();
+					})
+				}
 				return;
 			}
 			var b = "";

@@ -485,12 +485,12 @@ function openNewWindowPath(a) {
  * @param {*} extParams 其他参数 { timeout, cancelBtn }
  */
 function openTimoutLayer(tip, onTimeout, extParams) {
-	const { timeout, cancelBtn } = extParams || {};
+	const { timeout, confirmBtn, cancelBtn } = extParams || {};
 	var i = timeout || 5;
 	var interval;
 	let timeoutLayer = layer.confirm(tip,{
 		title: '提示',
-		btn: [cancelBtn || '取消'],//按钮
+		btn: [confirmBtn || '执行', cancelBtn || '取消'],//按钮
 		skin: 'layui-layer-molv',success: function(a,b){  
 			var updateTitle = function() {         
 			  layer.title('自动执行倒计时：' + i +' 秒',b);      
@@ -510,6 +510,10 @@ function openTimoutLayer(tip, onTimeout, extParams) {
 			clearInterval(interval);
 			layer.close(timeoutLayer);
 		}
+		},function() {	
+			layer.close(timeoutLayer);
+			clearInterval(interval);
+			onTimeout && onTimeout();
 		},function(){
 			clearInterval(interval);
 			layer.close(timeoutLayer);
@@ -1387,7 +1391,7 @@ function getReloads() {
 				if (messageBoxAutoClose) {
 					openTimoutLayer('任务执行完毕，即将自动关闭消息盒子', () => {
 						closeMessageBoxLayer();
-					})
+					}, { confirmBtn: '关闭' })
 				}
 				return;
 			}

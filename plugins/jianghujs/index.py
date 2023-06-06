@@ -205,13 +205,25 @@ def projectUpdate():
     if not data[0]:
         return data[1]
 
+ 
     path = args['path']
     cmd = """
     cd %s
     git pull
+    echo "更新项目成功"
     """ % path
-    data = mw.execShell(cmd)
-    return mw.returnJson(True, '更新成功!')
+    makeScriptFile('pullTemp.sh', cmd)
+
+    scriptFile = getServerDir() + '/script/pullTemp.sh'
+    os.system('chmod +x ' + scriptFile)
+
+    mw.addAndTriggerTask(
+        name = '执行江湖管理器命令[git pull: ' + path + ']',
+        execstr = 'source /root/.bashrc && ' + scriptFile
+    )
+
+    # data = mw.execShell(cmd)
+    return mw.returnJson(True, '添加更新任务成功!')
 
 def projectList():
     data = getAll('project')

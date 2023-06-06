@@ -315,8 +315,9 @@ function projectUpdate(path) {
     var data = "path="+path;
     requestApi('project_update', data, function(data){
         var rdata = $.parseJSON(data.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
         refreshTable();
+        layer.msg(rdata.msg,{icon:rdata.status?1:2});
+        messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });
 }
 

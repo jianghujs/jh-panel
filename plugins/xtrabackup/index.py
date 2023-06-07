@@ -154,7 +154,8 @@ def getBackupPath():
 
     return path
 
-def doMysqlBackup():
+
+def executeScript(name, tempFileName, extraCommands = None):
     args = getArgs()
     content = mw.readFile(getConf())
 
@@ -162,30 +163,32 @@ def doMysqlBackup():
         content = unquote(str(args['content']), 'utf-8').replace("\\n", "\n")
 
     # 写入临时文件用于执行
-    tempFilePath = getServerDir() + '/xtrabackup_temp.sh'
-    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s' % {'content': content, 'tempFilePath': tempFilePath})
+    tempFilePath = getServerDir() + '/' + tempFileName
+    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s\n%(extraCommands)s' % {'content': content, 'tempFilePath': tempFilePath, 'extraCommands': extraCommands or ''})
     mw.execShell('chmod 750 ' + tempFilePath)
     # 执行脚本
     log_file = runLog()
-    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份开始" >> ' + log_file)
+    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "%(name)s开始" >> ' + log_file % {'name': name})
     
-    # sync the backup path to the backup script
-    # mw.execShell("BACKUP_PATH=%(backupPath)s sh %(tempFilePath)s >> %(logFile)s" % {'backupPath':getBackupPath(), 'tempFilePath': tempFilePath, 'logFile': log_file })
+    # 运行指定的命令
+    execstr = "sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file }
+    if name == '执行Xtrabackup命令[备份]':
+        execstr = "BACKUP_PATH=%(backupPath)s " + execstr % {'backupPath': getBackupPath()}
+
     mw.addAndTriggerTask(
-        name = '执行Xtrabackup命令[备份]',
-        execstr = "BACKUP_PATH=%(backupPath)s sh %(tempFilePath)s >> %(logFile)s" % {'backupPath':getBackupPath(), 'tempFilePath': tempFilePath, 'logFile': log_file }
+        name = name,
+        execstr = execstr
     )
     
     execResult = mw.execShell("tail -n 1 " + log_file)
-    
-    # if "备份成功" in execResult[0]:
-    #     return mw.returnJson(True, execResult[0])
+    return mw.returnJson(True, execResult[0])
 
+def doMysqlBackup():
     # Tip: 兼容 老版本的 xtrabackup.sh; 未来可以删除
-    if os.path.exists(os.path.join(getBackupPath(), 'mysql')):
-        return mw.returnJson(True, '备份成功')    
+    # if os.path.exists(os.path.join(getBackupPath(), 'mysql')):
+    #     return mw.returnJson(True, '备份成功')
         
-    return mw.returnJson(False, execResult[0])
+    return executeScript('执行Xtrabackup命令[备份]', 'xtrabackup_temp.sh')
 
 
 def backupList():
@@ -238,32 +241,7 @@ def getRecoveryBackupScript():
     return mw.returnJson(True, 'ok', recoveryScript)
 
 def doRecoveryBackup():
-    args = getArgs()
-    content = mw.readFile(getConf())
-
-    if args['content'] is not None:
-        content = unquote(str(args['content']), 'utf-8').replace("\\n", "\n")
-
-    # 写入临时文件用于执行
-    tempFilePath = getServerDir() + '/recovery_temp.sh'
-    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s\necho 恢复成功' % {'content': content, 'tempFilePath': tempFilePath})
-    mw.execShell('chmod 750 ' + tempFilePath)
-    # 执行脚本
-    log_file = runLog()
-    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "恢复开始" >> ' + log_file)
-    
-    # mw.execShell("sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file })
-    mw.addAndTriggerTask(
-        name = '执行Xtrabackup命令[恢复]',
-        execstr = "sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file }
-    )
-    
-    execResult = mw.execShell("tail -n 1 " + log_file)
-    
-    # if "恢复成功" in execResult[0]:
-    #     return mw.returnJson(True, '恢复成功; 请前往Mysql插件 <br/>- "从服务器获取"  <br/>- 如果ROOT密码有变动👉"修复ROOT密码" <br/>Tip: 若无法找回密码, 可以使用无密码模式启动mysql, 然后再使用mysql的sql脚本设置密码。')
-    
-    return mw.returnJson(True, execResult[0])
+    return executeScript('执行Xtrabackup命令[恢复]', 'recovery_temp.sh', 'echo 恢复成功')
 
 def doDeleteBackup():
     args = getArgs()

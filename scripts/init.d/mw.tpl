@@ -314,7 +314,7 @@ case "$1" in
             if [ "$v4" != "" ] && [ "$v6" != "" ]; then
                 address="JH-Panel-Url-Ipv4: http://$v4_local:$port$auth_path \nJH-Panel-Url-Ipv4(Pub)): http://$v4:$port$auth_path \nJH-Panel-Url-Ipv6: http://[$v6]:$port$auth_path"
             elif [ "$v4" != "" ]; then
-                address="JH-Panel-Url: http://$v4_local:$port$auth_path \nJH-Panel-Url(Pub): http://$v4:$port$auth_path"
+                address="外网面板地址: http://$v4:$port$auth_path \n内网面板地址: http://$v4_local:$port$auth_path"
             elif [ "$v6" != "" ]; then
 
                 if [ ! -f $mw_path/data/ipv6.pl ];then

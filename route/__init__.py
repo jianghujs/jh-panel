@@ -569,7 +569,8 @@ def get_shell(session_id):
     return shell
 
 def connect_ssh(session_id):
-    global shell_dict, ssh_dict
+    global shell_dict, ssh_dict, status_dict
+    status_dict[session_id] = 'connecting'
 
     for host in ['127.0.0.1', mw.getHostAddr(), 'localhost']:
         try:
@@ -614,9 +615,8 @@ def connected_msg(msg):
     global status_dict
     session_id = request.sid
     
-    if ssh_dict[session_id] is not None or status_dict[session_id] = 'connection':
+    if ssh_dict[session_id] is None and status_dict[session_id] == 'connection':
         return True
-    status_dict[session_id] = 'connecting'
 
     shell = get_shell(session_id)
 

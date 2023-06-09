@@ -1592,16 +1592,12 @@ function prepareWebShell() {
 		socket.emit('connect_event', '');
 		interval = setInterval(function () {
 				socket.emit('connect_event', '');
-		}, 3000);
-		socket.on('server_response', function (data) {
-			clearInterval(interval);
-		});
+		}, 1000);
 	}
 }
 prepareWebShell();
 
 function webShell() {
-		prepareWebShell();
     var termCols = 83;
     var termRows = 21;
     var sendTotal = 0;

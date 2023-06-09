@@ -532,6 +532,7 @@ import paramiko
 
 ssh_dict = {}
 shell_dict = {}
+status_dict = {}
 
 # 在程序启动时预先创建RSA密钥
 if not os.path.exists('/root/.ssh/id_rsa') or not os.path.exists('/root/.ssh/id_rsa.pub'):
@@ -610,13 +611,20 @@ def connected_msg(msg):
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
 
+    global status_dict
     session_id = request.sid
+    
+    if ssh_dict[session_id] is not None or status_dict[session_id] = 'connection':
+        return True
+    status_dict[session_id] = 'connecting'
+
     shell = get_shell(session_id)
 
     if shell:
         try:
             recv = shell.recv(8192)
             emit('server_response', {'data': recv.decode("utf-8")})
+            status_dict[session_id] = 'connected'
         except Exception as e:
             pass
 

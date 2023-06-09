@@ -1583,11 +1583,28 @@ function loadImage(){
 }
 
 var socket, gterm;
+
+function prepareWebShell() {
+	if(!socket)socket = io.connect();
+
+	// 连接ssh终端
+	if (socket) {
+		socket.emit('connect_event', '');
+		interval = setInterval(function () {
+				socket.emit('connect_event', '');
+		}, 3000);
+		socket.on('server_response', function (data) {
+			clearInterval(interval);
+		});
+	}
+}
+prepareWebShell();
+
 function webShell() {
+		prepareWebShell();
     var termCols = 83;
     var termRows = 21;
     var sendTotal = 0;
-    if(!socket)socket = io.connect();
     var term = new Terminal({ cols: termCols, rows: termRows, screenKeys: true, useStyle: true});
 
     term.open();
@@ -1595,34 +1612,27 @@ function webShell() {
     term.setOption('fontSize', 14);
     gterm = term;
 
-	// 自动跳转到 当前目录
-	setTimeout(function () {
-		var currentDir = $("#PathPlaceBtn").attr('path')
-		if (currentDir && currentDir.startsWith("/")) {
-			socket.emit('webssh', `cd ${currentDir}\n`);
-		}
-	}, 600);
+		socket.on('server_response', function (data) {
+			term.write(data.data);
+			if (data.data == '\r\n登出\r\n' || 
+					data.data == '登出\r\n' || 
+					data.data == '\r\nlogout\r\n' || 
+					data.data == 'logout\r\n') {
+					setTimeout(function () {
+							layer.closeAll();
+							term.destroy();
+							clearInterval(interval);
+					}, 500);
+			}
+		});
 
-    socket.on('server_response', function (data) {
-        term.write(data.data);
-        if (data.data == '\r\n登出\r\n' || 
-            data.data == '登出\r\n' || 
-            data.data == '\r\nlogout\r\n' || 
-            data.data == 'logout\r\n') {
-            setTimeout(function () {
-                layer.closeAll();
-                term.destroy();
-                clearInterval(interval);
-            }, 500);
-        }
-    });
-
-    if (socket) {
-        socket.emit('connect_event', '');
-        interval = setInterval(function () {
-            socket.emit('connect_event', '');
-        }, 1000);
-    }
+		// 自动跳转到 当前目录
+		setTimeout(function () {
+			var currentDir = $("#PathPlaceBtn").attr('path')
+			if (currentDir && currentDir.startsWith("/")) {
+				socket.emit('webssh', `cd ${currentDir}\n`);
+			}
+		}, 600);
     
     term.on('data', function (data) {
         socket.emit('webssh', data);

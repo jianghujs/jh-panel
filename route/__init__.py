@@ -560,7 +560,7 @@ def connect_ssh(session_id):
     global shell_dict, ssh_dict, status_dict
     status_dict[session_id] = 'connecting'
 
-    for host in ['127.0.0.1', mw.getHostAddr(), 'localhost']:
+    for host in [mw.getHostAddr(), '127.0.0.1', 'localhost']:
         try:
             ssh.connect(host, mw.getSSHPort(), username='root', timeout=5)
             break

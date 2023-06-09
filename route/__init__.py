@@ -564,6 +564,7 @@ def connect_ssh(session_id):
         try:
             print("当前终端URL", host)
             ssh.connect(host, mw.getSSHPort(), username='root', timeout=5)
+            print("连接终端成功", host)
             break
         except Exception as e:
             continue

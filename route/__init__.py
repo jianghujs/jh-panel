@@ -559,9 +559,10 @@ def get_shell(session_id):
 def connect_ssh(session_id):
     global shell_dict, ssh_dict, status_dict
     status_dict[session_id] = 'connecting'
-
-    for host in [mw.getHostAddr(), '127.0.0.1', 'localhost']:
+    print("开始尝试", session_id)
+    for host in ['127.0.0.1', mw.getHostAddr(), 'localhost']:
         try:
+            print("连接", host)
             ssh.connect(host, mw.getSSHPort(), username='root', timeout=5)
             break
         except Exception as e:
@@ -602,11 +603,10 @@ def connected_msg(msg):
 
     global status_dict
     session_id = request.sid
-    
-    if ssh_dict.get(session_id) is None and status_dict.get(session_id) == 'connection':
-        emit('server_response', {'data': '已经请求过了!\r\n'})
+    print('status', status_dict.get(session_id))
+    if ssh_dict.get(session_id) is None and status_dict.get(session_id) == 'connecting':
         return True
-
+    print("get", session_id)
     shell = get_shell(session_id)
 
     if shell:

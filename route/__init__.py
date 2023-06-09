@@ -603,7 +603,8 @@ def connected_msg(msg):
     global status_dict
     session_id = request.sid
     
-    if ssh_dict[session_id] is None and status_dict[session_id] == 'connection':
+    if ssh_dict.get(session_id) is None and status_dict.get(session_id) == 'connection':
+        emit('server_response', {'data': '已经请求过了!\r\n'})
         return True
 
     shell = get_shell(session_id)

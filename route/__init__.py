@@ -528,21 +528,10 @@ def index(reqClass=None, reqAction=None, reqData=None):
 
 
 ##################### ssh  start ###########################
-import paramiko
-
+ssh = None
 ssh_dict = {}
 shell_dict = {}
-
-# 在程序启动时预先创建RSA密钥
-if not os.path.exists('/root/.ssh/id_rsa') or not os.path.exists('/root/.ssh/id_rsa.pub'):
-    os.system('ssh-keygen -q -t rsa -P "" -f /root/.ssh/id_rsa')
-    os.system('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
-    os.system('chmod 600 /root/.ssh/authorized_keys')
-
-# 在程序启动时预先初始化SSH客户端
-ssh = paramiko.SSHClient()
-ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
+status_dict = {}
 
 def clear_ssh(session_id):
     if session_id in ssh_dict:
@@ -568,11 +557,14 @@ def get_shell(session_id):
     return shell
 
 def connect_ssh(session_id):
-    global shell_dict, ssh_dict
-
+    global shell_dict, ssh_dict, status_dict
+    status_dict[session_id] = 'connecting'
+    print("开始尝试连接SSH终端", session_id)
     for host in ['127.0.0.1', mw.getHostAddr(), 'localhost']:
         try:
+            print("当前终端URL", host)
             ssh.connect(host, mw.getSSHPort(), username='root', timeout=5)
+            print("连接终端成功", host)
             break
         except Exception as e:
             continue
@@ -610,18 +602,43 @@ def connected_msg(msg):
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
 
+    global status_dict
     session_id = request.sid
+    if ssh_dict.get(session_id) is None and status_dict.get(session_id) == 'connecting':
+        return True
     shell = get_shell(session_id)
 
     if shell:
         try:
             recv = shell.recv(8192)
             emit('server_response', {'data': recv.decode("utf-8")})
+            status_dict[session_id] = 'connected'
         except Exception as e:
             pass
 
 if not mw.isAppleSystem():
     try:
+        # 在程序启动时预先创建RSA密钥
+        if not os.path.exists('/root/.ssh/id_rsa') or not os.path.exists('/root/.ssh/id_rsa.pub'):
+            os.system('ssh-keygen -q -t rsa -P "" -f /root/.ssh/id_rsa')
+            os.system('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
+            os.system('chmod 600 /root/.ssh/authorized_keys')
+
+        # 检查是否写入authorized_keys
+        data = mw.execShell("cat /root/.ssh/id_rsa.pub | awk '{print $3}'")
+        if data[0] != "":
+            ak_data = mw.execShell(
+                "cat /root/.ssh/authorized_keys | grep " + data[0])
+            if ak_data[0] == "":
+                mw.execShell(
+                    'cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
+                mw.execShell('chmod 600 /root/.ssh/authorized_keys')
+
+        # 在程序启动时预先初始化SSH客户端
+        import paramiko
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
         print("终端启动成功")
     except Exception as e:
         print("本地终端无法使用")

@@ -387,18 +387,17 @@ class crontab_api:
         if stype == 'databases':
             db_list = {}
             db_list['orderOpt'] = bak_data
-            path = mw.getServerDir() + '/mysql'
+            path = mw.getServerDir() + '/mysql-apt'
             if not os.path.exists(path + '/mysql.db'):
                 db_list['data'] = []
             else:
                 db_list['data'] = mw.M('databases').dbPos(
                     path, 'mysql').field('name,ps').select()
+                
             return mw.getJson(db_list)
-
         data = {}
         data['orderOpt'] = bak_data
-
-        data['data'] = mw.M(stype).field('name,ps').select()
+        # data['data'] = mw.M(stype).field('name,ps').select()
         return mw.getJson(data)
     ##### ----- start ----- ###
 

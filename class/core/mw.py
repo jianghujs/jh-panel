@@ -1522,3 +1522,7 @@ def getMyORMDb():
     import ormDb
     o = ormDb.ORM()
     return o
+
+def getAllVms():
+    result = subprocess.run(['VBoxManage', 'list', 'vms'], stdout=subprocess.PIPE)
+    return result.stdout.decode('utf-8')

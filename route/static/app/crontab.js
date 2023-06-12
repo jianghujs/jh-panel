@@ -417,6 +417,10 @@ function initDropdownMenu(){
 				toBackup('databases');
 				$(".controls").html('备份数据库');
 				break;
+			case 'virtualbox':
+				toBackup('virtualbox');
+				$(".controls").html('备份VirtualBox快照');
+				break;
 			case 'logs':
 				toBackup('logs');
 				$(".controls").html('切割网站');
@@ -445,6 +449,10 @@ function toBackup(type){
 		case 'logs':
 			sMsg = '切割日志';
 			sType = "sites";
+			break;
+		case 'virtualbox':
+			sMsg = '备份virtualbox';
+			sType = "virtualbox";
 			break;
 	}
 	var data='type='+sType

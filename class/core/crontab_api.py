@@ -378,6 +378,11 @@ class crontab_api:
 
         bak_data = []
 
+        if stype == 'virtualbox':
+            data = {}
+            data['data'] = mw.getAllVms()
+            return mw.getJson(data)
+
         if stype == 'sites' or stype == 'databases':
             hookPath = mw.getPanelDataDir() + "/hook_backup.json"
             if os.path.exists(hookPath):

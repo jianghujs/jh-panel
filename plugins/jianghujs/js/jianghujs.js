@@ -48,9 +48,9 @@ function refreshTable() {
                 }
             }
 
-            const temPath = tmp[i].path.replace('//','')
-            tmp[i].temPath = temPath
-            tmp[i].path = '<a class="jhlink" href="javascript:openNewWindowPath(\'' + temPath + '\')">' + temPath + '</a>';
+            const path = tmp[i].path.replace('//','')
+            tmp[i].path = path
+            tmp[i].temPath = '<a class="jhlink" href="javascript:openNewWindowPath(\'' + path + '\')">' + path + '</a>';
             
             var status = '';
             if(tmp[i].loadingStatus) {
@@ -71,13 +71,13 @@ function refreshTable() {
                 <label class="btswitch-btn" for="autostart_' + tmp[i].id + '" onclick="toggleAutostart(\'' + tmp[i].id + '\')"></label></div>';
             
             tbody += '<tr>\
-                        <td style="width: 180px;">'+tmp[i].path+'</td>\
+                        <td style="width: 180px;">'+tmp[i].temPath+'</td>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>' +
                         '<td style="width: 100px;">'+autostart+'</td>' +
                         '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
                         <td style="text-align: right;width: 280px;">\
                             '+opt+
-                            '<a href="javascript:projectUpdate(\''+tmp[i].temPath+'\')" class="btlink">git pull</a> | ' + 
+                            '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
                             '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
                             '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
                             '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\

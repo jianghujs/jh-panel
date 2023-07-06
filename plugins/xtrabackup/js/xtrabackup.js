@@ -176,19 +176,30 @@ function updateXtrabackupCron() {
     }
 }
 
+
+// 绑定执行完毕事件
+$(document).on('messageBoxLayerClose', function(e){
+    mysqlBackupHtml();
+});
+
 function openMysqlBackup() {
     myPost('backup_script','', function(data) {
 		let rdata = $.parseJSON(data.data);
-        openEditCode({
+        openEditCodeAndExcute({
             title: '执行备份',
-            content: rdata.data,
-            width: '640px',
-            height: '400px',
-            submitBtn: '执行',
-            onSubmit: (content) => {
-                doMysqlBackup(content)
-            }
+            name: '执行Xtrabackup命令[备份]',
+            content: rdata.data
         })
+        // openEditCode({
+        //     title: '执行备份',
+        //     content: rdata.data,
+        //     width: '640px',
+        //     height: '400px',
+        //     submitBtn: '执行',
+        //     onSubmit: (content) => {
+        //         doMysqlBackup(content)
+        //     }
+        // })
     });
 }
 

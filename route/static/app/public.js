@@ -1266,6 +1266,10 @@ function messageBox(options) {
 							</div>\
 						</div>\
 					</div>'
+			,cancel: function(){
+				alert('右上角关闭按钮回调')
+				$(document).trigger('messageBoxLayerClose');
+			}
 		});
 		$(".bt-w-menu p").click(function(){
 			$(this).addClass("bgw").siblings().removeClass("bgw");
@@ -1278,6 +1282,7 @@ function messageBox(options) {
 function closeMessageBoxLayer() {
 	if (messageBoxLayer) {
 		layer.close(messageBoxLayer);
+		$(document).trigger('messageBoxLayerClose');
 	}
 }
 
@@ -1388,6 +1393,7 @@ function getReloads() {
 				if (messageBoxToLogAfterComplete) {
 					$(".jh-message-box .bt-w-menu #execLog").click()
 				}
+				$(document).trigger('taskComplete');
 				if (messageBoxAutoClose) {
 					openTimoutLayer('任务执行完毕，即将自动关闭消息盒子', () => {
 						closeMessageBoxLayer();
@@ -2356,6 +2362,29 @@ function pluginStandAloneLogs(_name, version, func, _args, line){
             ob.scrollTop = ob.scrollHeight; 
         },'json');
     },'json');
+}
+
+function openEditCodeAndExcute({name = '执行命令', title = '执行', submitBtn = '执行', content = ''}) {
+	openEditCode({
+		title,
+		content,
+		width: '640px',
+		height: '400px',
+		submitBtn,
+		onSubmit: (content) => {
+			excuteScriptTask(name, content)
+		}
+	})
+}
+
+function excuteScriptTask(name, content) {
+	$.post('/task/generate_script_file_and_excute', {name, content: encodeURIComponent(content)},function (data) {
+		layer.msg("添加任务完成",{icon:1,time:2000,shade: [0.3, '#000']});
+		setTimeout(() => {
+				$("#openEditCodeCloseBtn").click();
+				messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+		}, 1000)
+	})
 }
 /*** 其中功能,针对插件通过库使用 end ***/
 

@@ -21,6 +21,7 @@ import mw
 import re
 import json
 import pwd
+from urllib.parse import unquote
 
 
 from flask import request
@@ -101,3 +102,18 @@ class task_api:
         data['task'] = mw.M('tasks').where("status!=?", ('1',)).field(
             'id,status,name,type').order("id asc").select()
         return mw.getJson(data)
+
+    def generateScriptFileAndExcuteApi(self):
+        name = request.form.get('name', '').strip()
+        content = unquote(str(request.form.get('content', '')), 'utf-8').replace("\\n", "\n")
+
+        # 写入临时文件用于执行
+        tempFilePath = mw.getRunDir() + '/tmp/' +  str(time.time()) + '.sh'
+        mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s' % {'content': content, 'tempFilePath': tempFilePath})
+        mw.execShell('chmod 750 ' + tempFilePath)
+        
+        mw.addAndTriggerTask(
+            name,
+            execstr = 'sh %(tempFilePath)s' % {'tempFilePath': tempFilePath }
+        )
+        return mw.returnJson(True, content)

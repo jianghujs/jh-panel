@@ -177,7 +177,7 @@ function updateXtrabackupCron() {
 }
 
 function openMysqlBackup() {
-    myPost('conf_content','', function(data) {
+    myPost('backup_script','', function(data) {
 		let rdata = $.parseJSON(data.data);
         openEditCode({
             title: '执行备份',

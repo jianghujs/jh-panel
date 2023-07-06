@@ -173,7 +173,7 @@ def doMysqlBackup():
     # mw.execShell("BACKUP_PATH=%(backupPath)s sh %(tempFilePath)s >> %(logFile)s" % {'backupPath':getBackupPath(), 'tempFilePath': tempFilePath, 'logFile': log_file })
     mw.addAndTriggerTask(
         name = '执行Xtrabackup命令[备份]',
-        execstr = "BACKUP_PATH=%(backupPath)s sh %(tempFilePath)s >> %(logFile)s" % {'backupPath':getBackupPath(), 'tempFilePath': tempFilePath, 'logFile': log_file }
+        execstr = 'sh %(tempFilePath)s >> %(logFile)s' % {'tempFilePath': tempFilePath, 'logFile': log_file }
     )
     
     execResult = mw.execShell("tail -n 1 " + log_file)
@@ -291,8 +291,9 @@ def setBackupPath():
     mw.writeFile(getBackupPathConf(), path)
     return mw.returnJson(True, '修改成功!')
 
-def getConfContent():
-    return mw.returnJson(True, 'ok',  mw.readFile(getConf()))
+def getBackupScript():
+    backupScript = 'echo "正在备份..." \nBACKUP_PATH=%(backupPath)s\nset -x\n%(conf)s' % {'backupPath':getBackupPath(), 'conf': mw.readFile(getConf()) } 
+    return mw.returnJson(True, 'ok',  backupScript)
 
 if __name__ == "__main__":
     func = sys.argv[1]
@@ -308,8 +309,8 @@ if __name__ == "__main__":
         print(returnBackupPath())
     elif func == 'set_backup_path':
         print(setBackupPath())
-    elif func == 'conf_content':
-        print(getConfContent())
+    elif func == 'backup_script':
+        print(getBackupScript())
     elif func == 'get_xtrabackup_cron':
         print(getXtrabackupCron())
     elif func == 'get_setting':

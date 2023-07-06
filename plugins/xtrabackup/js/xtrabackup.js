@@ -207,6 +207,7 @@ function doMysqlBackup(content) {
         setTimeout(() => {
             $("#openEditCodeCloseBtn").click();
             messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+            
         }, 1000)
         
     });

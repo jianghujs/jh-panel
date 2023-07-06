@@ -1,7 +1,8 @@
 <div class="bt-form">
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
-			<p class="bgw" onclick="refreshTable();">项目列表</p>
+			<p onclick="pluginService('jianghujs', $('.plugin_version').attr('version'));">服务</p>
+			<p class="bgw" onclick="projectPanel();">项目列表</p>
 			<!-- <p onclick="pluginLogs('jianghujs','','run_log');">日志</p> -->
 		</div>
 		<div class="bt-w-con pd15">
@@ -13,8 +14,7 @@
 
 resetPluginWinWidth(900);
 $.getScript( "/plugins/file?name=jianghujs&f=js/jianghujs.js", function(){
-	refreshTable();
-	startRefreshTableTask();
+	projectPanel();
 });
 </script>
 

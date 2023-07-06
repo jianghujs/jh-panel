@@ -5,10 +5,16 @@ var logLayer = null; // 日志弹框
 var editItem = null; // 编辑项
 var refreshTableTask = null;
 
+
+function projectPanel() {
+	refreshTable();
+	startRefreshTableTask();
+}
+
 function refreshTable() {
-    let firstLoad = $('.soft-man-con').html() == '';
+    let firstLoad = $('.jianghujs-panel').length == 0;
 	var con = '\
-    <div class="divtable">\
+    <div class="divtable jianghujs-panel">\
         <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">添加项目</button>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
@@ -98,6 +104,10 @@ function clearRefreshTableTask() {
 function startRefreshTableTask() {
     clearRefreshTableTask();
     refreshTableTask = setInterval(function(){
+        if($('.jianghujs-panel').length == 0) {
+            clearRefreshTableTask();
+            return;
+        }
         refreshTable();
     }, 5000);
 }

@@ -114,7 +114,25 @@ def start():
     initDb()
     mw.restartWeb()
     return 'ok'
+
+def stop():
+    return '暂不支持'
+
+def restart():
+    cleanProjectStatus()
+    return 'ok'
+
+def reload():
+    cleanProjectStatus()
+    return 'ok'
     
+def cleanProjectStatus():
+    # 删除status文件
+    scriptDir = getServerDir() + '/script'
+    if os.path.exists(scriptDir):
+        os.system('rm -f ' + scriptDir + '/*_status')
+
+
 def projectScriptExcute():
     args = getArgs()
     data = checkArgs(args, ['id', 'scriptKey'])
@@ -412,6 +430,12 @@ if __name__ == "__main__":
         print(status())
     elif func == 'start':
         print(start())
+    elif func == 'stop':
+        print(stop())
+    elif func == 'reload':
+        print(reload())
+    elif func == 'restart':
+        print(restart())
     elif func == 'project_start':
         print(projectStart())
     elif func == 'project_stop':
@@ -438,10 +462,6 @@ if __name__ == "__main__":
         print(projectLogs())
     elif func == 'project_logs_clear':
         print(projectLogsClear())
-    elif func == 'restart':
-        print(restart())
-    elif func == 'reload':
-        print(reload())
     elif func == 'stop':
         print(pm2Stop())
     elif func == 'start':

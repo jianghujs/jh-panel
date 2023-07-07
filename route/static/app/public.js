@@ -1589,24 +1589,11 @@ function loadImage(){
 }
 
 var socket, gterm;
-
-function prepareWebShell() {
-	if(!socket)socket = io.connect();
-
-	// 连接ssh终端
-	if (socket) {
-		socket.emit('connect_event', '');
-		interval = setInterval(function () {
-				socket.emit('connect_event', '');
-		}, 1000);
-	}
-}
-prepareWebShell();
-
 function webShell() {
     var termCols = 83;
     var termRows = 21;
     var sendTotal = 0;
+    if(!socket)socket = io.connect();
     var term = new Terminal({ cols: termCols, rows: termRows, screenKeys: true, useStyle: true});
 
     term.open();
@@ -1614,27 +1601,31 @@ function webShell() {
     term.setOption('fontSize', 14);
     gterm = term;
 
-		socket.on('server_response', function (data) {
-			term.write(data.data);
-			if (data.data == '\r\n登出\r\n' || 
-					data.data == '登出\r\n' || 
-					data.data == '\r\nlogout\r\n' || 
-					data.data == 'logout\r\n') {
-					setTimeout(function () {
-							layer.closeAll();
-							term.destroy();
-							clearInterval(interval);
-					}, 500);
-			}
-		});
+    socket.on('server_response', function (data) {
+        term.write(data.data);
+        if (data.data == '\r\n登出\r\n' || 
+            data.data == '登出\r\n' || 
+            data.data == '\r\nlogout\r\n' || 
+            data.data == 'logout\r\n') {
+            setTimeout(function () {
+                layer.closeAll();
+                term.destroy();
+                clearInterval(interval);
+            }, 500);
+        }
+    });
 
-		// 自动跳转到 当前目录
-		setTimeout(function () {
-			var currentDir = $("#PathPlaceBtn").attr('path')
-			if (currentDir && currentDir.startsWith("/")) {
-				socket.emit('webssh', `cd ${currentDir}\n`);
-			}
-		}, 600);
+    $(window).unload(function(){
+  　     term.destroy();
+        clearInterval(interval);
+    });
+
+    if (socket) {
+        socket.emit('webssh', '');
+        interval = setInterval(function () {
+            socket.emit('webssh', '');
+        }, 500);
+    }
     
     term.on('data', function (data) {
         socket.emit('webssh', data);
@@ -1644,7 +1635,7 @@ function webShell() {
     var term_box = layer.open({
         type: 1,
         title: "本地终端",
-        area: ['685px','435px'],
+        area: ['685px','463px'],
         closeBtn: 1,
         shadeClose: false,
         content: '<div class="term-box"><div id="term"></div></div>\
@@ -1655,18 +1646,22 @@ function webShell() {
 					<button class="shellbutton btn btn-default btn-sm pull-right shell_btn_close">关闭</button>\
 					</div>\
                 </div>',
+        success:function(){
+        	$(".shell_btn_close").click(function(){
+				layer.close(term_box);
+				term.destroy();
+		        clearInterval(interval);
+			});
+        },
         cancel: function () {
             term.destroy();
             clearInterval(interval);
         }
     });
-	$(".shell_btn_close").click(function(){
-		layer.close(term_box);
-		term.destroy();
-        clearInterval(interval);
-	})
+	
 	
     setTimeout(function () {
+
         $('.terminal').detach().appendTo('#term');
         $("#term").show();
         socket.emit('webssh', "\n");
@@ -1753,16 +1748,14 @@ function webShell() {
             }
             socket.emit('webssh', ptext);
             term.focus();
-        })
+        });
         $("textarea[name='ssh_copy']").keydown(function (e) {
-
             if (e.ctrlKey && e.keyCode == 13) {
                 $(".shell_btn_1").click();
             } else if (e.altKey && e.keyCode == 13) {
                 $(".shell_btn_1").click();
             }
         });
-
     }, 100);
 }
 

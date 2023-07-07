@@ -1626,6 +1626,14 @@ function webShell() {
             socket.emit('webssh', '');
         }, 500);
     }
+		
+		// 自动跳转到 当前目录
+		setTimeout(function () {
+			var currentDir = $("#PathPlaceBtn").attr('path')
+			if (currentDir && currentDir.startsWith("/")) {
+				socket.emit('webssh', `cd ${currentDir}\n`);
+			}
+		}, 600);
     
     term.on('data', function (data) {
         socket.emit('webssh', data);

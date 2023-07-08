@@ -1267,7 +1267,6 @@ function messageBox(options) {
 						</div>\
 					</div>'
 			,cancel: function(){
-				alert('右上角关闭按钮回调')
 				$(document).trigger('messageBoxLayerClose');
 			}
 		});

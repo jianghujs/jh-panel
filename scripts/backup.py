@@ -84,7 +84,15 @@ class backupTools:
                     break
 
     def backupDatabase(self, name, count):
-        db_path = mw.getServerDir() + '/mysql'
+        # 获取的mysql目录
+        db_path = ''
+        if os.path.exists(mw.getServerDir() + '/mysql-apt'):
+            db_path = '/www/server/mysql-apt'
+        elif os.path.exists(mw.getServerDir() + '/mysql'):
+            db_path = '/www/server/mysql'
+        else:
+            print('未检测到安装的mysql插件')
+        print("mysql安装目录：", db_path)
         db_name = 'mysql'
         name = mw.M('databases').dbPos(db_path, 'mysql').where(
             'name=?', (name,)).getField('name')

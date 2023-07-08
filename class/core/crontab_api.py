@@ -392,7 +392,16 @@ class crontab_api:
         if stype == 'databases':
             db_list = {}
             db_list['orderOpt'] = bak_data
-            path = mw.getServerDir() + '/mysql-apt'
+
+            # 获取的mysql目录
+            path = ''
+            if os.path.exists(mw.getServerDir() + '/mysql-apt'):
+                path = '/www/server/mysql-apt'
+            elif os.path.exists(mw.getServerDir() + '/mysql'):
+                path = '/www/server/mysql'
+            else:
+                print('未检测到安装的mysql插件')
+            
             if not os.path.exists(path + '/mysql.db'):
                 db_list['data'] = []
             else:

@@ -82,7 +82,9 @@ innodb_write_io_threads = 1
 innodb_file_per_table=1
 binlog_expire_logs_seconds=2592000
 
-secure-file-priv={$SERVER_APP_PATH}/tmp
+secure-file-priv={$SERVER_APP_PATH}/tmp=
+
+sql_mode="STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
 
 [mysqldump]
 quick

@@ -573,7 +573,8 @@ echo "--------------------------------------------------------------------------
     def writeShell(self, config):
         u_file = '/var/spool/cron/crontabs/root'
         if not os.path.exists(u_file):
-            file = '/var/spool/cron/root'
+            # file = '/var/spool/cron/root'
+            file = '/var/spool/cron/crontabs/root' # 20230715 如果在debian上，/var/spool/cron/crontabs/root被删掉了，会写到错误的目录，暂时改成同一个文件
             if mw.isAppleSystem():
                 file = '/etc/crontab'
         else:

@@ -2375,7 +2375,7 @@ function openEditCodeAndExcute({name = '执行命令', title = '执行', submitB
 
 			// skipFail
 			if (!skipFail) {
-				content = 'set -e\n' + content // 增加set -e
+				content = 'set -e\n' + content + '\n' // 增加set -e
 			}
 			content += ('echo ' + name + ' 完成') 
 

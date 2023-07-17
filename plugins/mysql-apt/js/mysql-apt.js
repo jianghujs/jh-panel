@@ -1069,7 +1069,7 @@ function setBackup(db_name){
     var layerIndex = layer.open({
         type: 1,
         title: "数据库备份详情",
-        area: ['600px', '280px'],
+        area: ['750px', '300px'],
         closeBtn: 1,
         shadeClose: false,
         content: '<div class="pd15">\
@@ -1078,14 +1078,14 @@ function setBackup(db_name){
                         <button id="btn_local_import" class="btn btn-success btn-sm" type="button">外部导入</button>\
                     </div >\
                     <div class="divtable">\
-                    <div  id="database_fix"  style="height:150px;overflow:auto;border:#ddd 1px solid">\
+                    <div  id="database_fix"  style="height:180px;overflow:auto;border:#ddd 1px solid">\
                     <table id="database_table" class="table table-hover "style="border:none">\
                         <thead>\
                             <tr>\
                                 <th>文件名称</th>\
                                 <th>文件大小</th>\
                                 <th>备份时间</th>\
-                                <th style="text-align: right;">操作</th>\
+                                <th style="text-align: right;width: 110px;">操作</th>\
                             </tr>\
                         </thead>\
                         <tbody class="list"></tbody>\

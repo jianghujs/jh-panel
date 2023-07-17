@@ -924,10 +924,18 @@ function downloadBackup(file){
 }
 
 function importBackup(file,name){
-    myPost('import_db_backup',{file:file,name:name}, function(data){
-        // console.log(data);
-        layer.msg('执行成功!');
+    // myPost('import_db_backup',{file:file,name:name}, function(data){
+    //     layer.msg('执行成功!');
+    // });
+    myPost('get_import_db_backup_script',{file:file,name:name}, function(data){
+        let rdata = $.parseJSON(data.data);
+        openEditCodeAndExcute({
+            title: '执行恢复',
+            name: '执行mysql插件操作[恢复]',
+            content: rdata.data
+        })
     });
+    
 }
 
 
@@ -991,7 +999,7 @@ function setLocalImport(db_name){
                         <td><span> ' + file_list[i]['size'] + '</span></td>\
                         <td><span> ' + file_list[i]['time'] + '</span></td>\
                         <td style="text-align: right;">\
-                            <a class="btlink" onclick="importDbExternal(\'' + file_list[i]['name'] + '\',\'' +db_name+ '\')">导入</a> | \
+                            <a class="btlink" onclick="importDbExternal(\'' + file_list[i]['name'] + '\',\'' +db_name+ '\')">恢复</a> | \
                             <a class="btlink del" index="'+i+'">删除</a>\
                         </td>\
                     </tr>';
@@ -1114,7 +1122,7 @@ function setBackupReq(db_name, obj){
                     <td><span> ' + rdata.data[i]['size'] + '</span></td>\
                     <td><span> ' + rdata.data[i]['time'] + '</span></td>\
                     <td style="text-align: right;">\
-                        <a class="btlink" onclick="importBackup(\'' + rdata.data[i]['name'] + '\',\'' +db_name+ '\')">导入</a> | \
+                        <a class="btlink" onclick="importBackup(\'' + rdata.data[i]['name'] + '\',\'' +db_name+ '\')">恢复</a> | \
                         <a class="btlink" onclick="downloadBackup(\'' + rdata.data[i]['file'] + '\')">下载</a> | \
                         <a class="btlink" onclick="delBackup(\'' + rdata.data[i]['name'] + '\',\'' +db_name+ '\')">删除</a>\
                     </td>\

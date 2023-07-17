@@ -889,6 +889,31 @@ def importDbExternal():
     return mw.returnJson(True, 'ok')
 
 
+def getImportDbBackupScript():
+    args = getArgs()
+    data = checkArgs(args, ['file', 'name'])
+    if not data[0]:
+        return data[1]
+
+    file = args['file']
+    name = args['name']
+
+    file_path = mw.getRootDir() + '/backup/database/' + file
+    file_path_sql = mw.getRootDir() + '/backup/database/' + file.replace('.gz', '')
+
+    cmd = 'set -e' + '\n'
+    if not os.path.exists(file_path_sql):
+        cmd += 'cd ' + mw.getRootDir() + '/backup/database && gzip -d ' + file + '\n'
+
+    pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
+    sock = getSocketFile()
+    cmd += (getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + pwd + \
+        ' ' + name + ' < ' + file_path_sql + '\n')
+    cmd += 'echo "恢复成功!"'
+
+    # print(mysql_cmd)
+    return mw.returnJson(True, 'ok', cmd)
+
 def importDbBackup():
     args = getArgs()
     data = checkArgs(args, ['file', 'name'])
@@ -2608,6 +2633,8 @@ if __name__ == "__main__":
         print(getDbList())
     elif func == 'set_db_backup':
         print(setDbBackup())
+    elif func == 'get_import_db_backup_script':
+        print(getImportDbBackupScript())
     elif func == 'import_db_backup':
         print(importDbBackup())
     elif func == 'import_db_external':

@@ -2372,9 +2372,13 @@ function openEditCodeAndExcute({name = '执行命令', title = '执行', submitB
 		height: '400px',
 		submitBtn,
 		onSubmit: (content) => {
+
+			// skipFail
 			if (!skipFail) {
 				content = 'set -e\n' + content // 增加set -e
 			}
+			content += ('echo ' + name + ' 完成') 
+
 			excuteScriptTask(name, content)
 		}
 	})

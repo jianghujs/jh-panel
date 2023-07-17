@@ -909,7 +909,6 @@ def getImportDbBackupScript():
     sock = getSocketFile()
     cmd += (getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + pwd + \
         ' ' + name + ' < ' + file_path_sql + '\n')
-    cmd += 'echo "恢复成功!"'
 
     # print(mysql_cmd)
     return mw.returnJson(True, 'ok', cmd)

@@ -901,7 +901,7 @@ def getImportDbBackupScript():
     file_path = mw.getRootDir() + '/backup/database/' + file
     file_path_sql = mw.getRootDir() + '/backup/database/' + file.replace('.gz', '')
 
-    cmd = 'set -e' + '\n'
+    cmd = ''
     if not os.path.exists(file_path_sql):
         cmd += 'cd ' + mw.getRootDir() + '/backup/database && gzip -d ' + file + '\n'
 

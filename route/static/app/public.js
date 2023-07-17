@@ -2364,7 +2364,7 @@ function pluginStandAloneLogs(_name, version, func, _args, line){
     },'json');
 }
 
-function openEditCodeAndExcute({name = '执行命令', title = '执行', submitBtn = '执行', content = ''}) {
+function openEditCodeAndExcute({name = '执行命令', title = '执行', submitBtn = '执行', content = '', skipFail = false}) {
 	openEditCode({
 		title,
 		content,
@@ -2372,6 +2372,9 @@ function openEditCodeAndExcute({name = '执行命令', title = '执行', submitB
 		height: '400px',
 		submitBtn,
 		onSubmit: (content) => {
+			if (!skipFail) {
+				content = 'set -e\n' + content // 增加set -e
+			}
 			excuteScriptTask(name, content)
 		}
 	})

@@ -313,8 +313,11 @@ def systemTask():
             diskio_1 = diskio_2
             diskInfo['disk_list'] = sm.getDiskInfo()
 
+            # 网站
+            siteInfo = sm.getSiteInfo()
+
             # 报告
-            mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo)
+            mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo)
 
             # print diskInfo
             if count >= 12:

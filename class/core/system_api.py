@@ -750,3 +750,14 @@ class system_api:
         if hasattr(web.ctx.session, 'getCloudPlugin'):
             del(web.ctx.session['getCloudPlugin'])
         return True
+
+    def getSiteInfo(self):
+        siteInfo = {}
+        siteInfo['site_list'] = mw.M('sites').field(
+        "id,name,path,ps,status,addtime").order("id desc").select()
+        siteInfo['site_count'] = len(siteInfo['site_list'])
+        # 从site_list过滤出已启用的站点，status == '正在运行' || status == '1'
+        siteInfo['active_count'] = len( list(filter(lambda x: x['status'] == '正在运行' or x['status'] == '1', siteInfo['site_list'])))
+        
+        
+        return siteInfo

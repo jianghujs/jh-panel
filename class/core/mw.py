@@ -1880,13 +1880,13 @@ def notifyMessage(msg, stype='common', trigger_time=300, is_write_log=True):
 
 ##################### notify  end #########################################
 
-def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo):
+def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     # 推送需要的内容
     panel_title = getConfig('title')
     ip = getHostAddr()
     now_time = getDateFromNow()
 
-    writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo))
+    writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\n')
     cpu_percent = cpuInfo['used'] 
     mem_percent = cpuInfo['mem']
     network_up = networkInfo['up'] # MB

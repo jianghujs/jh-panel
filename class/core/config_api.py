@@ -767,6 +767,12 @@ class config_api:
             data['ipv6'] = 'checked'
         else:
             data['ipv6'] = ''
+        
+        net_env_cn_file = 'data/net_env_cn.pl'
+        if os.path.exists(net_env_cn_file):
+            data['net_env_cn'] = 'checked'
+        else:
+            data['net_env_cn'] = ''
 
         debug_file = 'data/debug.pl'
         if os.path.exists(debug_file):

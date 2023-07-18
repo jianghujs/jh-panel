@@ -2364,7 +2364,7 @@ function pluginStandAloneLogs(_name, version, func, _args, line){
     },'json');
 }
 
-function openEditCodeAndExcute({name = '执行命令', title = '执行', submitBtn = '执行', content = '', skipFail = false}) {
+function openEditCodeAndExcute({name = '执行命令', title = '执行', submitBtn = '执行', content = '', skipFail = false, showCmd = true}) {	
 	openEditCode({
 		title,
 		content,
@@ -2376,6 +2376,9 @@ function openEditCodeAndExcute({name = '执行命令', title = '执行', submitB
 			// skipFail
 			if (!skipFail) {
 				content = 'set -e\n' + content + '\n' // 增加set -e
+			}
+			if (showCmd) {
+				content = 'set -x\n' + content + '\n' // 增加set -x
 			}
 			content += ('echo ' + name + ' 完成') 
 

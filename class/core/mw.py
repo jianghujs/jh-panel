@@ -85,6 +85,17 @@ def getPanelTmp():
 def getServerDir():
     return getRootDir() + '/server'
 
+def getWebConfDir():
+    return getServerDir() + '/web_conf'
+
+def getWebConfVhostDir():
+    return getWebConfDir() + '/nginx/vhost'
+
+def getWebConfSSLDir():
+    return getWebConfDir() + '/ssl'
+
+def getWebConfSSLLetsDir():
+    return getWebConfDir() + '/letsencrypt'
 
 def getLogsDir():
     return getRootDir() + '/wwwlogs'

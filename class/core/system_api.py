@@ -753,11 +753,49 @@ class system_api:
 
     def getSiteInfo(self):
         siteInfo = {}
-        siteInfo['site_list'] = mw.M('sites').field(
+        site_list = mw.M('sites').field(
         "id,name,path,ps,status,addtime").order("id desc").select()
-        siteInfo['site_count'] = len(siteInfo['site_list'])
-        # 从site_list过滤出已启用的站点，status == '正在运行' || status == '1'
-        siteInfo['active_count'] = len( list(filter(lambda x: x['status'] == '正在运行' or x['status'] == '1', siteInfo['site_list'])))
         
-        
+        for site in site_list:
+            site_name = site['name']
+            # 配置
+            host_config_path = mw.getWebConfVhostDir() + '/' + site_name + '.conf' 
+            host_config_content = mw.readFile(host_config_path)
+            
+            if host_config_content:
+                if host_config_content.find('$server_port !~ 44') != -1:
+                    site['http_to_https'] = True
+                else:
+                    site['http_to_https'] = False
+                    
+            # SSL配置
+            ssl_path = mw.getWebConfSSLDir() + '/' + site_name
+            ssl_lets_path = mw.getWebConfSSLLetsDir() + '/' + site_name
+            ssl_acme_path = mw.getAcmeDir() + '/' + site_name
+
+            ssl_type = csr_path = key_path = cert_data = None
+            if os.path.exists(ssl_lets_path):
+                ssl_type = 'lets'
+                csr_path = ssl_lets_path + '/fullchain.pem'  # 生成证书路径
+                key_path = ssl_lets_path + '/privkey.pem'    # 密钥文件路径
+            elif os.path.exists(ssl_acme_path):
+                ssl_type = 'acme'
+                csr_path = ssl_acme_path + '/fullchain.cer'
+                key_path = ssl_acme_path + site_name + '.key'
+            else:
+                ssl_type = 'custom'
+                csr_path = ssl_path + '/fullchain.pem'  # 生成证书路径
+                key_path = ssl_path + '/privkey.pem'    # 密钥文件路径
+
+            key = mw.readFile(key_path)
+            csr = mw.readFile(csr_path)
+            cert_data = mw.getCertName(csr_path)
+            site['ssl_type'] = ssl_type
+            site['cert_data'] = cert_data
+            site['ssl_endtime'] = "未部署SSL" if site['cert_data'] == None else site['cert_data']['endtime']
+
+        siteInfo['site_list'] = site_list
+        siteInfo['site_count'] = len(site_list)
+        siteInfo['active_count'] = len( list(filter(lambda x: x['status'] == '正在运行' or x['status'] == '1', site_list)))
+        siteInfo['ssl_count'] = len( list(filter(lambda x: x['ssl_endtime'] != '未部署SSL', site_list)))
         return siteInfo

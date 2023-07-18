@@ -515,6 +515,17 @@ def getDate():
     import time
     return time.strftime('%Y-%m-%d %X', time.localtime())
 
+def getDateFromNow(tf_format="%Y-%m-%d %H:%M:%S", time_zone="Asia/Shanghai"):
+    # 取格式时间
+    import time
+    os.environ['TZ'] = time_zone
+    time.tzset()
+    return time.strftime(tf_format, time.localtime())
+
+def getDataFromInt(val):
+    time_format = '%Y-%m-%d %H:%M:%S'
+    time_str = time.localtime(val)
+    return time.strftime(time_format, time_str)
 
 def writeLog(stype, msg, args=()):
     # 写日志
@@ -1848,7 +1859,7 @@ def notifyMessageTry(msg, stype='common', trigger_time=300, is_write_log=True):
     if 'email' in data and 'enable' in data['email']:
         if data['email']['enable']:
             t = data['email']['data']
-            t['subject'] = 'MW通知'
+            t['subject'] = '江湖面板通知'
             t['content'] = msg
             do_notify = emailNotifyMessage(t)
     return do_notify

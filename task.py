@@ -101,10 +101,10 @@ def execShell(cmdstring, cwd=None, timeout=None, shell=True):
 
         if isinstance(data[1], bytes):
             t2 = str(data[1], encoding='utf-8')
-        mw.writeFile('/root/1.txt', '执行成功:' + str(t1 + t2))
+        # mw.writeFile('/root/1.txt', '执行成功:' + str(t1 + t2))
         return True
     except Exception as e:
-        mw.writeFile('/root/1.txt', '执行失败:' + str(e))
+        # mw.writeFile('/root/1.txt', '执行失败:' + str(e))
         return False
 
 
@@ -258,6 +258,13 @@ def systemTask():
             tmp = {}
             # 取当前CPU Io
             tmp['used'] = psutil.cpu_percent(interval=1)
+            if tmp['used'] > 80:
+                panel_title = mw.getConfig('title')
+                ip = mw.getHostAddr()
+                now_time = mw.getDateFromNow()
+                msg = now_time + '|节点[' + panel_title + ':' + ip + \
+                    ']处于高负载[' + str(tmp['used']) + '],请排查原因!'
+                mw.notifyMessage(msg, '面板监控', 600)
 
             if not cpuInfo:
                 tmp['mem'] = sm.getMemUsed()

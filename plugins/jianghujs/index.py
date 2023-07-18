@@ -134,6 +134,13 @@ def cleanProjectStatus():
 
 
 def projectScriptExcute():
+    panel_title = mw.getConfig('title')
+    ip = mw.getHostAddr()
+    now_time = mw.getDateFromNow()
+    msg = now_time + '|节点[' + panel_title + ':' + ip + \
+        ']处于高负载[' + str(90) + '],请排查原因!'
+    mw.notifyMessage(msg, '面板监控', 0)
+
     args = getArgs()
     data = checkArgs(args, ['id', 'scriptKey'])
     if not data[0]:

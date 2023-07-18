@@ -1886,21 +1886,39 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo):
     ip = getHostAddr()
     now_time = getDateFromNow()
 
-    # writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo))
+    writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo))
     cpu_percent = cpuInfo['used'] 
     mem_percent = cpuInfo['mem']
     network_up = networkInfo['up'] # MB
     network_down = networkInfo['down'] # MB
-    # disk_percent = diskInfo.percent
+    disk_list = diskInfo['disk_list']
 
-    # 异常通知
+    writeFile('/root/2.txt', 'xixi1')
+    
     error_msg_arr = []
-    if (cpu_percent > 80):
-        error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + ']')
-    if (mem_percent > 80):
-        error_msg_arr.append('内存负载过高[' + str(mem_percent) + ']')
+    # CPU
+    if (cpu_percent > 2):
+        error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + '%' + ']')
+    # 内存
+    if (mem_percent > 2):
+        error_msg_arr.append('内存负载过高[' + str(mem_percent) + '%' + ']')
+    writeFile('/root/2.txt', 'xixi2')
+    # 磁盘容量
+    if len(disk_list) > 0:
+        for disk in disk_list:
+            writeFile('/root/2.txt', 'xixi32')
+            disk_size_percent = int(disk['size'][3].replace('%', ''))
+
+            writeFile('/root/2.txt', 'xixi3')
+            if disk_size_percent > 1:
+                error_msg_arr.append('磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']')
+
+            writeFile('/root/2.txt', 'xixi4')
+    
+    writeFile('/root/2.txt', 'xixi6')
+    # 发送异常报告
     if (len(error_msg_arr) > 0):
         msg = now_time + '|节点[' + panel_title + ':' + ip + ']\n'
         msg += '\n'.join(error_msg_arr)
         msg += '\n请排查原因!'
-        notifyMessage(msg, '面板监控', 600)
+        notifyMessage(msg, '面板监控', 6000)

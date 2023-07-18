@@ -311,6 +311,7 @@ def systemTask():
                 diskInfo['read_time'] += tmp['read_time']
                 diskInfo['write_time'] += tmp['write_time']
             diskio_1 = diskio_2
+            diskInfo['disk_list'] = sm.getDiskInfo()
 
             # 报告
             mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo)

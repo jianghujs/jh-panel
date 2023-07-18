@@ -1865,6 +1865,11 @@ def notifyMessageTry(msg, stype='common', trigger_time=300, is_write_log=True):
     return do_notify
 
 
+# 发送消息通知
+# msg 消息内容
+# stype 通知类型
+# trigger_time 间隔时间（秒）
+# is_write_log 是否写入日志
 def notifyMessage(msg, stype='common', trigger_time=300, is_write_log=True):
     try:
         return notifyMessageTry(msg, stype, trigger_time, is_write_log)

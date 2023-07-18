@@ -1879,3 +1879,28 @@ def notifyMessage(msg, stype='common', trigger_time=300, is_write_log=True):
 
 
 ##################### notify  end #########################################
+
+def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo):
+    # 推送需要的内容
+    panel_title = getConfig('title')
+    ip = getHostAddr()
+    now_time = getDateFromNow()
+
+    # writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo))
+    cpu_percent = cpuInfo['used'] 
+    mem_percent = cpuInfo['mem']
+    network_up = networkInfo['up'] # MB
+    network_down = networkInfo['down'] # MB
+    # disk_percent = diskInfo.percent
+
+    # 异常通知
+    error_msg_arr = []
+    if (cpu_percent > 0):
+        error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + ']')
+    if (mem_percent > 0):
+        error_msg_arr.append('内存负载过高[' + str(mem_percent) + ']')
+    if (len(error_msg_arr) > 0):
+        msg = now_time + '|节点[' + panel_title + ':' + ip + ']\n'
+        msg += '\n'.join(error_msg_arr)
+        msg += '\n请排查原因!'
+        notifyMessage(msg, '面板监控', 600)

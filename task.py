@@ -241,6 +241,7 @@ def systemTask():
         used = count = 0
         reloadNum = 0
         network_up = network_down = diskio_1 = diskio_2 = networkInfo = cpuInfo = diskInfo = None
+
         while True:
             if not os.path.exists(filename):
                 time.sleep(10)
@@ -258,13 +259,6 @@ def systemTask():
             tmp = {}
             # 取当前CPU Io
             tmp['used'] = psutil.cpu_percent(interval=1)
-            if tmp['used'] > 80:
-                panel_title = mw.getConfig('title')
-                ip = mw.getHostAddr()
-                now_time = mw.getDateFromNow()
-                msg = now_time + '|节点[' + panel_title + ':' + ip + \
-                    ']处于高负载[' + str(tmp['used']) + '],请排查原因!'
-                mw.notifyMessage(msg, '面板监控', 600)
 
             if not cpuInfo:
                 tmp['mem'] = sm.getMemUsed()
@@ -317,6 +311,9 @@ def systemTask():
                 diskInfo['read_time'] += tmp['read_time']
                 diskInfo['write_time'] += tmp['write_time']
             diskio_1 = diskio_2
+
+            # 报告
+            mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo)
 
             # print diskInfo
             if count >= 12:

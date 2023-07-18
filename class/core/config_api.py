@@ -645,6 +645,67 @@ class config_api:
 
         del(data['key'])
         return mw.returnJson(True, 'ok', data)
+    
+    def getNotifyApi(self):
+        # 获取
+        data = mw.getNotifyData(True)
+        return mw.returnData(True, 'ok', data)
+
+    def setNotifyApi(self):
+        tag = request.form.get('tag', '').strip()
+        data = request.form.get('data', '').strip()
+
+        cfg = mw.getNotifyData(False)
+
+        crypt_data = mw.enDoubleCrypt(tag, data)
+        if tag in cfg:
+            cfg[tag]['cfg'] = crypt_data
+        else:
+            t = {'cfg': crypt_data}
+            cfg[tag] = t
+
+        mw.writeNotify(cfg)
+        return mw.returnData(True, '设置成功')
+
+    def setNotifyTestApi(self):
+        # 异步通知验证
+        tag = request.form.get('tag', '').strip()
+        tag_data = request.form.get('data', '').strip()
+
+        if tag == 'tgbot':
+            t = json.loads(tag_data)
+            test_bool = mw.tgbotNotifyTest(t['app_token'], t['chat_id'])
+            if test_bool:
+                return mw.returnData(True, '验证成功')
+            return mw.returnData(False, '验证失败')
+
+        if tag == 'email':
+            t = json.loads(tag_data)
+            test_bool = mw.emailNotifyTest(t)
+            if test_bool:
+                return mw.returnData(True, '验证成功')
+            return mw.returnData(False, '验证失败')
+
+        return mw.returnData(False, '暂时未支持该验证')
+
+    def setNotifyEnableApi(self):
+        # 异步通知验证
+        tag = request.form.get('tag', '').strip()
+        tag_enable = request.form.get('enable', '').strip()
+
+        data = mw.getNotifyData(False)
+        op_enable = True
+        op_action = '开启'
+        if tag_enable != 'true':
+            op_enable = False
+            op_action = '关闭'
+
+        if tag in data:
+            data[tag]['enable'] = op_enable
+
+        mw.writeNotify(data)
+
+        return mw.returnData(True, op_action + '成功')
 
     def setPanelTokenApi(self):
         op_type = request.form.get('op_type', '').strip()
@@ -707,12 +768,6 @@ class config_api:
         else:
             data['ipv6'] = ''
 
-        net_env_cn_file = 'data/net_env_cn.pl'
-        if os.path.exists(net_env_cn_file):
-            data['net_env_cn'] = 'checked'
-        else:
-            data['net_env_cn'] = ''
-
         debug_file = 'data/debug.pl'
         if os.path.exists(debug_file):
             data['debug'] = 'checked'
@@ -754,5 +809,44 @@ class config_api:
 
         data['username'] = mw.M('users').where(
             "id=?", (1,)).getField('username')
+
+        data['hook_tag'] = request.args.get('tag', '')
+
+        # databases hook
+        database_hook_file = 'data/hook_database.json'
+        if os.path.exists(database_hook_file):
+            df = mw.readFile(database_hook_file)
+            df = json.loads(df)
+            data['hook_database'] = df
+        else:
+            data['hook_database'] = []
+
+        # menu hook
+        menu_hook_file = 'data/hook_menu.json'
+        if os.path.exists(menu_hook_file):
+            df = mw.readFile(menu_hook_file)
+            df = json.loads(df)
+            data['hook_menu'] = df
+        else:
+            data['hook_menu'] = []
+
+        # global_static hook
+        global_static_hook_file = 'data/hook_global_static.json'
+        if os.path.exists(global_static_hook_file):
+            df = mw.readFile(global_static_hook_file)
+            df = json.loads(df)
+            data['hook_global_static'] = df
+        else:
+            data['hook_global_static'] = []
+
+        # notiy config
+        notify_data = mw.getNotifyData(True)
+        notify_tag_list = ['tgbot', 'email']
+        for tag in notify_tag_list:
+            new_tag = 'notify_' + tag + '_enable'
+            data[new_tag] = ''
+            if tag in notify_data and 'enable' in notify_data[tag]:
+                if notify_data[tag]['enable']:
+                    data[new_tag] = 'checked'
 
         return data

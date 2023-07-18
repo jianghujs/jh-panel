@@ -13,7 +13,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib64
 lib64/
 parts/
 sdist/
@@ -108,7 +107,7 @@ venv.bak/
 tmp/*
 *.swp
 *.pem
-# *.zip
+*.zip
 logs/*
 data/*.db
 data/control.conf
@@ -124,9 +123,6 @@ data/default.pl
 data/backup.pl
 data/debug.pl
 data/default_site.pl
-data/net_env_cn.pl
-data/recycle_bin.pl
-data/*.pl
 
 ssl/input.pl
 
@@ -155,9 +151,14 @@ data/system.db-journal
 data/hook_*.json
 data/letsencrypt.json
 data/basic_auth.json
+data/notify.json
 data/api.json
 data/bind_domain.pl
+data/unauthorized_status.pl
 
+plugins/vip_*
+plugins/own_*
+plugins/my_*
 plugins/l2tp
 plugins/openlitespeed
 plugins/gdrive
@@ -172,3 +173,5 @@ debug.out
 
 ddb_storage/*
 
+mdioks.session-journal
+*.session

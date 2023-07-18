@@ -79,6 +79,8 @@ def getPluginDir():
 def getPanelDataDir():
     return getRunDir() + '/data'
 
+def getPanelTmp():
+    return getRunDir() + '/tmp'
 
 def getServerDir():
     return getRootDir() + '/server'
@@ -637,6 +639,169 @@ def deCrypt(key, strings):
         # print(get_error_info())
         return strings
 
+
+def enDoubleCrypt(key, strings):
+    # 加密字符串
+    try:
+        import base64
+        _key = md5(key).encode('utf-8')
+        _key = base64.urlsafe_b64encode(_key)
+
+        if type(strings) != bytes:
+            strings = strings.encode('utf-8')
+        import cryptography
+        from cryptography.fernet import Fernet
+        f = Fernet(_key)
+        result = f.encrypt(strings)
+        return result.decode('utf-8')
+    except:
+        writeFileLog(getTracebackInfo())
+        return strings
+
+
+def deDoubleCrypt(key, strings):
+    # 解密字符串
+    try:
+        import base64
+        _key = md5(key).encode('utf-8')
+        _key = base64.urlsafe_b64encode(_key)
+
+        if type(strings) != bytes:
+            strings = strings.encode('utf-8')
+        from cryptography.fernet import Fernet
+        f = Fernet(_key)
+        result = f.decrypt(strings).decode('utf-8')
+        return result
+    except:
+        writeFileLog(getTracebackInfo())
+        return strings
+
+
+def aesEncrypt(data, key='ABCDEFGHIJKLMNOP', vi='0102030405060708'):
+    # aes加密
+    # @param data 被加密的数据
+    # @param key 加解密密匙 16位
+    # @param vi 16位
+
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.backends import default_backend
+
+    if not isinstance(data, bytes):
+        data = data.encode()
+
+    # AES_CBC_KEY = os.urandom(32)
+    # AES_CBC_IV = os.urandom(16)
+
+    AES_CBC_KEY = key.encode()
+    AES_CBC_IV = vi.encode()
+
+    # print("AES_CBC_KEY:", AES_CBC_KEY)
+    # print("AES_CBC_IV:", AES_CBC_IV)
+
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(data) + padder.finalize()
+
+    cipher = Cipher(algorithms.AES(AES_CBC_KEY),
+                    modes.CBC(AES_CBC_IV),
+                    backend=default_backend())
+    encryptor = cipher.encryptor()
+
+    edata = encryptor.update(padded_data)
+
+    # print(edata)
+    # print(str(edata))
+    # print(edata.decode())
+    return edata
+
+
+def aesDecrypt(data, key='ABCDEFGHIJKLMNOP', vi='0102030405060708'):
+    # aes加密
+    # @param data 被解密的数据
+    # @param key 加解密密匙 16位
+    # @param vi 16位
+
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.backends import default_backend
+
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.backends import default_backend
+
+    if not isinstance(data, bytes):
+        data = data.encode()
+
+    AES_CBC_KEY = key.encode()
+    AES_CBC_IV = vi.encode()
+
+    cipher = Cipher(algorithms.AES(AES_CBC_KEY),
+                    modes.CBC(AES_CBC_IV),
+                    backend=default_backend())
+    decryptor = cipher.decryptor()
+
+    ddata = decryptor.update(data)
+
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    data = unpadder.update(ddata)
+
+    try:
+        uppadded_data = data + unpadder.finalize()
+    except ValueError:
+        raise Exception('无效的加密信息!')
+
+    return uppadded_data
+
+
+def aesEncrypt_Crypto(data, key, vi):
+    # 该方法保留，暂时不使用
+    # aes加密
+    # @param data 被加密的数据
+    # @param key 加解密密匙 16位
+    # @param vi 16位
+
+    from Crypto.Cipher import AES
+    cryptor = AES.new(key.encode('utf8'), AES.MODE_CBC, vi.encode('utf8'))
+    # 判断是否含有中文
+    zhmodel = re.compile(u'[\u4e00-\u9fff]')
+    match = zhmodel.search(data)
+    if match == None:
+        # 无中文时
+        add = 16 - len(data) % 16
+        pad = lambda s: s + add * chr(add)
+        data = pad(data)
+        enctext = cryptor.encrypt(data.encode('utf8'))
+    else:
+        # 含有中文时
+        data = data.encode()
+        add = 16 - len(data) % 16
+        data = data + add * (chr(add)).encode()
+        enctext = cryptor.encrypt(data)
+    encodestrs = base64.b64encode(enctext).decode('utf8')
+    return encodestrs
+
+
+def aesDecrypt_Crypto(data, key, vi):
+    # 该方法保留，暂时不使用
+    # aes加密
+    # @param data 被加密的数据
+    # @param key 加解密密匙 16位
+    # @param vi 16位
+
+    from crypto.Cipher import AES
+    data = data.encode('utf8')
+    encodebytes = base64.urlsafe_b64decode(data)
+    cipher = AES.new(key.encode('utf8'), AES.MODE_CBC, vi.encode('utf8'))
+    text_decrypted = cipher.decrypt(encodebytes)
+    # 判断是否含有中文
+    zhmodel = re.compile(u'[\u4e00-\u9fff]')
+    match = zhmodel.search(text_decrypted)
+    if match == False:
+        # 无中文时补位
+        unpad = lambda s: s[0:-s[-1]]
+        text_decrypted = unpad(text_decrypted)
+    text_decrypted = text_decrypted.decode('utf8').rstrip()  # 去掉补位的右侧空格
+    return text_decrypted
 
 def buildSoftLink(src, dst, force=False):
     '''
@@ -1526,3 +1691,175 @@ def getMyORMDb():
 def getAllVms():
     result = subprocess.run(['VBoxManage', 'list', 'vms'], stdout=subprocess.PIPE)
     return result.stdout.decode('utf-8')
+
+
+    
+##################### notify  start #########################################
+
+
+def initNotifyConfig():
+    p = getNotifyPath()
+    if not os.path.exists(p):
+        writeFile(p, '{}')
+    return True
+
+
+def getNotifyPath():
+    path = 'data/notify.json'
+    return path
+
+
+def getNotifyData(is_parse=False):
+    initNotifyConfig()
+    notify_file = getNotifyPath()
+    notify_data = readFile(notify_file)
+
+    data = json.loads(notify_data)
+
+    if is_parse:
+        tag_list = ['tgbot', 'email']
+        for t in tag_list:
+            if t in data and 'cfg' in data[t]:
+                data[t]['data'] = json.loads(deDoubleCrypt(t, data[t]['cfg']))
+    return data
+
+
+def writeNotify(data):
+    p = getNotifyPath()
+    return writeFile(p, json.dumps(data))
+
+
+def tgbotNotifyChatID():
+    data = getNotifyData(True)
+    if 'tgbot' in data and 'enable' in data['tgbot']:
+        if data['tgbot']['enable']:
+            t = data['tgbot']['data']
+            return t['chat_id']
+    return ''
+
+
+def tgbotNotifyObject():
+    data = getNotifyData(True)
+    if 'tgbot' in data and 'enable' in data['tgbot']:
+        if data['tgbot']['enable']:
+            t = data['tgbot']['data']
+            import telebot
+            bot = telebot.TeleBot(app_token)
+            return True, bot
+    return False, None
+
+
+def tgbotNotifyMessage(app_token, chat_id, msg):
+    import telebot
+    bot = telebot.TeleBot(app_token)
+    try:
+        data = bot.send_message(chat_id, msg)
+        return True
+    except Exception as e:
+        writeFileLog(str(e))
+    return False
+
+
+def tgbotNotifyHttpPost(app_token, chat_id, msg):
+    try:
+        url = 'https://api.telegram.org/bot' + app_token + '/sendMessage'
+        post_data = {
+            'chat_id': chat_id,
+            'text': msg,
+        }
+        rdata = httpPost(url, post_data)
+        return True
+    except Exception as e:
+        writeFileLog(str(e))
+    return False
+
+
+def tgbotNotifyTest(app_token, chat_id):
+    msg = 'MW-通知验证测试OK'
+    return tgbotNotifyHttpPost(app_token, chat_id, msg)
+
+
+def emailNotifyMessage(data):
+    '''
+    邮件通知
+    '''
+    sys.path.append(os.getcwd() + "/class/plugin")
+    import memail
+    try:
+        if data['smtp_ssl'] == 'ssl':
+            memail.sendSSL(data['smtp_host'], data['smtp_port'],
+                           data['username'], data['password'],
+                           data['to_mail_addr'], data['subject'], data['content'])
+        else:
+            memail.send(data['smtp_host'], data['smtp_port'],
+                        data['username'], data['password'],
+                        data['to_mail_addr'], data['subject'], data['content'])
+        return True
+    except Exception as e:
+        print(getTracebackInfo())
+    return False
+
+
+def emailNotifyTest(data):
+    # print(data)
+    data['subject'] = 'MW通知测试'
+    data['content'] = data['mail_test']
+    return emailNotifyMessage(data)
+
+
+def notifyMessageTry(msg, stype='common', trigger_time=300, is_write_log=True):
+
+    lock_file = getPanelTmp() + '/notify_lock.json'
+    if not os.path.exists(lock_file):
+        writeFile(lock_file, '{}')
+
+    lock_data = json.loads(readFile(lock_file))
+    if stype in lock_data:
+        diff_time = time.time() - lock_data[stype]['do_time']
+        if diff_time >= trigger_time:
+            lock_data[stype]['do_time'] = time.time()
+        else:
+            return False
+    else:
+        lock_data[stype] = {'do_time': time.time()}
+
+    writeFile(lock_file, json.dumps(lock_data))
+
+    if is_write_log:
+        writeLog("通知管理[" + stype + "]", msg)
+
+    data = getNotifyData(True)
+    # tag_list = ['tgbot', 'email']
+    # tagbot
+    do_notify = False
+    if 'tgbot' in data and 'enable' in data['tgbot']:
+        if data['tgbot']['enable']:
+            t = data['tgbot']['data']
+            i = sys.version_info
+
+            # telebot 在python小于3.7无法使用
+            if i[0] < 3 or i[1] < 7:
+                do_notify = tgbotNotifyHttpPost(
+                    t['app_token'], t['chat_id'], msg)
+            else:
+                do_notify = tgbotNotifyMessage(
+                    t['app_token'], t['chat_id'], msg)
+
+    if 'email' in data and 'enable' in data['email']:
+        if data['email']['enable']:
+            t = data['email']['data']
+            t['subject'] = 'MW通知'
+            t['content'] = msg
+            do_notify = emailNotifyMessage(t)
+    return do_notify
+
+
+def notifyMessage(msg, stype='common', trigger_time=300, is_write_log=True):
+    try:
+        return notifyMessageTry(msg, stype, trigger_time, is_write_log)
+    except Exception as e:
+        writeFileLog(getTracebackInfo())
+        return False
+
+
+##################### notify  end #########################################

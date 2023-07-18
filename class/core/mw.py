@@ -1895,9 +1895,9 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo):
 
     # 异常通知
     error_msg_arr = []
-    if (cpu_percent > 0):
+    if (cpu_percent > 80):
         error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + ']')
-    if (mem_percent > 0):
+    if (mem_percent > 80):
         error_msg_arr.append('内存负载过高[' + str(mem_percent) + ']')
     if (len(error_msg_arr) > 0):
         msg = now_time + '|节点[' + panel_title + ':' + ip + ']\n'

@@ -131,13 +131,17 @@ function getStatus(){
 			$("#openJK").html("<input class='btswitch btswitch-ios' id='ctswitch' type='checkbox'><label class='btswitch-btn' for='ctswitch' onclick='setControl(\"openjk\",false)'></label>");
 		}
 
+		if(rdata.notify_status){
+			$("#openNotify").html("<input class='btswitch btswitch-ios' id='notify_switch' type='checkbox' checked><label class='btswitch-btn' for='notify_switch' onclick='setControl(\"opennotify\", true)'></label>");
+		} else {
+			$("#openNotify").html("<input class='btswitch btswitch-ios' id='notify_switch' type='checkbox'><label class='btswitch-btn' for='notify_switch' onclick='setControl(\"opennotify\",false)'></label>");
+		}
+
 		if(rdata.stat_all_status){
 			$("#statAll").html("<input class='btswitch btswitch-ios' id='stat_witch' type='checkbox' checked><label class='btswitch-btn' for='stat_witch' onclick='setControl(\"stat\",true)'></label>");
 		} else{
 			$("#statAll").html("<input class='btswitch btswitch-ios' id='stat_witch' type='checkbox'><label class='btswitch-btn' for='stat_witch' onclick='setControl(\"stat\",false)'></label>");
 		}
-
-		$("#openNotify").html("<input class='btswitch btswitch-ios' id='notify_switch' type='checkbox' checked><label class='btswitch-btn' for='ctswitch' onclick='setControl(\"opennotify\", true)'></label>");
 
 		$("#save_day").val(rdata.day);
 
@@ -170,6 +174,8 @@ function setControl(act, value=false){
 			layer.msg('保存天数不合法!',{icon:2});
 			return;
 		}
+	} else if (act == 'opennotify'){
+		var type = $("#notify_switch").prop('checked')?'4':'5';
 	}
 	
 	loadT = layer.msg('正在处理,请稍候...',{icon:16,time:0})
@@ -961,47 +967,67 @@ function getload(b,e){
 	},'json')
 }
 
+function setNotifyValue() {
+	console.log("哈哈")
+	let data = $("#notifyValueForm").serialize()
+	$.post("/system/set_notify_value", data, function(rdata) {
+		if(rdata.status) {
+			layer.closeAll();
+			layer.msg(rdata.msg, {icon: 1});
+		} else {
+			layer.msg(rdata.msg, {icon: 2});
+		}
+	},'json');
+}
+
 function openSetNotifyValue() {
-	layer.open({
-		type: 1,
-		area: "290px",
-		title: '配置异常阈值',
-		closeBtn: 1,
-		shift: 5,
-		shadeClose: false,
-		content: "<div class='nitify-value-form bt-form pd20 pb70'>\
-			<div class='line'>\
-				<span class='tname'>CPU</span>\
-				<div class='info-r plan_hms bt-input-text'>\
-					<span><input type='number' name='cpu' value='80' maxlength='3' max='100' min='-1'></span>\
-					<span class='name'>%</span>\
-				</div>\
-			</div>\
-			<div class='line'>\
-				<span class='tname'>内存</span>\
-				<div class='info-r plan_hms bt-input-text'>\
-					<span><input type='number' name='memory' value='80' maxlength='3' max='100' min='-1'></span>\
-					<span class='name'>%</span>\
-				</div>\
-			</div>\
-			<div class='line'>\
-				<span class='tname'>磁盘容量</span>\
-				<div class='info-r plan_hms bt-input-text'>\
-					<span><input type='number' name='disk' value='80' maxlength='3' max='100' min='-1'></span>\
-					<span class='name'>%</span>\
-				</div>\
-			</div>\
-			<div class='line'>\
-				<span class='tname'>SSL证书预提醒</span>\
-				<div class='info-r plan_hms bt-input-text'>\
-					<span><input type='number' name='ssl_cert' value='14' maxlength='3' min='0'></span>\
-					<span class='name'>天</span>\
-				</div>\
-			</div>\
-			<div class='bt-form-submit-btn'>\
-				<button type='button' class='btn btn-danger btn-sm' onclick=\"layer.closeAll()\">关闭</button>\
-				<button type='button' class='btn btn-success btn-sm' onclick=\"setUserName(1)\">修改</button>\
-			</div>\
-		</div>"
-	})
+	$.post("/system/get_notify_value", '', function(rdata) {
+		if(rdata.status) {
+			let data = rdata.data
+			layer.open({
+				type: 1,
+				area: "290px",
+				title: '配置异常阈值',
+				closeBtn: 1,
+				shift: 5,
+				shadeClose: false,
+				content: "<form id='notifyValueForm' class='nitify-value-form bt-form pd20 pb70'>\
+					<div class='line'>\
+						<span class='tname'>CPU</span>\
+						<div class='info-r plan_hms bt-input-text'>\
+							<span><input type='number' name='cpu' value='" + (data.cpu || 80) + "' maxlength='3' max='100' min='-1'></span>\
+							<span class='name'>%</span>\
+						</div>\
+					</div>\
+					<div class='line'>\
+						<span class='tname'>内存</span>\
+						<div class='info-r plan_hms bt-input-text'>\
+							<span><input type='number' name='memory' value='" + (data.memory || 80) + "' maxlength='3' max='100' min='-1'></span>\
+							<span class='name'>%</span>\
+						</div>\
+					</div>\
+					<div class='line'>\
+						<span class='tname'>磁盘容量</span>\
+						<div class='info-r plan_hms bt-input-text'>\
+							<span><input type='number' name='disk' value='" + (data.disk || 80) + "' maxlength='3' max='100' min='-1'></span>\
+							<span class='name'>%</span>\
+						</div>\
+					</div>\
+					<div class='line'>\
+						<span class='tname'>SSL证书预提醒</span>\
+						<div class='info-r plan_hms bt-input-text'>\
+							<span><input type='number' name='ssl_cert' value='" + (data.ssl_cert || 14) + "' maxlength='3' min='0'></span>\
+							<span class='name'>天</span>\
+						</div>\
+					</div>\
+					<div class='bt-form-submit-btn'>\
+						<button type='button' class='btn btn-danger btn-sm' onclick=\"layer.closeAll()\">关闭</button>\
+						<button type='button' class='btn btn-success btn-sm' onclick=\"setNotifyValue()\">修改</button>\
+					</div>\
+				</form>"
+			})
+		} else {
+			layer.msg(b.msg, {icon: 2});
+		}
+	},'json');
 }

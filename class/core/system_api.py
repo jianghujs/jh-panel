@@ -588,20 +588,26 @@ class system_api:
 
     def setControl(self, stype, day):
 
-        filename = 'data/control.conf'
+        control_file = 'data/control.conf'
+        control_notify_pl = 'data/control_notify.pl'
+
         stat_pl = 'data/only_netio_counters.pl'
 
         if stype == '0':
-            mw.execShell("rm -rf " + filename)
+            mw.execShell("rm -rf " + control_file)
         elif stype == '1':
             _day = int(day)
             if _day < 1:
                 return mw.returnJson(False, "设置失败!")
-            mw.writeFile(filename, day)
+            mw.writeFile(control_file, day)
         elif stype == '2':
             mw.execShell("rm -rf " + stat_pl)
         elif stype == '3':
             mw.execShell("echo 'True' > " + stat_pl)
+        elif stype == '4':
+            mw.execShell("rm -rf " + control_notify_pl)
+        elif stype == '5':
+            mw.execShell("echo 'True' > " + control_notify_pl)
         elif stype == 'del':
             if not mw.isRestart():
                 return mw.returnJson(False, '请等待所有安装任务完成再执行')
@@ -615,15 +621,20 @@ class system_api:
             return mw.returnJson(True, "监控服务已关闭")
         else:
             data = {}
-            if os.path.exists(filename):
+            if os.path.exists(control_file):
                 try:
-                    data['day'] = int(mw.readFile(filename))
+                    data['day'] = int(mw.readFile(control_file))
                 except:
                     data['day'] = 30
                 data['status'] = True
             else:
                 data['day'] = 30
                 data['status'] = False
+            
+            if os.path.exists(control_notify_pl):
+                data['notify_status'] = True
+            else:
+                data['notify_status'] = False
 
             if os.path.exists(stat_pl):
                 data['stat_all_status'] = True
@@ -798,3 +809,35 @@ class system_api:
         siteInfo['active_count'] = len( list(filter(lambda x: x['status'] == '正在运行' or x['status'] == '1', site_list)))
         siteInfo['ssl_count'] = len( list(filter(lambda x: x['cert_data'] is not None, site_list)))
         return siteInfo
+
+    def getNotifyValueApi(self):
+        control_notify_value_file = 'data/control_notify_value.conf'
+        if not os.path.exists(control_notify_value_file):
+            mw.writeFile(control_notify_value_file, '{}')
+        config_data = json.loads(mw.readFile(control_notify_value_file))
+        return mw.returnData(True, 'ok', config_data)
+    
+    def setNotifyValueApi(self):
+        cpu = request.form.get('cpu', '')
+        memory = request.form.get('memory', '')
+        disk = request.form.get('disk', '')
+        ssl_cert = request.form.get('ssl_cert', '')
+
+        control_notify_value_file = 'data/control_notify_value.conf'
+        
+        if not os.path.exists(control_notify_value_file):
+            mw.writeFile(control_notify_value_file, '{}')
+        
+        config_data = json.loads(mw.readFile(control_notify_value_file))
+
+        if cpu != '':
+            config_data['cpu'] = int(cpu)
+        if memory != '':
+            config_data['memory'] = int(memory)
+        if disk != '':
+            config_data['disk'] = int(disk)
+        if ssl_cert != '':
+            config_data['ssl_cert'] = int(ssl_cert)
+        
+        mw.writeFile(control_notify_value_file, json.dumps(config_data))
+        return mw.returnJson(True, '设置成功!')

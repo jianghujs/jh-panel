@@ -1923,12 +1923,18 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     if len(site_list) > 0:
         for site in site_list:
             cert_data = site['cert_data']
+            ssl_type = site['ssl_type']
             if site['status'] == '1' and cert_data is not None:
                 cert_endtime = int(cert_data['endtime'])
-                if cert_endtime >= 0 and cert_endtime < 14:
-                    error_msg_arr.append('网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期')
-                elif cert_endtime < 0:
-                    error_msg_arr.append('网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']')
+                if ssl_type == 'custom':
+                    if cert_endtime >= 0 and cert_endtime < 14:
+                        error_msg_arr.append('网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期')
+                    elif cert_endtime < 0:
+                        error_msg_arr.append('网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']')
+                elif ssl_type == 'lets' or ssl_type == 'acme':
+                    if cert_endtime < 0:
+                        error_msg_arr.append('网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']，未正常续签')
+
 
     # 发送异常报告
     if (len(error_msg_arr) > 0):

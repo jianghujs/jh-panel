@@ -782,7 +782,7 @@ class system_api:
                 ssl_type = 'acme'
                 csr_path = ssl_acme_path + '/fullchain.cer'
                 key_path = ssl_acme_path + site_name + '.key'
-            else:
+            elif os.path.exists(ssl_path):
                 ssl_type = 'custom'
                 csr_path = ssl_path + '/fullchain.pem'  # 生成证书路径
                 key_path = ssl_path + '/privkey.pem'    # 密钥文件路径

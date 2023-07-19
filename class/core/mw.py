@@ -1925,7 +1925,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     site_list = siteInfo['site_list']
     
     site_ssl_lock_data_key = '网站SSL证书'
-    site_ssl_lock_data = mw.getNoticeLockData(site_ssl_lock_data_key)
+    site_ssl_lock_data = getNoticeLockData(site_ssl_lock_data_key)
     
     error_msg_arr = []
     # CPU
@@ -1944,25 +1944,26 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     # 网站SSL证书
     if len(site_list) > 0:
         for site in site_list:
+            site_name = site['name']
             cert_data = site['cert_data']
             ssl_type = site['ssl_type']
             # 网站名称 + 当前日期
-            site_notify_lock_key = site_name + '_' + now_day 
-            if site['status'] == '1' and cert_data is not None and site_notify_lock_key not in lock_data:
+            site_notify_lock_key = str(site_name) + '_' + str(now_day) 
+            if site['status'] == '1' and cert_data is not None and site_notify_lock_key not in site_ssl_lock_data:
                 cert_endtime = int(cert_data['endtime'])
-                error_msg_site = ''
+                site_error_msg = ''
                 if ssl_type == 'custom':
                     if cert_endtime >= 0 and cert_endtime < 14:
-                        error_msg_arr.append('网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期')
+                        site_error_msg = '网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期'
                     elif cert_endtime < 0:
-                        error_msg_arr.append('网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']')
+                        site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']'
                 elif ssl_type == 'lets' or ssl_type == 'acme':
                     if cert_endtime < 0:
-                        error_msg_arr.append('网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']，未正常续签')
-                if error_msg_site != '':
-                    error_msg_arr.append(error_msg_site)
-                    lock_data[site_notify_lock_key] = {'do_time': time.time()}
-
+                        site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']，未正常续签'
+                
+                if site_error_msg != '':
+                    error_msg_arr.append(site_error_msg)
+                    site_ssl_lock_data[site_notify_lock_key] = {'do_time': time.time()}
     # 发送异常报告
     if (len(error_msg_arr) > 0):
         msg = now_time + '|节点[' + panel_title + ':' + ip + ']\n'
@@ -1971,4 +1972,4 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         notifyMessage(msg, '面板监控', 6000)
     
         # 更新lock文件
-        mw.updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)
+        updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)

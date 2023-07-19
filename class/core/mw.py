@@ -1921,9 +1921,9 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     if os.path.exists(control_notify_pl):
         control_notify_value_file = 'data/control_notify_value.conf'
         if not os.path.exists(control_notify_value_file):
-            mw.writeFile(control_notify_value_file, '{}')
+            writeFile(control_notify_value_file, '{}')
         
-        control_notify_value_data = json.loads(mw.readFile(control_notify_value_file))
+        control_notify_value_data = json.loads(readFile(control_notify_value_file))
         control_notify_value_data['cpu'] = control_notify_value_data['cpu'] if 'cpu' in control_notify_value_data else 80
         control_notify_value_data['memory'] = control_notify_value_data['memory'] if 'memory' in control_notify_value_data else 80 
         control_notify_value_data['disk'] = control_notify_value_data['disk'] if 'disk' in control_notify_value_data else 80 
@@ -1981,10 +1981,11 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
                     if site_error_msg != '':
                         error_msg_arr.append(site_error_msg)
                         site_ssl_lock_data[site_notify_lock_key] = {'do_time': time.time()}
+        
         # 发送异常报告
         if (len(error_msg_arr) > 0):
-            notify_msg = mw.generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
-            notifyMessage(notify_msg, '面板监控', 6000)
+            notify_msg = generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
+            notifyMessage(notify_msg, '面板监控', 600)
         
             # 更新lock文件
             updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)

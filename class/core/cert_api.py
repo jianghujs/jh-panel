@@ -1410,6 +1410,8 @@ fullchain.pem       粘贴到证书输入框
                 site_name = self.getSiteNameByDomains(domains)
         is_rep = api.httpToHttps(site_name)
         try:
+            
+            # raise Exception("测试续签异常!")
             index = self.createOrder(
                 domains,
                 auth_type,
@@ -1436,6 +1438,10 @@ fullchain.pem       粘贴到证书输入框
             cert['status'] = True
             cert['msg'] = '续签成功!'
             writeLog("|-续签成功!")
+
+            # 发送通知
+            notify_msg = mw.generateCommonNotifyMessage("|-域名[{}]SSL证书续签完成！".format(str(domains)))
+            mw.notifyMessage(notify_msg, '续签完成', 60)
         except Exception as e:
             if str(e).find('429') > -1:
                 msg = '至少超过7天，才能续期!'
@@ -1455,6 +1461,11 @@ fullchain.pem       粘贴到证书输入框
                     self.saveConfig()
             msg = str(e).split('>>>>')[0]
             writeLog("|-" + msg)
+            
+            # 发送通知
+            notify_msg = mw.generateCommonNotifyMessage("|-续签[{}]SSL证书异常: {}".format(str(domains), msg) + '\n请注意!')
+            mw.notifyMessage(notify_msg, '续签失败', 60)
+
             return mw.returnJson(False, msg)
         finally:
             is_rep_decode = json.loads(is_rep)

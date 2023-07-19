@@ -1906,13 +1906,18 @@ def notifyMessage(msg, stype='common', trigger_time=300, is_write_log=True):
         writeFileLog(getTracebackInfo())
         return False
 
+def generateCommonNotifyMessage(content):
+    panel_title = getConfig('title')
+    ip = getHostAddr()
+    now_time = getDateFromNow()
+    notify_msg = now_time + '|节点[' + panel_title + ':' + ip + ']\n'
+    notify_msg += content
+    return notify_msg
 
 ##################### notify  end #########################################
 
 def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     # 推送需要的内容
-    panel_title = getConfig('title')
-    ip = getHostAddr()
     now_time = getDateFromNow()
     now_day = now_time.split(' ')[0]
 
@@ -1966,10 +1971,8 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
                     site_ssl_lock_data[site_notify_lock_key] = {'do_time': time.time()}
     # 发送异常报告
     if (len(error_msg_arr) > 0):
-        msg = now_time + '|节点[' + panel_title + ':' + ip + ']\n'
-        msg += '\n'.join(error_msg_arr)
-        msg += '\n请注意!'
-        notifyMessage(msg, '面板监控', 6000)
+        notify_msg = mw.generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
+        notifyMessage(notify_msg, '面板监控', 6000)
     
         # 更新lock文件
         updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)

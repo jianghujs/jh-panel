@@ -124,6 +124,7 @@ data/backup.pl
 data/debug.pl
 data/default_site.pl
 data/control_notify_value.conf
+data/control_notify.pl
 
 ssl/input.pl
 

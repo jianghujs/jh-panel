@@ -1,0 +1,40 @@
+
+.nitify-value-form .line {
+    padding: 5px 0
+}
+
+.nitify-value-form .line .span_tit {
+    display: inline-block;
+    text-align: right;
+    width: 64px
+}
+
+.nitify-value-form .line .tname {
+    display: block;
+    float: left;
+    height: 32px;
+    line-height: 32px;
+    overflow: hidden;
+    padding-right: 20px;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 110px
+}
+
+.nitify-value-form .line .info-r {
+    margin-bottom: 5px;
+    margin-left: 110px;
+    position: relative
+}
+
+.nitify-value-form .line .plan_hms .name {
+    float: right;
+}
+
+.nitify-value-form .line .plan_hms span:first-child {
+    width: 50%;
+}
+.nitify-value-form .line .plan_hms span:first-child input {
+    width: 100%;
+}

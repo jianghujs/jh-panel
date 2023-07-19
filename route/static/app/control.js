@@ -960,3 +960,48 @@ function getload(b,e){
 		})
 	},'json')
 }
+
+function openSetNotifyValue() {
+	layer.open({
+		type: 1,
+		area: "290px",
+		title: '配置异常阈值',
+		closeBtn: 1,
+		shift: 5,
+		shadeClose: false,
+		content: "<div class='nitify-value-form bt-form pd20 pb70'>\
+			<div class='line'>\
+				<span class='tname'>CPU</span>\
+				<div class='info-r plan_hms bt-input-text'>\
+					<span><input type='number' name='cpu' value='80' maxlength='3' max='100' min='-1'></span>\
+					<span class='name'>%</span>\
+				</div>\
+			</div>\
+			<div class='line'>\
+				<span class='tname'>内存</span>\
+				<div class='info-r plan_hms bt-input-text'>\
+					<span><input type='number' name='memory' value='80' maxlength='3' max='100' min='-1'></span>\
+					<span class='name'>%</span>\
+				</div>\
+			</div>\
+			<div class='line'>\
+				<span class='tname'>磁盘容量</span>\
+				<div class='info-r plan_hms bt-input-text'>\
+					<span><input type='number' name='disk' value='80' maxlength='3' max='100' min='-1'></span>\
+					<span class='name'>%</span>\
+				</div>\
+			</div>\
+			<div class='line'>\
+				<span class='tname'>SSL证书预提醒</span>\
+				<div class='info-r plan_hms bt-input-text'>\
+					<span><input type='number' name='ssl_cert' value='14' maxlength='3' min='0'></span>\
+					<span class='name'>天</span>\
+				</div>\
+			</div>\
+			<div class='bt-form-submit-btn'>\
+				<button type='button' class='btn btn-danger btn-sm' onclick=\"layer.closeAll()\">关闭</button>\
+				<button type='button' class='btn btn-success btn-sm' onclick=\"setUserName(1)\">修改</button>\
+			</div>\
+		</div>"
+	})
+}

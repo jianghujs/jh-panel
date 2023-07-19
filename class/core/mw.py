@@ -1828,6 +1828,24 @@ def emailNotifyTest(data):
     data['content'] = data['mail_test']
     return emailNotifyMessage(data)
 
+def getNoticeLockData(stype):
+    lock_file = getPanelTmp() + '/notify_lock.json'
+    if not os.path.exists(lock_file):
+        writeFile(lock_file, '{}')
+
+    lock_data = json.loads(readFile(lock_file))
+    if stype in lock_data:
+        return lock_data[stype]
+    return {}
+
+def updateNoticeLockData(stype, data):
+    lock_file = getPanelTmp() + '/notify_lock.json'
+    if not os.path.exists(lock_file):
+        writeFile(lock_file, '{}')
+
+    lock_data = json.loads(readFile(lock_file))
+    lock_data[stype] = data
+    writeFile(lock_file, json.dumps(lock_data))
 
 def notifyMessageTry(msg, stype='common', trigger_time=300, is_write_log=True):
 
@@ -1896,6 +1914,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     panel_title = getConfig('title')
     ip = getHostAddr()
     now_time = getDateFromNow()
+    now_day = now_time.split(' ')[0]
 
     writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\n')
     cpu_percent = cpuInfo['used'] 
@@ -1904,6 +1923,9 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     network_down = networkInfo['down'] # MB
     disk_list = diskInfo['disk_list']
     site_list = siteInfo['site_list']
+    
+    site_ssl_lock_data_key = '网站SSL证书'
+    site_ssl_lock_data = mw.getNoticeLockData(site_ssl_lock_data_key)
     
     error_msg_arr = []
     # CPU
@@ -1924,8 +1946,11 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         for site in site_list:
             cert_data = site['cert_data']
             ssl_type = site['ssl_type']
-            if site['status'] == '1' and cert_data is not None:
+            # 网站名称 + 当前日期
+            site_notify_lock_key = site_name + '_' + now_day 
+            if site['status'] == '1' and cert_data is not None and site_notify_lock_key not in lock_data:
                 cert_endtime = int(cert_data['endtime'])
+                error_msg_site = ''
                 if ssl_type == 'custom':
                     if cert_endtime >= 0 and cert_endtime < 14:
                         error_msg_arr.append('网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期')
@@ -1934,7 +1959,9 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
                 elif ssl_type == 'lets' or ssl_type == 'acme':
                     if cert_endtime < 0:
                         error_msg_arr.append('网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']，未正常续签')
-
+                if error_msg_site != '':
+                    error_msg_arr.append(error_msg_site)
+                    lock_data[site_notify_lock_key] = {'do_time': time.time()}
 
     # 发送异常报告
     if (len(error_msg_arr) > 0):
@@ -1942,3 +1969,6 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         msg += '\n'.join(error_msg_arr)
         msg += '\n请注意!'
         notifyMessage(msg, '面板监控', 6000)
+    
+    # 更新lock文件
+    mw.updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)

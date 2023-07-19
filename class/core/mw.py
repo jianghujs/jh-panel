@@ -1903,6 +1903,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     network_up = networkInfo['up'] # MB
     network_down = networkInfo['down'] # MB
     disk_list = diskInfo['disk_list']
+    site_list = siteInfo['site_list']
     
     error_msg_arr = []
     # CPU
@@ -1918,10 +1919,20 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
 
             if disk_size_percent > 80:
                 error_msg_arr.append('磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']')
-    
+    # 网站SSL证书
+    if len(site_list) > 0:
+        for site in site_list:
+            cert_data = site['cert_data']
+            if site['status'] == '1' and cert_data is not None:
+                cert_endtime = cert_data['endtime']
+                if cert_endtime > 0 and cert_endtime < 14:
+                    error_msg_arr.append('网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期')
+                elif cert_endtime <= 0:
+                    error_msg_arr.append('网站[' + site['name'] + ']SSL证书已过期')
+
     # 发送异常报告
     if (len(error_msg_arr) > 0):
         msg = now_time + '|节点[' + panel_title + ':' + ip + ']\n'
         msg += '\n'.join(error_msg_arr)
-        msg += '\n请排查原因!'
+        msg += '\n请注意!'
         notifyMessage(msg, '面板监控', 6000)

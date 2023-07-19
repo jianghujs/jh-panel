@@ -792,7 +792,6 @@ class system_api:
             cert_data = mw.getCertName(csr_path)
             site['ssl_type'] = ssl_type
             site['cert_data'] = cert_data
-            site['ssl_endtime'] = "未部署SSL" if site['cert_data'] == None else site['cert_data']['endtime']
 
         siteInfo['site_list'] = site_list
         siteInfo['site_count'] = len(site_list)

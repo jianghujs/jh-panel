@@ -796,5 +796,5 @@ class system_api:
         siteInfo['site_list'] = site_list
         siteInfo['site_count'] = len(site_list)
         siteInfo['active_count'] = len( list(filter(lambda x: x['status'] == '正在运行' or x['status'] == '1', site_list)))
-        siteInfo['ssl_count'] = len( list(filter(lambda x: x['ssl_endtime'] != '未部署SSL', site_list)))
+        siteInfo['ssl_count'] = len( list(filter(lambda x: x['cert_data'] is not None, site_list)))
         return siteInfo

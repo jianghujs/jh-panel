@@ -9,31 +9,41 @@
 					<a class="plr10 c4" href="/">首页监控</a>/<span class="plr10 c4">系统监控</span>
 				</div>
 			</div>
-			<div class="safe container-fluid  bgw mtb15 pd15" style="overflow: hidden;">
-				<div class="mr50 pull-left">
-					<div class="ss-text pull-left">
-						<em>开启监控</em>
-						<div class='ssh-item' id="openJK"></div>
-					</div>
-				</div>
-				<div class="mr50 pull-left">
-					<div class="ss-text pull-left">
-						<em>保存天数：</em>
-						<input class="bt-input-text" id="save_day" value="" type="number">
-					</div>
-					<div class="ss-text pull-left" style="margin-left:10px">
-						<button class="btn btn-default btn-sm" type="button" onclick="setControl('save_day',true);">更改</button>
-					</div>
-				</div>
-				<div class="mr50 pull-left" style="padding-left:10px; border-left:#ccc 1px solid; margin-right:0">
+			<div class="pd15 bgw mtb15">
+				<div class="safe container-fluid" style="overflow: hidden;">
 					<div class="mr50 pull-left">
 						<div class="ss-text pull-left">
-							<em>仅统计外网</em>
-							<div class='ssh-item' id="statAll"></div>
+							<em>开启监控</em>
+							<div class='ssh-item' id="openJK"></div>
 						</div>
 					</div>
+					<div class="mr50 pull-left">
+						<div class="ss-text pull-left">
+							<em>保存天数：</em>
+							<input class="bt-input-text" id="save_day" value="" type="number">
+						</div>
+						<div class="ss-text pull-left" style="margin-left:10px">
+							<button class="btn btn-default btn-sm" type="button" onclick="setControl('save_day',true);">更改</button>
+						</div>
+					</div>
+					<div class="mr50 pull-left" style="padding-left:10px; border-left:#ccc 1px solid; margin-right:0">
+						<div class="mr50 pull-left">
+							<div class="ss-text pull-left">
+								<em>仅统计外网</em>
+								<div class='ssh-item' id="statAll"></div>
+							</div>
+						</div>
 
-					<button class="btn btn-default btn-sm" type="button" onclick="closeControl()">清空记录</button>
+						<button class="btn btn-default btn-sm" type="button" onclick="closeControl()">清空记录</button>
+					</div>
+				</div>
+				<div class="safe container-fluid mt10" style="overflow: hidden; display: none;">
+					<div class="mr50 pull-left">
+						<div class="ss-text pull-left">
+							<em>开启异常通知</em>
+							<div class='ssh-item' id="openNotify"></div>
+						</div>
+					</div>
 				</div>
 			</div>
 			<div class="control">

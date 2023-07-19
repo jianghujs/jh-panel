@@ -137,6 +137,8 @@ function getStatus(){
 			$("#statAll").html("<input class='btswitch btswitch-ios' id='stat_witch' type='checkbox'><label class='btswitch-btn' for='stat_witch' onclick='setControl(\"stat\",false)'></label>");
 		}
 
+		$("#openNotify").html("<input class='btswitch btswitch-ios' id='notify_switch' type='checkbox' checked><label class='btswitch-btn' for='ctswitch' onclick='setControl(\"opennotify\", true)'></label>");
+
 		$("#save_day").val(rdata.day);
 
 	},'json');

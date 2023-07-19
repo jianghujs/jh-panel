@@ -1970,5 +1970,5 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         msg += '\n请注意!'
         notifyMessage(msg, '面板监控', 6000)
     
-    # 更新lock文件
-    mw.updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)
+        # 更新lock文件
+        mw.updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)

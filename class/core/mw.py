@@ -1917,62 +1917,74 @@ def generateCommonNotifyMessage(content):
 ##################### notify  end #########################################
 
 def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
-    # 推送需要的内容
-    now_time = getDateFromNow()
-    now_day = now_time.split(' ')[0]
+    control_notify_pl = 'data/control_notify.pl'
+    if os.path.exists(control_notify_pl):
+        control_notify_value_file = 'data/control_notify_value.conf'
+        if not os.path.exists(control_notify_value_file):
+            mw.writeFile(control_notify_value_file, '{}')
+        
+        control_notify_value_data = json.loads(mw.readFile(control_notify_value_file))
+        control_notify_value_data['cpu'] = control_notify_value_data['cpu'] if 'cpu' in control_notify_value_data else 80
+        control_notify_value_data['memory'] = control_notify_value_data['memory'] if 'memory' in control_notify_value_data else 80 
+        control_notify_value_data['disk'] = control_notify_value_data['disk'] if 'disk' in control_notify_value_data else 80 
+        control_notify_value_data['ssl_cert'] = control_notify_value_data['ssl_cert'] if 'ssl_cert' in control_notify_value_data else 14 
 
-    writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\n')
-    cpu_percent = cpuInfo['used'] 
-    mem_percent = cpuInfo['mem']
-    network_up = networkInfo['up'] # MB
-    network_down = networkInfo['down'] # MB
-    disk_list = diskInfo['disk_list']
-    site_list = siteInfo['site_list']
-    
-    site_ssl_lock_data_key = '网站SSL证书'
-    site_ssl_lock_data = getNoticeLockData(site_ssl_lock_data_key)
-    
-    error_msg_arr = []
-    # CPU
-    if (cpu_percent > 80):
-        error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + '%' + ']')
-    # 内存
-    if (mem_percent > 80):
-        error_msg_arr.append('内存负载过高[' + str(mem_percent) + '%' + ']')
-    # 磁盘容量
-    if len(disk_list) > 0:
-        for disk in disk_list:
-            disk_size_percent = int(disk['size'][3].replace('%', ''))
+        # 推送需要的内容
+        now_time = getDateFromNow()
+        now_day = now_time.split(' ')[0]
 
-            if disk_size_percent > 80:
-                error_msg_arr.append('磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']')
-    # 网站SSL证书
-    if len(site_list) > 0:
-        for site in site_list:
-            site_name = site['name']
-            cert_data = site['cert_data']
-            ssl_type = site['ssl_type']
-            # 网站名称 + 当前日期
-            site_notify_lock_key = str(site_name) + '_' + str(now_day) 
-            if site['status'] == '1' and cert_data is not None and site_notify_lock_key not in site_ssl_lock_data:
-                cert_endtime = int(cert_data['endtime'])
-                site_error_msg = ''
-                if ssl_type == 'custom':
-                    if cert_endtime >= 0 and cert_endtime < 14:
-                        site_error_msg = '网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期'
-                    elif cert_endtime < 0:
-                        site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']'
-                elif ssl_type == 'lets' or ssl_type == 'acme':
-                    if cert_endtime < 0:
-                        site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']，未正常续签'
-                
-                if site_error_msg != '':
-                    error_msg_arr.append(site_error_msg)
-                    site_ssl_lock_data[site_notify_lock_key] = {'do_time': time.time()}
-    # 发送异常报告
-    if (len(error_msg_arr) > 0):
-        notify_msg = mw.generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
-        notifyMessage(notify_msg, '面板监控', 6000)
-    
-        # 更新lock文件
-        updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)
+        writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\n')
+        cpu_percent = cpuInfo['used'] 
+        mem_percent = cpuInfo['mem']
+        network_up = networkInfo['up'] # MB
+        network_down = networkInfo['down'] # MB
+        disk_list = diskInfo['disk_list']
+        site_list = siteInfo['site_list']
+        
+        site_ssl_lock_data_key = '网站SSL证书'
+        site_ssl_lock_data = getNoticeLockData(site_ssl_lock_data_key)
+        
+        error_msg_arr = []
+        # CPU
+        if (cpu_percent > control_notify_value_data['cpu']):
+            error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + '%' + ']')
+        # 内存
+        if (mem_percent > control_notify_value_data['memory']):
+            error_msg_arr.append('内存负载过高[' + str(mem_percent) + '%' + ']')
+        # 磁盘容量
+        if len(disk_list) > 0:
+            for disk in disk_list:
+                disk_size_percent = int(disk['size'][3].replace('%', ''))
+
+                if disk_size_percent > control_notify_value_data['disk']:
+                    error_msg_arr.append('磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']')
+        # 网站SSL证书
+        if len(site_list) > 0:
+            for site in site_list:
+                site_name = site['name']
+                cert_data = site['cert_data']
+                ssl_type = site['ssl_type']
+                # 网站名称 + 当前日期
+                site_notify_lock_key = str(site_name) + '_' + str(now_day) 
+                if site['status'] == '1' and cert_data is not None and site_notify_lock_key not in site_ssl_lock_data:
+                    cert_endtime = int(cert_data['endtime'])
+                    site_error_msg = ''
+                    if ssl_type == 'custom':
+                        if cert_endtime >= 0 and cert_endtime < control_notify_value_data['ssl_cert']:
+                            site_error_msg = '网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期'
+                        elif cert_endtime < 0:
+                            site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']'
+                    elif ssl_type == 'lets' or ssl_type == 'acme':
+                        if cert_endtime < 0:
+                            site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']，未正常续签'
+                    
+                    if site_error_msg != '':
+                        error_msg_arr.append(site_error_msg)
+                        site_ssl_lock_data[site_notify_lock_key] = {'do_time': time.time()}
+        # 发送异常报告
+        if (len(error_msg_arr) > 0):
+            notify_msg = mw.generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
+            notifyMessage(notify_msg, '面板监控', 6000)
+        
+            # 更新lock文件
+            updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)

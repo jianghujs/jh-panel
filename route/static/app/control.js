@@ -975,7 +975,6 @@ function getload(b,e){
 }
 
 function setNotifyValue() {
-	console.log("哈哈")
 	let data = $("#notifyValueForm").serialize()
 	$.post("/system/set_notify_value", data, function(rdata) {
 		if(rdata.status) {
@@ -988,8 +987,10 @@ function setNotifyValue() {
 }
 
 function openSetNotifyValue() {
+	var loadT = layer.msg('正在获取中...', { icon: 16, time: 0});
 	$.post("/system/get_notify_value", '', function(rdata) {
 		if(rdata.status) {
+			layer.close(loadT);
 			let data = rdata.data
 			layer.open({
 				type: 1,

@@ -1024,7 +1024,7 @@ function openSetNotifyValue() {
 					<div class='line'>\
 						<span class='tname'>SSL证书预提醒</span>\
 						<div class='info-r plan_hms bt-input-text'>\
-							<span><input type='number' name='ssl_cert' value='" + (data.ssl_cert == null? 80: data.disk) + "' maxlength='3' min='0'></span>\
+							<span><input type='number' name='ssl_cert' value='" + (data.ssl_cert == null? 14: data.disk) + "' maxlength='3' min='0'></span>\
 							<span class='name'>天</span>\
 						</div>\
 					</div>\

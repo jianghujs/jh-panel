@@ -410,6 +410,7 @@ class crontab_api:
                 
             return mw.getJson(db_list)
         data = {}
+        data['stype'] = stype
         data['orderOpt'] = bak_data
         # data['data'] = mw.M(stype).field('name,ps').select()
         return mw.getJson(data)

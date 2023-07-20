@@ -557,7 +557,7 @@ function editTaskInfo(id){
 				}
 
 				if(obj.from.stype == 'site' || obj.from.stype == 'database' || obj.from.stype == 'path' || obj.from.stype == 'logs'){
-					$.post('/crontab/get_data_list',{type:obj.from.stype  == 'databases'?'database':'sites'},function(rdata){
+					$.post('/crontab/get_data_list',{type:obj.from.stype  == 'database'?'databases':'sites'},function(rdata){
 						// console.log(rdata);
 						obj.sNameArray = rdata.data;
 						obj.sNameArray.unshift({name:'ALL',ps:'所有'});

@@ -797,10 +797,10 @@ class system_api:
                 ssl_type = 'custom'
                 csr_path = ssl_path + '/fullchain.pem'  # 生成证书路径
                 key_path = ssl_path + '/privkey.pem'    # 密钥文件路径
-
-            key = mw.readFile(key_path)
-            csr = mw.readFile(csr_path)
-            cert_data = mw.getCertName(csr_path)
+            if csr_path and key_path:
+                key = mw.readFile(key_path)
+                csr = mw.readFile(csr_path)
+                cert_data = mw.getCertName(csr_path)
             site['ssl_type'] = ssl_type
             site['cert_data'] = cert_data
 

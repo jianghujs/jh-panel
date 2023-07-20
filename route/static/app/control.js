@@ -1003,28 +1003,28 @@ function openSetNotifyValue() {
 					<div class='line'>\
 						<span class='tname'>CPU</span>\
 						<div class='info-r plan_hms bt-input-text'>\
-							<span><input type='number' name='cpu' value='" + (data.cpu || 80) + "' maxlength='3' max='100' min='-1'></span>\
+							<span><input type='number' name='cpu' value='" + (data.cpu == null? 80: data.cpu) + "' maxlength='3' max='100' min='-1'></span>\
 							<span class='name'>%</span>\
 						</div>\
 					</div>\
 					<div class='line'>\
 						<span class='tname'>内存</span>\
 						<div class='info-r plan_hms bt-input-text'>\
-							<span><input type='number' name='memory' value='" + (data.memory || 80) + "' maxlength='3' max='100' min='-1'></span>\
+							<span><input type='number' name='memory' value='" + (data.memory == null? 80: data.memory) + "' maxlength='3' max='100' min='-1'></span>\
 							<span class='name'>%</span>\
 						</div>\
 					</div>\
 					<div class='line'>\
 						<span class='tname'>磁盘容量</span>\
 						<div class='info-r plan_hms bt-input-text'>\
-							<span><input type='number' name='disk' value='" + (data.disk || 80) + "' maxlength='3' max='100' min='-1'></span>\
+							<span><input type='number' name='disk' value='" + (data.disk == null? 80: data.disk) + "' maxlength='3' max='100' min='-1'></span>\
 							<span class='name'>%</span>\
 						</div>\
 					</div>\
 					<div class='line'>\
 						<span class='tname'>SSL证书预提醒</span>\
 						<div class='info-r plan_hms bt-input-text'>\
-							<span><input type='number' name='ssl_cert' value='" + (data.ssl_cert || 14) + "' maxlength='3' min='0'></span>\
+							<span><input type='number' name='ssl_cert' value='" + (data.ssl_cert == null? 80: data.disk) + "' maxlength='3' min='0'></span>\
 							<span class='name'>天</span>\
 						</div>\
 					</div>\

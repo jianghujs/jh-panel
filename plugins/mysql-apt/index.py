@@ -808,6 +808,7 @@ def getDbBackupListFunc(dbname=''):
         fbstr = x[0:blen]
         if fbstr == bname:
             r.append(x)
+    r.sort(key=lambda fn: os.path.getmtime(bkDir + "/" + fn), reverse=True) 
     return r
 
 

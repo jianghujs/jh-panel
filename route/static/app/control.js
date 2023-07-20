@@ -127,8 +127,10 @@ function getStatus(){
 
 		if(rdata.status){
 			$("#openJK").html("<input class='btswitch btswitch-ios' id='ctswitch' type='checkbox' checked><label class='btswitch-btn' for='ctswitch' onclick='setControl(\"openjk\", true)'></label>");
+			$("#notifySetting").show();
 		} else {
 			$("#openJK").html("<input class='btswitch btswitch-ios' id='ctswitch' type='checkbox'><label class='btswitch-btn' for='ctswitch' onclick='setControl(\"openjk\",false)'></label>");
+			$("#notifySetting").hide();
 		}
 
 		if(rdata.notify_status){

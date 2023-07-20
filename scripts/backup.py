@@ -84,20 +84,12 @@ class backupTools:
                     break
 
     def backupDatabase(self, name, count):
-        # 获取的mysql目录
-        db_path = ''
-        if os.path.exists(mw.getServerDir() + '/mysql-apt'):
-            db_path = '/www/server/mysql-apt'
-        elif os.path.exists(mw.getServerDir() + '/mysql'):
-            db_path = '/www/server/mysql'
-        else:
-            print('未检测到安装的mysql插件')
-        print("mysql安装目录：", db_path)
+        db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
-        name = mw.M('databases').dbPos(db_path, 'mysql').where(
+        find_name = mw.M('databases').dbPos(db_path, 'mysql').where(
             'name=?', (name,)).getField('name')
         startTime = time.time()
-        if not name:
+        if not find_name:
             endDate = time.strftime('%Y/%m/%d %X', time.localtime())
             log = "数据库[" + name + "]不存在!"
             print("★[" + endDate + "] " + log)
@@ -105,18 +97,18 @@ class backupTools:
                 "----------------------------------------------------------------------------")
             return
 
-        backup_path = mw.getBackupDir() + '/database'
+        backup_path = mw.getRootDir() + '/backup/database'
         if not os.path.exists(backup_path):
             mw.execShell("mkdir -p " + backup_path)
 
         filename = backup_path + "/db_" + name + "_" + \
             time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.gz"
 
-        import re
         mysql_root = mw.M('config').dbPos(db_path, db_name).where(
             "id=?", (1,)).getField('mysql_root')
 
-        mycnf = mw.readFile(db_path + '/etc/my.cnf')
+        my_conf_path = db_path + '/etc/my.cnf'
+        mycnf = mw.readFile(my_conf_path)
         rep = "\[mysqldump\]\nuser=root"
         sea = "[mysqldump]\n"
         subStr = sea + "user=root\npassword=" + mysql_root + "\n"
@@ -124,17 +116,9 @@ class backupTools:
         if len(mycnf) > 100:
             mw.writeFile(db_path + '/etc/my.cnf', mycnf)
 
-        # mw.execShell(db_path + "/bin/mysqldump --opt --default-character-set=utf8 " +
-        #              name + " | gzip > " + filename)
-
-        # mw.execShell(db_path + "/bin/mysqldump --skip-lock-tables --default-character-set=utf8 " +
-        #              name + " | gzip > " + filename)
-
-        # mw.execShell(db_path + "/bin/mysqldump  --single-transaction --quick --default-character-set=utf8 " +
-        #              name + " | gzip > " + filename)
-
-        mw.execShell(db_path + "/bin/mysqldump  --force --opt --default-character-set=utf8 " +
-                     name + " | gzip > " + filename)
+        cmd = db_path + "/bin/usr/bin/mysqldump --defaults-file=" + my_conf_path + "  --single-transaction --quick --default-character-set=utf8 " + \
+            name + " | gzip > " + filename
+        mw.execShell(cmd)
 
         if not os.path.exists(filename):
             endDate = time.strftime('%Y/%m/%d %X', time.localtime())
@@ -176,18 +160,18 @@ class backupTools:
                 if num < 1:
                     break
 
-    def backupSiteAll(self, save):
-        sites = mw.M('sites').field('name').select()
-        for site in sites:
-            self.backupSite(site['name'], save)
-
     def backupDatabaseAll(self, save):
-        db_path = mw.getServerDir() + '/mysql'
+        db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
         databases = mw.M('databases').dbPos(
             db_path, db_name).field('name').select()
         for database in databases:
             self.backupDatabase(database['name'], save)
+
+    def backupSiteAll(self, save):
+        sites = mw.M('sites').field('name').select()
+        for site in sites:
+            self.backupSite(site['name'], save)
 
 
 if __name__ == "__main__":

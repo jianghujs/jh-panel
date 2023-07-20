@@ -101,21 +101,25 @@ function backupPath(){
         });
     });
 }
+var xtrabackupCron = {};
+myPost('backup_cron_script','', function(data) {
+    let rdata = $.parseJSON(data.data);
+    xtrabackupCron = {        
+        name: '[勿删]xtrabackup-cron',
+        type: 'day',
+        where1: '',
+        hour: $("#xtrabackup-cron input[name='hour']").val(),
+        minute: $("#xtrabackup-cron input[name='minute']").val(),
+        week: '',
+        sType: 'toShell',
+        stype: 'toShell',
+        sBody: rdata.data,
+        sbody: rdata.data,
+        sName: '',
+        backupTo: 'localhost' 
+    }
+});
 
-const xtrabackupCron = {        
-    name: '[勿删]xtrabackup-cron',
-    type: 'day',
-    where1: '',
-    hour: $("#xtrabackup-cron input[name='hour']").val(),
-    minute: $("#xtrabackup-cron input[name='minute']").val(),
-    week: '',
-    sType: 'toShell',
-    stype: 'toShell',
-    sBody: 'bash /www/server/xtrabackup/xtrabackup.sh \necho "xtrabackup定时执行成功" \necho $(date "+%Y-%m-%d_%H-%M-%S")',
-    sbody: 'bash /www/server/xtrabackup/xtrabackup.sh \necho "xtrabackup定时执行成功" \necho $(date "+%Y-%m-%d_%H-%M-%S")',
-    sName: '',
-    backupTo: 'localhost' 
-}
 function getXtrabackupCron() {
     myPost('get_xtrabackup_cron', { xtrabackupCronName: xtrabackupCron.name }, function(data){
         var rdata = $.parseJSON(data.data);

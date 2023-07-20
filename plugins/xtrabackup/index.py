@@ -295,6 +295,10 @@ def getBackupScript():
     backupScript = 'echo "正在备份..." \nBACKUP_PATH=%(backupPath)s\nset -x\n%(conf)s' % {'backupPath':getBackupPath(), 'conf': mw.readFile(getConf()) } 
     return mw.returnJson(True, 'ok',  backupScript)
 
+def getBackupCronScript():
+    backupCronScript = 'echo "正在备份..." \nexport BACKUP_PATH=%(backupPath)s\nset -x\nbash %(conf)s' % {'backupPath':getBackupPath(), 'conf': getConf() } 
+    return mw.returnJson(True, 'ok',  backupCronScript)
+
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':
@@ -311,6 +315,8 @@ if __name__ == "__main__":
         print(setBackupPath())
     elif func == 'backup_script':
         print(getBackupScript())
+    elif func == 'backup_cron_script':
+        print(getBackupCronScript())
     elif func == 'get_xtrabackup_cron':
         print(getXtrabackupCron())
     elif func == 'get_setting':

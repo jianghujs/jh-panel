@@ -161,6 +161,11 @@ function setControl(act, value=false){
 			layer.msg('保存天数不合法!',{icon:2});
 			return;
 		}
+		if($("#ctswitch").prop('checked')) {
+			$("#notifySetting").hide();
+		} else {
+			$("#notifySetting").show();
+		}
 	} else if (act == 'stat'){
 		var type = $("#stat_witch").prop('checked')?'2':'3';
 	} else if (act == 'save_day'){

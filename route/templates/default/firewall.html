@@ -93,6 +93,11 @@
 								<option value="address">屏蔽</option>
 							</select>
 							<input type="text" class="bt-input-text mr5" style="width: 117px;" id="AcceptPort" placeholder="端口">
+							<select id="firewalldProtocol" class="bt-input-text c5 mr5" name="protocol" style="width:80px;" placeholder="协议">
+								<option value="tcp">TCP</option>
+								<option value="udp">UDP</option>
+								<option value="tcp/udp">TCP/UDP</option>
+							</select>
 							<input type="text" class="bt-input-text mr5" id="Ps" placeholder="备注/说明">
 							<button id="toAccept" onclick="addAcceptPort();" class="btn btn-default btn-sm va0" type="button">放行</button>
 							<span id="f-ps" class="c9" style="margin-left: 10px;">说明: 支持放行端口范围，如: 3000:3500</span>

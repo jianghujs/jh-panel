@@ -44,6 +44,9 @@ $("#firewalldType").change(function(){
 		p = '欲屏蔽的IP地址';
 		t = '屏蔽';
 		m = '说明: 支持屏蔽IP段，如: 192.168.0.0/24';
+		$('#firewalldProtocol').hide();
+	} else {
+		$('#firewalldProtocol').show();
 	}
 	$("#AcceptPort").css("width",w);
 	$("#AcceptPort").attr('placeholder',p);
@@ -316,6 +319,7 @@ function showAccept(page,search) {
 function addAcceptPort(){
 	var type = $("#firewalldType").val();
 	var port = $("#AcceptPort").val();
+	var protocol = $("#firewalldProtocol").val();
 	var ps = $("#Ps").val();
 	var action = "add_drop_address";
 	if(type == 'port'){
@@ -336,7 +340,7 @@ function addAcceptPort(){
 		return;
 	}
 	var loadT = layer.msg('正在添加,请稍候...',{icon:16,time:0,shade: [0.3, '#000']})
-	$.post('/firewall/'+action,'port='+port+"&ps="+ps+'&type='+type,function(rdata){
+	$.post('/firewall/'+action,'port='+port+'&protocol='+protocol+"&ps="+ps+'&type='+type,function(rdata){
 		layer.close(loadT);
 		if(rdata.status == true || rdata.status == 'true'){
 			layer.msg(rdata.msg,{icon:1});

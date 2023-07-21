@@ -101,9 +101,7 @@ class firewall_api:
         mw.writeLog("防火墙管理", msg)
         addtime = time.strftime('%Y-%m-%d %X', time.localtime())
         
-        mw.writeFile('/root/3.txt', str(addtime))
-        mw.M('firewall').add('port,ps,addtime', (port, ps, addtime))
-        mw.writeFile('/root/3.txt', 'ok')
+        mw.M('firewall').add('port,protocol,ps,addtime', (port, protocol, ps, addtime))
 
         self.addAcceptPort(port, protocol)
         self.firewallReload()
@@ -146,10 +144,10 @@ class firewall_api:
         mw_port = mw.readFile('data/port.pl')
 
         protocol_list = protocol.split('/')
-        for protocol in protocol_list:
-            try:
-                if(port == mw_port):
-                    return mw.returnJson(False, '失败，不能删除当前面板端口!')
+        try:
+            if(port == mw_port):
+                return mw.returnJson(False, '失败，不能删除当前面板端口!')
+            for protocol in protocol_list:
                 if self.__isUfw:
                     mw.execShell('ufw delete allow ' + port + '/' + protocol)
                 else:
@@ -159,20 +157,28 @@ class firewall_api:
                     else:
                         mw.execShell(
                             'iptables -D INPUT -p ' + protocol + ' -m state --state NEW -m ' + protocol + ' --dport ' + port + ' -j ACCEPT')
-                msg = mw.getInfo('删除防火墙放行端口[{1}]成功!', (port,))
-                mw.writeLog("防火墙管理", msg)
-                mw.M('firewall').where("id=?", (sid,)).delete()
+            msg = mw.getInfo('删除防火墙放行端口[{1}]成功!', (port,))
+            mw.writeLog("防火墙管理", msg)
+            mw.M('firewall').where("id=?", (sid,)).delete()
 
-                self.firewallReload()
-                return mw.returnJson(True, '删除成功!')
-            except Exception as e:
-                return mw.returnJson(False, '删除失败!:' + str(e))
+            self.firewallReload()
+            return mw.returnJson(True, '删除成功!')
+        except Exception as e:
+            return mw.returnJson(False, '删除失败!:' + str(e))
 
     def getWwwPathApi(self):
         path = mw.getLogsDir()
         return mw.getJson({'path': path})
 
     def getListApi(self):
+
+        # TODO 兼容旧版本，检查并添加protocol字段
+        firewall_db = mw.M('firewall')
+        firewall_columns = firewall_db.originExecute("PRAGMA table_info(firewall)").fetchall()
+        protocol_exists = any(column[1] == 'protocol' for column in firewall_columns)
+        if not protocol_exists:
+            firewall_db.originExecute("ALTER TABLE firewall ADD COLUMN protocol varchar(50) DEFAULT 'tcp'")
+
         p = request.form.get('p', '1').strip()
         limit = request.form.get('limit', '10').strip()
         return self.getList(int(p), int(limit))
@@ -385,7 +391,7 @@ class firewall_api:
 
         start = (page - 1) * limit
 
-        _list = mw.M('firewall').field('id,port,ps,addtime').limit(
+        _list = mw.M('firewall').field('id,port,protocol,ps,addtime').limit(
             str(start) + ',' + str(limit)).order('id desc').select()
         data = {}
         data['data'] = _list

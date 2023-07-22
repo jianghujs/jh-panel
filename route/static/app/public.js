@@ -2398,6 +2398,19 @@ function excuteScriptTask(name, content) {
 		}, 1000)
 	})
 }
+
+//刷新layer弹窗的水平居中位置
+function refreshLayerCenter(layerIndex){
+	var layerObj = $("#layui-layer"+layerIndex);
+		var w = layerObj.outerWidth();
+		var h = layerObj.outerHeight();
+		var l = ($(document).width()-w)/2;
+		var t = ($(window).height()-h)/2;
+		layerObj.css({
+			"left":l,
+			"top":t
+		});
+}
 /*** 其中功能,针对插件通过库使用 end ***/
 
 

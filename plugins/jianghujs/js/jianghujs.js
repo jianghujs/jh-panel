@@ -298,60 +298,69 @@ function openDeployItem() {
         shadeClose: false,
         content: "\
         <form class='bt-form pd20 pb70' id='deployForm'>\
-            <div class='line'>\
-                <span class='tname'>项目Git地址</span>\
-                <div class='info-r c4'>\
-                    <input onchange='handleGitUrlChange()' id='projectGitUrl' class='bt-input-text' type='text' name='gitUrl' placeholder='项目Git地址' style='width:458px' />\
+            <div class='step1'>\
+                <div class='line'>\
+                    <span class='tname'>项目Git地址</span>\
+                    <div class='info-r c4'>\
+                        <input onchange='handleGitUrlChange()' id='projectGitUrl' class='bt-input-text' type='text' name='gitUrl' placeholder='项目Git地址' style='width:458px' />\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>项目根目录</span>\
+                    <div class='info-r c4'>\
+                        <input onchange='handlePathChange()' id='projectPath' class='bt-input-text mr5' type='text' name='path' value='"+'/www/wwwroot'+"/' placeholder='"+'/www/wwwroot'+"' style='width:458px' />\
+                        <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"projectPath\")'></span>\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>项目名称</span>\
+                    <div class='info-r c4'>\
+                        <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:458px' />\
+                    </div>\
                 </div>\
             </div>\
-            <div class='line'>\
-                <span class='tname'>项目根目录</span>\
-                <div class='info-r c4'>\
-                    <input onchange='handlePathChange()' id='projectPath' class='bt-input-text mr5' type='text' name='path' value='"+'/www/wwwroot'+"/' placeholder='"+'/www/wwwroot'+"' style='width:458px' />\
-                    <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"projectPath\")'></span>\
+            <div class='step2' hidden>\
+                <div class='line'>\
+                    <span class='tname'>部署脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectDeployScript' class='bt-input-text' name='deployScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                    </div>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>项目名称</span>\
-                <div class='info-r c4'>\
-                    <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:458px' />\
+                <div class='line'>\
+                    <span class='tname'>启动脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectStartScript' class='bt-input-text' name='startScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                    </div>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>部署脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectDeployScript' class='bt-input-text' name='deployScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                <div class='line'>\
+                    <span class='tname'>重启脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectReloadScript' class='bt-input-text' name='reloadScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                    </div>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>启动脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectStartScript' class='bt-input-text' name='startScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
-                </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>重启脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectReloadScript' class='bt-input-text' name='reloadScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
-                </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>停止脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
-                </div>\
-            </div>" + 
-            "<div class='line'>\
-                <span class='tname'>自启动脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                <div class='line'>\
+                    <span class='tname'>停止脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                    </div>\
+                </div>" + 
+                "<div class='line'>\
+                    <span class='tname'>自启动脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                    </div>\
                 </div>\
             </div>" +
             "<div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(deployLayer)'>取消</button>\
-                <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitDeployItem()\">提交</button>\
+                <button type='button' class='step1-btn btn btn-success btn-sm btn-title' onclick=\"submitDeployItemStep1(deployLayer)\">拉取&下一步</button>\
+                <button type='button' class='step2-back-btn btn btn-success btn-sm btn-title' onclick=\"deployItemBackStep1()\">上一步</button>\
+                <button type='button' class='step2-btn btn btn-success btn-sm btn-title' onclick=\"submitDeployItem()\">部署</button>\
             </div>\
         </form>",
+        success: function() {
+            $("#deployForm .step2, #deployForm .step2-btn, #deployForm .step2-back-btn").hide();
+        }
     });
 }
 
@@ -413,53 +422,58 @@ function handleGitUrlChange() {
     }
     let path = '/www/wwwroot/' + matches[3];
     let name = matches[3];
+    $('#projectPath').val(path);
+    $('#projectName').val(name);
+}
 
 
+function submitDeployItem() {
+    var data = $("#deployForm").serialize();
 
-    showSpeedWindow('正在解析git地址...', '/tmp/plugin_jianghujs_check_git_url.log', function(layers,index){
-        requestApi('check_git_url', {gitUrl: encodeURIComponent(gitUrl)}, function(rdata){
+    requestApi('project_add', data, function(data){
+    	var rdata = $.parseJSON(data.data);
+        if(rdata.status) {
+            layer.close(addLayer);
+            refreshTable();
+            messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+        }
+        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+    });
+    
+}
+
+
+function submitDeployItemStep1(deployLayer) {
+    const form = $("#deployForm").serialize();
+    const gitUrl = $("#projectGitUrl").val();
+    const path = $("#projectPath").val();
+    if (!gitUrl) {
+        layer.msg('项目Git地址不能为空',{icon:2, time:2000});
+        return;
+    }
+    showSpeedWindow('正在拉取代码...', '/tmp/plugin_jianghujs_clone_project.log', function(layers,index){
+        requestApi('clone_project', form, function(rdata){
             data = $.parseJSON(rdata.data);
+            
             if(!data.status) {
                 layer.msg(data.msg,{icon:2, time:2000});
                 return;
             }
-            layer.msg(data.msg,{icon:rdata.status?1:2});
-            layer.close(index);
-            // messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+            
+            requestApi('get_project_deploy_file', form + '&showLoading=false', function(rdata) {
+                deployScript = rdata.data || ('cd ' + path + '\nnpm i\ncd config\ncp config.prod.example.js config.prod.js');
+                $('#projectDeployScript').val(deployScript);
+            })
+            handlePathChange()
+
+            setTimeout(function(){    
+                layer.close(index);
+                $("#deployForm .step1, #deployForm .step1-btn").hide();
+                $("#deployForm .step2, #deployForm .step2-btn").show();
+                refreshLayerCenter(deployLayer);
+            }, 2000)
         });
 	});
-
-    let startScript = 'cd ' + path + '\nnpm i\nnpm start';
-    let reloadScript = 'cd ' + path + '\nnpm stop\nnpm start';
-    let stopScript = 'cd ' + path + '\nnpm stop';
-    let autostartScript = '\
-#! /bin/bash\n\
-### BEGIN INIT INFO\n\
-# Provides: OnceDoc\n\
-# Required-Start: $network $remote_fs $local_fs\n\
-# Required-Stop: $network $remote_fs $local_fs\n\
-# Default-Start: 2 3 4 5\n\
-# Default-Stop: 0 1 6\n\
-# Short-Description: start and stop node\n\
-# Description: OnceDoc\n\
-### END INIT INFO\n\
-if [ -e "/www/server/nodejs/fnm" ];then\n\
-  export PATH="/www/server/nodejs/fnm:$PATH"\n\
-  eval "$(fnm env --use-on-cd --shell bash)"\n\
-fi\n\
-if ! command -v npm > /dev/null;then\n\
-  echo "No npm"\n\
-  exit 1\n\
-fi\n\
-WEB_DIR=' + path + '\n\
-cd $WEB_DIR\n\
-npm start\n\
-    ';
-    $('#projectName').val(name);
-    $('#projectStartScript').val(startScript);
-    $('#projectReloadScript').val(reloadScript);
-    $('#projectStopScript').val(stopScript);
-    $('#projectAutostartScript').val(autostartScript);
 }
 
 function handlePathChange() {
@@ -496,6 +510,11 @@ npm start\n\
     $('#projectReloadScript').val(reloadScript);
     $('#projectStopScript').val(stopScript);
     $('#projectAutostartScript').val(autostartScript);
+}
+
+function deployItemBackStep1() {
+    $("#deployForm .step1, #deployForm .step1-btn").show();
+    $("#deployForm .step2, #deployForm .step2-btn, #deployForm .step2-back-btn").show();
 }
 
 function openProjectLogs(id){

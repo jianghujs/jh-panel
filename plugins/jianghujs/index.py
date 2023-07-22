@@ -316,6 +316,8 @@ def projectAdd():
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
     autostartScript = getScriptArg('autostartScript')
+    deployScript = getScriptArg('deployScript')
+
     echo =  mw.md5(str(time.time()) + '_jianghujs')
     id = int(time.time())
     saveOne('project', id, {
@@ -332,7 +334,13 @@ def projectAdd():
     makeScriptFile(echo + '_start.sh', 'touch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
     makeScriptFile(echo + '_reload.sh', 'touch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))
     makeScriptFile(echo + '_stop.sh', 'touch %s\necho "停止中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, stopScript, statusFile))
-    
+    if deployScript is not None and deployScript != '':
+        makeScriptFile(echo + '_deploy.sh', 'set -x\ntouch %s\necho "部署中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, deployScript, statusFile))
+        mw.addAndTriggerTask(
+            name = '执行江湖管理器命令[deploy: ' + name + ']',
+            execstr = 'source /root/.bashrc && ' + getServerDir() + '/script/' + echo + '_deploy.sh'
+        )
+
     return mw.returnJson(True, '添加成功!')
 
 def projectEdit():
@@ -434,26 +442,25 @@ def extractDomainFromGitUrl(url):
     return domain
 
 
-def checkGitUrl():
+def cloneProject():
     args = getArgs()
-    data = checkArgs(args, ['gitUrl'])
+    data = checkArgs(args, ['gitUrl', 'path'])
+
     if not data[0]:
         return data[1]
     
     git_url = unquote(args['gitUrl'], 'utf-8')
+    path = unquote(args['path'], 'utf-8')
     # host = extractDomainFromGitUrl(git_url)
     # mw.addHostToKnownHosts(host)
     
-    log_file = mw.getRunDir() + '/tmp/plugin_jianghujs_check_git_url.log'
+    log_file = mw.getRunDir() + '/tmp/plugin_jianghujs_clone_project.log'
     
     cmd = """
     set -e
     echo "正在拉取项目文件..."
-    git clone %(git_url)s /root/xxx
-
-   
-    
-    """ % {'git_url': git_url}
+    git clone %(git_url)s %(path)s    
+    """ % {'git_url': git_url, 'path': path}
 
     # 写入临时文件用于执行
     tempFilePath = mw.getRunDir() + '/tmp/' +  str(time.time()) + '.sh'
@@ -467,6 +474,7 @@ def checkGitUrl():
                 false
             fi
         } && {
+            echo "操作成功"
             rm -f %(tempFilePath)s
         }
     } || { 
@@ -482,9 +490,20 @@ def checkGitUrl():
     
     if data[2] != 0:
         return mw.returnJson(False, '执行失败' )
-    return mw.returnJson(True, 'ok', data)
+    return mw.returnJson(True, 'ok', )
 
+def getProjectDeployFile():
+    args = getArgs()
+    data = checkArgs(args, ['path'])
 
+    if not data[0]:
+        return data[1]
+    
+    path = unquote(args['path'], 'utf-8')
+    deployFile = path + '/deploy.sh'
+    if os.path.exists(deployFile):
+        return mw.readFile(deployFile)
+    return ''
 
 if __name__ == "__main__":
     func = sys.argv[1]
@@ -524,8 +543,10 @@ if __name__ == "__main__":
         print(projectLogs())
     elif func == 'project_logs_clear':
         print(projectLogsClear())
-    elif func == 'check_git_url':
-        print(checkGitUrl())
+    elif func == 'clone_project':
+        print(cloneProject())
+    elif func == 'get_project_deploy_file':
+        print(getProjectDeployFile())
     elif func == 'stop':
         print(pm2Stop())
     elif func == 'start':

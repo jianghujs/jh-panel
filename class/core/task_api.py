@@ -116,4 +116,15 @@ class task_api:
             name,
             execstr = 'sh %(tempFilePath)s' % {'tempFilePath': tempFilePath }
         )
-        return mw.returnJson(True, content)
+        return mw.returnJson(False, 'ok', {
+            'name': name,
+            'content': content,
+            'tempFilePath': tempFilePath
+        })
+
+    def speedLogsFileApi(self):
+        path = request.form.get('path', '').strip()
+        log_file = mw.getRunDir() + path
+        if not os.path.exists(log_file):
+            mw.execShell('touch ' + log_file)
+        return mw.returnJson(True, 'OK', log_file)

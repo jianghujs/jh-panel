@@ -3,6 +3,7 @@
 import sys
 import io
 import os
+import re
 import time
 import shutil
 from urllib.parse import unquote
@@ -424,6 +425,67 @@ def projectLogsClear():
     os.system('echo "" > ' + logFile)
     return mw.returnJson(True, '清空成功!')
 
+def extractDomainFromGitUrl(url):
+    if '@' in url:
+        domain = url.split('@')[1]
+    else:
+        domain = url.split('//')[1]
+    domain = domain.split('/')[0]
+    return domain
+
+
+def checkGitUrl():
+    args = getArgs()
+    data = checkArgs(args, ['gitUrl'])
+    if not data[0]:
+        return data[1]
+    
+    git_url = unquote(args['gitUrl'], 'utf-8')
+    # host = extractDomainFromGitUrl(git_url)
+    # mw.addHostToKnownHosts(host)
+    
+    log_file = mw.getRunDir() + '/tmp/plugin_jianghujs_check_git_url.log'
+    
+    cmd = """
+    set -e
+    echo "正在拉取项目文件..."
+    git clone %(git_url)s /root/xxx
+
+   
+    
+    """ % {'git_url': git_url}
+
+    # 写入临时文件用于执行
+    tempFilePath = mw.getRunDir() + '/tmp/' +  str(time.time()) + '.sh'
+    tempFileContent = """
+    { 
+        {
+            %(cmd)s
+            if [ $? -eq 0 ]; then
+                true
+            else
+                false
+            fi
+        } && {
+            rm -f %(tempFilePath)s
+        }
+    } || { 
+        rm -f %(tempFilePath)s
+        exit 1
+    }
+    """ % {'cmd': cmd, 'tempFilePath': tempFilePath}
+    mw.writeFile(tempFilePath, tempFileContent)
+    mw.execShell('chmod 750 ' + tempFilePath)
+    
+    # 使用os.system执行命令，不会返回结果
+    data = mw.execShell('source /root/.bashrc && ' + tempFilePath + ' > ' + log_file + ' 2>&1')
+    
+    if data[2] != 0:
+        return mw.returnJson(False, '执行失败' )
+    return mw.returnJson(True, 'ok', data)
+
+
+
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':
@@ -462,6 +524,8 @@ if __name__ == "__main__":
         print(projectLogs())
     elif func == 'project_logs_clear':
         print(projectLogsClear())
+    elif func == 'check_git_url':
+        print(checkGitUrl())
     elif func == 'stop':
         print(pm2Stop())
     elif func == 'start':

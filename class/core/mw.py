@@ -55,7 +55,11 @@ def execShell(cmdstring, cwd=None, timeout=None, shell=True):
 
     if isinstance(data[1], bytes):
         t2 = str(data[1], encoding='utf-8')
-    return (t1, t2)
+    
+    if sub.returncode != 0:
+        t1 = t1 if t1 else t2
+
+    return (t1, t2, sub.returncode)
 
 
 def getTracebackInfo():
@@ -1672,6 +1676,22 @@ def getSSHStatus():
         status = True
     return status
 
+def checkExistHostInKnownHosts(host):
+    known_hosts_file = os.path.expanduser('~/.ssh/known_hosts')
+    with open(known_hosts_file, 'r') as f:
+        for line in f:
+            if host in line:
+                return True
+    return False
+
+def addHostToKnownHosts(host):
+    if checkExistHostInKnownHosts(host):
+        return
+    command = f'ssh-keyscan {host}'
+    output = os.popen(command).read()
+    known_hosts_file = os.path.expanduser('~/.ssh/known_hosts')
+    with open(known_hosts_file, 'a') as f:
+        f.write(output)
 
 def requestFcgiPHP(sock, uri, document_root='/tmp', method='GET', pdata=b''):
     # 直接请求到PHP-FPM

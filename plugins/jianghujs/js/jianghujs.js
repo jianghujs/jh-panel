@@ -15,7 +15,8 @@ function refreshTable() {
     let firstLoad = $('.jianghujs-panel').length == 0;
 	var con = '\
     <div class="divtable jianghujs-panel">\
-        <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">添加项目</button>\
+    <button class="btn btn-default btn-sm va0" onclick="openDeployItem();">部署项目</button>\
+    <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">导入项目</button>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
                 <th>目录</th>\
@@ -284,6 +285,76 @@ function deleteItem(id, name) {
     });
 }
 
+
+
+function openDeployItem() {
+    deployLayer = layer.open({
+        type: 1,
+        skin: 'demo-class',
+        area: '640px',
+        title: '部署项目',
+        closeBtn: 1,
+        shift: 0,
+        shadeClose: false,
+        content: "\
+        <form class='bt-form pd20 pb70' id='deployForm'>\
+            <div class='line'>\
+                <span class='tname'>项目Git地址</span>\
+                <div class='info-r c4'>\
+                    <input onchange='handleGitUrlChange()' id='projectGitUrl' class='bt-input-text' type='text' name='gitUrl' placeholder='项目Git地址' style='width:458px' />\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>项目根目录</span>\
+                <div class='info-r c4'>\
+                    <input onchange='handlePathChange()' id='projectPath' class='bt-input-text mr5' type='text' name='path' value='"+'/www/wwwroot'+"/' placeholder='"+'/www/wwwroot'+"' style='width:458px' />\
+                    <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"projectPath\")'></span>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>项目名称</span>\
+                <div class='info-r c4'>\
+                    <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:458px' />\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>部署脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectDeployScript' class='bt-input-text' name='deployScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>启动脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectStartScript' class='bt-input-text' name='startScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>重启脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectReloadScript' class='bt-input-text' name='reloadScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>停止脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
+                </div>\
+            </div>" + 
+            "<div class='line'>\
+                <span class='tname'>自启动脚本</span>\
+                <div class='info-r c4'>\
+                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                </div>\
+            </div>" +
+            "<div class='bt-form-submit-btn'>\
+                <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(deployLayer)'>取消</button>\
+                <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitDeployItem()\">提交</button>\
+            </div>\
+        </form>",
+    });
+}
+
 function projectScriptExcute(scriptKey, id) {
     var data = "id="+id+"&scriptKey="+scriptKey;
 
@@ -329,6 +400,66 @@ function projectUpdate(path) {
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
         messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });
+}
+
+
+function handleGitUrlChange() {
+    let gitUrl = document.getElementById('projectGitUrl').value;
+    const regex = /^(?:https?:\/\/|git@)(?:[^@\/]+@)?(?:www\.)?([^:\/\s]+)(?:\/|:)([^\/\s]+)\/([^\/\s]+?)(?:\.git)?$/;
+    const matches = gitUrl.match(regex);
+    if(!matches) {
+        layer.msg('git地址格式不正确',{icon:2, time:2000});
+        return;
+    }
+    let path = '/www/wwwroot/' + matches[3];
+    let name = matches[3];
+
+
+
+    showSpeedWindow('正在解析git地址...', '/tmp/plugin_jianghujs_check_git_url.log', function(layers,index){
+        requestApi('check_git_url', {gitUrl: encodeURIComponent(gitUrl)}, function(rdata){
+            data = $.parseJSON(rdata.data);
+            if(!data.status) {
+                layer.msg(data.msg,{icon:2, time:2000});
+                return;
+            }
+            layer.msg(data.msg,{icon:rdata.status?1:2});
+            layer.close(index);
+            // messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+        });
+	});
+
+    let startScript = 'cd ' + path + '\nnpm i\nnpm start';
+    let reloadScript = 'cd ' + path + '\nnpm stop\nnpm start';
+    let stopScript = 'cd ' + path + '\nnpm stop';
+    let autostartScript = '\
+#! /bin/bash\n\
+### BEGIN INIT INFO\n\
+# Provides: OnceDoc\n\
+# Required-Start: $network $remote_fs $local_fs\n\
+# Required-Stop: $network $remote_fs $local_fs\n\
+# Default-Start: 2 3 4 5\n\
+# Default-Stop: 0 1 6\n\
+# Short-Description: start and stop node\n\
+# Description: OnceDoc\n\
+### END INIT INFO\n\
+if [ -e "/www/server/nodejs/fnm" ];then\n\
+  export PATH="/www/server/nodejs/fnm:$PATH"\n\
+  eval "$(fnm env --use-on-cd --shell bash)"\n\
+fi\n\
+if ! command -v npm > /dev/null;then\n\
+  echo "No npm"\n\
+  exit 1\n\
+fi\n\
+WEB_DIR=' + path + '\n\
+cd $WEB_DIR\n\
+npm start\n\
+    ';
+    $('#projectName').val(name);
+    $('#projectStartScript').val(startScript);
+    $('#projectReloadScript').val(reloadScript);
+    $('#projectStopScript').val(stopScript);
+    $('#projectAutostartScript').val(autostartScript);
 }
 
 function handlePathChange() {

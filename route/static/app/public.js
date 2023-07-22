@@ -1799,7 +1799,7 @@ function showSpeed(filename) {
 /**
  * 显示进度窗口
  */
-function showSpeedWindow(msg, speed_log_func_name, callback){
+function showSpeedWindow(msg, speed_log_file_path, callback){
 	var speed_msg = "<pre style='margin-bottom: 0px;height:250px;text-align: left;background-color: #000;color: #fff;white-space: pre-wrap;' id='speed_log_lst'>[MSG]</pre>";
 	var showSpeedKey = layer.open({
 		title: false,
@@ -1810,8 +1810,7 @@ function showSpeedWindow(msg, speed_log_func_name, callback){
 		offset: "30%",
 		content: speed_msg.replace('[MSG]', msg),
 		success: function (layers, index) {
-			var url = speed_log_func_name.replace('.','/');
-			$.post('/'+url, {}, function(rdata){
+			$.post('/task/speed_logs_file', {path: speed_log_file_path}, function(rdata){
 				if (rdata.status){
 					setTimeout(function () {
 						showSpeed(rdata.data);
@@ -2383,16 +2382,19 @@ function openEditCodeAndExcute({name = '执行命令', title = '执行', submitB
 			content += ('echo ' + name + ' 完成') 
 
 			excuteScriptTask(name, content)
+			$("#openEditCodeCloseBtn").click();
 		}
 	})
 }
 
 function excuteScriptTask(name, content) {
-	$.post('/task/generate_script_file_and_excute', {name, content: encodeURIComponent(content)},function (data) {
-		layer.msg("添加任务完成",{icon:1,time:2000,shade: [0.3, '#000']});
+	$.post('/task/generate_script_file_and_excute', {name, content: encodeURIComponent(content)},function (rdata) {
+		const { data } = JSON.parse(rdata)
+		// const { tempFilePath } = data
+		// layer.msg("添加任务完成",{icon:1,time:2000,shade: [0.3, '#000']});
 		setTimeout(() => {
-				$("#openEditCodeCloseBtn").click();
-				messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+			messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+			// showSpeedWindow('任务执行中...', tempFilePath)
 		}, 1000)
 	})
 }

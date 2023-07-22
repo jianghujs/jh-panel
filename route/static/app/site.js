@@ -1866,7 +1866,7 @@ function deploySSL(type,id,siteName){
 }
 
 function renewSSL(type,id,siteName){
-	showSpeedWindow('正在续签...', 'site.get_let_logs', function(layers,index){
+	showSpeedWindow('正在续签...', '/logs/letsencrypt.log', function(layers,index){
 		$.post('/site/renew_ssl','site_name='+siteName+'&ssl_type='+type,function(rdata){
 			showMsg(rdata.msg, function(){
 				if (rdata.status){
@@ -2236,7 +2236,7 @@ function ocSSL(action,siteName){
 
 //生成SSL
 function newSSL(siteName, id, domains){
-	showSpeedWindow('正在申请...', 'site.get_let_logs', function(layers,index){
+	showSpeedWindow('正在申请...', '/logs/letsencrypt.log', function(layers,index){
 		var force = '';
 		if ($("#checkDomain").prop("checked")){
 			force = '&force=true';
@@ -2256,7 +2256,7 @@ function newSSL(siteName, id, domains){
 }
 
 function newAcmeSSL(siteName, id, domains){
-	showSpeedWindow('正在由ACME申请...', 'site.get_acme_logs', function(layers,index){
+	showSpeedWindow('正在由ACME申请...', '/logs/acme.log', function(layers,index){
 		var force = '';
 		if($("#checkDomain").prop("checked")){
 			force = '&force=true';

@@ -116,7 +116,7 @@ def getLsyncdLog():
 def __release_port(port):
     try:
         import firewall_api
-        firewall_api.firewall_api().addAcceptPortArgs(port, 'RSYNC同步', 'port')
+        firewall_api.firewall_api().addAcceptPortArgs(port, 'tcp', 'RSYNC同步', 'port')
         return port
     except Exception as e:
         return "Release failed {}".format(e)

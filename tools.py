@@ -87,7 +87,7 @@ def mwcli(mw_input=0):
         if in_port_int < 65536 and in_port_int > 0:
             import firewall_api
             firewall_api.firewall_api().addAcceptPortArgs(
-                in_port, 'WEB面板[TOOLS修改]', 'port')
+                in_port, 'tcp', 'WEB面板[TOOLS修改]', 'port')
             mw.writeFile('data/port.pl', in_port)
         else:
             print("|-端口范围在0-65536之间")

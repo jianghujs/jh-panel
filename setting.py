@@ -51,7 +51,7 @@ else:
     common.initDB()
     # mw_port = str(random.randint(10000, 65530))
     mw_port = "10744"
-    firewall_api.firewall_api().addAcceptPortArgs(mw_port, 'WEB面板', 'port')
+    firewall_api.firewall_api().addAcceptPortArgs(mw_port, 'tcp', 'WEB面板', 'port')
     mw.writeFile('data/port.pl', mw_port)
 
 bind = []

@@ -51,7 +51,7 @@ class App:
         from collections import namedtuple
         try:
             import firewall_api
-            firewall_api.firewall_api().addAcceptPortArgs(port, 'IMail-Server', 'port')
+            firewall_api.firewall_api().addAcceptPortArgs(port, 'tcp', 'IMail-Server', 'port')
             return port
         except Exception as e:
             return "Release failed {}".format(e)

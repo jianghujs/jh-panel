@@ -60,8 +60,8 @@ case $choice in
             if [[ $key == $choice ]]; then
                 script_file=${scripts[$choice]}
                 echo ">>>>>>>>>>>>>>>>>>> Running $script_file"
-                echo $URLBase+$script_file
-                bash $URLBase+$script_file
+                echo "${URLBase}${script_file}"
+                bash ./script_file
                 echo -e "<<<<<<<<<<<<<<<<<<< Run $script_file success✔!\n"
             fi
         done

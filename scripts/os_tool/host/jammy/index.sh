@@ -44,8 +44,8 @@ read -p "请输入选项数字: " choice
 
 # 下载并执行脚本的函数
 download_and_run() {
-    local script_file=$1
-    wget -O ./host/${script_file} ${URLBase}/${script_file}
+    local script_name=$1
+    wget -O ./host/${script_name} ${URLBase}/${script_name}
     echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
     bash ./host/${script_name}
     echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"

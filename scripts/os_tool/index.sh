@@ -44,4 +44,4 @@ fi
 
 echo "downloading ${URLBase}/index.sh to ./${osType}/index.s"
 
-wget -O ./${osType}/index.sh ${URLBase}/index.sh && bash ./${osType}/index.sh
+wget -N -O ./${osType}/index.sh ${URLBase}/index.sh && bash ./${osType}/index.sh

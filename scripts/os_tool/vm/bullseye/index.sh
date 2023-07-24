@@ -59,9 +59,11 @@ case $choice in
         for choice in $choices; do
             if [[ $key == $choice ]]; then
                 script_file=${scripts[$choice]}
+                wget -O ./vm/${script_file} ${URLBase}/${script_file}
                 echo ">>>>>>>>>>>>>>>>>>> Running $script_file"
-                echo "${URLBase}${script_file}"
-                bash ./script_file
+
+                echo "${URLBase}/${script_file}"
+                bash ./vm/${script_file}
                 echo -e "<<<<<<<<<<<<<<<<<<< Run $script_file success✔!\n"
             fi
         done

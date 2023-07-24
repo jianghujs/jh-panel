@@ -29,6 +29,15 @@ show_menu
 # 读取用户的选择
 read -p "请输入选项数字: " choice
 
+# 下载并执行脚本的函数
+download_and_run() {
+    local script_file=$1
+    wget -O ./vm/${script_file} ${URLBase}/${script_file}
+    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
+    bash ./vm/${script_name}
+    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
+}
+
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
@@ -59,11 +68,8 @@ case $choice in
         for choice in $choices; do
             if [[ $key == $choice ]]; then
                 script_file=${scripts[$choice]}
-                wget -O ./vm/${script_file} ${URLBase}/${script_file}
                 echo ">>>>>>>>>>>>>>>>>>> Running $script_file"
-
-                echo "${URLBase}/${script_file}"
-                bash ./vm/${script_file}
+                download_and_run ${script_file}
                 echo -e "<<<<<<<<<<<<<<<<<<< Run $script_file success✔!\n"
             fi
         done

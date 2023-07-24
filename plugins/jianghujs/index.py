@@ -456,8 +456,15 @@ def cloneProject():
     
     log_file = mw.getRunDir() + '/tmp/plugin_jianghujs_clone_project.log'
     
-    cmd = """
-    set -e
+
+    cmd = "set -e\n"
+    if os.path.exists(path):
+        cmd += """
+        echo "正在删除旧项目文件..."
+        rm -rf %(path)s
+        """ % {'path': path}
+
+    cmd += """
     echo "正在拉取项目文件..."
     git clone %(git_url)s %(path)s    
     """ % {'git_url': git_url, 'path': path}

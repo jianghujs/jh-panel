@@ -1828,7 +1828,7 @@ function showSpeedWindow(msg, speed_log_file_path, callback){
 			if (callback) {callback(async () => {
 				return openTimoutLayer('执行完毕，即将自动关闭', () => {
 					layer.close(index);
-				}, { confirmBtn: '关闭' })
+				}, { confirmBtn: '关闭', timeout: 3 })
 			}, index,showSpeedKey);}
 		}
     });

@@ -2,6 +2,7 @@ var tableData = []; // 表格数据
 var addLayer = null; // 添加弹框
 var editLayer = null; // 编辑弹框
 var logLayer = null; // 日志弹框
+var deployLayer = null; // 部署弹框
 var editItem = null; // 编辑项
 var refreshTableTask = null;
 
@@ -433,7 +434,7 @@ function submitDeployItem() {
     requestApi('project_add', data, function(data){
     	var rdata = $.parseJSON(data.data);
         if(rdata.status) {
-            layer.close(addLayer);
+            layer.close(deployLayer);
             refreshTable();
             messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
         }
@@ -442,8 +443,21 @@ function submitDeployItem() {
     
 }
 
+async function checkPathExist(path) {
+    return new Promise(function(resolve, reject) {
+        $.post('/files/check_exist_path',{path},function(rdata){
+            if(rdata.data) {
+                safeMessage('目录已存在','<a style="color:red;">目录['+path+']已存在，要删除目录重新部署吗？</a>删除后将无法恢复,请谨慎操作。<br/>确认请输入结果:',function(){
+                    resolve();
+                });
+            } else {
+                resolve();
+            }
+        },'json');
+    });
+}
 
-function submitDeployItemStep1(deployLayer) {
+async function submitDeployItemStep1(deployLayer) {
     const form = $("#deployForm").serialize() + '&showLoading=false';
     const gitUrl = $("#projectGitUrl").val();
     const path = $("#projectPath").val();
@@ -451,6 +465,8 @@ function submitDeployItemStep1(deployLayer) {
         layer.msg('项目Git地址不能为空',{icon:2, time:2000});
         return;
     }
+    await checkPathExist(path);
+
     showSpeedWindow('正在拉取代码...', '/tmp/plugin_jianghujs_clone_project.log', function(ok,index){
         requestApi('clone_project', form, function(rdata){
             data = $.parseJSON(rdata.data);

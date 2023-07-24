@@ -498,6 +498,10 @@ class files_api:
                 data.append(tmp)
         return mw.returnJson(True, 'ok', data)
 
+    def checkExistPathApi(self):
+        p = request.form.get('path', '')
+        return mw.returnJson(True, 'ok', os.path.exists(p))
+
     def batchPasteApi(self):
         path = request.form.get('path', '')
         stype = request.form.get('type', '')

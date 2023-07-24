@@ -35,7 +35,7 @@ fi
 
 URLBase="${toolURLBase}/${osType}/${CODENAME}"
 echo "URLBase: ${URLBase}"
-export urlBase
+export URLBase
 
 # 检查并创建子文件夹
 if [ ! -d "$osType" ]; then

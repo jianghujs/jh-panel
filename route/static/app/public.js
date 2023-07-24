@@ -484,40 +484,46 @@ function openNewWindowPath(a) {
  * @param {*} onTimeout 超时执行方法
  * @param {*} extParams 其他参数 { timeout, cancelBtn }
  */
-function openTimoutLayer(tip, onTimeout, extParams) {
-	const { timeout, confirmBtn, cancelBtn } = extParams || {};
-	var i = timeout || 5;
-	var interval;
-	let timeoutLayer = layer.confirm(tip,{
-		title: '提示',
-		btn: [confirmBtn || '执行', cancelBtn || '取消'],//按钮
-		skin: 'layui-layer-molv',success: function(a,b){  
-			var updateTitle = function() {         
-			  layer.title('自动执行倒计时：' + i +' 秒',b);      
-			};
-			updateTitle();
-			interval = setInterval(function(){
-				i--;
+async function openTimoutLayer(tip, onTimeout, extParams) {
+	return new Promise((resolve, reject) => {
+		const { timeout, confirmBtn, cancelBtn } = extParams || {};
+		var i = timeout || 5;
+		var interval;
+		let timeoutLayer = layer.confirm(tip,{
+			title: '提示',
+			btn: [confirmBtn || '执行', cancelBtn || '取消'],//按钮
+			skin: 'layui-layer-molv',success: function(a,b){  
+				var updateTitle = function() {         
+					layer.title('自动执行倒计时：' + i +' 秒',b);      
+				};
 				updateTitle();
-				if(i === 0){// 倒计时结束后执行             
-					layer.title('',b);
-					layer.close(timeoutLayer);
-					clearInterval(interval);
-					onTimeout && onTimeout();
-				}
-			},1000);
-		},end:function(){
-			clearInterval(interval);
-			layer.close(timeoutLayer);
-		}
-		},function() {	
-			layer.close(timeoutLayer);
-			clearInterval(interval);
-			onTimeout && onTimeout();
-		},function(){
-			clearInterval(interval);
-			layer.close(timeoutLayer);
-		});
+				interval = setInterval(function(){
+					i--;
+					updateTitle();
+					if(i === 0){// 倒计时结束后执行             
+						layer.title('',b);
+						layer.close(timeoutLayer);
+						clearInterval(interval);
+						onTimeout && onTimeout();
+						resolve();
+					}
+				},1000);
+			},end:function(){
+				clearInterval(interval);
+				layer.close(timeoutLayer);
+				resolve();
+			}
+			},function() {	
+				layer.close(timeoutLayer);
+				clearInterval(interval);
+				onTimeout && onTimeout();
+				resolve();
+			},function(){
+				clearInterval(interval);
+				layer.close(timeoutLayer);
+				resolve();
+			});
+	})
 }
 
 function onlineEditFile(k, f) {
@@ -1819,7 +1825,11 @@ function showSpeedWindow(msg, speed_log_file_path, callback){
 					layer.msg("缺少指定文件!");
 				}
 			},'json');
-			if (callback) {callback(layers,index,showSpeedKey);}
+			if (callback) {callback(async () => {
+				return openTimoutLayer('执行完毕，即将自动关闭', () => {
+					layer.close(index);
+				}, { confirmBtn: '关闭' })
+			}, index,showSpeedKey);}
 		}
     });
 }

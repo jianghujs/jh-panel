@@ -444,34 +444,33 @@ function submitDeployItem() {
 
 
 function submitDeployItemStep1(deployLayer) {
-    const form = $("#deployForm").serialize();
+    const form = $("#deployForm").serialize() + '&showLoading=false';
     const gitUrl = $("#projectGitUrl").val();
     const path = $("#projectPath").val();
     if (!gitUrl) {
         layer.msg('项目Git地址不能为空',{icon:2, time:2000});
         return;
     }
-    showSpeedWindow('正在拉取代码...', '/tmp/plugin_jianghujs_clone_project.log', function(layers,index){
+    showSpeedWindow('正在拉取代码...', '/tmp/plugin_jianghujs_clone_project.log', function(ok,index){
         requestApi('clone_project', form, function(rdata){
             data = $.parseJSON(rdata.data);
             
-            if(!data.status) {
-                layer.msg(data.msg,{icon:2, time:2000});
-                return;
-            }
-            
-            requestApi('get_project_deploy_file', form + '&showLoading=false', function(rdata) {
+            requestApi('get_project_deploy_file', form, function(rdata) {
                 deployScript = rdata.data || ('cd ' + path + '\nnpm i\ncd config\ncp config.prod.example.js config.prod.js');
                 $('#projectDeployScript').val(deployScript);
             })
             handlePathChange()
 
-            setTimeout(function(){    
-                layer.close(index);
+            setTimeout(async function(){    
+                if(!data.status) {
+                    layer.msg(data.msg,{icon:2, time:2000});
+                    return;
+                }
+                await ok();
                 $("#deployForm .step1, #deployForm .step1-btn").hide();
                 $("#deployForm .step2, #deployForm .step2-btn").show();
                 refreshLayerCenter(deployLayer);
-            }, 2000)
+            }, 1000)
         });
 	});
 }
@@ -569,16 +568,17 @@ function query2Obj(str){
 
 function requestApi(method,args,callback){
     return new Promise(function(resolve, reject) {
-        var _args = null; 
+        
+        var argsObj = null;
         if (typeof(args) == 'string'){
-            _args = JSON.stringify(query2Obj(args));
+            argsObj = query2Obj(args);
         } else {
-            _args = JSON.stringify(args);
+            argsObj = args;
         }
-        if(args.showLoading != false) {
+        if(argsObj.showLoading != false && argsObj.showLoading != 'false') {
             var loadT = layer.msg('正在获取中...', { icon: 16, time: 0});
         }
-        $.post('/plugins/run', {name:'jianghujs', func:method, args:_args}, function(data) {
+        $.post('/plugins/run', {name:'jianghujs', func:method, args:JSON.stringify(argsObj)}, function(data) {
             layer.close(loadT);
             if (!data.status){
                 layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});

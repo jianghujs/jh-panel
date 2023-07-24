@@ -4,8 +4,8 @@ export PATH
 # LANG=en_US.UTF-8
 is64bit=`getconf LONG_BIT`
 
-netEnvCn="$1"
-osType="$2"
+osType="$1"
+netEnvCn="$2"
 echo "netEnvCn: ${netEnvCn}"
 _os=`uname`
 echo "use system: ${_os}"

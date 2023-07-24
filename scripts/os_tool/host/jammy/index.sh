@@ -83,10 +83,7 @@ case $choice in
             for choice in $choices; do
                 if [ "$choice" == "$key" ]; then
                     script_file=${scripts[$choice]}
-                    echo ">>>>>>>>>>>>>>>>>>> Running $script_file"
                     download_and_run ${script_file}
-                    echo -e "<<<<<<<<<<<<<<<<<<< Run $script_file success✔!\n"
-
                     break
                 fi
             done
@@ -99,14 +96,10 @@ case $choice in
         fi
         ;;
     2)
-        echo ">>>>>>>>>>>>>>>>>>> Running virtualbox_vm_auto_start.sh"
         download_and_run virtualbox_vm_auto_start.sh
-        echo -e "<<<<<<<<<<<<<<<<<<< Run virtualbox_vm_auto_start.sh success✔!\n"
         ;;
     3)
-        echo ">>>>>>>>>>>>>>>>>>> Running virtualbox_vm_auto_snapshot.sh"
         download_and_run virtualbox_vm_auto_snapshot.sh
-        echo -e "<<<<<<<<<<<<<<<<<<< Run virtualbox_vm_auto_snapshot.sh success✔!\n"
         ;;
 esac
 

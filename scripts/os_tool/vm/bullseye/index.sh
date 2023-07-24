@@ -68,9 +68,7 @@ case $choice in
         for choice in $choices; do
             if [[ $key == $choice ]]; then
                 script_file=${scripts[$choice]}
-                echo ">>>>>>>>>>>>>>>>>>> Running $script_file"
                 download_and_run ${script_file}
-                echo -e "<<<<<<<<<<<<<<<<<<< Run $script_file success✔!\n"
             fi
         done
     done

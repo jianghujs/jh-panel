@@ -22,24 +22,18 @@ fi
 
 echo "use system version: ${OSNAME}"
 
-#!/bin/bash
-
-# 使用 lsb_release -a 命令并从输出中提取 "Codename" 的行
+# 获取系统codename
 codename_line=$(lsb_release -a | grep Codename)
-# 使用冒号分隔符将行分割为两部分，并获取第二部分（即 Codename 的值）
 codename_value=$(echo $codename_line | cut -d ':' -f2)
-# 去除值前面的空格
 CODENAME=$(echo $codename_value | xargs)
-
-# 打印 Codename 的值
 echo "Codename: ${CODENAME}"
 
 toolURLBase="https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/os_tool"
 if [ "$netEnvCn" == "cn" ]; then
-  toolURLBase = "https://gitee.com/jianghujs/jh-panel/raw/master/scripts/os_tool"
+  toolURLBase="https://gitee.com/jianghujs/jh-panel/raw/master/scripts/os_tool"
 fi
 
-URLBase = "${toolURLBase}/${osType}/${CODENAME}"
+URLBase="${toolURLBase}/${osType}/${CODENAME}"
 echo "URLBase: ${URLBase}"
 export urlBase
 
@@ -48,4 +42,6 @@ if [ ! -d "$osType" ]; then
   mkdir "$osType"
 fi
 
-wget -O ./${osType}/index.sh ${urlBase}/index.sh && bash ./${osType}/index.sh
+echo "downloading ${URLBase}/index.sh to ./${osType}/index.s"
+
+wget -O ./${osType}/index.sh ${URLBase}/index.sh && bash ./${osType}/index.sh

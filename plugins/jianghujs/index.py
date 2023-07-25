@@ -460,7 +460,8 @@ def getCloneScript():
         cmd += """
         echo "正在添加git服务器到已知主机列表..."
         {
-        ssh-keyscan %(host)s >> ~/.ssh/known_hosts
+            echo "\n" >> ~/.ssh/known_hosts
+            ssh-keyscan %(host)s >> ~/.ssh/known_hosts
         } || echo "添加可信域名失败"
         """ % {'host': host}
     cmd += """

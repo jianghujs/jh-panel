@@ -61,7 +61,7 @@ read -p "请输入密钥文件名（默认：$default_filename）: " filename
 filename=${filename:-$default_filename}
 
 # 生成密钥
-echo -e "\n" | ssh-keygen -t rsa -C "$email" -f "/root/.ssh/$filename" > /dev/null
+ssh-keygen -t rsa -C "$email" -f "/root/.ssh/$filename" -N "" > /dev/null
 echo "==== 生成/root/.ssh/$filename文件成功✅"
 
 # 配置ssh

@@ -431,6 +431,7 @@ function handleGitUrlChange() {
 async function submitDeployItem() {
     var deployForm = $("#deployForm").serialize();
     let deployScript = $('#projectDeployScript').val();
+    let projectPath = $('#projectPath').val();
     await execScriptAndShowLog('正在部署项目...', deployScript);
 
     requestApi('project_add', deployForm, function(data){
@@ -439,7 +440,7 @@ async function submitDeployItem() {
             layer.close(deployLayer);
             refreshTable();
             openTimoutLayer('部署完毕，需要打开项目配置目录吗？', () => {
-                openNewWindowPath($('#projectPath').val() + '/config')
+                openNewWindowPath(projectPath + '/config')
             }, { confirmBtn: '打开配置目录', timeout: -1 })
             return
         }

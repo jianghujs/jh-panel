@@ -21,6 +21,7 @@ done
 show_menu() {
     echo "请选择一个操作:"
     echo "1. 初始化环境"
+    echo "2. 生成指定域名SSH密钥"
 }
 
 # 显示菜单
@@ -72,6 +73,9 @@ case $choice in
             fi
         done
     done
+    ;;
+2)
+    download_and_run ssh_keygen_to_host.sh
     ;;
 esac
 

@@ -6,7 +6,7 @@ import os
 import re
 import time
 import shutil
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 import dictdatabase as DDB
 
 sys.path.append(os.getcwd() + "/class/core")
@@ -316,7 +316,7 @@ def projectAdd():
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
     autostartScript = getScriptArg('autostartScript')
-    
+
     echo =  mw.md5(str(time.time()) + '_jianghujs')
     id = int(time.time())
     saveOne('project', id, {
@@ -432,8 +432,42 @@ def extractDomainFromGitUrl(url):
     else:
         domain = url.split('//')[1]
     domain = domain.split('/')[0]
+    if ':' in domain:
+        domain = domain.split(':')[0]
     return domain
+    
+def getCloneScript():
+    args = getArgs()
+    data = checkArgs(args, ['gitUrl', 'path'])
 
+    if not data[0]:
+        return data[1]
+
+    git_url = unquote(args['gitUrl'], 'utf-8')
+    path = unquote(args['path'], 'utf-8')
+    
+    exist_path = os.path.exists(path)
+    host = extractDomainFromGitUrl(git_url)
+    is_host_in_known_hosts = mw.checkExistHostInKnownHosts(host)
+    
+    cmd = "set -e\n"
+    if exist_path:
+        cmd += """
+        echo "正在删除旧项目文件..."
+        rm -rf %(path)s
+        """ % {'path': path}
+    if not is_host_in_known_hosts:
+        cmd += """
+        echo "正在添加git服务器到已知主机列表..."
+        ssh-keyscan -H %(host)s >> ~/.ssh/known_hosts
+        """ % {'host': host}
+    cmd += """
+    echo "正在拉取项目文件..."
+    git clone --progress %(git_url)s %(path)s
+    echo "拉取项目文件成功"
+    """ % {'git_url': git_url, 'path': path}
+
+    return cmd
 
 def cloneProject():
     args = getArgs()
@@ -547,6 +581,8 @@ if __name__ == "__main__":
         print(projectLogs())
     elif func == 'project_logs_clear':
         print(projectLogsClear())
+    elif func == 'get_clone_script':
+        print(getCloneScript())
     elif func == 'clone_project':
         print(cloneProject())
     elif func == 'get_project_deploy_file':

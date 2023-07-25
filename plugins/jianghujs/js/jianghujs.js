@@ -86,7 +86,7 @@ function refreshTable() {
                         <td style="text-align: right;width: 280px;">\
                             '+opt+
                             '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
-                            '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
+                            // '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
                             '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
                             '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
                         </td>\
@@ -471,14 +471,10 @@ async function submitDeployItemStep1(deployLayer) {
         layer.msg('项目Git地址不能为空',{icon:2, time:2000});
         return;
     }
-    let existPath = await checkPathExist(path);
-    let scriptContent = '';
-    if (existPath) {
-        scriptContent += `echo "正在删除旧项目文件..."\nrm -rf ${path}\n`;
-    }
-    scriptContent += `echo "正在拉取项目文件..."\ngit clone --progress ${gitUrl} ${path}\necho "拉取项目文件成功"`
-
-    await execScriptAndShowLog('正在拉取代码...', scriptContent);
+    await checkPathExist(path);
+    
+    let scriptData = await requestApi('get_clone_script', { gitUrl: encodeURIComponent(gitUrl), path: encodeURIComponent(path) });
+    await execScriptAndShowLog('正在拉取代码...', scriptData.data);
 
     requestApi('get_project_deploy_file', form, function(rdata) {
         deployScript = rdata.data || ('cd ' + path + '\nnpm i --loglevel verbose\ncd config\ncp config.prod.example.js config.prod.js');
@@ -582,7 +578,7 @@ function query2Obj(str){
     return data;
 }
 
-function requestApi(method,args,callback){
+async function requestApi(method,args,callback){
     return new Promise(function(resolve, reject) {
         
         var argsObj = null;
@@ -601,9 +597,7 @@ function requestApi(method,args,callback){
                 return;
             }
             resolve(data);
-            if(typeof(callback) == 'function'){
-                callback(data);
-            }
+            callback && callback(data);
         },'json'); 
     });
 }

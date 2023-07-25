@@ -487,39 +487,41 @@ function openNewWindowPath(a) {
 async function openTimoutLayer(tip, onTimeout, extParams) {
 	return new Promise((resolve, reject) => {
 		const { timeout, confirmBtn, cancelBtn } = extParams || {};
-		var i = timeout || 5;
+		var i = timeout == null? 5: timeout;
 		var interval;
 		let timeoutLayer = layer.confirm(tip,{
 			title: '提示',
 			btn: [confirmBtn || '执行', cancelBtn || '取消'],//按钮
 			skin: 'layui-layer-molv',success: function(a,b){  
-				var updateTitle = function() {         
-					layer.title('自动执行倒计时：' + i +' 秒',b);      
-				};
-				updateTitle();
-				interval = setInterval(function(){
-					i--;
+				if(i != -1){
+					var updateTitle = function() {         
+						layer.title('自动执行倒计时：' + i +' 秒',b);      
+					};
 					updateTitle();
-					if(i === 0){// 倒计时结束后执行             
-						layer.title('',b);
-						layer.close(timeoutLayer);
-						clearInterval(interval);
-						onTimeout && onTimeout();
-						resolve();
-					}
-				},1000);
+					interval = setInterval(function(){
+						i--;
+						updateTitle();
+						if(i === 0){// 倒计时结束后执行             
+							layer.title('',b);
+							layer.close(timeoutLayer);
+							clearInterval(interval);
+							onTimeout && onTimeout();
+							resolve();
+						}
+					},1000);
+				}
 			},end:function(){
-				clearInterval(interval);
+				interval && clearInterval(interval);
 				layer.close(timeoutLayer);
 				resolve();
 			}
 			},function() {	
 				layer.close(timeoutLayer);
-				clearInterval(interval);
+				interval && clearInterval(interval);
 				onTimeout && onTimeout();
 				resolve();
 			},function(){
-				clearInterval(interval);
+				interval && clearInterval(interval);
 				layer.close(timeoutLayer);
 				resolve();
 			});

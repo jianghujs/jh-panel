@@ -438,7 +438,10 @@ async function submitDeployItem() {
         if(rdata.status) {
             layer.close(deployLayer);
             refreshTable();
-            messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+            openTimoutLayer('部署完毕，需要打开项目配置目录吗？', () => {
+                openNewWindowPath($('#projectPath').val() + '/config')
+            }, { confirmBtn: '打开配置目录', timeout: -1 })
+            return
         }
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
     });
@@ -450,10 +453,10 @@ async function checkPathExist(path) {
         $.post('/files/check_exist_path',{path},function(rdata){
             if(rdata.data) {
                 safeMessage('目录已存在','<a style="color:red;">目录['+path+']已存在，要删除目录重新部署吗？</a>删除后将无法恢复,请谨慎操作。<br/>确认请输入结果:',function(){
-                    resolve();
+                    resolve(true);
                 });
             } else {
-                resolve();
+                resolve(false);
             }
         },'json');
     });
@@ -467,30 +470,24 @@ async function submitDeployItemStep1(deployLayer) {
         layer.msg('项目Git地址不能为空',{icon:2, time:2000});
         return;
     }
-    await checkPathExist(path);
+    let existPath = await checkPathExist(path);
+    let scriptContent = '';
+    if (existPath) {
+        scriptContent += `echo "正在删除旧项目文件..."\nrm -rf ${path}\n`;
+    }
+    scriptContent += `echo "正在拉取项目文件..."\ngit clone --progress ${gitUrl} ${path}\necho "拉取项目文件成功"`
 
-    showLogWindow('正在拉取代码...', { logPath: '/tmp/plugin_jianghujs_clone_project.log' }, function({success}){
-        requestApi('clone_project', form, function(rdata){
-            data = $.parseJSON(rdata.data);
-            
-            requestApi('get_project_deploy_file', form, function(rdata) {
-                deployScript = rdata.data || ('cd ' + path + '\nnpm i --loglevel verbose\ncd config\ncp config.prod.example.js config.prod.js');
-                $('#projectDeployScript').val(deployScript);
-            })
-            handlePathChange()
+    await execScriptAndShowLog('正在拉取代码...', scriptContent);
 
-            setTimeout(async function(){    
-                if(!data.status) {
-                    layer.msg(data.msg,{icon:2, time:2000});
-                    return;
-                }
-                await success();
-                $("#deployForm .step1, #deployForm .step1-btn").hide();
-                $("#deployForm .step2, #deployForm .step2-btn").show();
-                refreshLayerCenter(deployLayer);
-            }, 1000)
-        });
-	});
+    requestApi('get_project_deploy_file', form, function(rdata) {
+        deployScript = rdata.data || ('cd ' + path + '\nnpm i --loglevel verbose\ncd config\ncp config.prod.example.js config.prod.js');
+        $('#projectDeployScript').val(deployScript);
+    })
+    handlePathChange()
+
+    $("#deployForm .step1, #deployForm .step1-btn").hide();
+    $("#deployForm .step2, #deployForm .step2-btn").show();
+    refreshLayerCenter(deployLayer);
 }
 
 function handlePathChange() {

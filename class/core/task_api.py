@@ -149,12 +149,8 @@ class task_api:
             true
         else
             false
-        fi
-    
-        rm -f %(tempFilePath)s
-            
+        fi  
         """ % {'cmd': cmd, 'tempFilePath': tempFilePath}
-        mw.writeFile('/root/6.txt', tempFileContent)
         mw.writeFile(tempFilePath, tempFileContent)
         mw.execShell('chmod 750 ' + tempFilePath)
         # 使用os.system执行命令，不会返回结果

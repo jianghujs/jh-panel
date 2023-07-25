@@ -182,6 +182,21 @@ class files_api:
         except Exception as e:
             return mw.returnJson(True, '文件创建失败!')
 
+    def removeFileApi(self):
+        p = request.form.get('path', '')
+        if not os.path.exists(p):
+            return mw.returnJson(False, '指定文件不存在!')
+        try:
+            if os.path.exists('data/recycle_bin.pl'):
+                if self.mvRecycleBin(p):
+                    return mw.returnJson(True, '已将文件移动到回收站!')
+            os.remove(p)
+            msg = mw.getInfo('删除文件[{1}]成功!', (p,))
+            mw.writeLog('文件管理', msg)
+            return mw.returnJson(True, '删除文件成功!')
+        except:
+            return mw.returnJson(False, '删除文件失败!')
+
     def createDirApi(self):
         path = request.form.get('path', '')
         try:

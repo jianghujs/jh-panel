@@ -103,7 +103,7 @@ class task_api:
             'id,status,name,type').order("id asc").select()
         return mw.getJson(data)
 
-    def generateScriptFileAndExcuteApi(self):
+    def generateScriptFileAndAddTaskApi(self):
         name = request.form.get('name', '').strip()
         content = unquote(str(request.form.get('content', '')), 'utf-8').replace("\\n", "\n")
 
@@ -123,8 +123,53 @@ class task_api:
         })
 
     def speedLogsFileApi(self):
-        path = request.form.get('path', '').strip()
-        log_file = mw.getRunDir() + path
+        p = request.form.get('path', '').strip()
+        # 生成临时文件
+        if p == '':
+            p = '/tmp/' +  str(time.time()) + '.sh'
+        log_file = mw.getRunDir() + p
         if not os.path.exists(log_file):
             mw.execShell('touch ' + log_file)
         return mw.returnJson(True, 'OK', log_file)
+
+    def generateScriptFileAndExcuteApi(self): 
+        log_path = request.form.get('logPath', '').strip()
+        script_content = unquote(str(request.form.get('scriptContent', '')), 'utf-8').replace("\\n", "\n")
+        
+        cmd = """
+        set -e\n
+        %(script_content)s
+        """ % {'script_content': script_content, 'log_path': log_path}
+
+        # 写入临时文件用于执行
+        tempFilePath = mw.getRunDir() + '/tmp/' +  str(time.time()) + '.sh'
+        tempFileContent = """
+        { 
+            {
+                %(cmd)s
+                if [ $? -eq 0 ]; then
+                    true
+                else
+                    false
+                fi
+            } && {
+                echo "执行完毕"
+                rm -f %(tempFilePath)s
+            }
+        } || { 
+            echo "执行失败"
+            rm -f %(tempFilePath)s
+            exit 1
+        }
+        """ % {'cmd': cmd, 'tempFilePath': tempFilePath}
+        mw.writeFile(tempFilePath, tempFileContent)
+        mw.execShell('chmod 750 ' + tempFilePath)
+        # 使用os.system执行命令，不会返回结果
+        data = mw.execShell('source /root/.bashrc && ' + tempFilePath + ' > ' + log_path + ' 2>&1')
+        # 删除临时文件
+        mw.execShell('rm -f ' + tempFilePath)
+        if data[2] != 0:
+            return mw.returnJson(False, '执行失败' )
+        return mw.returnJson(True, 'ok')
+
+        

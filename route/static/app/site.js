@@ -1866,11 +1866,11 @@ function deploySSL(type,id,siteName){
 }
 
 function renewSSL(type,id,siteName){
-	showSpeedWindow('正在续签...', '/logs/letsencrypt.log', function(layers,index){
+	showLogWindow('正在续签...', { logPath: '/logs/letsencrypt.log', autoClearLog: false }, function({layerIndex}){
 		$.post('/site/renew_ssl','site_name='+siteName+'&ssl_type='+type,function(rdata){
 			showMsg(rdata.msg, function(){
 				if (rdata.status){
-					layer.close(index);
+					layer.close(layerIndex);
 					opSSL(type,id,siteName);
 				}
 			},{icon:rdata.status?1:2}, 2000);
@@ -2236,14 +2236,14 @@ function ocSSL(action,siteName){
 
 //生成SSL
 function newSSL(siteName, id, domains){
-	showSpeedWindow('正在申请...', '/logs/letsencrypt.log', function(layers,index){
+	showLogWindow('正在申请...', { logPath: '/logs/letsencrypt.log', autoClearLog: false }, function({layerIndex}){
 		var force = '';
 		if ($("#checkDomain").prop("checked")){
 			force = '&force=true';
 		}
 		var email = $("input[name='admin_email']").val();
 		$.post('/site/create_let','siteName='+siteName+'&domains='+domains+'&email='+email + force,function(rdata){
-			layer.close(index);
+			layer.close(layerIndex);
 			if(rdata.status){
 				showMsg(rdata.msg, function(){
 					$(".tab-nav span:first-child").click();
@@ -2256,14 +2256,14 @@ function newSSL(siteName, id, domains){
 }
 
 function newAcmeSSL(siteName, id, domains){
-	showSpeedWindow('正在由ACME申请...', '/logs/acme.log', function(layers,index){
+	showLogWindow('正在由ACME申请...', { logPath: '/logs/acme.log', autoClearLog: false }, function({layerIndex}){
 		var force = '';
 		if($("#checkDomain").prop("checked")){
 			force = '&force=true';
 		}
 		var email = $("input[name='admin_email']").val();
 		$.post('/site/create_acme','siteName='+siteName+'&domains='+domains+'&email='+email + force,function(rdata){
-			layer.close(index);
+			layer.close(layerIndex);
 			if(rdata.status){
 				showMsg(rdata.msg, function(){
 					$(".tab-nav span:first-child").click();

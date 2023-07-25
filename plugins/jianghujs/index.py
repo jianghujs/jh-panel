@@ -316,8 +316,7 @@ def projectAdd():
     reloadScript = getScriptArg('reloadScript')
     stopScript = getScriptArg('stopScript')
     autostartScript = getScriptArg('autostartScript')
-    deployScript = getScriptArg('deployScript')
-
+    
     echo =  mw.md5(str(time.time()) + '_jianghujs')
     id = int(time.time())
     saveOne('project', id, {
@@ -334,13 +333,7 @@ def projectAdd():
     makeScriptFile(echo + '_start.sh', 'touch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
     makeScriptFile(echo + '_reload.sh', 'touch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))
     makeScriptFile(echo + '_stop.sh', 'touch %s\necho "停止中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, stopScript, statusFile))
-    if deployScript is not None and deployScript != '':
-        makeScriptFile(echo + '_deploy.sh', 'set -x\ntouch %s\necho "部署中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, deployScript, statusFile))
-        mw.addAndTriggerTask(
-            name = '执行江湖管理器命令[deploy: ' + name + ']',
-            execstr = 'source /root/.bashrc && ' + getServerDir() + '/script/' + echo + '_deploy.sh'
-        )
-
+    
     return mw.returnJson(True, '添加成功!')
 
 def projectEdit():
@@ -466,8 +459,12 @@ def cloneProject():
 
     cmd += """
     echo "正在拉取项目文件..."
-    git clone %(git_url)s %(path)s    
-    """ % {'git_url': git_url, 'path': path}
+    git clone --progress %(git_url)s %(path)s
+    echo "拉取项目文件成功"
+    """ % {'git_url': git_url, 'path': path, 'log_file': log_file}
+
+    # git clone --progress %(git_url)s %(path)s  2>&1 | tee %(log_file)s
+    # git clone %(git_url)s %(path)s > %(log_file)s 2>&1
 
     # 写入临时文件用于执行
     tempFilePath = mw.getRunDir() + '/tmp/' +  str(time.time()) + '.sh'

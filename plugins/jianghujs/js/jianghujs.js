@@ -288,7 +288,7 @@ function deleteItem(id, name) {
 
 
 
-function openDeployItem() {
+async function openDeployItem() {
     deployLayer = layer.open({
         type: 1,
         skin: 'demo-class',
@@ -428,11 +428,13 @@ function handleGitUrlChange() {
 }
 
 
-function submitDeployItem() {
-    var data = $("#deployForm").serialize();
+async function submitDeployItem() {
+    var deployForm = $("#deployForm").serialize();
+    let deployScript = $('#projectDeployScript').val();
+    await execScriptAndShowLog('正在部署项目...', deployScript);
 
-    requestApi('project_add', data, function(data){
-    	var rdata = $.parseJSON(data.data);
+    requestApi('project_add', deployForm, function(data){
+        var rdata = $.parseJSON(data.data);
         if(rdata.status) {
             layer.close(deployLayer);
             refreshTable();
@@ -467,12 +469,12 @@ async function submitDeployItemStep1(deployLayer) {
     }
     await checkPathExist(path);
 
-    showSpeedWindow('正在拉取代码...', '/tmp/plugin_jianghujs_clone_project.log', function(ok,index){
+    showLogWindow('正在拉取代码...', { logPath: '/tmp/plugin_jianghujs_clone_project.log' }, function({success}){
         requestApi('clone_project', form, function(rdata){
             data = $.parseJSON(rdata.data);
             
             requestApi('get_project_deploy_file', form, function(rdata) {
-                deployScript = rdata.data || ('cd ' + path + '\nnpm i\ncd config\ncp config.prod.example.js config.prod.js');
+                deployScript = rdata.data || ('cd ' + path + '\nnpm i --loglevel verbose\ncd config\ncp config.prod.example.js config.prod.js');
                 $('#projectDeployScript').val(deployScript);
             })
             handlePathChange()
@@ -482,7 +484,7 @@ async function submitDeployItemStep1(deployLayer) {
                     layer.msg(data.msg,{icon:2, time:2000});
                     return;
                 }
-                await ok();
+                await success();
                 $("#deployForm .step1, #deployForm .step1-btn").hide();
                 $("#deployForm .step2, #deployForm .step2-btn").show();
                 refreshLayerCenter(deployLayer);
@@ -494,7 +496,7 @@ async function submitDeployItemStep1(deployLayer) {
 function handlePathChange() {
     let path = document.getElementById('projectPath').value;
     let name = (path || '').split('/').pop();
-    let startScript = 'cd ' + path + '\nnpm i\nnpm start';
+    let startScript = 'cd ' + path + '\nnpm i --loglevel verbose\nnpm start';
     let reloadScript = 'cd ' + path + '\nnpm stop\nnpm start';
     let stopScript = 'cd ' + path + '\nnpm stop';
     let autostartScript = '\

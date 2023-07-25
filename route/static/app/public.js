@@ -1805,7 +1805,7 @@ function showSpeed(filename) {
 /**
  * 显示进度窗口
  */
-function showSpeedWindow(msg, speed_log_file_path, callback){
+function showLogWindow(msg, { logPath, autoClearLog = true }, callback){
 	var speed_msg = "<pre style='margin-bottom: 0px;height:250px;text-align: left;background-color: #000;color: #fff;white-space: pre-wrap;' id='speed_log_lst'>[MSG]</pre>";
 	var showSpeedKey = layer.open({
 		title: false,
@@ -1816,23 +1816,64 @@ function showSpeedWindow(msg, speed_log_file_path, callback){
 		offset: "30%",
 		content: speed_msg.replace('[MSG]', msg),
 		success: function (layers, index) {
-			$.post('/task/speed_logs_file', {path: speed_log_file_path}, function(rdata){
+			$.post('/task/speed_logs_file', {path: logPath}, function(rdata){
+				logPath = rdata.data;
 				if (rdata.status){
 					setTimeout(function () {
-						showSpeed(rdata.data);
+						showSpeed(logPath);
 					}, 1000);
+					if (callback) {
+						callback({
+							success: async () => {
+								return openTimoutLayer('执行完毕，即将自动关闭', () => {
+									layer.close(index);
+								}, { confirmBtn: '关闭', timeout: 3 })
+							}, 
+							layers,
+							layerIndex: index,
+							logPath,
+							showSpeedKey
+						});
+					}
 				} else {
 					layer.msg("缺少指定文件!");
 				}
 			},'json');
-			if (callback) {callback(async () => {
-				return openTimoutLayer('执行完毕，即将自动关闭', () => {
-					layer.close(index);
-				}, { confirmBtn: '关闭', timeout: 3 })
-			}, index,showSpeedKey);}
+		},
+		end: function () {
+			if (autoClearLog && logPath){
+				$.post('/files/remove_file', {path: logPath}, function(){});
+			}
 		}
     });
 }
+
+
+async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, fail} = {}) {
+	return new Promise((resolve, reject) => {
+		showLogWindow(logTitle, {logPath}, function({success: logWindowSuccess, logPath}){
+			$.post('/task/generate_script_file_and_excute', {logPath, scriptContent: encodeURIComponent(scriptContent)}, function (rdata) {
+					let data = JSON.parse(rdata)
+					if(!data.status) {
+							layer.msg(data.msg,{icon:2, time:2000});
+							fail && fail();
+							return;
+					}
+
+					setTimeout(async function(){    
+							if(!data.status) {
+									layer.msg(data.msg,{icon:2, time:2000});
+									return;
+							}
+							await logWindowSuccess();
+							success && success();
+							resolve();
+					}, 0)
+			})
+		});
+});
+}
+
 
 
 /*** 其中功能,针对插件通过库使用 start ***/
@@ -2398,13 +2439,13 @@ function openEditCodeAndExcute({name = '执行命令', title = '执行', submitB
 }
 
 function excuteScriptTask(name, content) {
-	$.post('/task/generate_script_file_and_excute', {name, content: encodeURIComponent(content)},function (rdata) {
+	$.post('/task/generate_script_file_and_add_task', {name, content: encodeURIComponent(content)},function (rdata) {
 		const { data } = JSON.parse(rdata)
 		// const { tempFilePath } = data
 		// layer.msg("添加任务完成",{icon:1,time:2000,shade: [0.3, '#000']});
 		setTimeout(() => {
 			messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
-			// showSpeedWindow('任务执行中...', tempFilePath)
+			// showLogWindow('任务执行中...', tempFilePath)
 		}, 1000)
 	})
 }

@@ -70,3 +70,13 @@ backup_file "/root/.ssh/config"
 config_ssh $domain $filename
 
 echo "==== 配置$domain关联密钥文件/root/.ssh/$filename成功✅"
+
+
+# 打印域名、邮箱、密钥文件位置和公钥内容
+echo "================ 密钥信息 ================"
+echo "域名: $domain"
+echo "邮箱: $email"
+echo "密钥文件位置: /root/.ssh/$filename"
+echo "公钥内容:"
+cat "/root/.ssh/$filename.pub"
+echo "========================================="

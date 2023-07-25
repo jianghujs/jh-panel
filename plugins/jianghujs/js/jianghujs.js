@@ -16,7 +16,7 @@ function refreshTable() {
     let firstLoad = $('.jianghujs-panel').length == 0;
 	var con = '\
     <div class="divtable jianghujs-panel">\
-    <button class="btn btn-default btn-sm va0" onclick="openDeployItem();">部署项目</button>\
+    <button class="btn btn-success btn-sm va0" onclick="openDeployItem();">部署项目</button>\
     <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">导入项目</button>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\

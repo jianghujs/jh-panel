@@ -137,31 +137,24 @@ class task_api:
         script_content = unquote(str(request.form.get('scriptContent', '')), 'utf-8').replace("\\n", "\n")
         
         cmd = """
-        set -e\n
         %(script_content)s
         """ % {'script_content': script_content, 'log_path': log_path}
 
         # 写入临时文件用于执行
         tempFilePath = mw.getRunDir() + '/tmp/' +  str(time.time()) + '.sh'
         tempFileContent = """
-        { 
-            {
-                %(cmd)s
-                if [ $? -eq 0 ]; then
-                    true
-                else
-                    false
-                fi
-            } && {
-                echo "执行完毕"
-                rm -f %(tempFilePath)s
-            }
-        } || { 
-            echo "执行失败"
-            rm -f %(tempFilePath)s
-            exit 1
-        }
+        set -e\n
+        %(cmd)s
+        if [ $? -eq 0 ]; then
+            true
+        else
+            false
+        fi
+    
+        rm -f %(tempFilePath)s
+            
         """ % {'cmd': cmd, 'tempFilePath': tempFilePath}
+        mw.writeFile('/root/6.txt', tempFileContent)
         mw.writeFile(tempFilePath, tempFileContent)
         mw.execShell('chmod 750 ' + tempFilePath)
         # 使用os.system执行命令，不会返回结果

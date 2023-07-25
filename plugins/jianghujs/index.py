@@ -450,7 +450,7 @@ def getCloneScript():
     host = extractDomainFromGitUrl(git_url)
     is_host_in_known_hosts = mw.checkExistHostInKnownHosts(host)
     
-    cmd = "set -e\n"
+    cmd = ""
     if exist_path:
         cmd += """
         echo "正在删除旧项目文件..."
@@ -459,7 +459,9 @@ def getCloneScript():
     if not is_host_in_known_hosts:
         cmd += """
         echo "正在添加git服务器到已知主机列表..."
-        ssh-keyscan -H %(host)s >> ~/.ssh/known_hosts
+        {
+        ssh-keyscan %(host)s >> ~/.ssh/known_hosts
+        } || echo "添加可信域名失败"
         """ % {'host': host}
     cmd += """
     echo "正在拉取项目文件..."

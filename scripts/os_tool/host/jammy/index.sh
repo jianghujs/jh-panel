@@ -60,7 +60,7 @@ case $choice in
         declare -A scripts
         scripts=(
         ["切换apt源"]="switch_apt_sources.sh"
-        ["分配固定IP"]="set_static_ip.sh"
+        ["分配固定IP"]="set_static_ip_multi_network.sh"
         ["禁用睡眠"]="nosleep.sh"
         ["安装并配置xrdp自启动"]="install_xrdp.sh"
         ["安装并配置VirtualBox自启动"]="install_virtualbox.sh"

@@ -30,7 +30,6 @@ else
 fi
 
 show_menu() {
-    clear
     echo "==================host jammy os-tools=================="
     echo "请选择一个操作:"
     echo "1. 初始化环境"

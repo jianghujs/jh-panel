@@ -128,34 +128,27 @@ def reload():
 def mountList():
     data = getAll('mount')
 
-    # autostartStatus
-    autostartStatusCmd = "cat /etc/fstab"
-    autostartStatusExec = mw.execShell(autostartStatusCmd)
+    # 根据id倒序排序
+    data.sort(key=lambda x: x['id'], reverse=True)
+
+    autostartStatusExec = mw.execShell("cat /etc/fstab")
+    mountExec = mw.execShell('mount')
+    
     for item in data:
+        # autostartStatus
         serverIP = item.get('serverIP', '')
         mountServerPath = item.get('mountServerPath', '')
         mountPath = item.get('mountPath', '')
         automountFindStr = '%(serverIP)s:%(mountServerPath)s %(mountPath)s nfs ' % {"serverIP": serverIP, "mountServerPath": mountServerPath, "mountPath": mountPath}
-        item['autostartStatus'] = 'start' if automountFindStr in autostartStatusExec[0] else 'stop' 
-    
-    # status
-    mountExec = mw.execShell('mount')
-    for item in data:
+        item['autostartStatus'] = 'start' if automountFindStr in autostartStatusExec[0] else 'stop'
+        
+        # status
         mountPath = item.get('mountPath', '')
         item['status'] = 'start' if mountPath in mountExec[0] else 'stop'
 
-    # statusMap = {}
-    # for item in data:
-    #     path = item.get('path', '') 
-    #     statusCmd = "ps -ef|grep " + path + " |grep -v grep |grep -v python | awk '{print $0}'"
-    #     statusExec = mw.execShell(statusCmd)
-    #     statusMap[path] = 'start' if statusExec[0] != '' else 'stop'
-
-    # for item in data:
-    #     path = item.get('path', '') 
-    #     echo = item.get('echo', '')
-    #     item['autostartStatus'] = autostartStatusMap[echo]
-    #     item['status'] = statusMap[path]
+        # 格式化createTime
+        createTime = item.get('createTime', 0)
+        item['createTime'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(createTime))
 
     return mw.returnJson(True, 'ok', data)
 

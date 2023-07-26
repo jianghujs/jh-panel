@@ -22,6 +22,7 @@ function refreshTable() {
                 <th>挂载路径</th>\
                 <th>开机自动挂载</th>\
                 <th>状态</th>\
+                <th>创建时间</th>\
                 <th style="text-align: right;" width="150">操作</th></tr>\
             </thead>\
             <tbody class="plugin-table-body"></tbody>\
@@ -71,10 +72,11 @@ function refreshTable() {
             
             tbody += '<tr>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>\
-                        <td style="width: 180px;">'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'</td>\
-                        <td style="width: 180px;">'+tmp[i].temMountPath+'</td>' +
-                        '<td style="width: 180px;">'+autostart+'</td>' +
+                        <td style="width: 180px;"><div style=" width:180px; overflow: hidden; text-overflow: ellipsis;" title="'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'">'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'</div></td>\
+                        <td style="width: 180px;"><div style=" width:180px; overflow: hidden; text-overflow: ellipsis;" title="'+tmp[i].mountPath+'">'+tmp[i].temMountPath+'</div></td>' +
+                        '<td style="width: 220px;">'+autostart+'</td>' +
                         '<td style="width: 100px;">'+status+'</td>' +
+                        '<td style="width: 180px;">'+tmp[i].createTime+'</td>' +
                         '<td style="text-align: right;width: 280px;">\
                             '+opt+
                             '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 

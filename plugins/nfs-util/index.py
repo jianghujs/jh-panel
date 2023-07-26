@@ -134,8 +134,14 @@ def mountList():
     # autostartStatusCmd = "ls -R /etc/rc4.d"
     # autostartStatusExec = mw.execShell(autostartStatusCmd)
     # autostartStatusMap = {echo: ('start' if echo in autostartStatusExec[0] else 'stop') for echo in echos}
+    
+    
+    # status
+    mountExec = mw.execShell('mount')
+    for item in data:
+        mountPath = item.get('mountPath', '')
+        item['status'] = 'start' if mountPath in mountExec[0] else 'stop'
 
-    # # status
     # statusMap = {}
     # for item in data:
     #     path = item.get('path', '') 
@@ -201,6 +207,36 @@ def mountDelete():
     deleteOne('mount', id)
     return mw.returnJson(True, '删除成功!')
 
+def getMountScript():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    mount = getOne('mount', id)
+    if not mount:
+        return mw.returnJson(False, '挂载不存在!')
+    serverIP = mount.get('serverIp', '')
+    mountServerPath = mount.get('mountServerPath', '')
+    mountPath = mount.get('mountPath', '')
+    cmd = ""
+    if not os.path.exists(mountPath):
+        cmd += 'echo "正在创建%(mountPath)s文件夹..." \n mkdir -p %(mountPath)s\n echo "创建%(mountPath)s成功✅\n"' % {"mountPath": mountPath}
+    cmd += 'echo "正在挂载%(serverIP)s:%(mountServerPath)s到%(mountPath)s..." \n mount -t nfs %(serverIP)s:%(mountServerPath)s %(mountPath)s\n echo "挂载成功✅"' % ({"serverIP": serverIP, "mountServerPath": mountServerPath, "mountPath": mountPath})
+    return cmd
+
+def getUnMountScript():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    mount = getOne('mount', id)
+    if not mount:
+        return mw.returnJson(False, '挂载不存在!')
+    mountPath = mount.get('mountPath', '')
+    cmd = 'echo "正在卸载%(mountPath)s..." \n umount %(mountPath)s\n echo "卸载成功✅"' % ({"mountPath": mountPath})
+    return cmd
 
 def cleanProjectStatus():
     # 删除status文件
@@ -622,6 +658,10 @@ if __name__ == "__main__":
         print(mountAdd())
     elif func == 'mount_delete':
         print(mountDelete())
+    elif func == 'get_mount_script':
+        print(getMountScript())
+    elif func == 'get_unmount_script':
+        print(getUnMountScript())
     elif func == 'project_start':
         print(projectStart())
     elif func == 'project_stop':

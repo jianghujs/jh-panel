@@ -45,29 +45,22 @@ function refreshTable() {
         tableData = tmp;
         for(var i=0;i<tmp.length;i++){
             var opt = '';
-            // if(!tmp[i].loadingStatus) {
-            //     if(tmp[i].status != 'start'){
-            //         opt += '<a href="javascript:projectScriptExcute(\'start\', \''+tmp[i].id+'\')" class="btlink">启动</a> | ';
-            //     }else{
-            //         opt += '<a href="javascript:projectScriptExcute(\'stop\', \''+tmp[i].id+'\')" class="btlink">停止</a> | ';
-            //         opt += '<a href="javascript:projectScriptExcute(\'reload\', \''+tmp[i].id+'\')" class="btlink">重启</a> | ';
-            //     }
-            // }
+            if(tmp[i].status != 'start'){
+                opt += '<a href="javascript:doMount(\''+tmp[i].id+'\')" class="btlink">挂载</a> | ';
+            }else{
+                opt += '<a href="javascript:doUnMount(\''+tmp[i].id+'\')" class="btlink">卸载</a> | ';
+            }
 
             const mountPath = tmp[i].mountPath.replace('//','')
             tmp[i].mountPath = mountPath
             tmp[i].temMountPath = '<a class="jhlink" href="javascript:openNewWindowPath(\'' + mountPath + '\')">' + mountPath + '</a>';
             
-            // var status = '';
-            // if(tmp[i].loadingStatus) {
-            //     status = '<span style="color:#cecece;">' + tmp[i].loadingStatus + '</span>';
-            // } else {
-            //     if(tmp[i].status != 'start'){
-            //         status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
-            //     } else {
-            //         status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
-            //     }
-            // }
+            var status = '';
+            if(tmp[i].status != 'start'){
+                status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
+            } else {
+                status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
+            }
             
 
             // var autostart = '';
@@ -81,7 +74,7 @@ function refreshTable() {
                         <td style="width: 180px;">'+tmp[i].serverIp+':'+tmp[i].mountServerPath+'</td>\
                         <td style="width: 180px;">'+tmp[i].temMountPath+'</td>' +
                         '<td style="width: 180px;">'+'autostart'+'</td>' +
-                        '<td style="width: 100px;">'+'status'+'</td>' +
+                        '<td style="width: 100px;">'+status+'</td>' +
                         '<td style="text-align: right;width: 280px;">\
                             '+opt+
                             '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
@@ -262,10 +255,30 @@ function getNfsSharePath() {
 }
 
 function handleMountServerPathChange() {
-    debugger
     let mountServerPath = document.getElementById('mountServerPath').value;
     document.getElementById('mountName').value = mountServerPath.split('/').pop();;
     document.getElementById('mountPath').value = mountServerPath;
+}
+
+
+async function doMount(id) {
+    var mountScriptData = await requestApi('get_mount_script', "id="+id);
+    if (!mountScriptData.status){
+        layer.msg(mountScriptData.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+        return;
+    }
+    await execScriptAndShowLog('正在挂载...', mountScriptData.data);
+    refreshTable();
+}
+
+async function doUnMount(id) {
+    var unMountScriptData = await requestApi('get_unmount_script', "id="+id);
+    if (!unMountScriptData.status){
+        layer.msg(unMountScriptData.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+        return;
+    }
+    await execScriptAndShowLog('正在卸载...', unMountScriptData.data);
+    refreshTable();
 }
 
 function toggleAutostart(id) {

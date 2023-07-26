@@ -8,6 +8,11 @@ then
     exit 1
 fi
 
+# 检查脚本文件夹是否存在，不存在则创建
+if [ ! -d "/opt/seatable" ]; then
+    mkdir -p /opt/seatable
+fi
+
 # 创建脚本文件
 echo "正在配置启动脚本文件..."
 cat << EOF > /opt/seatable/seatable-autostart.sh

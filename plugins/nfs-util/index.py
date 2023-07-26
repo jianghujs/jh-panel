@@ -130,11 +130,15 @@ def reload():
 def mountList():
     data = getAll('mount')
 
-    # # autostartStatus
-    # autostartStatusCmd = "ls -R /etc/rc4.d"
-    # autostartStatusExec = mw.execShell(autostartStatusCmd)
-    # autostartStatusMap = {echo: ('start' if echo in autostartStatusExec[0] else 'stop') for echo in echos}
-    
+    # autostartStatus
+    autostartStatusCmd = "cat /etc/fstab"
+    autostartStatusExec = mw.execShell(autostartStatusCmd)
+    for item in data:
+        serverIP = item.get('serverIp', '')
+        mountServerPath = item.get('mountServerPath', '')
+        mountPath = item.get('mountPath', '')
+        automountFindStr = '%(serverIP)s:%(mountServerPath)s %(mountPath)s nfs ' % {"serverIP": serverIP, "mountServerPath": mountServerPath, "mountPath": mountPath}
+        item['autostartStatus'] = 'start' if automountFindStr in autostartStatusExec[0] else 'stop' 
     
     # status
     mountExec = mw.execShell('mount')
@@ -237,6 +241,38 @@ def getUnMountScript():
     mountPath = mount.get('mountPath', '')
     cmd = 'echo "正在卸载%(mountPath)s..." \n umount %(mountPath)s\n echo "卸载成功✅"' % ({"mountPath": mountPath})
     return cmd
+
+
+def mountToggleAutostart():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    mount = getOne('mount', id)
+    if not mount:
+        return mw.returnJson(False, '挂载不存在!')
+
+    # 配置开机自动挂载命令 echo "192.168.3.63:/root/test_share /root/test_share_client nfs defaults 0 0" >> /etc/fstab，如果是取消自动挂载，则删除对应行
+    serverIP = mount.get('serverIp', '')
+    mountServerPath = mount.get('mountServerPath', '')
+    mountPath = mount.get('mountPath', '')
+    
+    autostartStatusCmd = "cat /etc/fstab"
+    autostartStatusExec = mw.execShell(autostartStatusCmd)
+    automountFindStr = '%(serverIP)s:%(mountServerPath)s %(mountPath)s nfs defaults 0 0' % {"serverIP": serverIP, "mountServerPath": mountServerPath, "mountPath": mountPath}
+    autostartStatus = 'start' if automountFindStr in autostartStatusExec[0] else 'stop'
+    
+    if autostartStatus == 'start':
+        cancelAutomountCmd = "sed -i '/%(automountFindStr)s/d' /etc/fstab" % {"automountFindStr": automountFindStr.replace('/', '\\/')}
+        print(cancelAutomountCmd, '取消')
+        mw.execShell(cancelAutomountCmd)
+        return mw.returnJson(True, '已关闭自启动!')
+    else:
+        automountCmd = "echo '%(automountFindStr)s' >> /etc/fstab" % {"automountFindStr": automountFindStr}
+        mw.execShell(automountCmd)
+        return mw.returnJson(True, '已开启自启动!')
+
 
 def cleanProjectStatus():
     # 删除status文件
@@ -662,6 +698,8 @@ if __name__ == "__main__":
         print(getMountScript())
     elif func == 'get_unmount_script':
         print(getUnMountScript())
+    elif func == 'mount_toggle_autostart':
+        print(mountToggleAutostart())
     elif func == 'project_start':
         print(projectStart())
     elif func == 'project_stop':

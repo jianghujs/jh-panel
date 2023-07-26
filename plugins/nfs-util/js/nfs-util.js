@@ -63,17 +63,17 @@ function refreshTable() {
             }
             
 
-            // var autostart = '';
-            // var autostartChecked = tmp[i].autostartStatus == 'start'? 'checked' : '';
-            // autostart = '<div class="autostart-item">\
-            //     <input class="btswitch btswitch-ios" id="autostart_' + tmp[i].id + '" type="checkbox" ' + autostartChecked + '>\
-            //     <label class="btswitch-btn" for="autostart_' + tmp[i].id + '" onclick="toggleAutostart(\'' + tmp[i].id + '\')"></label></div>';
+            var autostart = '';
+            var autostartChecked = tmp[i].autostartStatus == 'start'? 'checked' : '';
+            autostart = '<div class="autostart-item">\
+                <input class="btswitch btswitch-ios" id="autostart_' + tmp[i].id + '" type="checkbox" ' + autostartChecked + '>\
+                <label class="btswitch-btn" for="autostart_' + tmp[i].id + '" onclick="toggleAutostart(\'' + tmp[i].id + '\')"></label></div>';
             
             tbody += '<tr>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>\
                         <td style="width: 180px;">'+tmp[i].serverIp+':'+tmp[i].mountServerPath+'</td>\
                         <td style="width: 180px;">'+tmp[i].temMountPath+'</td>' +
-                        '<td style="width: 180px;">'+'autostart'+'</td>' +
+                        '<td style="width: 180px;">'+autostart+'</td>' +
                         '<td style="width: 100px;">'+status+'</td>' +
                         '<td style="text-align: right;width: 280px;">\
                             '+opt+
@@ -282,7 +282,7 @@ async function doUnMount(id) {
 }
 
 function toggleAutostart(id) {
-    requestApi('project_toggle_autostart', {id}, function(data){
+    requestApi('mount_toggle_autostart', {id}, function(data){
     	var rdata = $.parseJSON(data.data);
         if(rdata.status) {
             layer.close(addLayer);

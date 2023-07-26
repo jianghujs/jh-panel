@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# 添加确认提示
+read -p "确定要配置seatable自启动服务吗？ (y/n) " -n 1 -r
+echo    # (optional) move to a new line
+if [[ ! $REPLY =~ ^[Yy]$ ]]
+then
+    exit 1
+fi
+
 # 创建脚本文件
 echo "正在配置启动脚本文件..."
 cat << EOF > /opt/seatable/seatable-autostart.sh

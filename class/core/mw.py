@@ -1678,10 +1678,12 @@ def getSSHStatus():
 
 def checkExistHostInKnownHosts(host):
     known_hosts_file = os.path.expanduser('~/.ssh/known_hosts')
-    with open(known_hosts_file, 'r') as f:
-        for line in f:
-            if host in line:
-                return True
+    # 检查文件是否存在
+    if not os.path.exists(known_hosts_file):
+        with open(known_hosts_file, 'r') as f:
+            for line in f:
+                if host in line:
+                    return True
     return False
 
 def addHostToKnownHosts(host):

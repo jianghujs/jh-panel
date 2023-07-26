@@ -1874,7 +1874,7 @@ async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, 
 							await logWindowSuccess({timeout: logWindowSuccessTimeout});
 							success && success();
 							resolve();
-					}, 0)
+					}, 1000)
 			})
 		});
 });

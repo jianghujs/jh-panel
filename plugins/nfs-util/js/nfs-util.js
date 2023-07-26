@@ -228,7 +228,7 @@ function submitEditItem(){
 }
 
 function deleteItem(id, name) {
-    safeMessage('确认删除挂载[' + name + ']', '删除[' + name + ']挂载只会在挂载列表移除，不会挂载的运行', function(){
+    safeMessage('确认删除挂载[' + name + ']', '删除[' + name + ']挂载只会在挂载列表移除，不会影响挂载的运行！<span style="color: red">如果需要卸载和取消自启动，请先完成对应操作后再删除！<span>', function(){
         var data = "id="+id;
         requestApi('mount_delete', data, function(data){
         	var rdata = $.parseJSON(data.data);

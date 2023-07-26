@@ -72,8 +72,8 @@ function refreshTable() {
             
             tbody += '<tr>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>\
-                        <td style="width: 180px;"><div style=" width:180px; overflow: hidden; text-overflow: ellipsis;" title="'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'">'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'</div></td>\
-                        <td style="width: 180px;"><div style=" width:180px; overflow: hidden; text-overflow: ellipsis;" title="'+tmp[i].mountPath+'">'+tmp[i].temMountPath+'</div></td>' +
+                        <td style="width: 160px;"><div style=" width:160px; overflow: hidden; text-overflow: ellipsis;" title="'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'">'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'</div></td>\
+                        <td style="width: 160px;"><div style=" width:160px; overflow: hidden; text-overflow: ellipsis;" title="'+tmp[i].mountPath+'">'+tmp[i].temMountPath+'</div></td>' +
                         '<td style="width: 220px;">'+autostart+'</td>' +
                         '<td style="width: 100px;">'+status+'</td>' +
                         '<td style="width: 180px;">'+tmp[i].createTime+'</td>' +

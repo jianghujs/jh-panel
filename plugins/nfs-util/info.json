@@ -1,0 +1,15 @@
+{
+	"title":"NFS管理器",
+	"tip":"soft",
+	"name":"nfs-util",
+	"ps":"管理NFS挂载信息",
+	"versions":"1.0",
+	"updates":"1.0",
+	"shell":"install.sh",
+	"checks":"server/nfs-util",
+	"path": "server/nfs-util",
+	"author":"nfs-util",
+	"home":"https://cn.openjianghu.org/",
+	"date":"2023-07-26",
+	"pid": "-1"
+}

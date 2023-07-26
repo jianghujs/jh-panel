@@ -452,7 +452,6 @@ def getAddKnownHostsScript():
         {
             echo "\n" >> ~/.ssh/known_hosts
             ssh-keyscan %(host)s >> ~/.ssh/known_hosts
-            /etc/init.d/ssh restart
         } || echo "添加可信域名失败"
         """ % {'host': host}
 

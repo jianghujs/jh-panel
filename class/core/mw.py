@@ -37,7 +37,7 @@ def execShell(cmdstring, cwd=None, timeout=None, shell=True):
         end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
 
     sub = subprocess.Popen(cmdstring_list, cwd=cwd, stdin=subprocess.PIPE,
-                           shell=shell, bufsize=4096, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                           shell=shell, bufsize=4096, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
 
     while sub.poll() is None:
         time.sleep(0.1)

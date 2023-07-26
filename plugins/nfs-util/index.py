@@ -134,7 +134,7 @@ def mountList():
     autostartStatusCmd = "cat /etc/fstab"
     autostartStatusExec = mw.execShell(autostartStatusCmd)
     for item in data:
-        serverIP = item.get('serverIp', '')
+        serverIP = item.get('serverIP', '')
         mountServerPath = item.get('mountServerPath', '')
         mountPath = item.get('mountPath', '')
         automountFindStr = '%(serverIP)s:%(mountServerPath)s %(mountPath)s nfs ' % {"serverIP": serverIP, "mountServerPath": mountServerPath, "mountPath": mountPath}
@@ -172,7 +172,7 @@ def getNfsSharePath():
     data = mw.execShell(cmd)
     if data[0] == '':
         return mw.returnJson(False, '获取共享目录失败!')
-    pattern = r"(/[\w/]+)\s([\d.,]+)"
+    pattern = r"(/[\w/]+)\s+([\d.,]+)"
     matches = re.findall(pattern, data[0])
     result = [{"path": m[0], "whiteIPs": m[1]} for m in matches]
     return mw.returnJson(True, 'ok', result)
@@ -191,7 +191,7 @@ def mountAdd():
 
     id = int(time.time())
     saveOne('mount', id, {
-        'serverIp': serverIP,
+        'serverIP': serverIP,
         'mountServerPath': mountServerPath,
         'name': name,
         'mountPath': mountPath,
@@ -200,6 +200,29 @@ def mountAdd():
     })
     return mw.returnJson(True, '添加成功!')
 
+def mountEdit():
+    args = getArgs()
+    data = checkArgs(args, ['serverIP', 'mountServerPath', 'name', 'mountPath', 'remark'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    serverIP = unquote(args['serverIP'], 'utf-8')
+    mountServerPath = unquote(args['mountServerPath'], 'utf-8')
+    name = unquote(args['name'], 'utf-8')
+    mountPath = unquote(args['mountPath'], 'utf-8')
+    remark = unquote(args['remark'], 'utf-8')
+    mount = getOne('mount', id)
+    if not mount:
+        return mw.returnJson(False, '挂载不存在!')
+    saveOne('mount', id, {
+        'serverIP': serverIP,
+        'mountServerPath': mountServerPath,
+        'name': name,
+        'mountPath': mountPath,
+        'remark': remark,
+    })
+    
+    return mw.returnJson(True, '修改成功!')
 
 def mountDelete():
     args = getArgs()
@@ -220,7 +243,7 @@ def getMountScript():
     mount = getOne('mount', id)
     if not mount:
         return mw.returnJson(False, '挂载不存在!')
-    serverIP = mount.get('serverIp', '')
+    serverIP = mount.get('serverIP', '')
     mountServerPath = mount.get('mountServerPath', '')
     mountPath = mount.get('mountPath', '')
     cmd = ""
@@ -253,8 +276,7 @@ def mountToggleAutostart():
     if not mount:
         return mw.returnJson(False, '挂载不存在!')
 
-    # 配置开机自动挂载命令 echo "192.168.3.63:/root/test_share /root/test_share_client nfs defaults 0 0" >> /etc/fstab，如果是取消自动挂载，则删除对应行
-    serverIP = mount.get('serverIp', '')
+    serverIP = mount.get('serverIP', '')
     mountServerPath = mount.get('mountServerPath', '')
     mountPath = mount.get('mountPath', '')
     
@@ -692,6 +714,8 @@ if __name__ == "__main__":
         print(getNfsSharePath())
     elif func == 'mount_add':
         print(mountAdd())
+    elif func == 'mount_edit':
+        print(mountEdit())
     elif func == 'mount_delete':
         print(mountDelete())
     elif func == 'get_mount_script':

@@ -71,7 +71,7 @@ function refreshTable() {
             
             tbody += '<tr>\
                         <td style="width: 180px;">'+tmp[i].name+'</td>\
-                        <td style="width: 180px;">'+tmp[i].serverIp+':'+tmp[i].mountServerPath+'</td>\
+                        <td style="width: 180px;">'+tmp[i].serverIP+':'+tmp[i].mountServerPath+'</td>\
                         <td style="width: 180px;">'+tmp[i].temMountPath+'</td>' +
                         '<td style="width: 180px;">'+autostart+'</td>' +
                         '<td style="width: 100px;">'+status+'</td>' +
@@ -107,7 +107,7 @@ function openCreateItem() {
             <div class='line'>\
                 <span class='tname'>共享目录</span>\
                 <div class='info-r c4'>\
-                <select id='mountServerPath' class='bt-input-text c5 mr5' name='mountServerPath' placeholder='请选择共享目录' style='width:458px' onchange='handleMountServerPathChange'>\
+                <select id='mountServerPath' class='bt-input-text c5 mr5' name='mountServerPath' placeholder='请选择共享目录' style='width:458px' onchange='handleMountServerPathChange()'>\
                     <option>无数据</option>\
                 </select>\
                 </div>\
@@ -151,54 +151,54 @@ function submitCreateItem(){
     });
 }
 
-function openEditItem(id) {
+async function openEditItem(id) {
     editItem = tableData.find(item => item.id == id) || {};
-
+    if(editItem.status == 'start') {
+        layer.msg('请先卸载挂载目录后再编辑', { icon: 2 });
+        return;
+    }
     editLayer = layer.open({
         type: 1,
         skin: 'demo-class',
         area: '640px',
-        title: '编辑项目',
+        title: '编辑挂载目录配置',
         closeBtn: 1,
         shift: 0,
         shadeClose: false,
         content: "\
         <form class='bt-form pd20 pb70' id='editForm'>\
             <div class='line'>\
-                <span class='tname'>项目根目录</span>\
+                <span class='tname'>NFS服务器IP</span>\
                 <div class='info-r c4'>\
-                    <input onchange='handlePathChange()' id='projectPath' class='bt-input-text mr5' type='text' name='path' value='"+editItem.path+"' placeholder='"+editItem.path+"' style='width:458px' />\
-                    <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"projectPath\")'></span>\
+                    <input id='serverIP' class='bt-input-text' type='text' name='serverIP' placeholder='请输入NFS服务器IP，并点击获取共享目录' value='"+editItem.serverIP+"' style='width: 336px' />\
+                    <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"getNfsSharePath()\">点击获取共享目录</button>\
                 </div>\
             </div>\
             <div class='line'>\
-                <span class='tname'>项目名称</span>\
+                <span class='tname'>共享目录</span>\
                 <div class='info-r c4'>\
-                    <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:458px' value='" + editItem.name + "'/>\
+                <select id='mountServerPath' class='bt-input-text c5 mr5' name='mountServerPath' placeholder='请选择共享目录' style='width:458px' value='"+editItem.mountServerPath+"' onchange='handleMountServerPathChange'>\
+                    <option>无数据</option>\
+                </select>\
                 </div>\
             </div>\
             <div class='line'>\
-                <span class='tname'>启动脚本</span>\
+                <span class='tname'>挂载名称</span>\
                 <div class='info-r c4'>\
-                    <textarea id='projectStartScript' class='bt-input-text' name='startScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                    <input id='mountName' class='bt-input-text' type='text' name='name' placeholder='挂载名称' style='width:458px' value='"+editItem.name+"' />\
                 </div>\
             </div>\
             <div class='line'>\
-                <span class='tname'>重启脚本</span>\
+                <span class='tname'>挂载路径</span>\
                 <div class='info-r c4'>\
-                    <textarea id='projectReloadScript' class='bt-input-text' name='reloadScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                    <input onchange='handlePathChange()' id='mountPath' class='bt-input-text mr5' type='text' name='mountPath' value='"+editItem.mountPath+"'  placeholder='请输入挂载路径' style='width:458px' />\
+                    <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"mountPath\")'></span>\
                 </div>\
             </div>\
             <div class='line'>\
-                <span class='tname'>停止脚本</span>\
+                <span class='tname'>备注</span>\
                 <div class='info-r c4'>\
-                    <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
-                </div>\
-            </div>" +  
-            "<div class='line'>\
-                <span class='tname'>自启动脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
+                    <textarea id='mountRemark' class='bt-input-text' name='remark' style='width:458px;height:100px;line-height:22px' value='"+editItem.remark+"' /></textarea>\
                 </div>\
             </div>" +
             "<div class='bt-form-submit-btn'>\
@@ -207,17 +207,17 @@ function openEditItem(id) {
             </div>\
         </form>",
     });
-    
-    $('#projectStartScript').val(editItem.start_script);
-    $('#projectReloadScript').val(editItem.reload_script);
-    $('#projectStopScript').val(editItem.stop_script);
-    $('#projectAutostartScript').val(editItem.autostart_script);
+    await getNfsSharePath();
+    $('#mountServerPath').val(editItem.mountServerPath);
+    $('#mountName').val(editItem.name);
+    $('#mountPath').val(editItem.mountPath);
+    $('#mountRemark').val(editItem.remark);
 }
 
 function submitEditItem(){
     var data = $("#editForm").serialize() + '&id=' + editItem.id;
 
-    requestApi('project_edit', data, function(data){
+    requestApi('mount_edit', data, function(data){
     	var rdata = $.parseJSON(data.data);
         if(rdata.status) {
             layer.close(editLayer);
@@ -238,20 +238,18 @@ function deleteItem(id, name) {
     });
 }
 
-function getNfsSharePath() {
+async function getNfsSharePath() {
     let serverIP = document.getElementById('serverIP').value;
-    requestApi('get_nfs_share_path', {serverIP}, function(data){
-        let rdata = $.parseJSON(data.data);
-        if(rdata.status) {
-            let list = rdata.data || [];
-            let options = list.map(item => '<option value="' + item.path + '">' + item.path + '</option>').join('');
-            $('#mountServerPath').html(options);
-            handleMountServerPathChange();
-        } else {
-            layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
-        }
-    });
-    
+    let data = await requestApi('get_nfs_share_path', {serverIP});
+    let rdata = $.parseJSON(data.data);
+    if(rdata.status) {
+        let list = rdata.data || [];
+        let options = list.map(item => '<option value="' + item.path + '">' + item.path + '</option>').join('');
+        $('#mountServerPath').html(options);
+        handleMountServerPathChange();
+    } else {
+        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+    }
 }
 
 function handleMountServerPathChange() {

@@ -153,8 +153,8 @@ function submitCreateItem(){
 
 async function openEditItem(id) {
     editItem = tableData.find(item => item.id == id) || {};
-    if(editItem.status == 'start') {
-        layer.msg('请先卸载挂载目录后再编辑', { icon: 2 });
+    if(editItem.status == 'start' || editItem.autostartStatus == 'start') {
+        layer.msg('请先卸载挂载目录并关闭开机自动挂载后再进行编辑', { icon: 2 });
         return;
     }
     editLayer = layer.open({
@@ -289,134 +289,6 @@ function toggleAutostart(id) {
         refreshTable();
     });
 }
-
-function projectScriptExcute(scriptKey, id) {
-    var data = "id="+id+"&scriptKey="+scriptKey;
-
-    if (scriptKey === 'stop') {
-        var status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
-        $("#S" + id).html(status);
-    }
-
-    setTimeout(function() {
-        refreshTable()
-    }, 10)
-    requestApi('project_script_excute', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        refreshTable();
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
-    });
-}
-
-function projectStart(path) {
-    var data = "path="+path;
-    requestApi('project_start', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        refreshTable();
-    });
-}
-
-function projectStop(path) {
-    var data = "path="+path;
-    requestApi('project_stop', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        refreshTable();
-    });
-}
-
-function projectUpdate(path) {
-    var data = "path="+path;
-    requestApi('project_update', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        refreshTable();
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
-    });
-}
-
-function handlePathChange() {
-    let path = document.getElementById('projectPath').value;
-    let name = (path || '').split('/').pop();
-    let startScript = 'cd ' + path + '\nnpm i --loglevel verbose\nnpm start';
-    let reloadScript = 'cd ' + path + '\nnpm stop\nnpm start';
-    let stopScript = 'cd ' + path + '\nnpm stop';
-    let autostartScript = '\
-#! /bin/bash\n\
-### BEGIN INIT INFO\n\
-# Provides: OnceDoc\n\
-# Required-Start: $network $remote_fs $local_fs\n\
-# Required-Stop: $network $remote_fs $local_fs\n\
-# Default-Start: 2 3 4 5\n\
-# Default-Stop: 0 1 6\n\
-# Short-Description: start and stop node\n\
-# Description: OnceDoc\n\
-### END INIT INFO\n\
-if [ -e "/www/server/nodejs/fnm" ];then\n\
-  export PATH="/www/server/nodejs/fnm:$PATH"\n\
-  eval "$(fnm env --use-on-cd --shell bash)"\n\
-fi\n\
-if ! command -v npm > /dev/null;then\n\
-  echo "No npm"\n\
-  exit 1\n\
-fi\n\
-WEB_DIR=' + path + '\n\
-cd $WEB_DIR\n\
-npm start\n\
-    ';
-    $('#projectName').val(name);
-    $('#projectStartScript').val(startScript);
-    $('#projectReloadScript').val(reloadScript);
-    $('#projectStopScript').val(stopScript);
-    $('#projectAutostartScript').val(autostartScript);
-}
-
-function deployItemBackStep1() {
-    $("#deployForm .step1, #deployForm .step1-btn").show();
-    $("#deployForm .step2, #deployForm .step2-btn, #deployForm .step2-back-btn").show();
-}
-
-function openProjectLogs(id){
-	layer.msg('正在获取,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
-	var data='&id='+id;
-    requestApi('project_logs', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        if(!rdata.status) {
-			layer.msg(rdata.msg,{icon:2, time:2000});
-			return;
-		};
-		logLayer = layer.open({
-			type:1,
-			title:lan.crontab.task_log_title,
-			area: ['60%','500px'], 
-			shadeClose:false,
-			closeBtn:1,
-			content:'<div class="setchmod bt-form pd20 pb70">'
-				+'<pre id="project-log" style="overflow: auto; border: 0px none; line-height:23px;padding: 15px; margin: 0px; white-space: pre-wrap; height: 405px; background-color: rgb(51,51,51);color:#f1f1f1;border-radius:0px;font-family:"></pre>'
-				+'<div class="bt-form-submit-btn" style="margin-top: 0px;">'
-				+'<button type="button" class="btn btn-success btn-sm" onclick="projectLogsClear('+id+')">清空</button>'
-				+'<button type="button" class="btn btn-danger btn-sm" onclick="layer.close(logLayer)">关闭</button>'
-			    +'</div>'
-			+'</div>'
-		});
-
-		setTimeout(function(){
-			$("#project-log").html(rdata.msg);
-		},200);
-    });
-}
-
-function projectLogsClear(id) {
-    var data = "id="+id;
-    requestApi('project_logs_clear', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        layer.close(logLayer);
-    });
-}
-
 
 function query2Obj(str){
     var data = {};

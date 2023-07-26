@@ -1826,7 +1826,11 @@ function showLogWindow(msg, { logPath, autoClearLog = true }, callback){
 					}, 1000);
 					if (callback) {
 						callback({
-							success: async () => {
+							success: async ({timeout = 3} = {}) => {
+								if(timeout == -1) {
+									layer.close(index);
+									return;
+								}
 								return openTimoutLayer('执行完毕，即将自动关闭', () => {
 									layer.close(index);
 								}, { confirmBtn: '关闭', timeout: 3 })
@@ -1851,7 +1855,7 @@ function showLogWindow(msg, { logPath, autoClearLog = true }, callback){
 }
 
 
-async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, fail} = {}) {
+async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, fail, logWindowSuccessTimeout = 3000} = {}) {
 	return new Promise((resolve, reject) => {
 		showLogWindow(logTitle, {logPath}, function({success: logWindowSuccess, logPath}){
 			$.post('/task/generate_script_file_and_excute', {logPath, scriptContent: encodeURIComponent(scriptContent)}, function (rdata) {
@@ -1867,7 +1871,7 @@ async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, 
 									layer.msg(data.msg,{icon:2, time:2000});
 									return;
 							}
-							await logWindowSuccess();
+							await logWindowSuccess({timeout: logWindowSuccessTimeout});
 							success && success();
 							resolve();
 					}, 0)

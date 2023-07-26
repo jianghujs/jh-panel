@@ -472,9 +472,14 @@ async function submitDeployItemStep1(deployLayer) {
         return;
     }
     await checkPathExist(path);
+
+    let addKnownHostsScriptData = await reqeustApi('get_add_known_hosts_script', { gitUrl: encodeURIComponent(gitUrl) });
+    if (addKnownHostsScriptData.data) {
+        await execScriptAndShowLog('正在添加git地址到已知主机列表...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});
+    }
     
-    let scriptData = await requestApi('get_clone_script', { gitUrl: encodeURIComponent(gitUrl), path: encodeURIComponent(path) });
-    await execScriptAndShowLog('正在拉取代码...', scriptData.data);
+    let cloneScriptData = await requestApi('get_clone_script', { gitUrl: encodeURIComponent(gitUrl), path: encodeURIComponent(path) });
+    await execScriptAndShowLog('正在拉取代码...', cloneScriptData.data);
 
     requestApi('get_project_deploy_file', form, function(rdata) {
         deployScript = rdata.data || ('cd ' + path + '\nnpm i --loglevel verbose\ncd config\ncp config.prod.example.js config.prod.js');

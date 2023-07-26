@@ -435,6 +435,27 @@ def extractDomainFromGitUrl(url):
     if ':' in domain:
         domain = domain.split(':')[0]
     return domain
+
+def getAddKnownHostsScript():
+    args = getArgs()
+    data = checkArgs(args, ['gitUrl'])
+
+    if not data[0]:
+        return data[1]
+    host = extractDomainFromGitUrl(git_url)
+    is_host_in_known_hosts = mw.checkExistHostInKnownHosts(host)
+    cmd = ""
+    if not is_host_in_known_hosts:
+        cmd += """
+        echo "正在添加git服务器到已知主机列表..."
+        {
+            echo "\n" >> ~/.ssh/known_hosts
+            ssh-keyscan %(host)s >> ~/.ssh/known_hosts
+            /etc/init.d/ssh restart
+        } || echo "添加可信域名失败"
+        """ % {'host': host}
+
+    return cmd
     
 def getCloneScript():
     args = getArgs()
@@ -447,8 +468,6 @@ def getCloneScript():
     path = unquote(args['path'], 'utf-8')
     
     exist_path = os.path.exists(path)
-    host = extractDomainFromGitUrl(git_url)
-    is_host_in_known_hosts = mw.checkExistHostInKnownHosts(host)
     
     cmd = ""
     if exist_path:
@@ -456,14 +475,6 @@ def getCloneScript():
         echo "正在删除旧项目文件..."
         rm -rf %(path)s
         """ % {'path': path}
-    if not is_host_in_known_hosts:
-        cmd += """
-        echo "正在添加git服务器到已知主机列表..."
-        {
-            echo "\n" >> ~/.ssh/known_hosts
-            ssh-keyscan %(host)s >> ~/.ssh/known_hosts
-        } || echo "添加可信域名失败"
-        """ % {'host': host}
     cmd += """
     echo "正在拉取项目文件..."
     git clone --progress %(git_url)s %(path)s
@@ -584,6 +595,8 @@ if __name__ == "__main__":
         print(projectLogs())
     elif func == 'project_logs_clear':
         print(projectLogsClear())
+    elif func == 'get_add_known_host_script':
+        print(getAddKnownHostsScript)
     elif func == 'get_clone_script':
         print(getCloneScript())
     elif func == 'clone_project':

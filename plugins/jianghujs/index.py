@@ -442,6 +442,7 @@ def getAddKnownHostsScript():
 
     if not data[0]:
         return data[1]
+    git_url = unquote(args['gitUrl'], 'utf-8')
     host = extractDomainFromGitUrl(git_url)
     is_host_in_known_hosts = mw.checkExistHostInKnownHosts(host)
     cmd = ""
@@ -595,8 +596,8 @@ if __name__ == "__main__":
         print(projectLogs())
     elif func == 'project_logs_clear':
         print(projectLogsClear())
-    elif func == 'get_add_known_host_script':
-        print(getAddKnownHostsScript)
+    elif func == 'get_add_known_hosts_script':
+        print(getAddKnownHostsScript())
     elif func == 'get_clone_script':
         print(getCloneScript())
     elif func == 'clone_project':

@@ -473,7 +473,7 @@ async function submitDeployItemStep1(deployLayer) {
     }
     await checkPathExist(path);
 
-    let addKnownHostsScriptData = await reqeustApi('get_add_known_hosts_script', { gitUrl: encodeURIComponent(gitUrl) });
+    let addKnownHostsScriptData = await requestApi('get_add_known_hosts_script', { gitUrl: encodeURIComponent(gitUrl) });
     if (addKnownHostsScriptData.data) {
         await execScriptAndShowLog('正在添加git地址到已知主机列表...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});
     }

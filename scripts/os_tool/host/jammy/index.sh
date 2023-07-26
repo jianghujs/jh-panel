@@ -30,10 +30,13 @@ else
 fi
 
 show_menu() {
+    clear
+    echo "==================host jammy os-tools=================="
     echo "请选择一个操作:"
     echo "1. 初始化环境"
     echo "2. 配置VirtualBox虚拟机自启动"
     echo "3. 配置virtualbox虚拟机定时快照"
+    echo "======================================================="
 }
 
 # 显示菜单

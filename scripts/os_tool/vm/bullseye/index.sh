@@ -19,9 +19,12 @@ for file in $(find . -name "*.sh"); do
 done
 
 show_menu() {
+    clear
+    echo "==================vm bullseye os-tools=================="
     echo "请选择一个操作:"
     echo "1. 初始化环境"
     echo "2. 生成指定域名SSH密钥"
+    echo "========================================================"
 }
 
 # 显示菜单

@@ -563,13 +563,13 @@ def connect_ssh(session_id):
     print("哈哈哈哈", mw.getLocalIp())
     port = mw.getSSHPort()
     try:
-        ssh.connect(mw.getLocalIp(), port, username='root', timeout=30)
+        ssh.connect(mw.getLocalIp(), port, username='root', timeout=3)
     except Exception as e:
-        ssh.connect(mw.getHostAddr(), port, username='root', timeout=30)
+        ssh.connect(mw.getHostAddr(), port, username='root', timeout=3)
     except Exception as e:
-        ssh.connect('127.0.0.1', port, username='root', timeout=5)
+        ssh.connect('127.0.0.1', port, username='root', timeout=3)
     except Exception as e:
-        ssh.connect('localhost', port, username='root', timeout=5)
+        ssh.connect('localhost', port, username='root', timeout=3)
     except Exception as e:
         return False
 

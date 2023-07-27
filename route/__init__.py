@@ -610,7 +610,6 @@ def webssh(msg):
         ssh_session = SSHSession(session_id)
         session_ssh_dict[session_id] = ssh_session
 
-    print("哈哈", str(ssh_session))
     shell = ssh_session.get_shell()
 
     if shell:

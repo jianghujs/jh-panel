@@ -562,16 +562,16 @@ def connect_ssh(session_id):
     print("开始尝试连接SSH终端", session_id)
     port = mw.getSSHPort()
     try:
-        ssh.connect('127.0.0.1', port, username='root', timeout=5)
+        ssh.connect('127.0.0.1', port, username='root', timeout=2)
         print("哈哈哈哈", '127.0.0.1')
     except Exception as e:
-        ssh.connect('localhost', port, username='root', timeout=5)
+        ssh.connect('localhost', port, username='root', timeout=2)
         print("哈哈哈哈", 'localhost')
     except Exception as e:
-        ssh.connect(mw.getLocalIp(), port, username='root', timeout=5)
+        ssh.connect(mw.getLocalIp(), port, username='root', timeout=2)
         print("哈哈哈哈", mw.getLocalIp())
     except Exception as e:
-        ssh.connect(mw.getHostAddr(), port, username='root', timeout=5)
+        ssh.connect(mw.getHostAddr(), port, username='root', timeout=2)
         print("哈哈哈哈", mw.getHostAddr())
     except Exception as e:
         return False

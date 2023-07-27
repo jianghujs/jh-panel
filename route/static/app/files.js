@@ -555,7 +555,7 @@ function getFiles(Path) {
 		}
 		setCookie('open_dir_path',rdata.PATH);
 		BarTools += ' <button onclick="javascript:getFiles(\'' + rdata.PATH + '\');" class="btn btn-default btn-sm glyphicon glyphicon-refresh" title="返回上一级"></button>\
-			<button onclick="webShell.open()" title="终端" type="button" class="btn btn-default btn-sm"><em class="ico-cmd"></em></button>';
+			<button onclick="WebShell.getInstance().open()" title="终端" type="button" class="btn btn-default btn-sm"><em class="ico-cmd"></em></button>';
 		var copyName = getCookie('copyFileName');
 		var cutName = getCookie('cutFileName');
 		var isPaste = (copyName == 'null') ? cutName : copyName;

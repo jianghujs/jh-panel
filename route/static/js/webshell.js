@@ -1,3 +1,4 @@
+var webShell = null;
 class WebShell {
 	constructor() {
 			this.socket = null;
@@ -5,6 +6,11 @@ class WebShell {
 			this.term_box = null;
 			this.socketLoading = false;
 			this.interval = null;
+	}
+
+	static getInstance() {
+		webShell = new WebShell();
+		return webShell;
 	}
 
 	open() {
@@ -23,6 +29,16 @@ class WebShell {
 			}
 	}
 
+	dropInstance() {
+			layer.closeAll();
+			this.gterm.destroy();
+			clearInterval(this.interval);
+			if (this.socket) {
+					this.socket.emit('disconnect_to_ssh', '');
+			}
+			webShell = null;
+	}
+
 	serverResponse(data) {
 			this.socketLoading = false;
 			this.gterm.write(data.data);
@@ -39,6 +55,11 @@ class WebShell {
 	}
 
 	async onConnect() {
+			if (this.gterm) {
+				this.dropInstance();
+				return;
+			}
+
 		  layer.closeAll();
 			var termCols = 83;
 			var termRows = 21;
@@ -265,5 +286,3 @@ class WebShell {
 	}
 
 }
-
-var webShell = new WebShell();

@@ -528,8 +528,10 @@ def index(reqClass=None, reqAction=None, reqData=None):
 
 ##################### ssh  start ###########################
 session_ssh_dict = {}
-
+from gevent import monkey
+monkey.patch_all()
 import paramiko
+import threading
 class SSHSession:
     def __init__(self, session_id):
         self.session_id = session_id
@@ -569,14 +571,14 @@ class SSHSession:
     def clear(self):
         self.ssh.close()
         self.shell = None
-
 @socketio.on('connect_to_ssh')
 def connect_to_ssh(msg):
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
+    threading.Thread(target=handle_ssh_connection, args=(request.sid,)).start()
 
-    session_id = request.sid
+def handle_ssh_connection(session_id):
     ssh_session = session_ssh_dict.get(session_id)
 
     if ssh_session is None:
@@ -608,6 +610,7 @@ def webssh(msg):
         ssh_session = SSHSession(session_id)
         session_ssh_dict[session_id] = ssh_session
 
+    print("哈哈", str(ssh_session))
     shell = ssh_session.get_shell()
 
     if shell:

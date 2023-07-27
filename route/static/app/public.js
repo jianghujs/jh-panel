@@ -1604,14 +1604,14 @@ var socket, gterm;
 		interval = setInterval(function () {
 				socket.emit('webssh', '');
 		}, 500);
-}
+	}
 })();
 
 function webShell() {
     var termCols = 83;
     var termRows = 21;
     var sendTotal = 0;
-    if(!socket)socket = io.connect();
+    // if(!socket)socket = io.connect();
     var term = new Terminal({ cols: termCols, rows: termRows, screenKeys: true, useStyle: true});
 
     term.open();

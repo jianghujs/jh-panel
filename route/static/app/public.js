@@ -1624,7 +1624,11 @@ function webShell() {
         }
     });
 
+		// 提示正在连接终端
+		layer.msg('正在连接终端...',{icon:16,shade: [0.3, '#000'],time:-1});
 		socket.on('connect', function () {
+			// 关闭提示
+			layer.closeAll();
 			console.log("connected")
 			if (socket) {
 				socket.emit('webssh', '');
@@ -1658,22 +1662,22 @@ function webShell() {
 					shadeClose: false,
 					content: '<div class="term-box"><div id="term"></div></div>\
 						<div class="shell-text-input">\
-											<textarea type="text" class="bt-input-text-shell" placeholder="请将命令粘贴到此处.." value="" name="ssh_copy" />\
+							<textarea type="text" class="bt-input-text-shell" placeholder="请将命令粘贴到此处.." value="" name="ssh_copy" />\
 						<div class="shell-btn-group">\
-											<button class="shellbutton btn btn-success btn-sm pull-right shell_btn_1">发送(Ctrl+Enter)</button>\
-						<button class="shellbutton btn btn-default btn-sm pull-right shell_btn_close">关闭</button>\
+							<button class="shellbutton btn btn-success btn-sm pull-right shell_btn_1">发送(Ctrl+Enter)</button>\
+							<button class="shellbutton btn btn-default btn-sm pull-right shell_btn_close">关闭</button>\
 						</div>\
-									</div>',
+					</div>',
 					success:function(){
 						$(".shell_btn_close").click(function(){
-					layer.close(term_box);
-					term.destroy();
-							clearInterval(interval);
-				});
-					},
-					cancel: function () {
+							layer.close(term_box);
 							term.destroy();
 							clearInterval(interval);
+						});
+					},
+					cancel: function () {
+						term.destroy();
+						clearInterval(interval);
 					}
 			});
 		

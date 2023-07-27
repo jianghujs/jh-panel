@@ -528,70 +528,124 @@ def index(reqClass=None, reqAction=None, reqData=None):
 
 
 ##################### ssh  start ###########################
-import paramiko
-import threading
-from flask_socketio import SocketIO
-socketio = SocketIO(app, async_mode='threading')
-class SSH:
-    def __init__(self):
-        self.ssh = paramiko.SSHClient()
-        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.channel = None
-
-    def connect(self):
-        try:
-
-                    
-            port = mw.getSSHPort()
-            try:
-                self.ssh.connect('127.0.0.1', port, username='root', timeout=5)
-                print("哈哈哈哈", '127.0.0.1')
-            except Exception as e:
-                self.ssh.connect('localhost', port, username='root', timeout=5)
-                print("哈哈哈哈", 'localhost')
-            except Exception as e:
-                self.ssh.connect(mw.getLocalIp(), port, username='root', timeout=5)
-                print("哈哈哈哈", mw.getLocalIp())
-            except Exception as e:
-                self.ssh.connect(mw.getHostAddr(), port, username='root', timeout=5)
-                print("哈哈哈哈", mw.getHostAddr())
-            except Exception as e:
-                return False
-
-            self.channel = self.ssh.invoke_shell(term='xterm', width=83, height=21)
-            self.channel.setblocking(0)
-            if self.channel:
-                socketio.emit('connected')
-                socketio.emit('server_response', 'hhh')
-                recv = self.channel.recv(8192)
-                socketio.emit('server_response', {'data': recv.decode("utf-8")})
-        except Exception as e:
-            print(e)
-
-    def send_message(self):
-        if self.channel is not None and self.channel.recv_ready():
-            while True:
-                output = self.channel.recv(4096)
-                socketio.emit('server_response', {'data': output.decode("utf-8")})
-                time.sleep(0.1)
-
-    def exec_command(self, command):
-        self.channel.send(command)
-
 ssh = None
+ssh_dict = {}
+shell_dict = {}
+status_dict = {}
 
+def clear_ssh(session_id):
+    if session_id in ssh_dict:
+        ssh_dict[session_id].close()
+        del ssh_dict[session_id]
+    if session_id in shell_dict:
+        del shell_dict[session_id]
 
-@socketio.on('connect_to_ssh')
-def connect_to_ssh(message):
-    global ssh
-    ssh = SSH()
-    ssh.connect()
-    threading.Thread(target=ssh.send_message).start()
+def get_shell(session_id):
+    global shell_dict, ssh_dict
+    shell = shell_dict.get(session_id)
+
+    if shell and shell.exit_status_ready():
+        clear_ssh(session_id)
+        shell = None
+
+    if not shell:
+        if connect_ssh(session_id):
+            shell = shell_dict.get(session_id)
+        else:
+            emit('server_response', {'data': '连接SSH服务失败!\r\n'})
+
+    return shell
+
+def connect_ssh(session_id):
+    global shell_dict, ssh_dict, status_dict
+    status_dict[session_id] = 'connecting'
+    print("开始尝试连接SSH终端", session_id)
+    port = mw.getSSHPort()
+    try:
+        ssh.connect('127.0.0.1', port, username='root', timeout=5)
+        print("哈哈哈哈", '127.0.0.1')
+    except Exception as e:
+        ssh.connect('localhost', port, username='root', timeout=5)
+        print("哈哈哈哈", 'localhost')
+    except Exception as e:
+        ssh.connect(mw.getLocalIp(), port, username='root', timeout=5)
+        print("哈哈哈哈", mw.getLocalIp())
+    except Exception as e:
+        ssh.connect(mw.getHostAddr(), port, username='root', timeout=5)
+        print("哈哈哈哈", mw.getHostAddr())
+    except Exception as e:
+        return False
+
+    shell = ssh.invoke_shell(term='xterm', width=83, height=21)
+    shell.setblocking(0)
+
+    ssh_dict[session_id] = ssh
+    shell_dict[session_id] = shell
+    return True
 
 @socketio.on('webssh')
-def ssh_input(message):
-    global ssh
-    if ssh is not None and ssh.channel is not None:
-        ssh.exec_command(message)
+def webssh(msg):
+    if not isLogined():
+        emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
+        return None
+
+    session_id = request.sid
+    shell = get_shell(session_id)
+
+    if shell:
+        shell.send(msg)
+        try:
+            time.sleep(0.005)
+            recv = shell.recv(4096)
+            emit('server_response', {'data': recv.decode("utf-8")})
+        except Exception as ex:
+            pass
+
+@socketio.on('connect_event')
+def connected_msg(msg):
+    if not isLogined():
+        emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
+        return None
+
+    global status_dict
+    session_id = request.sid
+    if ssh_dict.get(session_id) is None and status_dict.get(session_id) == 'connecting':
+        return True
+    shell = get_shell(session_id)
+
+    if shell:
+        try:
+            recv = shell.recv(8192)
+            emit('server_response', {'data': recv.decode("utf-8")})
+            status_dict[session_id] = 'connected'
+        except Exception as e:
+            pass
+
+if not mw.isAppleSystem():
+    try:
+        # 在程序启动时预先创建RSA密钥
+        if not os.path.exists('/root/.ssh/id_rsa') or not os.path.exists('/root/.ssh/id_rsa.pub'):
+            os.system('ssh-keygen -q -t rsa -P "" -f /root/.ssh/id_rsa')
+            os.system('cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
+            os.system('chmod 600 /root/.ssh/authorized_keys')
+
+        # 检查是否写入authorized_keys
+        data = mw.execShell("cat /root/.ssh/id_rsa.pub | awk '{print $3}'")
+        if data[0] != "":
+            ak_data = mw.execShell(
+                "cat /root/.ssh/authorized_keys | grep " + data[0])
+            if ak_data[0] == "":
+                mw.execShell(
+                    'cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
+                mw.execShell('chmod 600 /root/.ssh/authorized_keys')
+
+        # 在程序启动时预先初始化SSH客户端
+        import paramiko
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        print("终端启动成功")
+    except Exception as e:
+        print("本地终端无法使用")
 
 ##################### ssh  end ###########################

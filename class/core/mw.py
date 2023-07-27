@@ -1955,7 +1955,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         now_time = getDateFromNow()
         now_day = now_time.split(' ')[0]
 
-        writeFile('/root/1.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\n')
+        # writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\n')
         cpu_percent = cpuInfo['used'] 
         mem_percent = cpuInfo['mem']
         network_up = networkInfo['up'] # MB

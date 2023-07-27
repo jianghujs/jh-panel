@@ -1596,6 +1596,17 @@ function loadImage(){
 }
 
 var socket, gterm;
+// 初始化socket
+(function initWebShell() {
+	if(!socket)socket = io.connect();
+	if (socket) {
+		socket.emit('webssh', '');
+		interval = setInterval(function () {
+				socket.emit('webssh', '');
+		}, 500);
+}
+})();
+
 function webShell() {
     var termCols = 83;
     var termRows = 21;
@@ -1626,13 +1637,6 @@ function webShell() {
   　     term.destroy();
         clearInterval(interval);
     });
-
-    if (socket) {
-        socket.emit('webssh', '');
-        interval = setInterval(function () {
-            socket.emit('webssh', '');
-        }, 500);
-    }
 		
 		// 自动跳转到 当前目录
 		setTimeout(function () {

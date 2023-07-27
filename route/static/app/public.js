@@ -1596,22 +1596,13 @@ function loadImage(){
 }
 
 var socket, gterm;
-// 初始化socket
-(function initWebShell() {
-	if(!socket)socket = io.connect();
-	socket.on('connect', function () {
-		console.log('connect');
-	});
-	if (socket) {
-		socket.emit('connect_to_ssh', '');
-	}
-})();
 
 function webShell() {
     var termCols = 83;
     var termRows = 21;
     var sendTotal = 0;
-    // if(!socket)socket = io.connect();
+    socket = io.connect();
+		
     var term = new Terminal({ cols: termCols, rows: termRows, screenKeys: true, useStyle: true});
 
     term.open();
@@ -1632,156 +1623,163 @@ function webShell() {
             }, 500);
         }
     });
-		
-    if (socket) {
-			socket.emit('webssh', '');
-			interval = setInterval(function () {
-					socket.emit('webssh', '');
-			}, 500);
-		}
 
-    $(window).unload(function(){
-  　     term.destroy();
-        clearInterval(interval);
-    });
-		
-		// 自动跳转到 当前目录
-		setTimeout(function () {
-			var currentDir = $("#PathPlaceBtn").attr('path')
-			if (currentDir && currentDir.startsWith("/")) {
-				socket.emit('webssh', `cd ${currentDir}\n`);
+		socket.on('connect', function () {
+			console.log("connected")
+			if (socket) {
+				socket.emit('webssh', '');
+				interval = setInterval(function () {
+						socket.emit('webssh', '');
+				}, 500);
 			}
-		}, 600);
-    
-    term.on('data', function (data) {
-        socket.emit('webssh', data);
-    });
-
-    var term_box = layer.open({
-        type: 1,
-        title: "本地终端",
-        area: ['685px','463px'],
-        closeBtn: 1,
-        shadeClose: false,
-        content: '<div class="term-box"><div id="term"></div></div>\
-					<div class="shell-text-input">\
-                    <textarea type="text" class="bt-input-text-shell" placeholder="请将命令粘贴到此处.." value="" name="ssh_copy" />\
-					<div class="shell-btn-group">\
-                    <button class="shellbutton btn btn-success btn-sm pull-right shell_btn_1">发送(Ctrl+Enter)</button>\
-					<button class="shellbutton btn btn-default btn-sm pull-right shell_btn_close">关闭</button>\
-					</div>\
-                </div>',
-        success:function(){
-        	$(".shell_btn_close").click(function(){
-				layer.close(term_box);
-				term.destroy();
-		        clearInterval(interval);
+	
+			$(window).unload(function(){
+		　     term.destroy();
+					clearInterval(interval);
 			});
-        },
-        cancel: function () {
-            term.destroy();
-            clearInterval(interval);
-        }
-    });
+			
+			// 自动跳转到 当前目录
+			setTimeout(function () {
+				var currentDir = $("#PathPlaceBtn").attr('path')
+				if (currentDir && currentDir.startsWith("/")) {
+					socket.emit('webssh', `cd ${currentDir}\n`);
+				}
+			}, 600);
+			
+			term.on('data', function (data) {
+					socket.emit('webssh', data);
+			});
+	
+			var term_box = layer.open({
+					type: 1,
+					title: "本地终端",
+					area: ['685px','463px'],
+					closeBtn: 1,
+					shadeClose: false,
+					content: '<div class="term-box"><div id="term"></div></div>\
+						<div class="shell-text-input">\
+											<textarea type="text" class="bt-input-text-shell" placeholder="请将命令粘贴到此处.." value="" name="ssh_copy" />\
+						<div class="shell-btn-group">\
+											<button class="shellbutton btn btn-success btn-sm pull-right shell_btn_1">发送(Ctrl+Enter)</button>\
+						<button class="shellbutton btn btn-default btn-sm pull-right shell_btn_close">关闭</button>\
+						</div>\
+									</div>',
+					success:function(){
+						$(".shell_btn_close").click(function(){
+					layer.close(term_box);
+					term.destroy();
+							clearInterval(interval);
+				});
+					},
+					cancel: function () {
+							term.destroy();
+							clearInterval(interval);
+					}
+			});
+		
+		
+			setTimeout(function () {
+	
+					$('.terminal').detach().appendTo('#term');
+					$("#term").show();
+					socket.emit('webssh', "\n");
+					term.focus();
+	
+					// 鼠标右键事件
+					var can = $("#term");
+					can.contextmenu(function (e) {
+							var winWidth = can.width();
+							var winHeight = can.height();
+							var mouseX = e.pageX;
+							var mouseY = e.pageY;
+							var menuWidth = $(".contextmenu").width();
+							var menuHeight = $(".contextmenu").height();
+							var minEdgeMargin = 10;
+							if (mouseX + menuWidth + minEdgeMargin >= winWidth &&
+									mouseY + menuHeight + minEdgeMargin >= winHeight) {
+									menuLeft = mouseX - menuWidth - minEdgeMargin + "px";
+									menuTop = mouseY - menuHeight - minEdgeMargin + "px";
+							}
+							else if (mouseX + menuWidth + minEdgeMargin >= winWidth) {
+									menuLeft = mouseX - menuWidth - minEdgeMargin + "px";
+									menuTop = mouseY + minEdgeMargin + "px";
+							}
+							else if (mouseY + menuHeight + minEdgeMargin >= winHeight) {
+									menuLeft = mouseX + minEdgeMargin + "px";
+									menuTop = mouseY - menuHeight - minEdgeMargin + "px";
+							}
+							else {
+									menuLeft = mouseX + minEdgeMargin + "px";
+									menuTop = mouseY + minEdgeMargin + "px";
+							};
+	
+							var selectText = term.getSelection()
+							var style_str = '';
+							var paste_str = '';
+							if (!selectText) {
+									if (!getCookie('shell_copy_body')) {
+											paste_str = 'style="color: #bbb;" disable';
+									}
+									style_str = 'style="color: #bbb;" disable';
+							} else {
+									setCookie('ssh_selection', selectText);
+							}
 	
 	
-    setTimeout(function () {
+							var menudiv = '<ul class="contextmenu">\
+													<li><a class="shell_copy_btn menu_ssh" data-clipboard-text="'+ selectText + '" ' + style_str + '>复制到剪切板</a></li>\
+													<li><a  onclick="shell_paste_text()" '+ paste_str+'>粘贴选中项</a></li>\
+													<li><a onclick="shell_to_baidu()" ' + style_str + '>百度搜索</a></li>\
+											</ul>';
+							$("body").append(menudiv);
+							$(".contextmenu").css({
+									"left": menuLeft,
+									"top": menuTop
+							});
+							return false;
+					});
+					can.click(function () {
+							remove_ssh_menu();
+					});
+	
+					clipboard = new ClipboardJS('.shell_copy_btn');
+					clipboard.on('success', function (e) {
+							layer.msg('复制成功!');
+							setCookie('shell_copy_body', e.text)
+							remove_ssh_menu();
+							term.focus();
+					});
+	
+					clipboard.on('error', function (e) {
+							layer.msg('复制失败，浏览器不兼容!');
+							setCookie('shell_copy_body', e.text)
+							remove_ssh_menu();
+							term.focus();
+					});
+	
+					$(".shellbutton").click(function () {
+							var tobj = $("textarea[name='ssh_copy']");
+							var ptext = tobj.val();
+							tobj.val('');
+							if ($(this).text().indexOf('Alt') != -1) {
+									ptext +="\n";
+							}
+							socket.emit('webssh', ptext);
+							term.focus();
+					});
+					$("textarea[name='ssh_copy']").keydown(function (e) {
+							if (e.ctrlKey && e.keyCode == 13) {
+									$(".shell_btn_1").click();
+							} else if (e.altKey && e.keyCode == 13) {
+									$(".shell_btn_1").click();
+							}
+					});
+			}, 100);
+		});
 
-        $('.terminal').detach().appendTo('#term');
-        $("#term").show();
-        socket.emit('webssh', "\n");
-        term.focus();
-
-        // 鼠标右键事件
-        var can = $("#term");
-        can.contextmenu(function (e) {
-            var winWidth = can.width();
-            var winHeight = can.height();
-            var mouseX = e.pageX;
-            var mouseY = e.pageY;
-            var menuWidth = $(".contextmenu").width();
-            var menuHeight = $(".contextmenu").height();
-            var minEdgeMargin = 10;
-            if (mouseX + menuWidth + minEdgeMargin >= winWidth &&
-                mouseY + menuHeight + minEdgeMargin >= winHeight) {
-                menuLeft = mouseX - menuWidth - minEdgeMargin + "px";
-                menuTop = mouseY - menuHeight - minEdgeMargin + "px";
-            }
-            else if (mouseX + menuWidth + minEdgeMargin >= winWidth) {
-                menuLeft = mouseX - menuWidth - minEdgeMargin + "px";
-                menuTop = mouseY + minEdgeMargin + "px";
-            }
-            else if (mouseY + menuHeight + minEdgeMargin >= winHeight) {
-                menuLeft = mouseX + minEdgeMargin + "px";
-                menuTop = mouseY - menuHeight - minEdgeMargin + "px";
-            }
-            else {
-                menuLeft = mouseX + minEdgeMargin + "px";
-                menuTop = mouseY + minEdgeMargin + "px";
-            };
-
-            var selectText = term.getSelection()
-            var style_str = '';
-            var paste_str = '';
-            if (!selectText) {
-                if (!getCookie('shell_copy_body')) {
-                    paste_str = 'style="color: #bbb;" disable';
-                }
-                style_str = 'style="color: #bbb;" disable';
-            } else {
-                setCookie('ssh_selection', selectText);
-            }
-
-
-            var menudiv = '<ul class="contextmenu">\
-                        <li><a class="shell_copy_btn menu_ssh" data-clipboard-text="'+ selectText + '" ' + style_str + '>复制到剪切板</a></li>\
-                        <li><a  onclick="shell_paste_text()" '+ paste_str+'>粘贴选中项</a></li>\
-                        <li><a onclick="shell_to_baidu()" ' + style_str + '>百度搜索</a></li>\
-                    </ul>';
-            $("body").append(menudiv);
-            $(".contextmenu").css({
-                "left": menuLeft,
-                "top": menuTop
-            });
-            return false;
-        });
-        can.click(function () {
-            remove_ssh_menu();
-        });
-
-        clipboard = new ClipboardJS('.shell_copy_btn');
-        clipboard.on('success', function (e) {
-            layer.msg('复制成功!');
-            setCookie('shell_copy_body', e.text)
-            remove_ssh_menu();
-            term.focus();
-        });
-
-        clipboard.on('error', function (e) {
-            layer.msg('复制失败，浏览器不兼容!');
-            setCookie('shell_copy_body', e.text)
-            remove_ssh_menu();
-            term.focus();
-        });
-
-        $(".shellbutton").click(function () {
-            var tobj = $("textarea[name='ssh_copy']");
-            var ptext = tobj.val();
-            tobj.val('');
-            if ($(this).text().indexOf('Alt') != -1) {
-                ptext +="\n";
-            }
-            socket.emit('webssh', ptext);
-            term.focus();
-        });
-        $("textarea[name='ssh_copy']").keydown(function (e) {
-            if (e.ctrlKey && e.keyCode == 13) {
-                $(".shell_btn_1").click();
-            } else if (e.altKey && e.keyCode == 13) {
-                $(".shell_btn_1").click();
-            }
-        });
-    }, 100);
+		if (socket) {
+			socket.emit('connect_to_ssh', '');
+		}
 }
 
 function shell_to_baidu() {

@@ -586,6 +586,8 @@ def webssh(msg):
         return None
 
     session_id = request.sid
+    
+    print('session_id', session_id)
     shell = get_shell(session_id)
 
     if shell:

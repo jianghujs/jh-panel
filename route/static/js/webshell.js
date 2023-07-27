@@ -2,6 +2,7 @@ class WebShell {
 	constructor() {
 			this.socket = null;
 			this.gterm = null;
+			this.term_box = null;
 			this.socketLoading = false;
 			this.interval = null;
 	}
@@ -9,22 +10,7 @@ class WebShell {
 	open() {
 			if (this.socketLoading) return;
 			this.socketLoading = true;
-			var termCols = 83;
-			var termRows = 21;
-			var sendTotal = 0;
 			this.socket = io.connect();
-			
-			var term = new Terminal({ 
-					cols: termCols, 
-					rows: termRows, 
-					screenKeys: true, 
-					useStyle: true
-			});
-
-			term.open();
-			term.setOption('cursorBlink', true);
-			term.setOption('fontSize', 14);
-			this.gterm = term;
 
 			this.socket.on('server_response', this.serverResponse.bind(this));
 
@@ -52,8 +38,29 @@ class WebShell {
 			}
 	}
 
-	onConnect() {
-			layer.closeAll();
+	async onConnect() {
+			if (this.gterm) {
+				layer.close(this.term_box)
+				this.gterm.destroy();
+				clearInterval(this.interval);
+				webShell = new WebShell();
+				return
+			}
+		  layer.closeAll();
+			var termCols = 83;
+			var termRows = 21;
+			var sendTotal = 0;
+			var term = new Terminal({ 
+				cols: termCols, 
+				rows: termRows, 
+				screenKeys: true, 
+				useStyle: true
+			});
+
+			term.open();
+			term.setOption('cursorBlink', true);
+			term.setOption('fontSize', 14);
+			this.gterm = term;
 			console.log("connected");
 			if (this.socket) {
 					this.socket.emit('webssh', '');
@@ -78,7 +85,7 @@ class WebShell {
 					this.socket.emit('webssh', data);
 			}.bind(this));
 
-			var term_box = layer.open({
+			this.term_box = layer.open({
 					type: 1,
 					title: "本地终端",
 					area: ['685px', '463px'],
@@ -94,7 +101,7 @@ class WebShell {
 					</div>',
 					success: function() {
 							$(".shell_btn_close").click(function() {
-									layer.close(term_box);
+									layer.close(this.term_box);
 									this.gterm.destroy();
 									clearInterval(this.interval);
 							}.bind(this));
@@ -261,6 +268,10 @@ class WebShell {
 
 	remove_ssh_menu() {
 			$(".contextmenu").remove();
+	}
+
+	async sleep(time) {
+			return new Promise((resolve) => setTimeout(resolve, time));
 	}
 
 }

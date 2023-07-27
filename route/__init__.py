@@ -571,6 +571,7 @@ class SSHSession:
     def clear(self):
         self.ssh.close()
         self.shell = None
+        
 @socketio.on('connect_to_ssh')
 def connect_to_ssh(msg):
     if not isLogined():
@@ -585,16 +586,15 @@ def handle_ssh_connection(session_id):
         ssh_session = SSHSession(session_id)
         session_ssh_dict[session_id] = ssh_session
 
-    shell = ssh_session.get_shell()
-
-    if shell:
-        try:
+    try:
+        shell = ssh_session.get_shell()
+        if shell:
             recv = shell.recv(8192)
             emit('server_response', {'data': recv.decode("utf-8")})
             ssh_session.status = 'connected'
             emit('connected', '')
-        except Exception as e:
-            pass
+    except Exception as e:
+        pass
 
 
 @socketio.on('webssh')
@@ -609,17 +609,15 @@ def webssh(msg):
     if ssh_session is None:
         ssh_session = SSHSession(session_id)
         session_ssh_dict[session_id] = ssh_session
-
-    shell = ssh_session.get_shell()
-
-    if shell:
-        shell.send(msg)
-        try:
+    try:
+        shell = ssh_session.get_shell()
+        if shell:
+            shell.send(msg)
             time.sleep(0.005)
             recv = shell.recv(4096)
             emit('server_response', {'data': recv.decode("utf-8")})
-        except Exception as ex:
-            pass
+    except Exception as ex:
+        pass
 
 @socketio.on('disconnect_to_ssh')
 def disconnect_to_ssh(message):

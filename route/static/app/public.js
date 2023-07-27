@@ -1624,10 +1624,8 @@ function webShell() {
         }
     });
 
-		// 提示正在连接终端
 		layer.msg('正在连接终端...',{icon:16,shade: [0.3, '#000'],time:-1});
 		socket.on('connect', function () {
-			// 关闭提示
 			layer.closeAll();
 			console.log("connected")
 			if (socket) {

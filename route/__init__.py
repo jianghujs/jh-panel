@@ -526,58 +526,76 @@ def index(reqClass=None, reqAction=None, reqData=None):
 
     return publicObject(newInstance, reqAction)
 
-
 ##################### ssh  start ###########################
-ssh = None
-ssh_dict = {}
-shell_dict = {}
-status_dict = {}
+import paramiko
+class SSHSession:
+    def __init__(self, session_id):
+        self.session_id = session_id
+        self.ssh = paramiko.SSHClient()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.shell = None
+        self.status = None
 
-def clear_ssh(session_id):
-    if session_id in ssh_dict:
-        ssh_dict[session_id].close()
-        del ssh_dict[session_id]
-    if session_id in shell_dict:
-        del shell_dict[session_id]
+    def connect(self):
+        self.status = 'connecting'
+        print("开始尝试连接SSH终端", self.session_id)
+        port = mw.getSSHPort()
+        try:
+            self.ssh.connect('127.0.0.1', port, username='root', timeout=2)
+        except Exception as e:
+            self.ssh.connect('localhost', port, username='root', timeout=2)
+        except Exception as e:
+            self.ssh.connect(mw.getLocalIp(), port, username='root', timeout=2)    
+        except Exception as e:
+            self.ssh.connect(mw.getHostAddr(), port, username='root', timeout=2)
+        except Exception as e:
+            return False
 
-def get_shell(session_id):
-    global shell_dict, ssh_dict
-    shell = shell_dict.get(session_id)
+        self.shell = self.ssh.invoke_shell(term='xterm', width=83, height=21)
+        self.shell.setblocking(0)
+        return True
 
-    if shell and shell.exit_status_ready():
-        clear_ssh(session_id)
-        shell = None
+    def get_shell(self):
+        if self.shell is None:
+            if self.connect():
+                return self.shell
+            else:
+                emit('server_response', {'data': '连接SSH服务失败!\r\n'})
 
-    if not shell:
-        if connect_ssh(session_id):
-            shell = shell_dict.get(session_id)
-        else:
-            emit('server_response', {'data': '连接SSH服务失败!\r\n'})
+        return self.shell
 
-    return shell
+    def clear(self):
+        self.ssh.close()
+        self.shell = None
 
-def connect_ssh(session_id):
-    global shell_dict, ssh_dict, status_dict
-    status_dict[session_id] = 'connecting'
-    print("开始尝试连接SSH终端", session_id)
-    port = mw.getSSHPort()
-    try:
-        ssh.connect('127.0.0.1', port, username='root', timeout=2)
-    except Exception as e:
-        ssh.connect('localhost', port, username='root', timeout=2)
-    except Exception as e:
-        ssh.connect(mw.getLocalIp(), port, username='root', timeout=2)    
-    except Exception as e:
-        ssh.connect(mw.getHostAddr(), port, username='root', timeout=2)
-    except Exception as e:
-        return False
+session_ssh_dict = {}
 
-    shell = ssh.invoke_shell(term='xterm', width=83, height=21)
-    shell.setblocking(0)
+@socketio.on('connect_to_ssh')
+def connect_to_ssh(msg):
+    if not isLogined():
+        emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
+        return None
 
-    ssh_dict[session_id] = ssh
-    shell_dict[session_id] = shell
-    return True
+    session_id = request.sid
+    ssh_session = session_ssh_dict.get(session_id)
+
+    if ssh_session is None:
+        ssh_session = SSHSession(session_id)
+        session_ssh_dict[session_id] = ssh_session
+
+    shell = ssh_session.get_shell()
+
+    print("当前map", session_id, str(session_ssh_dict))
+
+    if shell:
+        try:
+            recv = shell.recv(8192)
+            emit('server_response', {'data': recv.decode("utf-8")})
+            ssh_session.status = 'connected'
+            emit('connected', '')
+        except Exception as e:
+            pass
+
 
 @socketio.on('webssh')
 def webssh(msg):
@@ -586,9 +604,16 @@ def webssh(msg):
         return None
 
     session_id = request.sid
+    ssh_session = session_ssh_dict.get(session_id)
+
     
-    print('session_id', session_id)
-    shell = get_shell(session_id)
+    print("啊啊啊啊map", session_id, str(session_ssh_dict), ssh_session)
+
+    if ssh_session is None:
+        ssh_session = SSHSession(session_id)
+        session_ssh_dict[session_id] = ssh_session
+
+    shell = ssh_session.get_shell()
 
     if shell:
         shell.send(msg)
@@ -599,26 +624,15 @@ def webssh(msg):
         except Exception as ex:
             pass
 
-@socketio.on('connect_to_ssh')
-def connect_to_ssh(msg):
-    if not isLogined():
-        emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
-        return None
-
-    global status_dict
+@socketio.on('disconnect_to_ssh')
+def disconnect_to_ssh(message):
     session_id = request.sid
-    if ssh_dict.get(session_id) is None and status_dict.get(session_id) == 'connecting':
-        return True
-    shell = get_shell(session_id)
+    ssh_session = session_ssh_dict.get(session_id)
 
-    if shell:
-        try:
-            recv = shell.recv(8192)
-            emit('server_response', {'data': recv.decode("utf-8")})
-            status_dict[session_id] = 'connected'
-            emit('connected', '')
-        except Exception as e:
-            pass
+    if ssh_session is not None:
+        ssh_session.clear()
+        session_ssh_dict.pop(session_id)
+
 
 if not mw.isAppleSystem():
     try:
@@ -638,13 +652,8 @@ if not mw.isAppleSystem():
                     'cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys')
                 mw.execShell('chmod 600 /root/.ssh/authorized_keys')
 
-        # 在程序启动时预先初始化SSH客户端
-        import paramiko
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        print("终端启动成功")
     except Exception as e:
-        print("本地终端无法使用")
+        print(e)
 
 ##################### ssh  end ###########################
+

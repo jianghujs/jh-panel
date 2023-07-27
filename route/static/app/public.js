@@ -1595,9 +1595,11 @@ function loadImage(){
     });
 }
 
-var socket, gterm;
+var socket, gterm, socketLoading;
 
 function webShell() {
+		if(socketLoading) return;
+		socketLoading = true;
     var termCols = 83;
     var termRows = 21;
     var sendTotal = 0;
@@ -1611,6 +1613,7 @@ function webShell() {
     gterm = term;
 
     socket.on('server_response', function (data) {
+				socketLoading = false;
         term.write(data.data);
         if (data.data == '\r\n登出\r\n' || 
             data.data == '登出\r\n' || 
@@ -1675,6 +1678,7 @@ function webShell() {
 					},
 					cancel: function () {
 						term.destroy();
+						socket.emit('disconnect_to_ssh', '');
 						clearInterval(interval);
 					}
 			});

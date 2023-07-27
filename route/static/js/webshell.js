@@ -39,13 +39,6 @@ class WebShell {
 	}
 
 	async onConnect() {
-			if (this.gterm) {
-				layer.close(this.term_box)
-				this.gterm.destroy();
-				clearInterval(this.interval);
-				webShell = new WebShell();
-				return
-			}
 		  layer.closeAll();
 			var termCols = 83;
 			var termRows = 21;
@@ -125,9 +118,6 @@ class WebShell {
 	}
 
 	setupContextMenu() {
-
-		// 设置菜单
-		console.log("设置菜单")
 			var can = $("#term");
 			can.contextmenu(function (e) {
 					var menuPosition = this.calculateMenuPosition(e, can);

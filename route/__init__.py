@@ -527,6 +527,8 @@ def index(reqClass=None, reqAction=None, reqData=None):
     return publicObject(newInstance, reqAction)
 
 ##################### ssh  start ###########################
+session_ssh_dict = {}
+
 import paramiko
 class SSHSession:
     def __init__(self, session_id):
@@ -568,8 +570,6 @@ class SSHSession:
         self.ssh.close()
         self.shell = None
 
-session_ssh_dict = {}
-
 @socketio.on('connect_to_ssh')
 def connect_to_ssh(msg):
     if not isLogined():
@@ -584,8 +584,6 @@ def connect_to_ssh(msg):
         session_ssh_dict[session_id] = ssh_session
 
     shell = ssh_session.get_shell()
-
-    print("当前map", session_id, str(session_ssh_dict))
 
     if shell:
         try:
@@ -605,9 +603,6 @@ def webssh(msg):
 
     session_id = request.sid
     ssh_session = session_ssh_dict.get(session_id)
-
-    
-    print("啊啊啊啊map", session_id, str(session_ssh_dict), ssh_session)
 
     if ssh_session is None:
         ssh_session = SSHSession(session_id)

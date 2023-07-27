@@ -22,6 +22,7 @@ import hashlib
 import shlex
 import datetime
 import subprocess
+import socket
 import re
 import db
 from random import Random
@@ -1346,6 +1347,19 @@ def getHostAddr():
     if os.path.exists('data/iplist.txt'):
         return readFile('data/iplist.txt').strip()
     return '127.0.0.1'
+
+
+def getLocalIp():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    local_ip = None
+    try:
+        # The IP address isn't really important here, we just need to select a valid IP address
+        # to allow the socket to be bound correctly
+        sock.connect(("8.8.8.8", 80))
+        local_ip = sock.getsockname()[0]
+    finally:
+        sock.close()
+    return local_ip
 
 
 def setHostAddr(addr):

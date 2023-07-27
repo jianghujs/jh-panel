@@ -560,15 +560,17 @@ def connect_ssh(session_id):
     global shell_dict, ssh_dict, status_dict
     status_dict[session_id] = 'connecting'
     print("开始尝试连接SSH终端", session_id)
-    for host in ['127.0.0.1', mw.getHostAddr(), 'localhost']:
-        try:
-            print("当前终端URL", host)
-            ssh.connect(host, mw.getSSHPort(), username='root', timeout=5)
-            print("连接终端成功", host)
-            break
-        except Exception as e:
-            continue
-    else:
+    print("哈哈哈哈", mw.getLocalIp())
+    port = mw.getSSHPort()
+    try:
+        ssh.connect(mw.getLocalIp(), port, username='root', timeout=30)
+    except Exception as e:
+        ssh.connect(mw.getHostAddr(), port, username='root', timeout=30)
+    except Exception as e:
+        ssh.connect('127.0.0.1', port, username='root', timeout=5)
+    except Exception as e:
+        ssh.connect('localhost', port, username='root', timeout=5)
+    except Exception as e:
         return False
 
     shell = ssh.invoke_shell(term='xterm', width=83, height=21)

@@ -1599,11 +1599,11 @@ var socket, gterm;
 // 初始化socket
 (function initWebShell() {
 	if(!socket)socket = io.connect();
+	socket.on('connect', function () {
+		console.log('connect');
+	});
 	if (socket) {
-		socket.emit('webssh', '');
-		interval = setInterval(function () {
-				socket.emit('webssh', '');
-		}, 500);
+		socket.emit('connect_to_ssh', '');
 	}
 })();
 
@@ -1632,6 +1632,13 @@ function webShell() {
             }, 500);
         }
     });
+		
+    if (socket) {
+			socket.emit('webssh', '');
+			interval = setInterval(function () {
+					socket.emit('webssh', '');
+			}, 500);
+		}
 
     $(window).unload(function(){
   　     term.destroy();
@@ -1649,7 +1656,6 @@ function webShell() {
     term.on('data', function (data) {
         socket.emit('webssh', data);
     });
-
 
     var term_box = layer.open({
         type: 1,

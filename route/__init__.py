@@ -597,8 +597,8 @@ def webssh(msg):
         except Exception as ex:
             pass
 
-@socketio.on('connect_event')
-def connected_msg(msg):
+@socketio.on('connect_to_ssh')
+def connect_to_ssh(msg):
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
@@ -614,6 +614,7 @@ def connected_msg(msg):
             recv = shell.recv(8192)
             emit('server_response', {'data': recv.decode("utf-8")})
             status_dict[session_id] = 'connected'
+            emit('connected', '')
         except Exception as e:
             pass
 

@@ -572,7 +572,7 @@ def get_ssh_session():
     global session_ssh_dict
     session_id = request.sid
     ssh_session = session_ssh_dict.get(session_id)
-    print('====== ssh session ====\nsession_ssh_dict: %(session_ssh_dict)s\nsession_id: %(session_id)s\nssh_session: %(ssh_session)s' % {"session_ssh_dict": str(session_ssh_dict), "session_id": session_id, "ssh_session": ssh_session})
+    print('- 获取ssh_session --->nsession_ssh_dict: %(session_ssh_dict)s\nsession_id: %(session_id)s\nssh_session: %(ssh_session)s\n------------' % {"session_ssh_dict": str(session_ssh_dict), "session_id": session_id, "ssh_session": ssh_session})
     return ssh_session
 
 @socketio.on('connect_to_ssh')

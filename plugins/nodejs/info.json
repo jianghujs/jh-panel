@@ -1,5 +1,5 @@
 {
-	"title":"nodejs管理器",
+	"title":"NodeJS管理器",
 	"tip":"soft",
 	"name":"nodejs",
 	"ps":"node.js管理器，内置 node.js + npm + nvm + nodejs.!",

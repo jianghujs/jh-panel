@@ -1,8 +1,8 @@
 {
-	"title":"host编辑器",
+	"title":"Host编辑器",
 	"tip":"soft",
 	"name":"host",
-	"ps":"host编辑器",
+	"ps":"Host编辑器",
 	"versions":"1.0",
 	"updates":"1.0",
 	"shell":"install.sh",

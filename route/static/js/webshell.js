@@ -53,20 +53,6 @@ class WebShell {
 		});
 	}
 
-	async bindTermEvent() {
-		if (this.socket) {
-			this.socket.on('server_response', this.serverResponse.bind(this));
-			this.socket.emit('webssh', '');
-			this.interval = setInterval(function () {
-					this.socket.emit('webssh', '');
-			}.bind(this), 500);
-
-			this.gterm.on('data', function (data) {
-				this.socket.emit('webssh', data);
-			}.bind(this));
-		}
-	}
-
 	async initSocket() {
 		return new Promise((resolve, reject) => {
 			if (this.socketLoading) return;
@@ -90,7 +76,6 @@ class WebShell {
 
 	serverResponse(data) {
 			if (!this.gterm) return;
-			console.log("onServerReponse", data)
 			this.socketLoading = false;
 			this.gterm.write(data.data);
 			if (data.data == '\r\n登出\r\n' || 
@@ -109,8 +94,16 @@ class WebShell {
 			await this.initTerm();
 			if (!this.socket) {
 				await this.initSocket();	
-				await this.bindTermEvent();
-			}
+				this.socket.on('server_response', this.serverResponse.bind(this));
+				this.socket.emit('webssh', '');
+				this.interval = setInterval(function () {
+						this.socket.emit('webssh', '');
+				}.bind(this), 500);
+			} 
+			
+			this.gterm.on('data', function (data) {
+				this.socket.emit('webssh', data);
+			}.bind(this));
 			console.log("开始打开终端")
 			
 

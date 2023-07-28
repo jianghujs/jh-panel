@@ -1,4 +1,9 @@
 var webShell = null;
+
+$(window).unload(() => {
+	webShell.dropInstance();
+});
+
 class WebShell {
 	constructor() {
 			this.socket = null;
@@ -7,10 +12,6 @@ class WebShell {
 			this.socketLoading = false;
 			this.interval = null;
 			this.connected = false;
-
-			$(window).unload(function() {
-				this.dropInstance();
-			}.bind(this));
 	}
 
 	static getInstance() {
@@ -60,6 +61,7 @@ class WebShell {
 				resolve(this.socket);
 				return
 			}
+			console.log('开始创建socket连接')
 			let loadingLayer = layer.msg('正在连接终端...', {icon: 16, shade: [0.3, '#000'], time: -1});
 			this.socketLoading = true;
 			this.socket = io.connect();
@@ -92,9 +94,7 @@ class WebShell {
 
 	async open() {
 			await this.initTerm();
-			if (!this.socket) {
-				await this.initSocket();	
-			} 
+			await this.initSocket();	
 
 			this.socket.emit('webssh', '');
 			this.interval = setInterval(function () {

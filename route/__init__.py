@@ -582,10 +582,11 @@ def connect_to_ssh(msg):
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
-    ssh_session = get_ssh_session()
-
+    session_id = request.sid
+    ssh_session = session_ssh_dict.get(session_id)
+    
     if ssh_session is None:
-        session_id = request.sid
+        
         ssh_session = SSHSession(session_id)
         session_ssh_dict[session_id] = ssh_session
 
@@ -609,7 +610,9 @@ def webssh(msg):
         return None
 
     ssh_session = get_ssh_session()
-
+    if ssh_session is None:
+        emit('server_response', {'data': ''})
+        return False
     try:
         shell = ssh_session.get_shell()
         if shell:

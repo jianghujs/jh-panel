@@ -94,13 +94,14 @@ class WebShell {
 			await this.initTerm();
 			if (!this.socket) {
 				await this.initSocket();	
-				this.socket.on('server_response', this.serverResponse.bind(this));
 				this.socket.emit('webssh', '');
 				this.interval = setInterval(function () {
 						this.socket.emit('webssh', '');
 				}.bind(this), 500);
 			} 
-			
+
+			this.socket.off('server_response');
+			this.socket.on('server_response', this.serverResponse.bind(this));
 			this.gterm.on('data', function (data) {
 				this.socket.emit('webssh', data);
 			}.bind(this));

@@ -539,33 +539,29 @@ class SSHSession:
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.shell = None
         self.status = None
+        self.connect()
 
     def connect(self):
         self.status = 'connecting'
-        print("开始尝试连接SSH终端", self.session_id)
+        print("开始尝试连接SSH终端", str(time.time()), self.session_id)
         port = mw.getSSHPort()
         try:
-            self.ssh.connect('127.0.0.1', port, username='root', timeout=2)
-        except Exception as e:
-            self.ssh.connect('localhost', port, username='root', timeout=2)
-        except Exception as e:
-            self.ssh.connect(mw.getLocalIp(), port, username='root', timeout=2)    
-        except Exception as e:
-            self.ssh.connect(mw.getHostAddr(), port, username='root', timeout=2)
-        except Exception as e:
-            return False
+            ips = ['127.0.0.1', mw.getLocalIp(), mw.getHostAddr()]
+            for ip in ips:
+                print(f"尝试连接{ip}", port)
+                self.ssh.connect(hostname=ip, port=port, username='root', timeout=2)
+                break  # 如果连接成功，就退出循环
+            else:  # 如果所有的IP地址都尝试失败，就返回False
+                return False
 
-        self.shell = self.ssh.invoke_shell(term='xterm', width=83, height=21)
-        self.shell.setblocking(0)
-        return True
+            print("SSH终端连接成功", self.session_id)
+            self.shell = self.ssh.invoke_shell(term='xterm', width=83, height=21)
+            self.shell.setblocking(0)
+            return True
+        except Exception as e:
+            print(f"连接{ip}失败: {e}")
 
     def get_shell(self):
-        if self.shell is None:
-            if self.connect():
-                return self.shell
-            else:
-                emit('server_response', {'data': '连接SSH服务失败!\r\n'})
-
         return self.shell
 
     def clear(self):
@@ -574,31 +570,33 @@ class SSHSession:
         
 @socketio.on('connect_to_ssh')
 def connect_to_ssh(msg):
+    print("开始尝试连接啊啊啊啊啊啊啊啊啊啊啊啊")
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
-    threading.Thread(target=handle_ssh_connection, args=(request.sid,)).start()
 
-def handle_ssh_connection(session_id):
+    session_id = request.sid
     ssh_session = session_ssh_dict.get(session_id)
 
     if ssh_session is None:
         ssh_session = SSHSession(session_id)
         session_ssh_dict[session_id] = ssh_session
 
-    try:
-        shell = ssh_session.get_shell()
-        if shell:
+    shell = ssh_session.get_shell()
+    print("shell", shell)
+    if shell:
+        try:
             recv = shell.recv(8192)
             emit('server_response', {'data': recv.decode("utf-8")})
             ssh_session.status = 'connected'
             emit('connected', '')
-    except Exception as e:
-        pass
+        except Exception as e:
+            pass
 
 
 @socketio.on('webssh')
 def webssh(msg):
+    print("webssh")
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None

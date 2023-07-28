@@ -31,14 +31,14 @@ class WebShell {
 	async initSocket() {
 		return new Promise((resolve, reject) => {
 			if (this.socketLoading) return;
-			layer.msg('正在连接终端...', {icon: 16, shade: [0.3, '#000'], time: -1});
+			let loadingLayer = layer.msg('正在连接终端...', {icon: 16, shade: [0.3, '#000'], time: -1});
 			this.socketLoading = true;
 			this.socket = io.connect();
 			this.socket.on('server_response', this.serverResponse.bind(this));
 			this.socket.on('connect', function () {
 				this.socketLoading = false;
 				console.log("socket.io connected!");
-				layer.closeAll();
+				layer.close(loadingLayer);
 				resolve(this.socket);
 				console.log("初始化socket完成")
 			});

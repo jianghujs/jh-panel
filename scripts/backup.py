@@ -5,6 +5,8 @@
 
 import sys
 import os
+import json
+import datetime
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -24,7 +26,7 @@ import time
 
 class backupTools:
 
-    def backupSite(self, name, count):
+    def backupSite(self, name, save):
         sql = db.Sql()
         path = sql.table('sites').where('name=?', (name,)).getField('path')
         startTime = time.time()
@@ -66,14 +68,14 @@ class backupTools:
         log = "网站[" + name + "]备份成功,用时[" + str(round(outTime, 2)) + "]秒"
         mw.writeLog('计划任务', log)
         print("★[" + endDate + "] " + log)
-        print("|---保留最新的[" + count + "]份备份")
+        print("|---保留最新的[" + save + "]份备份")
         print("|---文件名:" + filename)
 
         # 清理多余备份
         backups = sql.table('backup').where(
             'type=? and pid=?', ('0', pid)).field('id,filename').select()
 
-        num = len(backups) - int(count)
+        num = len(backups) - int(save)
         if num > 0:
             for backup in backups:
                 mw.execShell("rm -f " + backup['filename'])
@@ -83,7 +85,9 @@ class backupTools:
                 if num < 1:
                     break
 
-    def backupDatabase(self, name, count):
+    def backupDatabase(self, name, save):
+        
+        print("save", save)
         db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
         find_name = mw.M('databases').dbPos(db_path, 'mysql').where(
@@ -143,22 +147,56 @@ class backupTools:
         log = "数据库[" + name + "]备份成功,用时[" + str(round(outTime, 2)) + "]秒"
         mw.writeLog('计划任务', log)
         print("★[" + endDate + "] " + log)
-        print("|---保留最新的[" + count + "]份备份")
+        # 清理多余备份
+        saveAllDay = int(save.get('saveAllDay'))
+        saveOther = int(save.get('saveOther'))
+        saveMaxDay = int(save.get('saveMaxDay'))
+
+        # saveAllDay天内全部保留，其余只保留saveOther份，最长保留saveMaxDay天
+        print("|---[" + str(saveAllDay) + "]天内全部保留，其余只保留[" + str(saveOther) + "]份，最长保留[" + str(saveMaxDay) + "]天")
         print("|---文件名:" + filename)
 
-        # 清理多余备份
-        backups = mw.M('backup').where(
-            'type=? and pid=?', ('1', pid)).field('id,filename').select()
+        backups = mw.M('backup').where('type=? and pid=?', ('1', pid)).field('id,filename,addtime').order('addtime desc').select()
 
-        num = len(backups) - int(count)
-        if num > 0:
-            for backup in backups:
-                mw.execShell("rm -f " + backup['filename'])
-                mw.M('backup').where('id=?', (backup['id'],)).delete()
-                num -= 1
-                print("|---已清理过期备份文件：" + backup['filename'])
-                if num < 1:
-                    break
+        # 获取当前日期
+        now = datetime.datetime.now()
+
+        # 将备份按日期分组
+        backups_by_date = {}
+        for backup in backups:
+            backup_time = datetime.datetime.strptime(backup['addtime'], '%Y/%m/%d %H:%M:%S')
+            date = backup_time.date()
+            if date not in backups_by_date:
+                backups_by_date[date] = []
+            backups_by_date[date].append(backup)
+
+        # 保存需要删除的备份
+        to_delete = []
+
+        for date, backups_on_date in backups_by_date.items():
+            # 计算备份距离现在的天数
+            days = (now.date() - date).days
+
+            # saveAllDay天内全部保留
+            if days <= saveAllDay:
+                continue
+
+            # 其余只保留saveOther份
+            if len(backups_on_date) > saveOther:
+                # 对备份按时间排序，然后只保留最新的saveOther份
+                backups_on_date.sort(key=lambda x: x['addtime'], reverse=True)
+                to_delete.extend(backups_on_date[saveOther:])
+
+            # 最长保留saveMaxDay天
+            if days > saveMaxDay:
+                to_delete.extend(backups_on_date)
+
+        # 删除需要删除的备份
+        for backup in to_delete:
+            os.system("rm -f " + backup['filename'])
+            mw.M('backup').where('id=?', (backup['id'],)).delete()
+            print("|---已清理过期备份文件：" + backup['filename'])
+
 
     def backupDatabaseAll(self, save):
         db_path = mw.getServerDir() + '/mysql-apt'
@@ -177,13 +215,18 @@ class backupTools:
 if __name__ == "__main__":
     backup = backupTools()
     type = sys.argv[1]
+    name = sys.argv[2]
+    save = sys.argv[3]
+    if save is not None:
+        save = json.loads(save)
+
     if type == 'site':
         if sys.argv[2] == 'ALL':
-            backup.backupSiteAll(sys.argv[3])
+            backup.backupSiteAll(save)
         else:
-            backup.backupSite(sys.argv[2], sys.argv[3])
+            backup.backupSite(name, save)
     elif type == 'database':
         if sys.argv[2] == 'ALL':
-            backup.backupDatabaseAll(sys.argv[3])
+            backup.backupDatabaseAll(save)
         else:
-            backup.backupDatabase(sys.argv[2], sys.argv[3])
+            backup.backupDatabase(name, save)

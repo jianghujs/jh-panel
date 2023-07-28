@@ -539,27 +539,27 @@ fi
 
             script_dir = mw.getServerDir() + "/jh-panel/scripts"
 
-            save = {
+            save = json.dumps({
                 "saveAllDay": param['saveAllDay'],
                 "saveOther": param['saveOther'],
                 "saveMaxDay": param['saveMaxDay']
-            }
+            })
 
             wheres = {
-                'path': head + "python3 " + script_dir + "/backup.py path " + param['sname'] + " " + str(save),
-                'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " " + str(save),
-                'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " " + str(save),
-                'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " " + str(save),
+                'path': head + "python3 " + script_dir + "/backup.py path " + param['sname'] + " '" + str(save) + "'",
+                'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " '" + str(save) + "'",
+                'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " '" + str(save) + "'",
+                'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                 'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
             }
             if param['backup_to'] != 'localhost':
                 cfile = mw.getPluginDir() + "/" + \
                     param['backup_to'] + "/index.py"
                 wheres = {
-                    'path': head + "python3 " + cfile + " path " + param['sname'] + " " + str(save),
-                    'site':   head + "python3 " + cfile + " site " + param['sname'] + " " + str(save),
-                    'database': head + "python3 " + cfile + " database " + param['sname'] + " " + str(save),
-                    'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " " + str(save),
+                    'path': head + "python3 " + cfile + " path " + param['sname'] + " '" + str(save) + "'",
+                    'site':   head + "python3 " + cfile + " site " + param['sname'] + " '" + str(save) + "'",
+                    'database': head + "python3 " + cfile + " database " + param['sname'] + " '" + str(save) + "'",
+                    'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                     'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
                 }
             try:

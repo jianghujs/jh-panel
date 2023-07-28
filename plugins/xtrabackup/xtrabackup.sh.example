@@ -5,7 +5,7 @@ rm -rf $BACKUP_PATH
 mkdir -p $BACKUP_PATH
 HISTORY_DIR="/www/backup/xtrabackup_data_history"
 BACKUP_FILE="$HISTORY_DIR/xtrabackup_data_$timestamp.zip"
-xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> /www/wwwlogs/xtrabackup.log
+xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> /www/wwwlogs/xtrabackup_$timestamp.log
 if [ $? -eq 0 ] && [ -d "$BACKUP_PATH/mysql" ];then
     mkdir -p $HISTORY_DIR
     cd $BACKUP_PATH && zip -q -r $BACKUP_FILE ./*

@@ -220,15 +220,17 @@ def getRecoveryBackupScript():
         return mw.returnJson(False, '未检测到安装的mysql插件!')
 
     recoveryScript = '#!/bin/bash\n'
+    recoveryScript += ('timestamp=$(date +%Y%m%d_%H%M%S)\n')
     if os.path.exists('/www/server/mysql-apt'):
         recoveryScript += ('systemctl stop mysql-apt\n')
     elif os.path.exists('/www/server/mysql'):
         recoveryScript += ('systemctl stop mysql\n')
+
     recoveryScript += ('mv %s %s_%s\n' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
     recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
     recoveryScript += ('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s\n' % (filename))
-    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup.log\n')
-    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup.log\n')
+    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup_$timestamp.log\n')
+    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup_$timestamp.log\n')
     recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
     recoveryScript += ('chmod -R 755 ' + mysqlDir + '\n')
     if os.path.exists('/www/server/mysql-apt'):

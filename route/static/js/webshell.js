@@ -7,6 +7,10 @@ class WebShell {
 			this.socketLoading = false;
 			this.interval = null;
 			this.connected = false;
+
+			$(window).unload(function() {
+				this.dropInstance();
+			}.bind(this));
 	}
 
 	static getInstance() {
@@ -26,6 +30,41 @@ class WebShell {
 				this.socket = null;
 		}
 		webShell = null;
+	}
+
+	async initTerm() {
+		return new Promise((resolve, reject) => {
+			console.log("开始创建终端")
+			var termCols = 83;
+			var termRows = 21;
+			var sendTotal = 0;
+			var term = new Terminal({ 
+				cols: termCols, 
+				rows: termRows, 
+				screenKeys: true, 
+				useStyle: true
+			});
+
+			term.open();
+			term.setOption('cursorBlink', true);
+			term.setOption('fontSize', 14);
+			this.gterm = term;
+			resolve(this.gterm);
+		});
+	}
+
+	async bindTermEvent() {
+		if (this.socket) {
+			this.socket.on('server_response', this.serverResponse.bind(this));
+			this.socket.emit('webssh', '');
+			this.interval = setInterval(function () {
+					this.socket.emit('webssh', '');
+			}.bind(this), 500);
+
+			this.gterm.on('data', function (data) {
+				this.socket.emit('webssh', data);
+			}.bind(this));
+		}
 	}
 
 	async initSocket() {
@@ -67,34 +106,13 @@ class WebShell {
 	}
 
 	async open() {
-			await this.initSocket();
-			console.log("开始打开终端")
-			var termCols = 83;
-			var termRows = 21;
-			var sendTotal = 0;
-			var term = new Terminal({ 
-				cols: termCols, 
-				rows: termRows, 
-				screenKeys: true, 
-				useStyle: true
-			});
-
-			term.open();
-			term.setOption('cursorBlink', true);
-			term.setOption('fontSize', 14);
-			this.gterm = term;
-			
-			if (this.socket) {
-					this.socket.on('server_response', this.serverResponse.bind(this));
-					this.socket.emit('webssh', '');
-					this.interval = setInterval(function () {
-							this.socket.emit('webssh', '');
-					}.bind(this), 500);
+			await this.initTerm();
+			if (!this.socket) {
+				await this.initSocket();	
+				await this.bindTermEvent();
 			}
-
-			$(window).unload(function() {
-					this.dropInstance();
-			}.bind(this));
+			console.log("开始打开终端")
+			
 
 			setTimeout(function () {
 					var currentDir = $("#PathPlaceBtn").attr('path');
@@ -102,10 +120,6 @@ class WebShell {
 							this.socket.emit('webssh', `cd ${currentDir}\n`);
 					}
 			}.bind(this), 600);
-
-			this.gterm.on('data', function (data) {
-					this.socket.emit('webssh', data);
-			}.bind(this));
 
 			this.term_box = layer.open({
 					type: 1,
@@ -129,8 +143,8 @@ class WebShell {
 							}.bind(this));
 					}.bind(this),
 					cancel: function () {
-							this.gterm.destroy();
-							clearInterval(this.interval);
+						this.gterm.destroy();
+						clearInterval(this.interval);
 					}.bind(this)
 			});
 

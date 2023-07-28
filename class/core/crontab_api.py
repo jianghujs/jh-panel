@@ -132,9 +132,12 @@ class crontab_api:
     def cronCheck(self, params):
 
         if params['stype'] == 'site' or params['stype'] == 'database' or params['stype'] == 'logs':
-            if params['save'] == '':
-                return False, '保留份数不能为空!'
-
+            if params['saveAllDay'] == '':
+                return False, '3天内保留份数不能为空!'
+            if params['saveOther'] == '':
+                return False, '其余保留份数不能为空!'
+            if params['saveMaxDay'] == '':
+                return False, '最长保留天数不能为空!'
         if params['type'] == 'day':
             if params['hour'] == '':
                 return False, '小时不能为空!'
@@ -253,7 +256,9 @@ class crontab_api:
         where1 = request.form.get('where1', '')
         hour = request.form.get('hour', '')
         minute = request.form.get('minute', '')
-        save = request.form.get('save', '')
+        saveAllDay = request.form.get('saveAllDay', '')
+        saveOther = request.form.get('saveOther', '')
+        saveMaxDay = request.form.get('saveMaxDay', '')
         backup_to = request.form.get('backupTo', '')
         stype = request.form.get('sType', '')
         sname = request.form.get('sName', '')
@@ -270,7 +275,9 @@ class crontab_api:
             'where1': where1,
             'hour': hour,
             'minute': minute,
-            'save': save,
+            'saveAllDay': saveAllDay,
+            'saveOther': saveOther,
+            'saveMaxDay': saveMaxDay,
             'backup_to': backup_to,
             'stype': stype,
             'sname': sname,
@@ -295,7 +302,9 @@ class crontab_api:
         where1 = params["where1"]
         hour = params["hour"]
         minute = params["minute"]
-        save = params["save"]
+        saveAllDay = request.form.get('saveAllDay', '')
+        saveOther = request.form.get('saveOther', '')
+        saveMaxDay = request.form.get('saveMaxDay', '')
         backup_to = params["backup_to"]
         stype = params["stype"]
         sname = params["sname"]
@@ -321,8 +330,8 @@ class crontab_api:
             self.crondReload()
 
         add_time = time.strftime('%Y-%m-%d %X', time.localtime())
-        task_id = mw.M('crontab').add('name,type,where1,where_hour,where_minute,echo,addtime,status,save,backup_to,stype,sname,sbody,urladdress',
-                                      (iname, field_type, where1, hour, minute, cronName, add_time, 1, save, backup_to, stype, sname, sbody, urladdress,))
+        task_id = mw.M('crontab').add('name,type,where1,where_hour,where_minute,echo,addtime,status,saveAllDay,saveOther,saveMaxDay,backup_to,stype,sname,sbody,urladdress',
+                                      (iname, field_type, where1, hour, minute, cronName, add_time, 1, saveAllDay, saveOther, saveMaxDay, backup_to, stype, sname, sbody, urladdress,))
         return task_id
 
     def startTaskApi(self):
@@ -374,6 +383,19 @@ class crontab_api:
 
     # 取数据列表
     def getDataListApi(self):
+        # TODO 兼容旧版本，检查并添加saveAllDay,saveOther,saveMaxDay字段
+        crontab_db = mw.M('crontab')
+        crontab_columns = crontab_db.originExecute("PRAGMA table_info(crontab)").fetchall()
+        saveAllDay_exists = any(column[1] == 'saveAllDay' for column in crontab_columns)
+        if not saveAllDay_exists:
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveAllDay INTEGER DEFAULT '3'")
+        saveOther_exists = any(column[1] == 'saveOther' for column in crontab_columns)
+        if not saveOther_exists:
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveOther INTEGER DEFAULT '1'")
+        saveMaxDay_exists = any(column[1] == 'saveMaxDay' for column in crontab_columns)
+        if not saveMaxDay_exists:
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveMaxDay INTEGER DEFAULT '30'")
+
         stype = request.form.get('type', '')
 
         bak_data = []
@@ -517,21 +539,27 @@ fi
 
             script_dir = mw.getServerDir() + "/jh-panel/scripts"
 
+            save = {
+                "saveAllDay": param['saveAllDay'],
+                "saveOther": param['saveOther'],
+                "saveMaxDay": param['saveMaxDay']
+            }
+
             wheres = {
-                'path': head + "python3 " + script_dir + "/backup.py path " + param['sname'] + " " + str(param['save']),
-                'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " " + str(param['save']),
-                'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " " + str(param['save']),
-                'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " " + str(param['save']),
+                'path': head + "python3 " + script_dir + "/backup.py path " + param['sname'] + " " + str(save),
+                'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " " + str(save),
+                'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " " + str(save),
+                'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " " + str(save),
                 'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
             }
             if param['backup_to'] != 'localhost':
                 cfile = mw.getPluginDir() + "/" + \
                     param['backup_to'] + "/index.py"
                 wheres = {
-                    'path': head + "python3 " + cfile + " path " + param['sname'] + " " + str(param['save']),
-                    'site':   head + "python3 " + cfile + " site " + param['sname'] + " " + str(param['save']),
-                    'database': head + "python3 " + cfile + " database " + param['sname'] + " " + str(param['save']),
-                    'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " " + str(param['save']),
+                    'path': head + "python3 " + cfile + " path " + param['sname'] + " " + str(save),
+                    'site':   head + "python3 " + cfile + " site " + param['sname'] + " " + str(save),
+                    'database': head + "python3 " + cfile + " database " + param['sname'] + " " + str(save),
+                    'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " " + str(save),
                     'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
                 }
             try:

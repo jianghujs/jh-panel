@@ -217,13 +217,17 @@ function planAdd(){
 	}
 	$("#set-Config input[name='minute']").val(minute);
 	
-	var save = $("#save").val();
-	if(save < 0){
+	var saveAllDay = $("#saveAllDay").val();
+	var saveOther = $("#saveOther").val();
+	var saveMaxDay = $("#saveMaxDay").val();
+	if(saveAllDay < 0 || saveOther < 0){
 		layer.msg('不能有负数!',{icon:2});
 		return;
 	}
 	
-	$("#set-Config input[name='save']").val(save);
+	$("#set-Config input[name='saveAllDay']").val(saveAllDay);
+	$("#set-Config input[name='saveOther']").val(saveOther);
+	$("#set-Config input[name='saveMaxDay']").val(saveMaxDay);
 	$("#set-Config input[name='week']").val($(".planweek").find("b").attr("val"));
 
 	var sType = $(".planjs").find("b").attr("val");
@@ -495,9 +499,13 @@ function toBackup(type){
 						'+ orderOpt +'\
 					  </ul>\
 					</div>\
-					<div class="textname pull-left mr20">保留最新</div><div class="plan_hms pull-left mr20 bt-input-text">\
-					<span><input type="number" name="save" id="save" value="3" maxlength="4" max="100" min="1"></span>\
-					<span class="name">份</span>\
+					<div class="textname pull-left mr20">保留规则</div><div class="plan_hms pull-left mr20 bt-input-text">\
+					<span><input type="number" name="saveAllDay" id="saveAllDay" value="3" maxlength="4" max="100" min="1"></span>\
+					<span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
+					<span><input type="number" name="saveOther" id="saveOther" value="1" maxlength="4" max="100" min="1"></span>\
+					<span class="name" style="width: 90px;">份，最长保留</span>\
+					<span><input type="number" name="saveMaxDay" id="saveMaxDay" value="30" maxlength="4" max="100" min="1"></span>\
+					<span class="name">天</span>\
 					</div>';
 		$("#implement").html(sBody);
 		getselectname();

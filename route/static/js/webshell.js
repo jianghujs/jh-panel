@@ -6,40 +6,48 @@ class WebShell {
 			this.term_box = null;
 			this.socketLoading = false;
 			this.interval = null;
+			this.connected = false;
 	}
 
 	static getInstance() {
-		webShell = new WebShell();
+		if (webShell == null)
+			webShell = new WebShell();
 		return webShell;
 	}
-
-	open() {
-			if (this.socketLoading) return;
-			this.socketLoading = true;
-			this.socket = io.connect();
-
-			this.socket.on('server_response', this.serverResponse.bind(this));
-
-			layer.msg('正在连接终端...', {icon: 16, shade: [0.3, '#000'], time: -1});
-			
-			this.socket.on('connect', this.onConnect.bind(this));
-
-			if (this.socket) {
-					this.socket.emit('connect_to_ssh', '');
-			}
+	
+	dropInstance() {
+		layer.closeAll();
+		this.gterm.destroy();
+		clearInterval(this.interval);
+		if (this.socket) {
+				this.socket.emit('disconnect_to_ssh', '');
+				this.socket.disconnect();
+				this.socket.close();
+				this.socket = null;
+		}
+		webShell = null;
 	}
 
-	dropInstance() {
-			layer.closeAll();
-			this.gterm.destroy();
-			clearInterval(this.interval);
-			if (this.socket) {
-					this.socket.emit('disconnect_to_ssh', '');
-			}
-			webShell = null;
+	async initSocket() {
+		return new Promise((resolve, reject) => {
+			if (this.socketLoading) return;
+			layer.msg('正在连接终端...', {icon: 16, shade: [0.3, '#000'], time: -1});
+			this.socketLoading = true;
+			this.socket = io.connect();
+			this.socket.on('server_response', this.serverResponse.bind(this));
+			this.socket.on('connect', function () {
+				this.socketLoading = false;
+				console.log("socket.io connected!");
+				layer.closeAll();
+				resolve(this.socket);
+				console.log("初始化socket完成")
+			});
+		});
 	}
 
 	serverResponse(data) {
+			if (!this.gterm) return;
+			console.log("onServerReponse", data)
 			this.socketLoading = false;
 			this.gterm.write(data.data);
 			if (data.data == '\r\n登出\r\n' || 
@@ -54,13 +62,11 @@ class WebShell {
 			}
 	}
 
-	async onConnect() {
-			if (this.gterm) {
-				this.dropInstance();
-				return;
+	async open() {
+			if (!this.socket) {
+				await this.initSocket();
 			}
-
-		  layer.closeAll();
+			console.log("开始打开终端")
 			var termCols = 83;
 			var termRows = 21;
 			var sendTotal = 0;
@@ -75,7 +81,7 @@ class WebShell {
 			term.setOption('cursorBlink', true);
 			term.setOption('fontSize', 14);
 			this.gterm = term;
-			console.log("connected");
+
 			if (this.socket) {
 					this.socket.emit('webssh', '');
 					this.interval = setInterval(function () {
@@ -84,8 +90,7 @@ class WebShell {
 			}
 
 			$(window).unload(function() {
-					this.gterm.destroy();
-					clearInterval(this.interval);
+					this.dropInstance();
 			}.bind(this));
 
 			setTimeout(function () {

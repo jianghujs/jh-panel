@@ -94,13 +94,13 @@ class WebShell {
 			await this.initTerm();
 			if (!this.socket) {
 				await this.initSocket();	
-				this.socket.emit('webssh', '');
-				this.interval = setInterval(function () {
-						this.socket.emit('webssh', '');
-				}.bind(this), 500);
 			} 
 
-			this.socket.off('server_response');
+			this.socket.emit('webssh', '');
+			this.interval = setInterval(function () {
+					this.socket.emit('webssh', '');
+			}.bind(this), 500);
+
 			this.socket.on('server_response', this.serverResponse.bind(this));
 			this.gterm.on('data', function (data) {
 				this.socket.emit('webssh', data);
@@ -130,16 +130,21 @@ class WebShell {
 							</div>\
 					</div>',
 					success: function() {
+						console.log("success")
 							$(".shell_btn_close").click(function() {
 									layer.close(this.term_box);
 									this.gterm.destroy();
 									clearInterval(this.interval);
+									this.socket.off('server_response');
 							}.bind(this));
 					}.bind(this),
-					cancel: function () {
+					end: () => {
 						this.gterm.destroy();
 						clearInterval(this.interval);
-					}.bind(this)
+						// emit ctrl+c to stop the process
+						this.socket.emit('webssh', "\x03");
+						this.socket.off('server_response');
+					}
 			});
 
 			setTimeout(function () {

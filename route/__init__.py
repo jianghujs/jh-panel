@@ -567,20 +567,25 @@ class SSHSession:
     def clear(self):
         self.ssh.close()
         self.shell = None
-        
+
+def get_ssh_session():
+    global session_ssh_dict
+    session_id = request.sid
+    ssh_session = session_ssh_dict.get(session_id)
+    print('====== ssh session ====\nsession_ssh_dict: %(session_ssh_dict)s\nsession_id: %(session_id)s\nssh_session: %(ssh_session)s' % {"session_ssh_dict": str(session_ssh_dict), "session_id": session_id, "ssh_session": ssh_session})
+    return ssh_session
+
 @socketio.on('connect_to_ssh')
 def connect_to_ssh(msg):
-    print("=====> 开始连接SSH终端")
     global session_ssh_dict
+    print("=====> 开始连接SSH终端")
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
-
-    session_id = request.sid
-    ssh_session = session_ssh_dict.get(session_id)
-    print('当前session', str(session_ssh_dict), session_id, ssh_session)
+    ssh_session = get_ssh_session()
 
     if ssh_session is None:
+        session_id = request.sid
         ssh_session = SSHSession(session_id)
         session_ssh_dict[session_id] = ssh_session
 
@@ -598,15 +603,13 @@ def connect_to_ssh(msg):
 
 @socketio.on('webssh')
 def webssh(msg):
-    global session_ssh_dict
     print("=====> webssh消息", msg)
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
 
-    session_id = request.sid
-    ssh_session = session_ssh_dict.get(session_id)
-    print('当前session', str(session_ssh_dict), session_id, ssh_session)
+    ssh_session = get_ssh_session()
+
     try:
         shell = ssh_session.get_shell()
         if shell:
@@ -621,10 +624,7 @@ def webssh(msg):
 def disconnect_to_ssh(message):
     
     print("=====> 断开连接SSH终端")
-    global session_ssh_dict
-    session_id = request.sid
-    ssh_session = session_ssh_dict.get(session_id)
-    print('当前session', str(session_ssh_dict), session_id, ssh_session)
+    ssh_session = get_ssh_session()
 
     if ssh_session is not None:
         ssh_session.clear()

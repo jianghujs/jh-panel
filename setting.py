@@ -66,9 +66,7 @@ if not os.path.exists('data/admin_path.pl'):
     admin_path = mw.getRandomString(8)
     mw.writeFile('data/admin_path.pl', '/' + admin_path.lower())
 
-if workers > 2:
-    workers = 1
-
+workers = 1
 threads = workers * 1
 backlog = 512
 reload = False

@@ -31,10 +31,13 @@ class WebShell {
 	async initSocket() {
 		return new Promise((resolve, reject) => {
 			if (this.socketLoading) return;
+			if (this.socket) {
+				resolve(this.socket);
+				return
+			}
 			let loadingLayer = layer.msg('正在连接终端...', {icon: 16, shade: [0.3, '#000'], time: -1});
 			this.socketLoading = true;
 			this.socket = io.connect();
-			this.socket.on('server_response', this.serverResponse.bind(this));
 			this.socket.on('connect', function () {
 				this.socketLoading = false;
 				console.log("socket.io connected!");
@@ -42,6 +45,7 @@ class WebShell {
 				resolve(this.socket);
 				console.log("初始化socket完成")
 			});
+			this.socket.emit('connect_to_ssh', '');
 		});
 	}
 
@@ -63,9 +67,7 @@ class WebShell {
 	}
 
 	async open() {
-			if (!this.socket) {
-				await this.initSocket();
-			}
+			await this.initSocket();
 			console.log("开始打开终端")
 			var termCols = 83;
 			var termRows = 21;
@@ -81,8 +83,9 @@ class WebShell {
 			term.setOption('cursorBlink', true);
 			term.setOption('fontSize', 14);
 			this.gterm = term;
-
+			
 			if (this.socket) {
+					this.socket.on('server_response', this.serverResponse.bind(this));
 					this.socket.emit('webssh', '');
 					this.interval = setInterval(function () {
 							this.socket.emit('webssh', '');
@@ -127,7 +130,6 @@ class WebShell {
 					}.bind(this),
 					cancel: function () {
 							this.gterm.destroy();
-							this.socket.emit('disconnect_to_ssh', '');
 							clearInterval(this.interval);
 					}.bind(this)
 			});

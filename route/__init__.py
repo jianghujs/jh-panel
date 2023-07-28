@@ -543,7 +543,7 @@ class SSHSession:
 
     def connect(self):
         self.status = 'connecting'
-        print("开始尝试连接SSH终端", str(time.time()), self.session_id)
+        print("正在创建SSH终端连接", str(time.time()), self.session_id)
         port = mw.getSSHPort()
         try:
             ips = ['127.0.0.1', mw.getLocalIp(), mw.getHostAddr()]
@@ -554,7 +554,7 @@ class SSHSession:
             else:  # 如果所有的IP地址都尝试失败，就返回False
                 return False
 
-            print("SSH终端连接成功", self.session_id)
+            print("创建SSH终端连接成功", self.session_id)
             self.shell = self.ssh.invoke_shell(term='xterm', width=83, height=21)
             self.shell.setblocking(0)
             return True
@@ -570,13 +570,15 @@ class SSHSession:
         
 @socketio.on('connect_to_ssh')
 def connect_to_ssh(msg):
-    print("开始尝试连接啊啊啊啊啊啊啊啊啊啊啊啊")
+    print("=====> 开始连接SSH终端")
+    global session_ssh_dict
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
 
     session_id = request.sid
     ssh_session = session_ssh_dict.get(session_id)
+    print('当前session', str(session_ssh_dict), session_id, ssh_session)
 
     if ssh_session is None:
         ssh_session = SSHSession(session_id)
@@ -596,17 +598,15 @@ def connect_to_ssh(msg):
 
 @socketio.on('webssh')
 def webssh(msg):
-    print("webssh")
+    global session_ssh_dict
+    print("=====> webssh消息", msg)
     if not isLogined():
         emit('server_response', {'data': '会话丢失，请重新登陆面板!\r\n'})
         return None
 
     session_id = request.sid
     ssh_session = session_ssh_dict.get(session_id)
-
-    if ssh_session is None:
-        ssh_session = SSHSession(session_id)
-        session_ssh_dict[session_id] = ssh_session
+    print('当前session', str(session_ssh_dict), session_id, ssh_session)
     try:
         shell = ssh_session.get_shell()
         if shell:
@@ -619,8 +619,12 @@ def webssh(msg):
 
 @socketio.on('disconnect_to_ssh')
 def disconnect_to_ssh(message):
+    
+    print("=====> 断开连接SSH终端")
+    global session_ssh_dict
     session_id = request.sid
     ssh_session = session_ssh_dict.get(session_id)
+    print('当前session', str(session_ssh_dict), session_id, ssh_session)
 
     if ssh_session is not None:
         ssh_session.clear()

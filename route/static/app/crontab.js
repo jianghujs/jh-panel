@@ -56,8 +56,8 @@ function getCronData(page){
 
 
 				var cron_save = '--';
-				if (rdata.data[i]['save'] != ''){
-					cron_save = rdata.data[i]['save']+'份';
+				if (rdata.data[i]['saveAllDay'] != '' && rdata.data[i]['saveOther'] != '' && rdata.data[i]['saveMaxDay'] != '') {
+					cron_save = rdata.data[i]['saveAllDay'] + '天内全部保留，其余只保留' + rdata.data[i]['saveOther'] + '份，最长保留' + rdata.data[i]['saveMaxDay'] + '天';
 				}
 
 				var cron_backupto = '-';
@@ -480,7 +480,9 @@ function toBackup(type){
 		}
 		
 
-		var sBody = '<div class="dropdown pull-left mr20">\
+		var sBody = '<div>\
+				<div class="clearfix ptb10">\
+					<div class="dropdown pull-left mr20">\
 					  <button class="btn btn-default dropdown-toggle" type="button" id="backdata" data-toggle="dropdown" style="width:auto">\
 						<b id="sName" val="'+rdata.data[0].name+'">'+rdata.data[0].name+'['+rdata.data[0].ps+']</b> <span class="caret"></span>\
 					  </button>\
@@ -499,14 +501,19 @@ function toBackup(type){
 						'+ orderOpt +'\
 					  </ul>\
 					</div>\
-					<div class="textname pull-left mr20">保留规则</div><div class="plan_hms pull-left mr20 bt-input-text">\
-					<span><input type="number" name="saveAllDay" id="saveAllDay" value="3" maxlength="4" max="100" min="1"></span>\
-					<span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
-					<span><input type="number" name="saveOther" id="saveOther" value="1" maxlength="4" max="100" min="1"></span>\
-					<span class="name" style="width: 90px;">份，最长保留</span>\
-					<span><input type="number" name="saveMaxDay" id="saveMaxDay" value="30" maxlength="4" max="100" min="1"></span>\
-					<span class="name">天</span>\
-					</div>';
+				</div>\
+				<div class="clearfix ptb10">\
+					<div class="typename controls c4 pull-left f14 text-right mr20">保留规则</div>\
+					<div class="plan_hms pull-left mr20 bt-input-text">\
+						<span><input type="number" name="saveAllDay" id="saveAllDay" value="3" maxlength="4" max="100" min="1"></span>\
+						<span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
+						<span><input type="number" name="saveOther" id="saveOther" value="1" maxlength="4" max="100" min="1"></span>\
+						<span class="name" style="width: 90px;">份，最长保留</span>\
+						<span><input type="number" name="saveMaxDay" id="saveMaxDay" value="30" maxlength="4" max="100" min="1"></span>\
+						<span class="name">天</span>\
+					</div>\
+				</div>\
+			</div>';
 		$("#implement").html(sBody);
 		getselectname();
 		$(".dropdown ul li a").click(function(){
@@ -538,7 +545,9 @@ function editTaskInfo(id){
 				sbody: rdata.sbody,
 				sname: rdata.sname,
 				backup_to: rdata.backup_to,
-				save: rdata.save,
+				saveAllDay: rdata.saveAllDay,
+				saveOther: rdata.saveOther,
+				saveMaxDay: rdata.saveMaxDay,
 				urladdress: rdata.urladdress,
 			},
 			sTypeArray:[['toShell','Shell脚本'],['site','备份网站'],['database','备份数据库'],['logs','日志切割'],['path','备份目录'],['rememory','释放内存'],['toUrl','访问URL']],
@@ -636,28 +645,37 @@ function editTaskInfo(id){
 								</div>\
 							</div>\
 							<div class="clearfix plan ptb10 site_list" style="display:none">\
-								<span class="typename controls c4 pull-left f14 text-right mr20">'+ sTypeName  +'</span>\
-								<div style="line-height:34px"><div class="dropdown pull-left mr20 sName_btn" style="display:'+ (obj.from.sType != "path"?'block;':'none') +'">\
-									<button class="btn btn-default dropdown-toggle" type="button"  data-toggle="dropdown" style="width:auto" disabled="disabled">\
-										<b id="sName" val="'+ obj.from.sname +'">'+ obj.from.sname +'</b>\
-										<span class="caret"></span>\
-									</button>\
-									<ul class="dropdown-menu" role="menu" aria-labelledby="sName">'+ sNameDom +'</ul>\
-								</div>\
-								<div class="info-r" style="float: left;margin-right: 25px;display:'+ (obj.from.sType == "path"?'block;':'none') +'">\
-									<input id="inputPath" class="bt-input-text mr5 " type="text" name="path" value="'+ obj.from.sName +'" placeholder="备份目录" style="width:208px;height:33px;" disabled="disabled">\
-								</div>\
-								<div class="textname pull-left mr20">备份到</div>\
-									<div class="dropdown  pull-left mr20">\
-										<button class="btn btn-default dropdown-toggle backup_btn" type="button"  data-toggle="dropdown" style="width:auto;">\
-											<b val="'+ obj.from.backup_to +'">'+ backupsName +'</b>\
+								<div class="clearfix ptb10">\
+									<span class="typename controls c4 pull-left f14 text-right mr20">'+ sTypeName  +'</span>\
+									<div style="line-height:34px"><div class="dropdown pull-left mr20 sName_btn" style="display:'+ (obj.from.sType != "path"?'block;':'none') +'">\
+										<button class="btn btn-default dropdown-toggle" type="button"  data-toggle="dropdown" style="width:auto" disabled="disabled">\
+											<b id="sName" val="'+ obj.from.sname +'">'+ obj.from.sname +'</b>\
 											<span class="caret"></span>\
 										</button>\
-										<ul class="dropdown-menu" role="menu" aria-labelledby="backupTo">'+ backupsDom +'</ul>\
+										<ul class="dropdown-menu" role="menu" aria-labelledby="sName">'+ sNameDom +'</ul>\
 									</div>\
-									<div class="textname pull-left mr20">保留最新</div>\
+									<div class="info-r" style="float: left;margin-right: 25px;display:'+ (obj.from.sType == "path"?'block;':'none') +'">\
+										<input id="inputPath" class="bt-input-text mr5 " type="text" name="path" value="'+ obj.from.sName +'" placeholder="备份目录" style="width:208px;height:33px;" disabled="disabled">\
+									</div>\
+									<div class="textname pull-left mr20">备份到</div>\
+										<div class="dropdown  pull-left mr20">\
+											<button class="btn btn-default dropdown-toggle backup_btn" type="button"  data-toggle="dropdown" style="width:auto;">\
+												<b val="'+ obj.from.backup_to +'">'+ backupsName +'</b>\
+												<span class="caret"></span>\
+											</button>\
+											<ul class="dropdown-menu" role="menu" aria-labelledby="backupTo">'+ backupsDom +'</ul>\
+										</div>\
+									</div>\
+								</div>\
+								<div class="clearfix ptb10">\
+									<div class="typename controls c4 pull-left f14 text-right mr20">保留规则</div>\
 									<div class="plan_hms pull-left mr20 bt-input-text">\
-										<span><input type="number" name="save" class="save_create" value="'+ obj.from.save +'" maxlength="4" max="100" min="1"></span><span class="name">份</span>\
+										<span><input type="number" name="saveAllDay" class="saveAllDay_create" value="'+ obj.from.saveAllDay +'" maxlength="4" max="100" min="1"></span>\
+										<span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
+										<span><input type="number" name="saveOther" class="saveOther_create" value="'+ obj.from.saveOther +'" maxlength="4" max="100" min="1"></span>\
+										<span class="name" style="width: 90px;">份，最长保留</span>\
+										<span><input type="number" name="saveMaxDay" class="saveMaxDay_create" value="'+ obj.from.saveMaxDay +'" maxlength="4" max="100" min="1"></span>\
+										<span class="name">天</span>\
 									</div>\
 								</div>\
 							</div>\
@@ -711,8 +729,16 @@ function editTaskInfo(id){
 					obj.from.minute = $(this).val();
 				});
 	
-				$('.save_create').blur(function () {
-					obj.from.save = $(this).val();
+				$('.saveAllDay_create').blur(function () {
+					obj.from.saveAllDay = $(this).val();
+				});
+
+				$('.saveOther_create').blur(function () {
+					obj.from.saveOther = $(this).val();
+				});
+
+				$('.saveMaxDay_create').blur(function () {
+					obj.from.saveMaxDay = $(this).val();
 				});
 	
 				$('.sBody_create').blur(function () {

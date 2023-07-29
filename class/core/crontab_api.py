@@ -27,7 +27,7 @@ from flask import request
 
 class crontab_api:
 
-    field = 'id,name,type,where1,where_hour,where_minute,echo,addtime,status,save,backup_to,stype,sname,sbody,urladdress'
+    field = 'id,name,type,where1,where_hour,where_minute,echo,addtime,status,saveAllDay,saveOther,saveMaxDay,backup_to,stype,sname,sbody,urladdress'
 
     def __init__(self):
         pass
@@ -189,7 +189,9 @@ class crontab_api:
         where1 = request.form.get('where1', '')
         hour = request.form.get('hour', '')
         minute = request.form.get('minute', '')
-        save = request.form.get('save', '')
+        saveAllDay = request.form.get('saveAllDay', '')
+        saveOther = request.form.get('saveOther', '')
+        saveMaxDay = request.form.get('saveMaxDay', '')
         backup_to = request.form.get('backup_to', '')
         stype = request.form.get('stype', '')
         sname = request.form.get('sname', '')
@@ -206,7 +208,9 @@ class crontab_api:
             'where1': where1,
             'hour': hour,
             'minute': minute,
-            'save': save,
+            'saveAllDay': saveAllDay,
+            'saveOther': saveOther,
+            'saveMaxDay': saveMaxDay,
             'backup_to': backup_to,
             'stype': stype,
             'sname': sname,
@@ -228,13 +232,15 @@ class crontab_api:
         cronInfo['where1'] = get['where1']
         cronInfo['where_hour'] = get['hour']
         cronInfo['where_minute'] = get['minute']
-        cronInfo['save'] = get['save']
+        cronInfo['saveAllDay'] = get['saveAllDay']
+        cronInfo['saveOther'] = get['saveOther']
+        cronInfo['saveMaxDay'] = get['saveMaxDay']
         cronInfo['backup_to'] = get['backup_to']
         cronInfo['sbody'] = get['sbody']
         cronInfo['urladdress'] = get['urladdress']
 
-        addData = mw.M('crontab').where('id=?', (sid,)).save('name,type,where1,where_hour,where_minute,save,backup_to,sbody,urladdress', (get[
-            'name'], field_type, get['where1'], get['hour'], get['minute'], get['save'], get['backup_to'], get['sbody'], get['urladdress']))
+        addData = mw.M('crontab').where('id=?', (sid,)).save('name,type,where1,where_hour,where_minute,saveAllDay,saveOther,saveMaxDay,backup_to,sbody,urladdress', (get[
+            'name'], field_type, get['where1'], get['hour'], get['minute'], get['saveAllDay'], get['saveOther'], get['saveMaxDay'], get['backup_to'], get['sbody'], get['urladdress']))
         self.removeForCrond(cronInfo['echo'])
         self.syncToCrond(cronInfo)
         mw.writeLog('计划任务', '修改计划任务[' + cronInfo['name'] + ']成功')

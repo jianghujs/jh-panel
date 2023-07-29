@@ -178,25 +178,69 @@ function openCreateItem() {
                     <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
             </div>\
+            <div class='line'>\
+                <span class='tname'>自动清理日志</span>\
+                <div class='info-r c4'>\
+                    <div class='clean-switch'>\
+                        <input class='btswitch btswitch-ios' name='logClean' id='projectLogClean' type='checkbox' checked>\
+                        <label class='btswitch-btn' for='projectLogClean'></label>\
+                    </div>\
+                </div>\
+            </div>\
+            <div id='logCleanConfig'>\
+                <div class='line'>\
+                    <span class='tname'>日志清理时间</span>\
+                    <div class='info-r c4'>\
+                        <span>每天</span>\
+                        <span>\
+                            <input type='hidden' name='taskId' value=''>\
+                            <input type='number' name='taskHour' value='20' maxlength='2' max='23' min='0'>\
+                            <span class='name'>:</span>\
+                            <input type='number' name='taskMinute' value='30' maxlength='2' max='59' min='0'>\
+                        </span>\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>日志保留规则</span>\
+                    <div class='info-r c4'>\
+                        <div class='plan_hms pull-left mr20 bt-input-text'>\
+                            <span><input type='number' name='saveAllDay' id='saveAllDay' value='3' maxlength='4' max='100' min='1'></span>\
+                            <span class='name' style='width: 160px;'>天内全部保留，其余只保留</span>\
+                            <span><input type='number' name='saveOther' id='saveOther' value='1' maxlength='4' max='100' min='1'></span>\
+                            <span class='name' style='width: 90px;'>份，最长保留</span>\
+                            <span><input type='number' name='saveMaxDay' id='saveMaxDay' value='30' maxlength='4' max='100' min='1'></span>\
+                            <span class='name'>天</span>\
+                        </div>\
+                    </div>\
+                </div>\
+            </div>\
             <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(addLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitCreateItem()\">提交</button>\
             </div>\
         </form>",
+        success: function() {
+            $('#projectLogClean').click(function() {
+                if($(this).prop('checked')) {
+                    $('#logCleanConfig').show();
+                } else {
+                    $('#logCleanConfig').hide();
+                }
+            });
+        }
     });
 }
 
-function submitCreateItem(){
-    var data = $("#addForm").serialize();
-
-    requestApi('project_add', data, function(data){
-    	var rdata = $.parseJSON(data.data);
-        if(rdata.status) {
-            layer.close(addLayer);
-            refreshTable();
-        }
+async function submitCreateItem(){
+    var form = $("#addForm").serialize();
+    layer.msg('正在添加,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
+    let data = await requestApi('project_add', form);
+    let rdata = $.parseJSON(data.data);
+    if(!rdata.status) {
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
-    });
+    }
+    layer.close(addLayer);
+    refreshTable();
 }
 
 function openEditItem(id) {

@@ -95,8 +95,8 @@ class cleanTools:
 if __name__ == "__main__":
     clean = cleanTools()
     path = sys.argv[1]
-    save = sys.argv[2]
-    if save is not None:
-        save = json.loads(save)
+    save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
+    if len(sys.argv) > 2:
+        save = json.loads(sys.argv[2])
     
     clean.cleanPath(path, save)

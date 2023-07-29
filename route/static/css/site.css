@@ -294,6 +294,14 @@ html {
     vertical-align: 0
 }
 
+.flex {
+    display: flex;
+}
+
+.align-center {
+    align-items: center;
+}
+
 .ico-font-ask {
     border: 1px solid #999;
     border-radius: 8px;

@@ -76,7 +76,7 @@ def getXtrabackupCron():
         return data[1]
     xtrabackupCronName = args['xtrabackupCronName']
     cronCount = mw.M('crontab').where('name=?', (xtrabackupCronName,)).count()
-    cronList = mw.M('crontab').where('name=?', (xtrabackupCronName,)).field('id,name,type,where_hour,where_minute').select()
+    cronList = mw.M('crontab').where('name=?', (xtrabackupCronName,)).field('id,name,type,where_hour,where_minute,saveAllDay,saveOther,saveMaxDay').select()
     if cronCount > 0:
         return mw.returnJson(True,  xtrabackupCronName + ' 已存在', { 
             'id': cronList[0]['id'],
@@ -84,6 +84,9 @@ def getXtrabackupCron():
             'type': cronList[0]['type'],
             'hour': cronList[0]['where_hour'],
             'minute': cronList[0]['where_minute'],
+            'saveAllDay': cronList[0]['saveAllDay'],
+            'saveOther': cronList[0]['saveOther'],
+            'saveMaxDay': cronList[0]['saveMaxDay']
         })
     return mw.returnJson(False, xtrabackupCronName + ' 不存在')    
 

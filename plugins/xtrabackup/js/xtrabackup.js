@@ -131,18 +131,24 @@ function getXtrabackupCron() {
             $("#xtrabackup-cron input[name='id']").val("");
             $("#xtrabackup-cron input[name='hour']").val(20);
             $("#xtrabackup-cron input[name='minute']").val(30);
+            $("#xtrabackup-cron input[name='saveAllDay']").val(3);
+            $("#xtrabackup-cron input[name='saveOther']").val(1);
+            $("#xtrabackup-cron input[name='saveMaxDay']").val(30);
             return;
         };
 
         // 定时任务存在
         if(rdata.status) {
-            const { id,name,type,hour,minute } = rdata.data;
+            const { id,name,type,hour,minute,saveAllDay,saveOther,saveMaxDay} = rdata.data;
             $("#xtrabackup-cron #xtrabackup-cron-add").css("display", "none");
             $("#xtrabackup-cron #xtrabackup-cron-update").css("display", "inline-block");
             $("#xtrabackup-cron #xtrabackup-cron-delete").css("display", "inline-block");
             $("#xtrabackup-cron input[name='id']").val(id);
             $("#xtrabackup-cron input[name='hour']").val(hour);
             $("#xtrabackup-cron input[name='minute']").val(minute);
+            $("#xtrabackup-cron input[name='saveAllDay']").val(saveAllDay);
+            $("#xtrabackup-cron input[name='saveOther']").val(saveOther);
+            $("#xtrabackup-cron input[name='saveMaxDay']").val(saveMaxDay);
             return;
         };
     });
@@ -162,7 +168,10 @@ function deleteXtrabackupCron() {
 function addXtrabackupCron() {
     var hour =  $("#xtrabackup-cron input[name='hour']").val();
     var minute =  $("#xtrabackup-cron input[name='minute']").val();
-    $.post('/crontab/add', { ...xtrabackupCron, hour, minute },function(rdata){
+    var saveAllDay =  $("#xtrabackup-cron input[name='saveAllDay']").val();
+    var saveOther =  $("#xtrabackup-cron input[name='saveOther']").val();
+    var saveMaxDay =  $("#xtrabackup-cron input[name='saveMaxDay']").val();
+    $.post('/crontab/add', { ...xtrabackupCron, hour, minute, saveAllDay, saveOther, saveMaxDay },function(rdata){
         getXtrabackupCron();
         layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
     },'json');
@@ -172,8 +181,11 @@ function updateXtrabackupCron() {
     var id = $("#xtrabackup-cron input[name='id']").val();
     var hour =  $("#xtrabackup-cron input[name='hour']").val();
     var minute =  $("#xtrabackup-cron input[name='minute']").val();
+    var saveAllDay =  $("#xtrabackup-cron input[name='saveAllDay']").val();
+    var saveOther =  $("#xtrabackup-cron input[name='saveOther']").val();
+    var saveMaxDay =  $("#xtrabackup-cron input[name='saveMaxDay']").val();
     if (id) {
-        $.post('/crontab/modify_crond', { ...xtrabackupCron, id, hour, minute },function(rdata){
+        $.post('/crontab/modify_crond', { ...xtrabackupCron, id, hour, minute, saveAllDay, saveOther, saveMaxDay },function(rdata){
             getXtrabackupCron();
             layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
         },'json');
@@ -295,22 +307,35 @@ function doDeleteBackup(filename) {
 
 function mysqlBackupHtml(){
     var con = `\
-    <div id="xtrabackup-cron">
-        <span>每天</span>
-        <span>
-            <input type="hidden" name="id" value="">
-            <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">
-            <span class="name">:</span>
-            <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">
-        </span>
-        <span>定时执行备份</span>
-        <button id="xtrabackup-cron-add" style="display: none;"
-            class="btn btn-success btn-sm va0" onclick="addXtrabackupCron();">创建</button>
-        <button id="xtrabackup-cron-update" style="display: none;"
-            class="btn btn-success btn-sm va0" onclick="updateXtrabackupCron();">修改</button>
-        <button id="xtrabackup-cron-delete" style="display: none;"
-            class="btn btn-danger btn-sm va0" onclick="deleteXtrabackupCron();">删除</button>
-    </div>
+    <div id="xtrabackup-cron">\
+        <div>\
+            <span>每天</span>\
+            <span>\
+                <input type="hidden" name="id" value="">\
+                <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
+                <span class="name">:</span>\
+                <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
+            </span>\
+            <span>定时执行备份</span>\
+        </div>\
+        <div class="flex align-center mtb10">\
+            <div class="mr5">保留规则</div>\
+            <div class="plan_hms pull-left mr20 bt-input-text">\
+                <span><input type="number" name="saveAllDay" maxlength="4" max="100" min="1"></span>\
+                <span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
+                <span><input type="number" name="saveOther" maxlength="4" max="100" min="1"></span>\
+                <span class="name" style="width: 90px;">份，最长保留</span>\
+                <span><input type="number" name="saveMaxDay" maxlength="4" max="100" min="1"></span>\
+                <span class="name">天</span>\
+            </div>\
+        </div>\
+        <button id="xtrabackup-cron-add" style="display: none;"\
+            class="btn btn-success btn-sm va0" onclick="addXtrabackupCron();">创建</button>\
+        <button id="xtrabackup-cron-update" style="display: none;"\
+            class="btn btn-success btn-sm va0" onclick="updateXtrabackupCron();">修改</button>\
+        <button id="xtrabackup-cron-delete" style="display: none;"\
+            class="btn btn-danger btn-sm va0" onclick="deleteXtrabackupCron();">删除</button>\
+    </div>\
     <div class="divtable">\
         \
         <div style="padding-top:5px;">存放目录: /www/backup/xtrabackup_data_history</div>\

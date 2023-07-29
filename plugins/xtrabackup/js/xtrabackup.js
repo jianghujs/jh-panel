@@ -171,6 +171,11 @@ function addXtrabackupCron() {
     var saveAllDay =  $("#xtrabackup-cron input[name='saveAllDay']").val();
     var saveOther =  $("#xtrabackup-cron input[name='saveOther']").val();
     var saveMaxDay =  $("#xtrabackup-cron input[name='saveMaxDay']").val();
+    
+    // 添加清理脚本
+    let cleanScript = `python3 /www/server/jh-panel/scripts/clean.py /www/backup/xtrabackup_data_history/ '{"saveAllDay": "${saveAllDay}", "saveOther": "${saveOther}", "saveMaxDay": "${saveMaxDay}"}'`
+    xtrabackupCron.sBody = xtrabackupCron.sbody = xtrabackupCron.sBody + "\n" + cleanScript;
+    
     $.post('/crontab/add', { ...xtrabackupCron, hour, minute, saveAllDay, saveOther, saveMaxDay },function(rdata){
         getXtrabackupCron();
         layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);

@@ -171,14 +171,14 @@ function openCreateItem() {
                 <div class='info-r c4'>\
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
                 </div>\
-            </div>" + 
-            "<div class='line'>\
+            </div>\
+            <div class='line'>\
                 <span class='tname'>自启动脚本</span>\
                 <div class='info-r c4'>\
                     <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
-            </div>" +
-            "<div class='bt-form-submit-btn'>\
+            </div>\
+            <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(addLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitCreateItem()\">提交</button>\
             </div>\
@@ -242,14 +242,14 @@ function openEditItem(id) {
                 <div class='info-r c4'>\
                     <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
-            </div>" +  
-            "<div class='line'>\
+            </div>\
+            <div class='line'>\
                 <span class='tname'>自启动脚本</span>\
                 <div class='info-r c4'>\
                     <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
-            </div>" +
-            "<div class='bt-form-submit-btn'>\
+            </div>\
+            <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(editLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitEditItem()\">提交</button>\
             </div>\
@@ -344,8 +344,8 @@ async function openDeployItem() {
                     <div class='info-r c4'>\
                         <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:458px;height:100px;line-height:22px' /></textarea>\
                     </div>\
-                </div>" + 
-                "<div class='line'>\
+                </div>\
+                <div class='line'>\
                     <span class='tname'>自启动脚本</span>\
                     <div class='info-r c4'>\
                         <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\

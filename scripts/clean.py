@@ -1,6 +1,7 @@
 # coding: utf-8
 #-----------------------------
-# 网站备份工具
+# 文件夹清理工具
+# python3 /www/server/jh-panel/scripts/clean.py /root/test '{"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}'
 #-----------------------------
 
 import sys

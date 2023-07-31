@@ -558,6 +558,19 @@ def getProjectDeployFile():
         return mw.readFile(deployFile)
     return ''
 
+def checkProjectNameExist():
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+
+    if not data[0]:
+        return data[1]
+    
+    name = unquote(args['name'], 'utf-8')
+    for item in getAll('project'):
+        if item['name'] == name:
+            return mw.returnJson(True, 'ok', True)
+    return mw.returnJson(True, 'ok', False)
+
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':
@@ -604,9 +617,7 @@ if __name__ == "__main__":
         print(cloneProject())
     elif func == 'get_project_deploy_file':
         print(getProjectDeployFile())
-    elif func == 'stop':
-        print(pm2Stop())
-    elif func == 'start':
-        print(start())
+    elif func == 'check_project_name_exist':
+        print(checkProjectNameExist())
     else:
         print('error')

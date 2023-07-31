@@ -228,6 +228,10 @@ function openCreateItem() {
 async function submitCreateItem(){
     // 添加项目
     var form = $("#addForm").serialize();
+
+    let name = $('#projectName').val();
+    await checkProjectNameExist(name);
+
     layer.msg('正在添加,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
     let data = await requestApi('project_add', form);
     let rdata = $.parseJSON(data.data);
@@ -610,10 +614,13 @@ async function submitDeployItemStep1(deployLayer) {
     const form = $("#deployForm").serialize() + '&showLoading=false';
     const gitUrl = $("#projectGitUrl").val();
     const path = $("#projectPath").val();
+    const name = $("#projectName").val();
+
     if (!gitUrl) {
         layer.msg('项目Git地址不能为空',{icon:2, time:2000});
         return;
     }
+    await checkProjectNameExist(name);
     await checkPathExist(path);
 
     let addKnownHostsScriptData = await requestApi('get_add_known_hosts_script', { gitUrl: encodeURIComponent(gitUrl) });
@@ -712,6 +719,20 @@ function projectLogsClear(id) {
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
         layer.close(logLayer);
+    });
+}
+
+function checkProjectNameExist(projectName) {
+    return new Promise(function(resolve, reject) {
+        requestApi('check_project_name_exist', { name: projectName }, function(data){
+            var rdata = $.parseJSON(data.data);
+            let isExist = rdata.data;
+            if(isExist) {
+                layer.msg('项目名称已存在',{icon:2, time:2000});
+                return;
+            }
+            resolve();
+        });
     });
 }
 

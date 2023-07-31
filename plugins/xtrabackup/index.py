@@ -224,6 +224,7 @@ def getRecoveryBackupScript():
 
     recoveryScript = '#!/bin/bash\n'
     recoveryScript += ('timestamp=$(date +%Y%m%d_%H%M%S)\n')
+    recoveryScript += ('LOG_DIR=/www/server/xtrabackup/logs\n')
     if os.path.exists('/www/server/mysql-apt'):
         recoveryScript += ('systemctl stop mysql-apt\n')
     elif os.path.exists('/www/server/mysql'):
@@ -231,15 +232,17 @@ def getRecoveryBackupScript():
 
     recoveryScript += ('mv %s %s_%s\n' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
     recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
+    recoveryScript += ('mkdir -p /www/server/xtrabackup/logs\n')
     recoveryScript += ('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s\n' % (filename))
-    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup_$timestamp.log\n')
-    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> /www/wwwlogs/xtrabackup_$timestamp.log\n')
+    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
+    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_xtrabackup_$timestamp.log\n')
     recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
     recoveryScript += ('chmod -R 755 ' + mysqlDir + '\n')
     if os.path.exists('/www/server/mysql-apt'):
         recoveryScript += ('systemctl start mysql-apt\n')
     elif os.path.exists('/www/server/mysql'):
         recoveryScript += ('systemctl start mysql\n')
+    recoveryScript += ('python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR\n')
     return mw.returnJson(True, 'ok', recoveryScript)
 
 def doRecoveryBackup():

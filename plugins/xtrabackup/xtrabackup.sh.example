@@ -4,8 +4,12 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 rm -rf $BACKUP_PATH
 mkdir -p $BACKUP_PATH
 HISTORY_DIR="/www/backup/xtrabackup_data_history"
+LOG_DIR="/www/server/xtrabackup/logs"
 BACKUP_FILE="$HISTORY_DIR/xtrabackup_data_$timestamp.zip"
-xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> /www/wwwlogs/xtrabackup_$timestamp.log
+if [ ! -d "$LOG_DIR" ];then
+    mkdir -p $LOG_DIR
+fi
+xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> $LOG_DIR/backup_$timestamp.log
 if [ $? -eq 0 ] && [ -d "$BACKUP_PATH/mysql" ];then
     mkdir -p $HISTORY_DIR
     cd $BACKUP_PATH && zip -q -r $BACKUP_FILE ./*
@@ -14,3 +18,4 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_PATH/mysql" ];then
 else
     echo "备份失败 $timestamp"
 fi
+python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR/

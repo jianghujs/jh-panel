@@ -178,29 +178,75 @@ function openCreateItem() {
                     <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
             </div>\
+            <div class='line'>\
+                <span class='tname'>自动清理日志</span>\
+                <div class='info-r c4'>\
+                    <div class='clean-switch'>\
+                        <input class='btswitch btswitch-ios' name='logClean' id='projectLogClean' type='checkbox' checked>\
+                        <label class='btswitch-btn' for='projectLogClean'></label>\
+                    </div>\
+                </div>\
+            </div>\
+            <div id='logCleanConfig'>\
+                <div class='line'>\
+                    <span class='tname'>日志清理时间</span>\
+                    <div class='info-r c4'>\
+                        <span>每天</span>\
+                        <span>\
+                            <input type='hidden' id='cronId' name='cronId' value=''>\
+                            <input type='number' id='cronHour' name='hour' value='20' maxlength='2' max='23' min='0'>\
+                            <span class='name'>:</span>\
+                            <input type='number' id='cronMinute' name='minute' value='30' maxlength='2' max='59' min='0'>\
+                        </span>\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>日志保留规则</span>\
+                    <div class='info-r c4'>\
+                        <div class='plan_hms pull-left mr20 bt-input-text'>\
+                            <span><input type='number' name='saveAllDay' id='saveAllDay' value='3' maxlength='4' max='100' min='1'></span>\
+                            <span class='name' style='width: 160px;'>天内全部保留，其余只保留</span>\
+                            <span><input type='number' name='saveOther' id='saveOther' value='1' maxlength='4' max='100' min='1'></span>\
+                            <span class='name' style='width: 90px;'>份，最长保留</span>\
+                            <span><input type='number' name='saveMaxDay' id='saveMaxDay' value='30' maxlength='4' max='100' min='1'></span>\
+                            <span class='name'>天</span>\
+                        </div>\
+                    </div>\
+                </div>\
+            </div>\
             <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(addLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitCreateItem()\">提交</button>\
             </div>\
         </form>",
-    });
-}
-
-function submitCreateItem(){
-    var data = $("#addForm").serialize();
-
-    requestApi('project_add', data, function(data){
-    	var rdata = $.parseJSON(data.data);
-        if(rdata.status) {
-            layer.close(addLayer);
-            refreshTable();
+        success: function() {
+            bindProjectLogCleanSwitch();
         }
-        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
     });
 }
 
-function openEditItem(id) {
+async function submitCreateItem(){
+    // 添加项目
+    var form = $("#addForm").serialize();
+
+    let name = $('#projectName').val();
+    await checkProjectNameExist(name);
+
+    layer.msg('正在添加,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
+    let data = await requestApi('project_add', form);
+    let rdata = $.parseJSON(data.data);
+    if(!rdata.status) {
+        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+    }
+    await configProjectCron();
+    layer.close(addLayer);
+    refreshTable();
+}
+
+async function openEditItem(id) {
     editItem = tableData.find(item => item.id == id) || {};
+
+    let cron = (await getCron({name: '[勿删]项目[' + editItem.name + ']日志清理'})).data;
 
     editLayer = layer.open({
         type: 1,
@@ -249,30 +295,81 @@ function openEditItem(id) {
                     <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                 </div>\
             </div>\
+            <div class='line'>\
+                <span class='tname'>自动清理日志</span>\
+                <div class='info-r c4'>\
+                    <div class='clean-switch'>\
+                        <input class='btswitch btswitch-ios' name='logClean' id='projectLogClean' type='checkbox' checked>\
+                        <label class='btswitch-btn' for='projectLogClean'></label>\
+                    </div>\
+                </div>\
+            </div>\
+            <div id='logCleanConfig'>\
+                <div class='line'>\
+                    <span class='tname'>日志清理时间</span>\
+                    <div class='info-r c4'>\
+                        <span>每天</span>\
+                        <span>\
+                            <input type='hidden' id='cronId' name='cronId' value=''>\
+                            <input type='number' id='cronHour' name='hour' value='' maxlength='2' max='23' min='0'>\
+                            <span class='name'>:</span>\
+                            <input type='number' id='cronMinute' name='minute' value='' maxlength='2' max='59' min='0'>\
+                        </span>\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>日志保留规则</span>\
+                    <div class='info-r c4'>\
+                        <div class='plan_hms pull-left mr20 bt-input-text'>\
+                            <span><input type='number' name='saveAllDay' id='saveAllDay' value='' maxlength='4' max='100' min='1'></span>\
+                            <span class='name' style='width: 160px;'>天内全部保留，其余只保留</span>\
+                            <span><input type='number' name='saveOther' id='saveOther' value='' maxlength='4' max='100' min='1'></span>\
+                            <span class='name' style='width: 90px;'>份，最长保留</span>\
+                            <span><input type='number' name='saveMaxDay' id='saveMaxDay' value='' maxlength='4' max='100' min='1'></span>\
+                            <span class='name'>天</span>\
+                        </div>\
+                    </div>\
+                </div>\
+            </div>\
             <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(editLayer)'>取消</button>\
                 <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitEditItem()\">提交</button>\
             </div>\
         </form>",
+        success: function() {
+            bindProjectLogCleanSwitch();
+        }
     });
     
     $('#projectStartScript').val(editItem.start_script);
     $('#projectReloadScript').val(editItem.reload_script);
     $('#projectStopScript').val(editItem.stop_script);
     $('#projectAutostartScript').val(editItem.autostart_script);
+    // 自动清理日志相关
+    $('#projectLogClean').prop('checked', cron != null);
+    if (!cron) {
+        $('#logCleanConfig').hide();
+    }
+    $('#cronId').val(cron ? cron.id : '');
+    $('#cronHour').val(cron ? cron.where_hour : '20');
+    $('#cronMinute').val(cron ? cron.where_minute : '30');
+    $('#saveAllDay').val(cron ? cron.saveAllDay : '3');
+    $('#saveOther').val(cron ? cron.saveOther : '1');
+    $('#saveMaxDay').val(cron ? cron.saveMaxDay : '30');
 }
 
-function submitEditItem(){
-    var data = $("#editForm").serialize() + '&id=' + editItem.id;
+async function submitEditItem(){
+    let form = $("#editForm").serialize() + '&id=' + editItem.id;
 
-    requestApi('project_edit', data, function(data){
-    	var rdata = $.parseJSON(data.data);
-        if(rdata.status) {
-            layer.close(editLayer);
-            refreshTable();
-        }
-        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
-    });
+    let data = await requestApi('project_edit', form);
+    let rdata = $.parseJSON(data.data);
+    if(rdata.status) {
+        await configProjectCron();
+        layer.close(editLayer);
+        refreshTable();
+    }
+    layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+    
 }
 
 function deleteItem(id, name) {
@@ -351,8 +448,44 @@ async function openDeployItem() {
                         <textarea id='projectAutostartScript' class='bt-input-text' name='autostartScript' style='width:458px;height:100px;line-height:22px'/></textarea>\
                     </div>\
                 </div>\
-            </div>" +
-            "<div class='bt-form-submit-btn'>\
+                <div class='line'>\
+                    <span class='tname'>自动清理日志</span>\
+                    <div class='info-r c4'>\
+                        <div class='clean-switch'>\
+                            <input class='btswitch btswitch-ios' name='logClean' id='projectLogClean' type='checkbox' checked>\
+                            <label class='btswitch-btn' for='projectLogClean'></label>\
+                        </div>\
+                    </div>\
+                </div>\
+                <div id='logCleanConfig'>\
+                    <div class='line'>\
+                        <span class='tname'>日志清理时间</span>\
+                        <div class='info-r c4'>\
+                            <span>每天</span>\
+                            <span>\
+                                <input type='hidden' id='cronId' name='cronId' value=''>\
+                                <input type='number' id='cronHour' name='hour' value='20' maxlength='2' max='23' min='0'>\
+                                <span class='name'>:</span>\
+                                <input type='number' id='cronMinute' name='minute' value='30' maxlength='2' max='59' min='0'>\
+                            </span>\
+                        </div>\
+                    </div>\
+                    <div class='line'>\
+                        <span class='tname'>日志保留规则</span>\
+                        <div class='info-r c4'>\
+                            <div class='plan_hms pull-left mr20 bt-input-text'>\
+                                <span><input type='number' name='saveAllDay' id='saveAllDay' value='3' maxlength='4' max='100' min='1'></span>\
+                                <span class='name' style='width: 160px;'>天内全部保留，其余只保留</span>\
+                                <span><input type='number' name='saveOther' id='saveOther' value='1' maxlength='4' max='100' min='1'></span>\
+                                <span class='name' style='width: 90px;'>份，最长保留</span>\
+                                <span><input type='number' name='saveMaxDay' id='saveMaxDay' value='30' maxlength='4' max='100' min='1'></span>\
+                                <span class='name'>天</span>\
+                            </div>\
+                        </div>\
+                    </div>\
+                </div>\
+            </div>\
+            <div class='bt-form-submit-btn'>\
                 <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(deployLayer)'>取消</button>\
                 <button type='button' class='step1-btn btn btn-success btn-sm btn-title' onclick=\"submitDeployItemStep1(deployLayer)\">拉取&下一步</button>\
                 <button type='button' class='step2-back-btn btn btn-success btn-sm btn-title' onclick=\"deployItemBackStep1()\">上一步</button>\
@@ -360,6 +493,7 @@ async function openDeployItem() {
             </div>\
         </form>",
         success: function() {
+            bindProjectLogCleanSwitch();
             $("#deployForm .step2, #deployForm .step2-btn, #deployForm .step2-back-btn").hide();
         }
     });
@@ -413,6 +547,18 @@ function projectUpdate(path) {
 }
 
 
+// 绑定自动清理日志开关事件
+function bindProjectLogCleanSwitch() {
+    $('#projectLogClean').click(function() {
+        if($(this).prop('checked')) {
+            $('#logCleanConfig').show();
+        } else {
+            $('#logCleanConfig').hide();
+        }
+    });
+}
+
+
 function handleGitUrlChange() {
     let gitUrl = document.getElementById('projectGitUrl').value;
     const regex = /^(?:https?:\/\/|git@)(?:[^@\/]+@)?(?:www\.)?([^:\/\s]+)(?:\/|:)([^\/\s]+)\/([^\/\s]+?)(?:\.git)?$/;
@@ -434,18 +580,19 @@ async function submitDeployItem() {
     let projectPath = $('#projectPath').val();
     await execScriptAndShowLog('正在部署项目...', deployScript);
 
-    requestApi('project_add', deployForm, function(data){
-        var rdata = $.parseJSON(data.data);
-        if(rdata.status) {
-            layer.close(deployLayer);
-            refreshTable();
-            openTimoutLayer('部署完毕，需要打开项目配置目录吗？', () => {
-                openNewWindowPath(projectPath + '/config')
-            }, { confirmBtn: '打开配置目录', timeout: -1 })
-            return
-        }
-        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
-    });
+    let data = await requestApi('project_add', deployForm);
+    
+    let rdata = $.parseJSON(data.data);
+    if(rdata.status) {
+        await configProjectCron();
+        layer.close(deployLayer);
+        refreshTable();
+        openTimoutLayer('部署完毕，需要打开项目配置目录吗？', () => {
+            openNewWindowPath(projectPath + '/config')
+        }, { confirmBtn: '打开配置目录', timeout: -1 })
+        return
+    }
+    layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
     
 }
 
@@ -467,10 +614,13 @@ async function submitDeployItemStep1(deployLayer) {
     const form = $("#deployForm").serialize() + '&showLoading=false';
     const gitUrl = $("#projectGitUrl").val();
     const path = $("#projectPath").val();
+    const name = $("#projectName").val();
+
     if (!gitUrl) {
         layer.msg('项目Git地址不能为空',{icon:2, time:2000});
         return;
     }
+    await checkProjectNameExist(name);
     await checkPathExist(path);
 
     let addKnownHostsScriptData = await requestApi('get_add_known_hosts_script', { gitUrl: encodeURIComponent(gitUrl) });
@@ -571,6 +721,79 @@ function projectLogsClear(id) {
         layer.close(logLayer);
     });
 }
+
+function checkProjectNameExist(projectName) {
+    return new Promise(function(resolve, reject) {
+        requestApi('check_project_name_exist', { name: projectName }, function(data){
+            var rdata = $.parseJSON(data.data);
+            let isExist = rdata.data;
+            if(isExist) {
+                layer.msg('项目名称已存在',{icon:2, time:2000});
+                return;
+            }
+            resolve();
+        });
+    });
+}
+
+
+/*** 计划任务相关 start ***/
+async function configProjectCron() {
+    let logClean = $('#projectLogClean').prop('checked');
+    if (logClean) {
+        let saveAllDay = $('#saveAllDay').val();
+        let saveOther = $('#saveOther').val();
+        let saveMaxDay = $('#saveMaxDay').val();
+        let logPath = $('#projectPath').val() + '/logs';
+        // 添加计划任务
+        await addOrUpdateCron({
+            id: $('#cronId').val(),
+            name: '[勿删]项目[' + $('#projectName').val() + ']日志清理',
+            sType: 'toShell',
+            type: 'day',
+            hour: $('#cronHour').val(),
+            minute: $('#cronMinute').val(),
+            saveAllDay,
+            saveOther,
+            saveMaxDay,
+            sBody: `python3 /www/server/jh-panel/scripts/clean.py ${logPath} '{"saveAllDay": "${saveAllDay}", "saveOther": "${saveOther}", "saveMaxDay": "${saveMaxDay}"}'`
+        });
+    } else {
+        let cronId = $('#cronId').val();
+        if (cronId) {
+            await delCron({ id: cronId });
+        }
+    }
+}
+
+// 添加或者更新计划任务
+function addOrUpdateCron(data) {
+	return new Promise((resolve, reject) => {
+		let url = data.id? '/crontab/modify_crond' : '/crontab/add'
+		$.post(url, { ...data, stype: data.sType, sname: data.sName, sbody: data.sBody },function(rdata){
+			resolve(rdata)
+		},'json');
+	});
+}
+// 获取计划任务
+function getCron(data) {
+	return new Promise((resolve, reject) => {
+		$.post('/crontab/get', { ...data },function(rdata){
+			resolve(rdata)
+		},'json');
+	});
+}
+// 删除计划任务
+function delCron(data) {
+	return new Promise((resolve, reject) => {
+        $.post('/crontab/del', { ...data },function(rdata){
+            resolve(rdata)
+        },'json');
+	});
+}
+/*** 计划任务相关 end ***/
+
+
 
 
 function query2Obj(str){

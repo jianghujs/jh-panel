@@ -365,9 +365,10 @@ function lsyncdRun(name){
 }
 
 function lsyncdLog(name){
-    var args = {};
-    args["name"] = name;
-    pluginStandAloneLogs("rsyncd", '', "lsyncd_log", JSON.stringify(args));
+    // var args = {};
+    // args["name"] = name;
+    // pluginStandAloneLogs("rsyncd", '', "lsyncd_log", JSON.stringify(args));
+    openNewWindowPath(`/www/server/rsyncd/send/${name}/logs/`)
 }
 
 
@@ -561,7 +562,8 @@ function rsyncdConf(){
     });
 }
 
-function rsyncdLog(){
+function rsyncdLog(name){
+    // openNewWindowPath(`/www/server/rsyncd/receive/${name}/logs/`)
     pluginStandAloneLogs("rsyncd","","run_log");
 }
 

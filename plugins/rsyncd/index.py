@@ -818,8 +818,12 @@ def lsyncdRun():
     send_dir = getServerDir() + "/send"
     name = args['name']
     app_dir = send_dir + "/" + name
-
-    cmd = "bash " + app_dir + "/cmd >> " + app_dir + "/run.log" + " 2>&1 &"
+    cmd = 'timestamp=$(date +%Y%m%d_%H%M%S)\n'
+    cmd += 'LOG_DIR=' + app_dir + '/logs\n'
+    # 如果不存在日志目录则创建
+    cmd += ('mkdir -p $LOG_DIR\n')
+    cmd += "bash " + app_dir + "/cmd >> $LOG_DIR/run_$timestamp.log" + " 2>&1 &\n"
+    cmd += ('python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR\n')
     mw.execShell(cmd)
     return mw.returnJson(True, "执行成功!")
 

@@ -394,13 +394,13 @@ class crontab_api:
         crontab_columns = crontab_db.originExecute("PRAGMA table_info(crontab)").fetchall()
         saveAllDay_exists = any(column[1] == 'saveAllDay' for column in crontab_columns)
         if not saveAllDay_exists:
-            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveAllDay INTEGER DEFAULT '3'")
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveAllDay INTEGER DEFAULT null")
         saveOther_exists = any(column[1] == 'saveOther' for column in crontab_columns)
         if not saveOther_exists:
-            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveOther INTEGER DEFAULT '1'")
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveOther INTEGER DEFAULT null")
         saveMaxDay_exists = any(column[1] == 'saveMaxDay' for column in crontab_columns)
         if not saveMaxDay_exists:
-            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveMaxDay INTEGER DEFAULT '30'")
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveMaxDay INTEGER DEFAULT null")
 
         stype = request.form.get('type', '')
 

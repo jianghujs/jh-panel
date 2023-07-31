@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `crontab` (
   `echo` TEXT,
   `addtime` TEXT,
   `status` INTEGER DEFAULT '1',
-  `save` INTEGER DEFAULT '{\"saveAllDay\":3,\"saveOther\":3,\"saveMaxDay\":3}',
+  `save` INTEGER DEFAULT '{}',
   `backup_to` TEXT DEFAULT 'off', 
   `sname` TEXT,
   `sbody` TEXT,

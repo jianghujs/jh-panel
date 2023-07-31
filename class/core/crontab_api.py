@@ -132,11 +132,11 @@ class crontab_api:
     def cronCheck(self, params):
 
         if params['stype'] == 'site' or params['stype'] == 'database' or params['stype'] == 'logs':
-            if params['saveAllDay'] == '':
+            if params.get('saveAllDay', '') == '':
                 return False, '3天内保留份数不能为空!'
-            if params['saveOther'] == '':
+            if params.get('saveOther', '') == '':
                 return False, '其余保留份数不能为空!'
-            if params['saveMaxDay'] == '':
+            if params.get('saveMaxDay', '') == '':
                 return False, '最长保留天数不能为空!'
         if params['type'] == 'day':
             if params['hour'] == '':
@@ -308,9 +308,9 @@ class crontab_api:
         where1 = params["where1"]
         hour = params["hour"]
         minute = params["minute"]
-        saveAllDay = request.form.get('saveAllDay', '')
-        saveOther = request.form.get('saveOther', '')
-        saveMaxDay = request.form.get('saveMaxDay', '')
+        saveAllDay = params.get('saveAllDay', '')
+        saveOther = params.get('saveOther', '') 
+        saveMaxDay = params.get('saveMaxDay', '') 
         backup_to = params["backup_to"]
         stype = params["stype"]
         sname = params["sname"]
@@ -554,9 +554,9 @@ fi
             script_dir = mw.getServerDir() + "/jh-panel/scripts"
 
             save = json.dumps({
-                "saveAllDay": param['saveAllDay'],
-                "saveOther": param['saveOther'],
-                "saveMaxDay": param['saveMaxDay']
+                "saveAllDay": param.get('saveAllDay', ''),
+                "saveOther": param.get('saveOther', ''),
+                "saveMaxDay": param.get('saveMaxDay', '')
             })
 
             wheres = {

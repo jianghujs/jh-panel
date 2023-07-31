@@ -574,10 +574,9 @@ async function submitDeployItem() {
     var deployForm = $("#deployForm").serialize();
     let deployScript = $('#projectDeployScript').val();
     let projectPath = $('#projectPath').val();
-    // await execScriptAndShowLog('正在部署项目...', deployScript);
+    await execScriptAndShowLog('正在部署项目...', deployScript);
 
     let data = await requestApi('project_add', deployForm);
-    debugger
     
     let rdata = $.parseJSON(data.data);
     if(rdata.status) {

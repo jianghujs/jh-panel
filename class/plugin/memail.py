@@ -15,7 +15,7 @@ def _format_addr(s):
 
 def send(smtp_host, smtp_port, username, password, to_mail, subject, content):
 
-    smtp = smtplib.SMTP()
+    smtp = smtplib.SMTP(timeout=5)
     smtp.connect(smtp_host, port=smtp_port)
     smtp.login(user=username, password=password)
 

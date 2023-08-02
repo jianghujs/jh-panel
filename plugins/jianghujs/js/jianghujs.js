@@ -200,7 +200,7 @@ function openCreateItem() {
                         </span>\
                     </div>\
                 </div>\
-                <div class='line'>\
+                <div class='line' style='height: 50px;'>\
                     <span class='tname'>日志保留规则</span>\
                     <div class='info-r c4'>\
                         <div class='plan_hms pull-left mr20 bt-input-text'>\
@@ -317,7 +317,7 @@ async function openEditItem(id) {
                         </span>\
                     </div>\
                 </div>\
-                <div class='line'>\
+                <div class='line' style='height: 50px;'>\
                     <span class='tname'>日志保留规则</span>\
                     <div class='info-r c4'>\
                         <div class='plan_hms pull-left mr20 bt-input-text'>\
@@ -470,8 +470,8 @@ async function openDeployItem() {
                             </span>\
                         </div>\
                     </div>\
-                    <div class='line'>\
-                        <span class='tname'>日志保留规则</span>\
+                    <div class='line' style='height: 50px;'>\
+                        <span class='tname'></span>\
                         <div class='info-r c4'>\
                             <div class='plan_hms pull-left mr20 bt-input-text'>\
                                 <span><input type='number' name='saveAllDay' id='saveAllDay' value='3' maxlength='4' max='100' min='1'></span>\

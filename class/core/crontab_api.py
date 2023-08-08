@@ -34,6 +34,19 @@ class crontab_api:
 
     ##### ----- start ----- ###
     def listApi(self):
+        # TODO 兼容旧版本，检查并添加saveAllDay,saveOther,saveMaxDay字段
+        crontab_db = mw.M('crontab')
+        crontab_columns = crontab_db.originExecute("PRAGMA table_info(crontab)").fetchall()
+        saveAllDay_exists = any(column[1] == 'saveAllDay' for column in crontab_columns)
+        if not saveAllDay_exists:
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveAllDay INTEGER DEFAULT null")
+        saveOther_exists = any(column[1] == 'saveOther' for column in crontab_columns)
+        if not saveOther_exists:
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveOther INTEGER DEFAULT null")
+        saveMaxDay_exists = any(column[1] == 'saveMaxDay' for column in crontab_columns)
+        if not saveMaxDay_exists:
+            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveMaxDay INTEGER DEFAULT null")
+
         p = request.args.get('p', 1)
         psize = 10
 
@@ -397,19 +410,7 @@ class crontab_api:
 
     # 取数据列表
     def getDataListApi(self):
-        # TODO 兼容旧版本，检查并添加saveAllDay,saveOther,saveMaxDay字段
-        crontab_db = mw.M('crontab')
-        crontab_columns = crontab_db.originExecute("PRAGMA table_info(crontab)").fetchall()
-        saveAllDay_exists = any(column[1] == 'saveAllDay' for column in crontab_columns)
-        if not saveAllDay_exists:
-            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveAllDay INTEGER DEFAULT null")
-        saveOther_exists = any(column[1] == 'saveOther' for column in crontab_columns)
-        if not saveOther_exists:
-            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveOther INTEGER DEFAULT null")
-        saveMaxDay_exists = any(column[1] == 'saveMaxDay' for column in crontab_columns)
-        if not saveMaxDay_exists:
-            crontab_db.originExecute("ALTER TABLE crontab ADD COLUMN saveMaxDay INTEGER DEFAULT null")
-
+        
         stype = request.form.get('type', '')
 
         bak_data = []

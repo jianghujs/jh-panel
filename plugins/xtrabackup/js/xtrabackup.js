@@ -101,22 +101,25 @@ function backupPath(){
         });
     });
 }
-var xtrabackupCron = {};
+var xtrabackupCron = {      
+    name: '[勿删]xtrabackup-cron',
+    type: 'day',
+    where1: '',
+    week: '',
+    sType: 'toShell',
+    stype: 'toShell',
+    sName: '',
+    backupTo: 'localhost' };
+
 myPost('backup_cron_script','', function(data) {
     let rdata = $.parseJSON(data.data);
-    xtrabackupCron = {        
-        name: '[勿删]xtrabackup-cron',
-        type: 'day',
-        where1: '',
+    xtrabackupCron = {  
+        ...xtrabackupCron,
+        
         hour: $("#xtrabackup-cron input[name='hour']").val(),
         minute: $("#xtrabackup-cron input[name='minute']").val(),
-        week: '',
-        sType: 'toShell',
-        stype: 'toShell',
         sBody: rdata.data,
         sbody: rdata.data,
-        sName: '',
-        backupTo: 'localhost' 
     }
 });
 

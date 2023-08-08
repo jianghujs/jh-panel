@@ -46,36 +46,36 @@ class crontab_api:
         data = []
         for i in range(len(_list)):
             tmp = _list[i]
-            if _list[i]['type'] == "day":
+            if _list[i].get('type', None) == "day":
                 tmp['type'] = '每天'
                 tmp['cycle'] = mw.getInfo('每天, {1}点{2}分 执行', (str(
                     _list[i]['where_hour']), str(_list[i]['where_minute'])))
-            elif _list[i]['type'] == "day-n":
+            elif _list[i].get('type', None) == "day-n":
                 tmp['type'] = mw.getInfo(
                     '每{1}天', (str(_list[i]['where1']),))
                 tmp['cycle'] = mw.getInfo('每隔{1}天, {2}点{3}分 执行',  (str(
                     _list[i]['where1']), str(_list[i]['where_hour']), str(_list[i]['where_minute'])))
-            elif _list[i]['type'] == "hour":
+            elif _list[i].get('type', None) == "hour":
                 tmp['type'] = '每小时'
                 tmp['cycle'] = mw.getInfo(
                     '每小时, 第{1}分钟 执行', (str(_list[i]['where_minute']),))
-            elif _list[i]['type'] == "hour-n":
+            elif _list[i].get('type', None) == "hour-n":
                 tmp['type'] = mw.getInfo(
                     '每{1}小时', (str(_list[i]['where1']),))
                 tmp['cycle'] = mw.getInfo('每{1}小时, 第{2}分钟 执行', (str(
                     _list[i]['where1']), str(_list[i]['where_minute'])))
-            elif _list[i]['type'] == "minute-n":
+            elif _list[i].get('type', None) == "minute-n":
                 tmp['type'] = mw.getInfo(
                     '每{1}分钟', (str(_list[i]['where1']),))
                 tmp['cycle'] = mw.getInfo(
                     '每隔{1}分钟执行', (str(_list[i]['where1']),))
-            elif _list[i]['type'] == "week":
+            elif _list[i].get('type', None) == "week":
                 tmp['type'] = '每周'
                 if not _list[i]['where1']:
                     _list[i]['where1'] = '0'
                 tmp['cycle'] = mw.getInfo('每周{1}, {2}点{3}分执行', (self.toWeek(int(
                     _list[i]['where1'])), str(_list[i]['where_hour']), str(_list[i]['where_minute'])))
-            elif _list[i]['type'] == "month":
+            elif _list[i].get('type', None) == "month":
                 tmp['type'] = '每月'
                 tmp['cycle'] = mw.getInfo('每月, {1}日 {2}点{3}分执行', (str(_list[i]['where1']), str(
                     _list[i]['where_hour']), str(_list[i]['where_minute'])))

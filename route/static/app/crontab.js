@@ -56,7 +56,7 @@ function getCronData(page){
 
 
 				var cron_save = '--';
-				if (rdata.data[i]['saveAllDay'] != '' && rdata.data[i]['saveOther'] != '' && rdata.data[i]['saveMaxDay'] != '') {
+				if (rdata.data[i]['saveAllDay']  && rdata.data[i]['saveOther']  && rdata.data[i]['saveMaxDay']) {
 					cron_save = rdata.data[i]['saveAllDay'] + '天内全部保留，其余只保留' + rdata.data[i]['saveOther'] + '份，最长保留' + rdata.data[i]['saveMaxDay'] + '天';
 				}
 

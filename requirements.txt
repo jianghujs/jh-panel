@@ -21,13 +21,13 @@ python-socketio>=4.2.0
 flask-socketio==5.2.0
 zmq==0.0.0
 paramiko>=2.8.0
-pymongo
-pillow
+pymongo==4.4.1
+pillow===9.5.0
 Jinja2>=2.11.2
 flask-caching>=1.10.1
 bcrypt==4.0.1
 PyMySQL==1.0.2
 dictdatabase==2.4.2
 whitenoise==5.3.0
-pyTelegramBotAPI
-telebot
+pyTelegramBotAPI==4.13.0
+telebot==0.0.5

@@ -16,8 +16,7 @@ fi
 MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 
 # 提示”输入项目所在目录（默认/www/wwwroot/）”
-echo "请输入项目所在目录（默认/www/wwwroot/）"
-read -p "输入您的选择（默认为：/www/wwwroot/）: " project_dir
+read -p "输入项目所在目录（默认为：/www/wwwroot/）: " project_dir
 project_dir=${project_dir:-"/www/wwwroot/"}
 
 # 定义存储迁移信息的json对象（如：migrate_info_project）
@@ -48,8 +47,7 @@ cat << EOF > ${MIGRATE_DIR}/deploy_project.sh
 #!/bin/bash
 
 # 提示“输入部署项目目录（默认/www/wwwroot/）”
-echo "请输入部署项目目录（默认/www/wwwroot/）"
-read -p "输入您的选择（默认为：/www/wwwroot/）: " deploy_dir
+read -p "请输入部署项目目录（默认/www/wwwroot/）: " deploy_dir
 deploy_dir=${deploy_dir:-"/www/wwwroot/"}
 
 # 循环migrate_info_project文件的project_list

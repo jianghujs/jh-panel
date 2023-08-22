@@ -42,10 +42,19 @@ choices=$("${cmd[@]}" "${script_options[@]}" 2>&1 >/dev/tty)
 read -p "请输入迁移临时文件存放目录（默认/www/migrate/）: " dir
 dir=${dir:-/www/migrate/}
 export MIGRATE_DIR=$dir
-# 如果目录不存在，则创建它
-if [ ! -d "$MIGRATE_DIR" ]; then
-    mkdir -p "$MIGRATE_DIR"
+# 如果目录不存在，则创建它，如果目录存在，则清空目录
+if [ -d "$dir" ]; then
+    read -p "目录已存在，是否清空目录？（默认y）[y/n] " yn
+    yn=${yn:-y}
+    case $yn in
+        [Yy]* ) rm -rf $dir/*;;
+        [Nn]* ) exit;;
+        * ) echo "请输入y或n";;
+    esac
+else
+    mkdir -p $dir
 fi
+
 
 # 获取当前IP地址
 pushd /www/server/jh-panel > /dev/null

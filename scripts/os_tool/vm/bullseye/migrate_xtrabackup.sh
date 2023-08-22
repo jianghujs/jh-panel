@@ -16,8 +16,7 @@ fi
 MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 
 # 提示”输入xtrabackup备份所在目录（默认/www/backup/xtrabackup_data_history）”
-echo "请输入xtrabackup备份所在目录（默认/www/backup/xtrabackup_data_history）"
-read -p "输入您的选择（默认为：/www/backup/xtrabackup_data_history）: " backup_dir
+read -p "请输入xtrabackup备份所在目录（默认为：/www/backup/xtrabackup_data_history）: " backup_dir
 backup_dir=${backup_dir:-"/www/backup/xtrabackup_data_history"}
 
 # 定义存储迁移信息的json对象（如：migrate_info_xtrabackup）
@@ -47,8 +46,7 @@ cat << EOF > ${MIGRATE_DIR}/deploy_xtrabackup.sh
 #!/bin/bash
 
 # 提示”输入xtrabackup备份所在目录（默认/www/backup/xtrabackup_data_history）”
-echo "请输入xtrabackup备份所在目录（默认/www/backup/xtrabackup_data_history）"
-read -p "输入您的选择: " backup_dir
+read -p "请输入xtrabackup备份所在目录（默认为：/www/backup/xtrabackup_data_history）: " backup_dir
 backup_dir=${backup_dir:-"/www/backup/xtrabackup_data_history"}
 
 # 将当前目录下的xtrabackup_data开头的文件复制到xtrabackup备份所在目录

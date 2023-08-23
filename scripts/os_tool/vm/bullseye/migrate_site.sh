@@ -18,9 +18,10 @@ MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 # 定义存储迁移信息的json对象（如：migrate_info_site）
 migrate_info_site='{}'
 
-# TODO 执行 python3 /www/server/jh-panel/scripts/migrate.py export_site，设置migrate_info_site.site_list为此列表
-# site_list=$(python3 /www/server/jh-panel/scripts/migrate.py export_site)
-# migrate_info_site=$(echo ${migrate_info_site} | jq --arg site_list ${site_list} '. + {site_list: $site_list}')
+# 执行 python3 /www/server/jh-panel/scripts/migrate.py exportSiteInfo，设置migrate_info_site.site_list为此列表
+pushd /www/server/jh-panel > /dev/null
+migrate_info_site=$(python3 /www/server/jh-panel/scripts/migrate.py exportSiteInfo)
+popd > /dev/null
 
 # 把migrate_info_site的内容写入到 迁移临时文件存放目录/migrate_info_site
 echo ${migrate_info_site} > ${MIGRATE_DIR}/migrate_info_site.json
@@ -47,8 +48,8 @@ if ! [ -x "/usr/bin/jq" ]; then
     fi
 fi
 
-# 执行 python3 /www/server/jh-panel/scripts/migrate.py import_site，传入当前目录下的migrate_info_site文件路径恢复站点数据
-python3 /www/server/jh-panel/scripts/migrate.py import_site $(pwd)/migrate_info_site.json
+# 执行 python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo，传入当前目录下的migrate_info_site文件路径恢复站点数据
+python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo $(pwd)/migrate_info_site.json
 
 # 解压覆盖当前目录下的web_conf.zip到/www/server/web_conf/
 unzip -o ./web_conf.zip -d /www/server/web_conf/

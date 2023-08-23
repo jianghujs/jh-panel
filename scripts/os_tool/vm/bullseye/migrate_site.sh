@@ -49,7 +49,7 @@ if ! [ -x "/usr/bin/jq" ]; then
 fi
 
 # 执行 python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo，传入当前目录下的migrate_info_site文件路径恢复站点数据
-python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo $(pwd)/migrate_info_site.json
+python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/migrate_info_site.json
 
 # 解压覆盖当前目录下的web_conf.zip到/www/server/web_conf/
 unzip -o ./web_conf.zip -d /www/server/web_conf/

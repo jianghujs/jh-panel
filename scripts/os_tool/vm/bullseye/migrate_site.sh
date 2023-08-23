@@ -35,6 +35,18 @@ popd > /dev/null
 cat << EOF > ${MIGRATE_DIR}/deploy_site.sh
 #!/bin/bash
 
+# 检查/usr/bin/jq是否存在
+if ! [ -x "/usr/bin/jq" ]; then
+    echo "/usr/bin/jq不存在，正在尝试自动安装..."
+    apt-get update
+    apt-get install jq -y
+    hash -r
+    if ! [ -x "/usr/bin/jq" ]; then
+        echo "安装jq失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
 # 执行 python3 /www/server/jh-panel/scripts/migrate.py import_site，传入当前目录下的migrate_info_site文件路径恢复站点数据
 python3 /www/server/jh-panel/scripts/migrate.py import_site $(pwd)/migrate_info_site.json
 

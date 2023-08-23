@@ -95,5 +95,5 @@ EOF
 # 打包迁移临时文件存放目录
 timestamp=$(date +%s)
 pushd ${MIGRATE_DIR} > /dev/null
-zip -r ../migrate_package_${timestamp}.zip .
+zip -r ../migrate_package_${local_ip}_${timestamp}.zip .
 popd > /dev/null

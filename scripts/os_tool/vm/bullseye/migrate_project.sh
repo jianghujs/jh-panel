@@ -46,6 +46,18 @@ done
 cat << EOF > ${MIGRATE_DIR}/deploy_project.sh
 #!/bin/bash
 
+# 检查/usr/bin/jq是否存在
+if ! [ -x "/usr/bin/jq" ]; then
+    echo "/usr/bin/jq不存在，正在尝试自动安装..."
+    apt-get update
+    apt-get install jq -y
+    hash -r
+    if ! [ -x "/usr/bin/jq" ]; then
+        echo "安装jq失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
 # 提示“输入部署项目目录（默认/www/wwwroot/）”
 read -p "请输入部署项目目录（默认/www/wwwroot/）: " deploy_dir
 deploy_dir=${deploy_dir:-"/www/wwwroot/"}

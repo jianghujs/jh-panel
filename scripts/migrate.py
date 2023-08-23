@@ -41,9 +41,9 @@ class migrateTools:
             importSiteInfo = json.load(f)
             importSiteList = importSiteInfo['site_list']
             print(importSiteList)
-            # 对比currentSiteList和importSiteList，找出不存在的site并创建
+            # 循环对比currentSiteList每个对象的name值和importSiteList的name值，找出不存在的site并创建
             for importSite in importSiteList:
-                if importSite not in currentSiteList:
+                if any(curentSite.get('name', None) == importSite.get('name', None) for curentSite in currentSiteList) == False:
                     print('开始创建站点：' + importSite['name'])
                     result = json.loads(siteApi.add(json.dumps({"domain":importSite['name'],"domainlist":[],"count":1}), '80', importSite['ps'], '/www/wwwroot/', '00'))
                     if result['status'] == True:

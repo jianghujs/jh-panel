@@ -63,19 +63,43 @@ read -p "请输入部署项目目录（默认/www/wwwroot/）: " deploy_dir
 deploy_dir=${deploy_dir:-"/www/wwwroot/"}
 
 # 循环migrate_info_project文件的project_list
-project_list=\$(jq -r '.project_list' ${MIGRATE_DIR}/migrate_info_project.json)
-for project_info in \${project_list}; do
+while read project_info; do
     project_name=\$(echo \${project_info} | jq -r '.projectName')
     git_url=\$(echo \${project_info} | jq -r '.gitUrl')
     git_commit=\$(echo \${project_info} | jq -r '.gitCommit')
-    mkdir -p \${deploy_dir}/\${project_name}
-    pushd \${deploy_dir}/\${project_name} > /dev/null
+    project_dir=\${deploy_dir}\${project_name}
+
+    # 检查目录是否存在
+    if [ -d "\$project_dir" ]; then
+        echo "\${project_dir}已存在，跳过"
+		continue
+    fi
+
+    echo ">>>>>>>>>>>>>>>>>>> Start 部署\${git_url}到\${project_dir}"
+    mkdir -p \$project_dir
+    pushd \$project_dir > /dev/null
     git clone \${git_url} .
-    git checkout \${git_commit}
-    unzip ${MIGRATE_DIR}/project_files/\${project_name}.zip -d .
+    if [ -f "./project_files/\${project_name}.zip" ]; then
+        unzip ./project_files/\${project_name}.zip -d .
+    fi
+    popd > /dev/null
+    echo ">>>>>>>>>>>>>>>>>>> End 部署\${git_url}到\${project_dir}"
+done < <(jq -c '.project_list[]' ./migrate_info_project.json)
+
+
+
+# 统一安装依赖
+
+jq -c '.project_list[]' ./migrate_info_project.json | while read project_info; do
+    project_name=\$(echo \${project_info} | jq -r '.projectName')
+    project_dir=\${deploy_dir}\${project_name}
+
+    echo "开始安装依赖：\${project_dir}"
+    pushd \$project_dir > /dev/null
     npm i
     popd > /dev/null
 done
+
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_project.sh
 

@@ -74,13 +74,14 @@ echo "popd > /dev/null" >> temp_recovery.sh
 chmod +x temp_recovery.sh
 ./temp_recovery.sh
 rm temp_recovery.sh
-
+echo "恢复xtrabackup文件成功"
 
 # 使用 \www\server\jh-panel\plugins\mysql-apt\index.py set_root_pwd [migrate_info_xtrabackup文件中的mysql_root_psw]
 mysql_pwd=\$(jq -r '.mysql_root_psw' ./migrate_info_xtrabackup.json)
 pushd /www/server/jh-panel > /dev/null
 python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_root_pwd "{password:${mysql_pwd}}"
 popd > /dev/null
+echo "更新mysql密码成功"
 
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_xtrabackup.sh

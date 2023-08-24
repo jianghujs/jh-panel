@@ -66,10 +66,10 @@ fi
 
 # 提示”输入xtrabackup备份所在目录（默认/www/backup/xtrabackup_data_history）”
 read -p "请输入xtrabackup备份所在目录（默认为：/www/backup/xtrabackup_data_history）: " backup_dir
-backup_dir=${backup_dir:-"/www/backup/xtrabackup_data_history"}
+backup_dir=\${backup_dir:-"/www/backup/xtrabackup_data_history"}
 
 # 将当前目录下的xtrabackup_data开头的文件复制到xtrabackup备份所在目录
-cp xtrabackup_data* ${backup_dir}
+cp xtrabackup_data* \${backup_dir}
 
 # 使用 python3 /www/server/jh-panel/plugins/xtrabackup/index.py get_recovery_backup_script "{filename: xtrabackup_data_20230821_203001.zip}" 获取并执行恢复xtrabackup文件脚本
 pushd /www/server/jh-panel > /dev/null

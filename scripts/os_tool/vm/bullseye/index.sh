@@ -23,6 +23,7 @@ show_menu() {
     echo "请选择一个操作:"
     echo "1. 初始化环境"
     echo "2. 生成指定域名SSH密钥"
+    echo "3. 生成服务器迁移包"
     echo "========================================================"
 }
 
@@ -48,6 +49,9 @@ case $choice in
     ;;
 2)
     download_and_run ssh_keygen_to_host.sh
+    ;;
+3)
+    download_and_run get_migrate_package.sh
     ;;
 esac
 

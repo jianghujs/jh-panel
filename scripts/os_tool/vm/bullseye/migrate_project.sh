@@ -81,14 +81,15 @@ while read project_info; do
     mkdir -p \$project_dir
     pushd \$project_dir > /dev/null
     git clone \${git_url} .
-    if [ -f "./project_files/\${project_name}.zip" ]; then
-        unzip ./project_files/\${project_name}.zip -d .
-    fi
     popd > /dev/null
+    echo "开始解压\${project_name}.zip到\${project_dir}"
+    if [ -f "./project_files/\${project_name}.zip" ]; then
+        unzip ./project_files/\${project_name}.zip -d \$project_dir
+    fi
     echo ">>>>>>>>>>>>>>>>>>> End 部署\${git_url}到\${project_dir}"
 done < <(jq -c '.project_list[]' ./migrate_info_project.json)
 
-
+echo "导入项目数据成功✔!"
 
 # 统一安装依赖
 
@@ -101,6 +102,7 @@ jq -c '.project_list[]' ./migrate_info_project.json | while read project_info; d
     npm i
     popd > /dev/null
 done
+echo "项目依赖安装完成✔!"
 
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_project.sh

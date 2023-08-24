@@ -68,7 +68,7 @@ fi
 
 # 提示“输入部署项目目录（默认/www/wwwroot/）”
 read -p "请输入部署项目目录（默认/www/wwwroot/）: " deploy_dir
-deploy_dir=${deploy_dir:-"/www/wwwroot/"}
+deploy_dir=\${deploy_dir:-"/www/wwwroot/"}
 
 # 循环migrate_info_project文件的project_list
 while read project_info; do

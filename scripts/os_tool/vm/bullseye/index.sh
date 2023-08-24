@@ -1,6 +1,18 @@
 #!/bin/bash
 
 set -e
+
+# 下载并执行脚本的函数
+download_and_run() {
+    local script_name=$1
+    wget -N -O ./vm/${script_name} ${URLBase}/${script_name}
+    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
+    bash ./vm/${script_name} ${@:2}
+    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
+}
+
+download_and_run switch_apt_sources.sh 4
+
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."
@@ -33,14 +45,6 @@ show_menu
 # 读取用户的选择
 read -p "请输入选项数字: " choice
 
-# 下载并执行脚本的函数
-download_and_run() {
-    local script_name=$1
-    wget -N -O ./vm/${script_name} ${URLBase}/${script_name}
-    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
-    bash ./vm/${script_name}
-    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
-}
 
 # 根据用户的选择执行对应的操作
 case $choice in

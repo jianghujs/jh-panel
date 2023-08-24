@@ -74,8 +74,8 @@ for key in "${script_order[@]}"; do
     for choice in $choices; do
         if [[ $key == $choice ]]; then
             script_file=${scripts[$choice]}
-            # download_and_run ${script_file}
-            ./$script_file
+            download_and_run ${script_file}
+            # ./$script_file
         fi
     done
 done
@@ -107,8 +107,8 @@ sync=${sync:-n}
 
 case $sync in
   [Yy]*) 
-    ./rsync_migrate_package.sh
-    # download_and_run rsync_migrate_package.sh
+    # ./rsync_migrate_package.sh
+    download_and_run rsync_migrate_package.sh
     ;;
   [Nn]*)
     exit;;

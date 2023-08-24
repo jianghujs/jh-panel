@@ -66,9 +66,7 @@ export LOCAL_IP=$local_ip
 download_and_run() {
     local script_name=$1
     wget -N -O ./vm/${script_name} ${URLBase}/${script_name}
-    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
     bash ./vm/${script_name}
-    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
 }
 
 # 根据用户的选择运行对应的脚本

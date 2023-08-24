@@ -77,7 +77,7 @@ for key in "${script_order[@]}"; do
         if [[ $key == $choice ]]; then
             script_file=${scripts[$choice]}
             # download_and_run ${script_file}
-            download_and_run $script_file
+            download_and_run  ${script_file}
         fi
     done
 done

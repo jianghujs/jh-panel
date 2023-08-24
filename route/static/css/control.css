@@ -38,3 +38,9 @@
 .nitify-value-form .line .plan_hms span:first-child input {
     width: 100%;
 }
+
+
+.layui-layer {
+    max-height: 100vh;
+    overflow-y: auto;
+}

@@ -2458,7 +2458,6 @@ location ^~ {from} {\n\
         mw.writeFile(rewrite_file, '')
 
     def add(self, webname, port, ps, path, version):
-        print("开始创建", webname)
         siteMenu = json.loads(webname)
         self.siteName = self.toPunycode(
             siteMenu['domain'].strip().split(':')[0]).strip()

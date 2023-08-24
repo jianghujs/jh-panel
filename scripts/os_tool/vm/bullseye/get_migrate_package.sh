@@ -90,10 +90,28 @@ for file in "deploy_xtrabackup.sh" "deploy_site.sh" "deploy_project.sh"; do
         bash \$file
     fi
 done
+echo "导入迁移包完成✔!"
 EOF
 
 # 打包迁移临时文件存放目录
 timestamp=$(date +%s)
 pushd ${MIGRATE_DIR} > /dev/null
-zip -r ../migrate_package_${local_ip}_${timestamp}.zip .
+migrate_file=migrate_package_${local_ip}_${timestamp}.zip
+zip -r ../${migrate_file} .
 popd > /dev/null
+pushd ${MIGRATE_DIR}/../ > /dev/null
+export MIGRATE_FILE=$(pwd)/${migrate_file} 
+popd > /dev/null
+
+# 提示是否rsync同步
+read -p "是否要使用rsync将备份文件同步到其他服务器?(默认n)[y/n]" sync
+sync=${sync:-n}
+
+case $sync in
+  [Yy]*) 
+    ./rsync_migrate_package.sh
+    ;;
+  [Nn]*)
+    exit;;
+  *) echo "请输入y或n";;
+esac

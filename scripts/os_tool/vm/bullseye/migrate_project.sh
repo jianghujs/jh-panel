@@ -25,12 +25,14 @@ migrate_info_project='{"project_list": []}'
 # 循环目录下的每个文件夹，获取git地址和所在提交点
 for dir in $(ls -d ${project_dir}/*/); do
     pushd ${dir} > /dev/null
-    git_url=$(git remote -v | grep "origin" | grep "(push)" | awk '{print $2}')
-    git_commit=$(git log -1 --pretty=format:%H)
-    project_name=$(basename ${dir})
-    project_info=$(jq -n --arg projectName "${project_name}" --arg path "${dir}" --arg gitUrl "${git_url}" --arg gitCommit "${git_commit}" '{projectName: $projectName, path: $path, gitUrl: $gitUrl, gitCommit: $gitCommit}')
-    migrate_info_project=$(echo ${migrate_info_project} | jq --argjson project_info "${project_info}" '.project_list += [$project_info]')
-    popd > /dev/null
+    if [ -d .git ]; then
+        git_url=$(git remote -v | grep "origin" | grep "(push)" | awk '{print $2}')
+        git_commit=$(git log -1 --pretty=format:%H)
+        project_name=$(basename ${dir})
+        project_info=$(jq -n --arg projectName "${project_name}" --arg path "${dir}" --arg gitUrl "${git_url}" --arg gitCommit "${git_commit}" '{projectName: $projectName, path: $path, gitUrl: $gitUrl, gitCommit: $gitCommit}')
+        migrate_info_project=$(echo ${migrate_info_project} | jq --argjson project_info "${project_info}" '.project_list += [$project_info]')
+        popd > /dev/null
+    fi
 done
 
 # 将每个项目的/config/config.prod.js文件和/upload目录按 目录名称.zip 压缩存到 ${MIGRATE_DIR}/project_files/ 目录下

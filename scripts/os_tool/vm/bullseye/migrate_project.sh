@@ -15,9 +15,15 @@ fi
 # 从环境变量中获取MIGRATE_DIR值
 MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 
+# 当前系统如果存在/appdata/wwwroot/则默认为/appdata/wwwroot/否则为/www/wwwroot/
+default_project_dir="/www/wwwroot/"
+if [ -d "/appdata/wwwroot/" ]; then
+    default_project_dir="/appdata/wwwroot/"
+fi
+
 # 提示”输入项目所在目录（默认/www/wwwroot/）”
-read -p "输入项目所在目录（默认为：/www/wwwroot/）: " project_dir
-project_dir=${project_dir:-"/www/wwwroot/"}
+read -p "输入项目所在目录（默认为：${default_project_dir}）: " project_dir
+project_dir=${project_dir:-${default_project_dir}}
 
 # 定义存储迁移信息的json对象（如：migrate_info_project）
 migrate_info_project='{"project_list": []}'

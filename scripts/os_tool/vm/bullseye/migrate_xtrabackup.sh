@@ -15,9 +15,16 @@ fi
 # 获取环境变量中的MIGRATE_DIR值
 MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 
+
+
+# 当前系统如果存在/appdata/backup/xtrabackup_data_history则默认为/appdata/backup/xtrabackup_data_history否则为/www/backup/xtrabackup_data_history
+default_backup_dir="/www/backup/xtrabackup_data_history"
+if [ -d "/appdata/backup/xtrabackup_data_history" ]; then
+    default_backup_dir="/appdata/backup/xtrabackup_data_history"
+fi
 # 提示”输入xtrabackup备份所在目录（默认/www/backup/xtrabackup_data_history）”
-read -p "请输入xtrabackup备份所在目录（默认为：/www/backup/xtrabackup_data_history）: " backup_dir
-backup_dir=${backup_dir:-"/www/backup/xtrabackup_data_history"}
+read -p "请输入xtrabackup备份所在目录（默认为：${default_backup_dir}）: " backup_dir
+backup_dir=${backup_dir:-${default_backup_dir}}
 
 # 定义存储迁移信息的json对象（如：migrate_info_xtrabackup）
 migrate_info_xtrabackup='{}'

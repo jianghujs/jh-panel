@@ -25,10 +25,10 @@ if ! [ -x "/usr/bin/dialog" ]; then
     fi
 fi
 
-# 为当前目录及其子目录下的所有.sh文件添加执行权限
-for file in $(find . -name "*.sh"); do
-    chmod +x "$file"
-done
+# # 为当前目录及其子目录下的所有.sh文件添加执行权限
+# for file in $(find . -name "*.sh"); do
+#     chmod +x "$file"
+# done
 
 show_menu() {
     echo "==================vm bullseye os-tools=================="

@@ -46,7 +46,7 @@ mkdir -p ${MIGRATE_DIR}/project_files/
 for dir in $(ls -d ${project_dir}/*/); do
     pushd ${dir} > /dev/null
     project_name=$(basename ${dir})
-    zip -r ${MIGRATE_DIR}/project_files/${project_name}.zip . -x "*/node_modules/*" "*/logs/*" "*/run/*"
+    zip -r ${MIGRATE_DIR}/project_files/${project_name}.zip . -x "node_modules/*" "logs/*" "run/*" "*/node_modules/*" "*/logs/*" "*/run/*"
     popd > /dev/null
 done
 

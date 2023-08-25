@@ -82,6 +82,8 @@ while read project_info; do
     echo "创建项目目录：\${project_dir}"
     mkdir -p \$project_dir
 
+    pushd \$project_dir > /dev/null
+
     echo "开始解压\${project_name}.zip到\${project_dir}"
     if [ -f "./project_files/\${project_name}.zip" ]; then
         unzip -o ./project_files/\${project_name}.zip -d \$project_dir
@@ -90,6 +92,7 @@ while read project_info; do
     if [ -z "\${git_url}" ]; then  
         git config --global --add safe.directory \$project_dir
     fi
+    popd > /dev/null
 done < <(jq -c '.project_list[]' ./migrate_info_project.json)
 
 echo "导入项目数据成功✔!"

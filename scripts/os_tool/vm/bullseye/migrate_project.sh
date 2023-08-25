@@ -41,12 +41,12 @@ for dir in $(ls -d ${project_dir}/*/); do
     fi
 done
 
-# 将每个项目的/config/config.prod.js文件和/upload目录按 目录名称.zip 压缩存到 ${MIGRATE_DIR}/project_files/ 目录下
+# 将每个项目的整个目录（除了node_modules和logs）按 目录名称.zip 压缩存到 ${MIGRATE_DIR}/project_files/ 目录下
 mkdir -p ${MIGRATE_DIR}/project_files/
 for dir in $(ls -d ${project_dir}/*/); do
     pushd ${dir} > /dev/null
     project_name=$(basename ${dir})
-    zip -r ${MIGRATE_DIR}/project_files/${project_name}.zip ./config/config.prod.js ./upload
+    zip -r ${MIGRATE_DIR}/project_files/${project_name}.zip . -x *node_modules* *logs*
     popd > /dev/null
 done
 
@@ -77,12 +77,6 @@ while read project_info; do
     git_commit=\$(echo \${project_info} | jq -r '.gitCommit')
     project_dir=\${deploy_dir}\${project_name}
 
-    # 检查目录是否存在
-    if [ -d "\$project_dir" ]; then
-        echo "\${project_dir}已存在，跳过"
-		continue
-    fi
-
     echo ">>>>>>>>>>>>>>>>>>> Start 部署\${git_url}到\${project_dir}"
     mkdir -p \$project_dir
     pushd \$project_dir > /dev/null
@@ -90,7 +84,7 @@ while read project_info; do
     popd > /dev/null
     echo "开始解压\${project_name}.zip到\${project_dir}"
     if [ -f "./project_files/\${project_name}.zip" ]; then
-        unzip ./project_files/\${project_name}.zip -d \$project_dir
+        unzip -o ./project_files/\${project_name}.zip -d \$project_dir
     fi
     echo ">>>>>>>>>>>>>>>>>>> End 部署\${git_url}到\${project_dir}"
 done < <(jq -c '.project_list[]' ./migrate_info_project.json)

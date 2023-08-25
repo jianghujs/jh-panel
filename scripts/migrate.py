@@ -45,7 +45,7 @@ class migrateTools:
             for importSite in importSiteList:
                 if any(curentSite.get('name', None) == importSite.get('name', None) for curentSite in currentSiteList) == False:
                     print('开始创建站点：' + importSite['name'])
-                    result = json.loads(siteApi.add(json.dumps({"domain":importSite['name'],"domainlist":[],"count":1}), '80', importSite['ps'], '/www/wwwroot/', '00'))
+                    result = json.loads(siteApi.add(json.dumps({"domain":importSite['name'],"domainlist":[],"count":1}), '80', importSite['ps'], '/www/wwwroot/' + importSite['name'], '00'))
                     if result['status'] == True:
                         print('创建站点%s成功' % importSite['name'])
                     else:

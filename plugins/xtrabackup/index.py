@@ -116,13 +116,15 @@ def changeSetting():
     password = args['password']
     file = getConf()
     content = mw.readFile(file)
-    
-    port_rep = '--port\s*=\s*(.*?) '
-    content = re.sub(port_rep, '--port=' + port + ' ', content)
-    user_rep = '--user\s*=\s*(.*?) '
-    content = re.sub(user_rep, '--user=' + user + ' ', content)
-    password_rep = '--password\s*=\s*(.*?) '
-    content = re.sub(password_rep, '--password=' + password + ' ', content)
+    if port is not None:
+        port_rep = '--port\s*=\s*(.*?) '
+        content = re.sub(port_rep, '--port=' + port + ' ', content)
+    if user is not None:
+        user_rep = '--user\s*=\s*(.*?) '
+        content = re.sub(user_rep, '--user=' + user + ' ', content)
+    if password is not None:
+        password_rep = '--password\s*=\s*(.*?) '
+        content = re.sub(password_rep, '--password=' + password + ' ', content)
     mw.writeFile(file, content)
     return mw.returnJson(True, '编辑成功!')
 

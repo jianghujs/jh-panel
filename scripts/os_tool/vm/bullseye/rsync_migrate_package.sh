@@ -9,6 +9,9 @@ if [ -z "$MIGRATE_FILE" ]; then
   fi
 fi
 
+# 获取环境变量中的MIGRATE_DIR值
+MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
+
 echo "传输文件: $MIGRATE_FILE"
 
 # 输入目标服务器IP
@@ -28,5 +31,5 @@ remote_path=${remote_path:-/root/$(basename $MIGRATE_FILE)}
 
 # 执行同步
 echo "正在执行同步..."
-rsync -avu -e "ssh -p $remote_port" --progress --delete "$MIGRATE_FILE" "root@$remote_ip:$remote_path" &>> /www/migrate/rsync_migration.log
+rsync -avu -e "ssh -p $remote_port" --progress --delete "$MIGRATE_FILE" "root@$remote_ip:$remote_path" &>> ${MIGRATE_DIR}rsync_migration.log
 echo "同步完成"

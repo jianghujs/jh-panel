@@ -65,11 +65,12 @@ case $choice in
         ["分配固定IP"]="set_static_ip_multi_network.sh"
         ["禁用睡眠"]="nosleep.sh"
         ["安装并配置xrdp自启动"]="install_xrdp.sh"
+        ["安装并配置rustdesk自启动"]="install_rustdesk.sh"
         ["安装并配置VirtualBox自启动"]="install_virtualbox.sh"
         )
 
         # 创建一个数组，用于存储键的顺序
-        keys=("切换apt源" "分配固定IP" "禁用睡眠" "安装并配置xrdp自启动" "安装并配置VirtualBox自启动")
+        keys=("切换apt源" "分配固定IP" "禁用睡眠" "安装并配置xrdp自启动" "安装并配置rustdesk自启动" "安装并配置VirtualBox自启动")
 
         # 创建一个数组，用于dialog的checklist选项
         script_options=()

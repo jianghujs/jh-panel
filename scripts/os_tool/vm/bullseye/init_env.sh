@@ -21,7 +21,7 @@ done
 # 下载并执行脚本的函数
 download_and_run() {
     local script_name=$1
-    wget -N -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+    wget -q -O /tmp/vm_${script_name} ${URLBase}/${script_name}
     echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
     bash /tmp/vm_${script_name} ${@:2}
     echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"

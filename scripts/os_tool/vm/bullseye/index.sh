@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 set -e
 
 # 下载并执行脚本的函数

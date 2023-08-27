@@ -66,8 +66,8 @@ export LOCAL_IP=$local_ip
 # 下载并执行脚本的函数
 download_and_run() {
     local script_name=$1
-    wget -N -O /tmp/vm/${script_name} ${URLBase}/${script_name}
-    bash /tmp/vm/${script_name}
+    wget -N -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+    bash /tmp/vm_${script_name} ${@:2}
 }
 
 # 根据用户的选择运行对应的脚本

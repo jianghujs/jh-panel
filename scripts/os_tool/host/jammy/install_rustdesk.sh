@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # 下载rustdesk安装包
-wget https://gitee.com/rustdesk/rustdesk/attach_files/1093882/download/rustdesk-1.1.9.deb
+wget https://gitee.com/rustdesk/rustdesk/attach_files/1093882/download/rustdesk-1.2.2.deb
 
 # 安装rustdesk
-sudo apt install ./rustdesk-1.1.9.deb -y
+sudo apt install ./rustdesk-1.2.2.deb -y
 
 echo "安装rustdesk成功！"
 

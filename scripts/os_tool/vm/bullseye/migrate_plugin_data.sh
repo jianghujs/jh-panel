@@ -55,11 +55,13 @@ rm -rf /www/server/jianghujs
 unzip -o ./plugin_files/jianghujs.zip -d /www/server/jianghujs
 
 # 在/www/server/jianghujs/目录下执行以下脚本替换项目目录
+pushd /www/server/jianghujs/ > /dev/null
 find . -type f -print0 | while read -d \$'\0' file
 do
   echo "正在替换\${file}"
   sed -i "s#${project_dir}#\${DEPLOY_DIR}#g" "\$file"
 done
+popd > /dev/null
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_plugin.sh
 

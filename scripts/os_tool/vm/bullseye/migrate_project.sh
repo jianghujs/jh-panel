@@ -52,6 +52,40 @@ for dir in $(ls -d ${project_dir}/*/); do
     popd > /dev/null
 done
 
+# 将目录下的软链提取到脚本
+symbolic_links_file="./project_files/symbolic_links_origin.sh"
+echo "" >  $symbolic_links_file
+
+# 使用find命令搜索所有目录，排除"node_modules"、"logs"、"run"目录
+find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -print | while read dir
+do
+    echo "Processing directory: $dir"
+
+    # 如果目录是符号链接，则跳过
+    if [ -L "$dir" ]; then
+        echo "$dir is a symbolic link, skipping."
+        continue
+    fi
+
+    # 在每个目录中，查找所有的符号链接
+    ls -l "$dir" | grep "^l" | while read line
+    do
+        # 提取软链接文件名和目标文件名
+        link=$(echo $line | awk '{print $9}')
+        target=$(echo $line | awk '{print $11}')
+
+        # 获取软链接和目标文件的绝对路径
+        abs_link=$(readlink -f "$dir/$link")
+        abs_target=$(readlink -f "$dir/$target")
+
+        # 生成进入目录和创建相同软链接的命令，并将其追加到links.sh文件中
+        echo "cd $dir" >> $symbolic_links_file
+        echo "unlink $link" >> $symbolic_links_file
+        echo "ln -s $abs_target $abs_link" >> $symbolic_links_file
+    done
+done
+
+
 # 在${MIGRATE_DIR}目录生成deploy_project.sh，内容如下：
 cat << EOF > ${MIGRATE_DIR}/deploy_project.sh
 #!/bin/bash
@@ -94,6 +128,11 @@ while read project_info; do
     fi
     popd > /dev/null
 done < <(jq -c '.project_list[]' ./migrate_info_project.json)
+
+# 部署软链
+cp ./project_files/symbolic_links_origin.sh ./project_files/symbolic_links.sh 
+# 在文件中替换字符串"${project_dir}"为"\${deploy_dir}"
+sed -i 's|${project_dir}|\${deploy_dir}|g'./project_files/symbolic_links.sh 
 
 echo "导入项目数据成功✔!"
 

@@ -58,7 +58,7 @@ unzip -o ./plugin_files/jianghujs.zip -d /www/server/jianghujs
 find . -type f -print0 | while read -d \$'\0' file
 do
   echo "正在替换\${file}"
-  sed -i "s#${project_dir}#${DEPLOY_DIR}#g" "\$file"
+  sed -i "s#${project_dir}#\${DEPLOY_DIR}#g" "\$file"
 done
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_plugin.sh

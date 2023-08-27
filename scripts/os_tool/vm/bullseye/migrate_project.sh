@@ -24,6 +24,7 @@ fi
 # 提示”输入项目所在目录（默认/www/wwwroot/）”
 read -p "输入项目所在目录（默认为：${default_project_dir}）: " project_dir
 project_dir=${project_dir:-${default_project_dir}}
+export PROJECT_DIR=$project_dir
 
 # 定义存储迁移信息的json对象（如：migrate_info_project）
 migrate_info_project='{"project_list": []}'

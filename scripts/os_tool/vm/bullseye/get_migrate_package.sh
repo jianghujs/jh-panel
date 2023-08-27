@@ -23,7 +23,8 @@ declare -A scripts
 scripts=(
 ["xtrabackup"]="migrate_xtrabackup.sh"
 ["网站"]="migrate_site.sh"
-["项目"]="migrate_project.sh"
+["项目文件"]="migrate_project.sh"
+["插件数据（jianghujs管理器）"]="migrate_plugin_data.sh"
 )
 
 # 定义一个数组来存储脚本的顺序

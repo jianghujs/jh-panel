@@ -266,6 +266,20 @@ function planAdd(){
 	
 	var sName = $("#sName").attr("val");
 	
+	if (type == 'minute-n'){
+		var where1 = $("#ptime input[name='where1']").val();
+		$("#set-Config input[name='where1']").val(where1);
+	}
+
+	if (type == 'day-n'){
+		var where1 = $("#ptime input[name='where1']").val();
+		$("#set-Config input[name='where1']").val(where1);
+	}
+
+	if (type == 'hour-n'){
+		var where1 = $("#ptime input[name='where1']").val();
+		$("#set-Config input[name='where1']").val(where1);
+	}
 	if(sName == 'backupAll'){
 		var alist = $("ul[aria-labelledby='backdata'] li a");
 		var dataList = new Array();
@@ -281,20 +295,6 @@ function planAdd(){
 		return;
 	}
 
-	if (type == 'minute-n'){
-		var where1 = $("#ptime input[name='where1']").val();
-		$("#set-Config input[name='where1']").val(where1);
-	}
-
-	if (type == 'day-n'){
-		var where1 = $("#ptime input[name='where1']").val();
-		$("#set-Config input[name='where1']").val(where1);
-	}
-
-	if (type == 'hour-n'){
-		var where1 = $("#ptime input[name='where1']").val();
-		$("#set-Config input[name='where1']").val(where1);
-	}
 	
 	$("#set-Config input[name='sName']").val(sName);
 	layer.msg('正在添加,请稍候...!',{icon:16,time:0,shade: [0.3, '#000']});
@@ -343,14 +343,15 @@ function allAddCrontab(dataList,successCount,errorMsg){
 		async: true,
 		success:function(frdata){
 			layer.close(loadT);
-			if(frdata.status){
+			let rdata = JSON.parse(frdata);
+			if(rdata.status){
 				successCount++;
 				getCronData(1);
 			}else{
 				if(!errorMsg){
 					errorMsg = '<br><p>'+lan.crontab.backup_all_err+'</p>';
 				}
-				errorMsg += '<li>'+dataList[0]+' -> '+frdata.msg+'</li>'
+				errorMsg += '<li>'+dataList[0]+' -> '+rdata.msg+'</li>'
 			}
 			
 			dataList.splice(0,1);

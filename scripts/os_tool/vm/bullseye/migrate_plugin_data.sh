@@ -29,7 +29,7 @@ migrate_info_plugin='{"project_dir": "'${project_dir}'"}'
 mkdir -p ${MIGRATE_DIR}/plugin_files/
 
 # 打包/www/server/jianghujs目录下的data和script目录到${MIGRATE_DIR}/jianghujs.zip
-zip -r ${MIGRATE_DIR}/jianghujs.zip /www/server/jianghujs/data /www/server/jianghujs/script
+zip -r ${MIGRATE_DIR}/plugin_files/jianghujs.zip /www/server/jianghujs/data /www/server/jianghujs/script
 
 # 在${MIGRATE_DIR}生成deploy_plugin.sh
 cat << EOF > ${MIGRATE_DIR}/deploy_plugin.sh

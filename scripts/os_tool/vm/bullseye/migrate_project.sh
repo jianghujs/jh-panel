@@ -54,7 +54,7 @@ for dir in $(ls -d ${project_dir}/*/); do
 done
 
 # 将目录下的软链提取到脚本
-symbolic_links_file="./project_files/symbolic_links_origin.sh"
+symbolic_links_file="${MIGRATE_DIR}/project_files/symbolic_links_origin.sh"
 echo "" >  $symbolic_links_file
 
 # 使用find命令搜索所有目录，排除"node_modules"、"logs"、"run"目录

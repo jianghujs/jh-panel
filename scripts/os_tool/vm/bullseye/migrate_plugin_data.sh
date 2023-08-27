@@ -45,6 +45,9 @@ if [ "\$confirm" != "y" ]; then
     exit 1
 fi
 
+# 从环境变量中获取DEPLOY_DIR值
+DEPLOY_DIR=\${DEPLOY_DIR:-"/www/wwwroot/"}
+
 # 删除/www/server/jianghujs目录
 rm -rf /www/server/jianghujs
 
@@ -55,7 +58,7 @@ unzip -o ./plugin_files/jianghujs.zip -d /www/server/jianghujs
 find . -type f -print0 | while read -d \$'\0' file
 do
   echo "正在替换\${file}"
-  sed -i "s#${project_dir}#/www/wwwroot/#g" "\$file"
+  sed -i "s#${project_dir}#${DEPLOY_DIR}#g" "\$file"
 done
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_plugin.sh

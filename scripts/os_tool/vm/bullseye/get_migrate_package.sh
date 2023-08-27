@@ -24,11 +24,11 @@ scripts=(
 ["xtrabackup"]="migrate_xtrabackup.sh"
 ["网站"]="migrate_site.sh"
 ["项目文件"]="migrate_project.sh"
-["插件数据（jianghujs管理器）"]="migrate_plugin_data.sh"
+["插件数据-jianghujs管理器"]="migrate_plugin_data.sh"
 )
 
 # 定义一个数组来存储脚本的顺序
-script_order=("xtrabackup" "网站" "项目" "插件数据（jianghujs管理器）")
+script_order=("xtrabackup" "网站" "项目文件" "插件数据-jianghujs管理器")
 
 # 创建一个数组，用于dialog的checklist选项
 script_options=()

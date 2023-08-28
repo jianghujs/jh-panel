@@ -24,7 +24,7 @@ if [ $backup_choice == "y" ]; then
     backup_script_data=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py backup_script)
     popd > /dev/null
     backup_script=$(echo ${backup_script_data} | jq -r '.data')
-    echo $backup_script > ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
+    echo "${backup_script}" > ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
     chmod +x ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
     ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
     # rm ${MIGRATE_DIR}/temp_xtrabackup_backup.sh

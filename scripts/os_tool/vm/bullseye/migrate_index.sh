@@ -10,8 +10,6 @@ download_and_run() {
     echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
 }
 
-download_and_run switch_apt_sources.sh 4
-
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."

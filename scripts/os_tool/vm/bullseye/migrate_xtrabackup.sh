@@ -27,7 +27,7 @@ if [ $backup_choice == "y" ]; then
     echo $backup_script > ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
     chmod +x ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
     ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
-    rm ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
+    # rm ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
 fi
 
 # 当前系统如果存在/appdata/backup/xtrabackup_data_history则默认为/appdata/backup/xtrabackup_data_history否则为/www/backup/xtrabackup_data_history

@@ -88,7 +88,7 @@ migrate_project() {
   for i in "${ADDR[@]}"; do
     rsync_exclude_string+="--exclude '$i' "
   done
-  rsync -avu -e "ssh -p ${remote_port}" ${rsync_exclude_string} --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>>MIGRATE_DIR/rsync_migrate_final_www_$timestamp.log
+  rsync -avu -e "ssh -p ${remote_port}" ${rsync_exclude_string} --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
 }
 
 # 根据用户的选择运行对应的脚本

@@ -20,14 +20,17 @@ if [ -z "$remote_ip" ]; then
   echo "错误:未指定目标服务器IP"
   exit 1
 fi
+export RSYNC_MIGRATE_PACKAGE_REMOTE_IP=$remote_ip
 
 # 输入目标服务器SSH端口
 read -p "请输入目标服务器SSH端口(默认: 10022): " remote_port
 remote_port=${remote_port:-10022}
+export RSYNC_MIGRATE_PACKAGE_REMOTE_PORT=$remote_port
 
 # 输入目标文件位置 
 read -p "请输入目标文件位置(默认:/root/$(basename $MIGRATE_FILE)): " remote_path
 remote_path=${remote_path:-/root/$(basename $MIGRATE_FILE)}
+export RSYNC_MIGRATE_PACKAGE_REMOTE_PART=$remote_path
 
 # 执行同步
 echo "正在执行同步..."

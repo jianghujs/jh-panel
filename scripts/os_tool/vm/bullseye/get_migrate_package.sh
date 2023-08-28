@@ -100,3 +100,22 @@ case $sync in
     exit;;
   *) echo "请输入y或n";;
 esac
+
+echo ""
+echo "===========================生成迁移包完成✅=========================="
+echo "------------------------------基本信息-------------------------------"
+echo "- 迁移临时文件存放目录：$MIGRATE_DIR"
+echo "- 迁移包路径：$MIGRATE_FILE"
+if [ $sync == "y" ]; then
+echo "- 已将文件同步到以下服务器："
+echo "  - 服务器IP：${RSYNC_MIGRATE_PACKAGE_REMOTE_IP}"
+echo "  - 目标服务器SSH端口：${RSYNC_MIGRATE_PACKAGE_REMOTE_PORT}"
+echo "  - 目标文件位置：${RSYNC_MIGRATE_PACKAGE_REMOTE_PART}"
+fi
+echo ""
+echo "---------------------------后续操作指引❗❗----------------------------"
+echo "请在目标服务器执行以下操作："
+echo "1. 解压迁移包"
+echo "2. 在解压后的目录中的执行以下命令进行迁移包部署操作：bash deploy.sh"
+echo "====================================================================="
+

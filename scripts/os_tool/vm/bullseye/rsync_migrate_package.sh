@@ -32,6 +32,11 @@ read -p "请输入目标文件位置(默认:/root/$(basename $MIGRATE_FILE)): " 
 remote_path=${remote_path:-/root/$(basename $MIGRATE_FILE)}
 export RSYNC_MIGRATE_PACKAGE_REMOTE_PART=$remote_path
 
+echo "环境变量RSYNC_MIGRATE_PACKAGE_REMOTE_IP:${RSYNC_MIGRATE_PACKAGE_REMOTE_IP}"
+echo "环境变量RSYNC_MIGRATE_PACKAGE_REMOTE_PORT:${RSYNC_MIGRATE_PACKAGE_REMOTE_PORT}"
+echo "环境变量RSYNC_MIGRATE_PACKAGE_REMOTE_PART:${RSYNC_MIGRATE_PACKAGE_REMOTE_PART}"
+
+
 # 执行同步
 echo "正在执行同步..."
 rsync -avu -e "ssh -p $remote_port" --progress --delete "$MIGRATE_FILE" "root@$remote_ip:$remote_path" &>> ${MIGRATE_DIR}rsync_migration.log

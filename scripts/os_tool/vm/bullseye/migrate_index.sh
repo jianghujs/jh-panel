@@ -5,9 +5,7 @@ set -e
 download_and_run() {
     local script_name=$1
     wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
-    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
     bash /tmp/vm_${script_name} ${@:2}
-    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
 }
 
 # 检查/usr/bin/dialog是否存在

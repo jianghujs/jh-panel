@@ -101,6 +101,12 @@ case $sync in
   *) echo "请输入y或n";;
 esac
 
+# 在调用rsync_migrate_package.sh后，读取环境变量
+if [ -f  $MIGRATE_DIR/rsync_migrate_package_config ]; then
+    source $MIGRATE_DIR/rsync_migrate_package_config
+    rm $MIGRATE_DIR/rsync_migrate_package_config
+fi
+
 echo ""
 echo "===========================生成迁移包完成✅=========================="
 echo "------------------------------基本信息-------------------------------"

@@ -64,14 +64,14 @@ migrate_xtrabackup() {
     ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
     rm ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
   fi
-  
+
   read -p "请输入xtrabackup备份所在目录（默认为：/www/backup/xtrabackup_data_history）: " xtrabackup_dir
   xtrabackup_dir=${xtrabackup_dir:-"/www/backup/xtrabackup_data_history"}
   xtrabackup_file=$(ls -t ${xtrabackup_dir}/xtrabackup_data*.zip | head -n 1)
   read -p "请输入xtrabackup文件名称（默认为：${xtrabackup_file}）: " xtrabackup_file
   read -p "请输入目标服务器xtrabackup备份所在目录（默认为：/www/backup/xtrabackup_data_history）: " target_xtrabackup_dir
   target_xtrabackup_dir=${target_xtrabackup_dir:-"/www/backup/xtrabackup_data_history"}
-  rsync -avu -e "ssh -p ${remote_port}" --progress --delete ${xtrabackup_dir}/${xtrabackup_file} root@${remote_ip}:${target_xtrabackup_dir}/${xtrabackup_file} &>>MIGRATE_DIR/rsync_migrate_final_xtrabackup_$timestamp.log
+  rsync -avu -e "ssh -p ${remote_port}" --progress --delete ${xtrabackup_dir}/${xtrabackup_file} root@${remote_ip}:${target_xtrabackup_dir}/${xtrabackup_file} &>> ${MIGRATE_DIR}/rsync_migrate_final_xtrabackup_$timestamp.log
 }
 
 # 定义项目文件迁移函数

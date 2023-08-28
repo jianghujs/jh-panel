@@ -15,7 +15,20 @@ fi
 # 获取环境变量中的MIGRATE_DIR值
 MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 
+# 提示是否需要进行xtrabackup备份操作
+read -p "是否需要执行xtrabackup备份？（默认n）[y/n]: " backup_choice
+backup_choice=${backup_choice:-"n"}
 
+if [ $backup_choice == "y" ]; then
+    pushd /www/server/jh-panel > /dev/null
+    backup_script_data=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py backup_script)
+    popd > /dev/null
+    backup_script=$(echo ${backup_script_data} | jq -r '.data')
+    echo $backup_script > ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
+    chmod +x ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
+    ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
+    rm ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
+fi
 
 # 当前系统如果存在/appdata/backup/xtrabackup_data_history则默认为/appdata/backup/xtrabackup_data_history否则为/www/backup/xtrabackup_data_history
 default_backup_dir="/www/backup/xtrabackup_data_history"

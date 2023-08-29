@@ -121,6 +121,27 @@ while true; do
     echo "#!/bin/bash" > "$backup_script"
     echo "timestamp=\$(date +%Y%m%d%H%M%S)" >> "$backup_script"
     echo "sudo -u $username VBoxManage snapshot \"$vm_name\" take \"auto-snapshot-\$timestamp\"" >> "$backup_script"
+
+    # 添加清理旧快照的代码
+    echo "snapshots=\$(sudo -u $username VBoxManage snapshot \"$vm_name\" list --machinereadable | grep -o 'auto-snapshot-[0-9]\{14\}')" >> "$backup_script"
+    echo "IFS=$'\n' snapshots=(\$snapshots)" >> "$backup_script"
+    echo "snapshots=(\$(printf '%s\n' \"\${snapshots[@]}\" | sort -r))" >> "$backup_script"
+    echo "for ((i=0; i<\${#snapshots[@]}; i++)); do" >> "$backup_script"
+    echo "  snapshot=\${snapshots[i]}" >> "$backup_script"
+    echo "  snapshot_timestamp=\${snapshot:14}" >> "$backup_script"
+    echo "  snapshot_date=\${snapshot_timestamp:0:8}" >> "$backup_script"
+    echo "  snapshot_time=\${snapshot_timestamp:8}" >> "$backup_script"
+    echo "  snapshot_datetime=\$(date -d \"\${snapshot_date:0:4}-\${snapshot_date:4:2}-\${snapshot_date:6:2} \${snapshot_time:0:2}:\${snapshot_time:2:2}:\${snapshot_time:4:2}\")" >> "$backup_script"
+    echo "  snapshot_seconds=\$(date -d \"\$snapshot_datetime\" +%s)" >> "$backup_script"
+    echo "  current_seconds=\$(date +%s)" >> "$backup_script"
+    echo "  age_days=\$(( (current_seconds - snapshot_seconds) / 86400 ))" >> "$backup_script"
+    echo "  if ((age_days > 3 && (i < 1 || snapshot_date != \${snapshots[i-1]:14:8}))); then" >> "$backup_script"
+    echo "    continue" >> "$backup_script"
+    echo "  fi" >> "$backup_script"
+    echo "  if ((age_days > 10)); then" >> "$backup_script"
+    echo "    sudo -u $username VBoxManage snapshot \"$vm_name\" delete \"\$snapshot\"" >> "$backup_script"
+    echo "  fi" >> "$backup_script"
+    echo "done" >> "$backup_script"
     chmod +x "$backup_script"
 
     # 创建临时crontab文件

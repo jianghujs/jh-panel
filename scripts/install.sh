@@ -39,7 +39,7 @@ if [ "$netEnvCn" == "cn" ]; then
   wget -O ${OSNAME}_cn.sh https://gitee.com/jianghujs/jh-panel/raw/master/scripts/install/${OSNAME}_cn.sh && bash ${OSNAME}_cn.sh
 else
   if [ "$OSNAME" == "debian" ]; then
-    wget -O switch_apt_sources.sh https://gitee.com/jianghujs/jh-panel/raw/master/scripts/switch_apt_sources.sh && bash switch_apt_sources.sh 1
+    wget -O switch_apt_sources.sh https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/switch_apt_sources.sh && bash switch_apt_sources.sh 1
   fi
   wget -O ${OSNAME}.sh https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/install/${OSNAME}.sh && bash ${OSNAME}.sh
 fi

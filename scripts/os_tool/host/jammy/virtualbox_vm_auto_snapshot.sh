@@ -120,7 +120,7 @@ while true; do
     backup_script="$script_dir/vboxautosnapshot_$script_vm_name.sh"
     echo "#!/bin/bash" > "$backup_script"
     echo "timestamp=\$(date +%Y%m%d%H%M%S)" >> "$backup_script"
-    echo "sudo -u $username VBoxManage snapshot \"$vm_name\" take \"backup-\$timestamp\"" >> "$backup_script"
+    echo "sudo -u $username VBoxManage snapshot \"$vm_name\" take \"auto-snapshot-\$timestamp\"" >> "$backup_script"
     chmod +x "$backup_script"
 
     # 创建临时crontab文件

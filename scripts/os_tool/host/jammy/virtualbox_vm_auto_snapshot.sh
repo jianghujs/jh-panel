@@ -133,7 +133,7 @@ while true; do
     echo "  snapshot_date=\${snapshot_timestamp:0:8}" >> "$backup_script"
     echo "  age_days=\$((current_date - snapshot_date))" >> "$backup_script"
     echo "  echo "正在处理：\${snapshot}"" >> "$backup_script"
-    echo "  if ((age_days > 10)); then" >> "$backup_script"
+    echo "  if ((age_days > 3)); then" >> "$backup_script"
     echo "    sudo -u $username VBoxManage snapshot \"$vm_name\" delete \"\$snapshot\"" >> "$backup_script"
     echo "  fi" >> "$backup_script"
     echo "done" >> "$backup_script"

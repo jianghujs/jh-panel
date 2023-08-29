@@ -206,9 +206,9 @@ if __name__ == "__main__":
     backup = backupTools()
     type = sys.argv[1]
     name = sys.argv[2]
-    save = sys.argv[3]
-    if save is not None:
-        save = json.loads(save)
+    save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
+    if len(sys.argv) > 2:
+        save = json.loads(sys.argv[2])
 
     if type == 'site':
         if sys.argv[2] == 'ALL':

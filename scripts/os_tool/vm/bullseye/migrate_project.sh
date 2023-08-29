@@ -138,7 +138,7 @@ sed -i 's|${project_dir}|\${deploy_dir}|g'./project_files/symbolic_links.sh
 
 echo "导入项目数据成功✔!"
 
-# 统一安装依赖
+# 统一配置root权限、安装依赖
 
 jq -c '.project_list[]' ./migrate_info_project.json | while read project_info; do
     project_name=\$(echo \${project_info} | jq -r '.projectName')
@@ -146,6 +146,7 @@ jq -c '.project_list[]' ./migrate_info_project.json | while read project_info; d
 
     echo "开始安装依赖：\${project_dir}"
     pushd \$project_dir > /dev/null
+    chown -R root:root .
     npm i
     popd > /dev/null
 done

@@ -819,7 +819,7 @@ def setDbBackup():
         return data[1]
 
     scDir = getPluginDir() + '/scripts/backup.py'
-    cmd = 'python3 ' + scDir + ' database ' + args['name'] + ' 3'
+    cmd = 'python3 ' + scDir + ' database ' + args['name'] 
     os.system(cmd)
     return mw.returnJson(True, 'ok')
 

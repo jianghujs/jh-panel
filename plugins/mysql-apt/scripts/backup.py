@@ -5,6 +5,8 @@
 
 import sys
 import os
+import json
+import datetime
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -30,7 +32,7 @@ python3 /www/server/jh-panel/plugins/mysql-apt/scripts/backup.py  database admin
 
 class backupTools:
 
-    def backupDatabase(self, name, count):
+    def backupDatabase(self, name, save):
         db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
         find_name = mw.M('databases').dbPos(db_path, 'mysql').where(
@@ -90,7 +92,6 @@ class backupTools:
         log = "数据库[" + name + "]备份成功,用时[" + str(round(outTime, 2)) + "]秒"
         mw.writeLog('计划任务', log)
         print("★[" + endDate + "] " + log)
-        print("|---保留最新的[" + count + "]份备份")
         print("|---文件名:" + filename)
         self.cleanBackup('1', pid, save)
 
@@ -160,8 +161,8 @@ if __name__ == "__main__":
     type = sys.argv[1]
     name = sys.argv[2]
     save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
-    if len(sys.argv) > 2:
-        save = json.loads(sys.argv[2])
+    if len(sys.argv) > 3:
+        save = json.loads(sys.argv[3])
 
     if type == 'database':
         if sys.argv[2] == 'ALL':

@@ -65,8 +65,16 @@ migrate_xtrabackup() {
     rm ${MIGRATE_DIR}/temp_xtrabackup_backup.sh
   fi
 
-  read -p "请输入xtrabackup备份所在目录（默认为：/www/backup/xtrabackup_data_history）: " xtrabackup_dir
-  xtrabackup_dir=${xtrabackup_dir:-"/www/backup/xtrabackup_data_history"}
+  
+  # 当前系统如果存在/appdata/backup/xtrabackup_data_history则默认为/appdata/backup/xtrabackup_data_history否则为/www/backup/xtrabackup_data_history
+  default_xtrabackup_dir="/www/backup/xtrabackup_data_history"
+  if [ -d "/appdata/backup/xtrabackup_data_history" ]; then
+      default_xtrabackup_dir="/appdata/backup/xtrabackup_data_history"
+  fi
+  # 提示”输入xtrabackup备份所在目录（默认/www/backup/xtrabackup_data_history）”
+  read -p "请输入xtrabackup备份所在目录（默认为：${default_xtrabackup_dir}）: " xtrabackup_dir
+  xtrabackup_dir=${xtrabackup_dir:-${default_xtrabackup_dir}}
+
   xtrabackup_file_path=$(ls -t ${xtrabackup_dir}/xtrabackup_data*.zip | head -n 1)
   xtrabackup_file=$(basename ${xtrabackup_file_path})
   read -p "请输入xtrabackup文件名称（默认为：${xtrabackup_file}）: " xtrabackup_file_input
@@ -78,8 +86,17 @@ migrate_xtrabackup() {
 
 # 定义项目文件迁移函数
 migrate_project() {
-  read -p "请输入项目文件所在目录（默认为：/www/wwwroot/）: " project_dir
-  project_dir=${project_dir:-"/www/wwwroot/"}
+  
+  # 当前系统如果存在/appdata/wwwroot/则默认为/appdata/wwwroot/否则为/www/wwwroot/
+  default_project_dir="/www/wwwroot/"
+  if [ -d "/appdata/wwwroot/" ]; then
+      default_project_dir="/appdata/wwwroot/"
+  fi
+
+  # 提示”输入项目所在目录（默认/www/wwwroot/）”
+  read -p "请输入项目所在目录（默认为：${default_project_dir}）: " project_dir
+  project_dir=${project_dir:-${default_project_dir}}
+
   read -p "请输入目标服务器项目文件所在目录（默认为：/www/wwwroot/）: " target_project_dir
   target_project_dir=${target_project_dir:-"/www/wwwroot/"}
   read -p "请输入忽略的同步目录列表多个用逗号隔开（默认为：node_modules,logs,run）: " exclude_dirs

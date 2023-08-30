@@ -16,7 +16,7 @@
 PATH=/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export LANG=en_US.UTF-8
 
-mw_path={$SERVER_PATH}
+mw_path=/www/server/jh-panel
 PATH=$PATH:$mw_path/bin
 
 
@@ -305,6 +305,11 @@ case "$1" in
         if [ -f $mw_path/data/admin_path.pl ];then
             auth_path=$(cat $mw_path/data/admin_path.pl)
         fi
+
+        protocol="http"
+        if [ -f $mw_path/data/ssl.pl ];then
+            protocol="https"
+        fi
 	    
         if [ "$address" = "" ];then
             v4=$(python3 $mw_path/tools.py getServerIp 4)
@@ -312,9 +317,9 @@ case "$1" in
             v6=$(python3 $mw_path/tools.py getServerIp 6)
 
             if [ "$v4" != "" ] && [ "$v6" != "" ]; then
-                address="JH-Panel-Url-Ipv4: http://$v4_local:$port$auth_path \nJH-Panel-Url-Ipv4(Pub)): http://$v4:$port$auth_path \nJH-Panel-Url-Ipv6: http://[$v6]:$port$auth_path"
+                address="JH-Panel-Url-Ipv4: $protocol://$v4_local:$port$auth_path \nJH-Panel-Url-Ipv4(Pub)):$protocol://$v4:$port$auth_path \nJH-Panel-Url-Ipv6:$protocol://[$v6]:$port$auth_path"
             elif [ "$v4" != "" ]; then
-                address="JH-Panel-Url: http://$v4_local:$port$auth_path \nJH-Panel-Url(Pub): http://$v4:$port$auth_path"
+                address="JH-Panel-Url: $protocol://$v4_local:$port$auth_path \nJH-Panel-Url(Pub):$protocol://$v4:$port$auth_path"
             elif [ "$v6" != "" ]; then
 
                 if [ ! -f $mw_path/data/ipv6.pl ];then
@@ -323,12 +328,12 @@ case "$1" in
                     mw_stop
                     mw_start
                 fi
-                address="JH-Panel-Url: http://[$v6]:$port$auth_path"
+                address="JH-Panel-Url: $protocol://[$v6]:$port$auth_path"
             else
-                address="JH-Panel-Url: http://you-network-ip:$port$auth_path"
+                address="JH-Panel-Url: $protocol://you-network-ip:$port$auth_path"
             fi
         else
-            address="JH-Panel-Url: http://$address:$port$auth_path"
+            address="JH-Panel-Url: $protocol://$address:$port$auth_path"
         fi
 
         show_panel_ip="$port|"

@@ -207,8 +207,9 @@ if __name__ == "__main__":
     type = sys.argv[1]
     name = sys.argv[2]
     save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
-    if len(sys.argv) > 2:
-        save = json.loads(sys.argv[2])
+    print("args", str(sys.argv), sys.argv[2])
+    if len(sys.argv) > 3:
+        save = json.loads(sys.argv[3])
 
     if type == 'site':
         if sys.argv[2] == 'ALL':

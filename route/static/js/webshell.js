@@ -184,7 +184,7 @@ class WebShell {
 					$(".contextmenu").css({
 							"left": menuPosition.left,
 							"top": menuPosition.top,
-							"z-index": 19891019,
+							"z-index": 99999999,
 							"position": 'fixed',
 							"background": "white",
 							"padding": "5px"

@@ -16,8 +16,15 @@ function refreshTable() {
     let firstLoad = $('.jianghujs-panel').length == 0;
 	var con = '\
     <div class="divtable jianghujs-panel">\
-    <button class="btn btn-success btn-sm va0" onclick="openDeployItem();">部署项目</button>\
-    <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">导入项目</button>\
+        <div style="display: flex; justify-content: space-between;">\
+            <div>\
+                <button class="btn btn-success btn-sm va0" onclick="openDeployItem();">部署项目</button>\
+                <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">导入项目</button>\
+            </div>\
+            <div>\
+                <input type="text" id="jianghujsSearchInput" class="search ser-text pull-left" placeholder="请输入关键词" onkeydown="handleSearch()"/>\
+            </div>\
+        </div>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
                 <th>目录</th>\
@@ -34,7 +41,7 @@ function refreshTable() {
 	    $(".soft-man-con").html(con);
     }
 
-	requestApi('project_list',{showLoading: firstLoad}, function(data){
+	requestApi('project_list',{showLoading: firstLoad, search: $("#jianghujsSearchInput").val()}, function(data){
 		let rdata = $.parseJSON(data.data);
 		// console.log(rdata);
 		if (!rdata['status']){
@@ -42,58 +49,62 @@ function refreshTable() {
             return;
         }
 
-        var tbody = '';
         var tmp = rdata['data'];
         tableData = tmp;
-        for(var i=0;i<tmp.length;i++){
-            var opt = '';
-            if(!tmp[i].loadingStatus) {
-                if(tmp[i].status != 'start'){
-                    opt += '<a href="javascript:projectScriptExcute(\'start\', \''+tmp[i].id+'\')" class="btlink">启动</a> | ';
-                }else{
-                    opt += '<a href="javascript:projectScriptExcute(\'stop\', \''+tmp[i].id+'\')" class="btlink">停止</a> | ';
-                    opt += '<a href="javascript:projectScriptExcute(\'reload\', \''+tmp[i].id+'\')" class="btlink">重启</a> | ';
-                }
-            }
-
-            const path = tmp[i].path.replace('//','')
-            tmp[i].path = path
-            tmp[i].temPath = '<a class="jhlink" href="javascript:openNewWindowPath(\'' + path + '\')">' + path + '</a>';
-            
-            var status = '';
-            if(tmp[i].loadingStatus) {
-                status = '<span style="color:#cecece;">' + tmp[i].loadingStatus + '</span>';
-            } else {
-                if(tmp[i].status != 'start'){
-                    status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
-                } else {
-                    status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
-                }
-            }
-            
-
-            var autostart = '';
-            var autostartChecked = tmp[i].autostartStatus == 'start'? 'checked' : '';
-            autostart = '<div class="autostart-item">\
-                <input class="btswitch btswitch-ios" id="autostart_' + tmp[i].id + '" type="checkbox" ' + autostartChecked + '>\
-                <label class="btswitch-btn" for="autostart_' + tmp[i].id + '" onclick="toggleAutostart(\'' + tmp[i].id + '\')"></label></div>';
-            
-            tbody += '<tr>\
-                        <td style="width: 180px;">'+tmp[i].temPath+'</td>\
-                        <td style="width: 180px;">'+tmp[i].name+'</td>' +
-                        '<td style="width: 100px;">'+autostart+'</td>' +
-                        '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
-                        <td style="text-align: right;width: 280px;">\
-                            '+opt+
-                            '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
-                            // '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
-                            '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
-                            '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
-                        </td>\
-                    </tr>';
-        }
-        $(".plugin-table-body").html(tbody);
+        renderTableData(tmp);
 	});
+}
+
+function renderTableData(tmp) {
+    var tbody = '';
+    for(var i=0;i<tmp.length;i++){
+        var opt = '';
+        if(!tmp[i].loadingStatus) {
+            if(tmp[i].status != 'start'){
+                opt += '<a href="javascript:projectScriptExcute(\'start\', \''+tmp[i].id+'\')" class="btlink">启动</a> | ';
+            }else{
+                opt += '<a href="javascript:projectScriptExcute(\'stop\', \''+tmp[i].id+'\')" class="btlink">停止</a> | ';
+                opt += '<a href="javascript:projectScriptExcute(\'reload\', \''+tmp[i].id+'\')" class="btlink">重启</a> | ';
+            }
+        }
+
+        const path = tmp[i].path.replace('//','')
+        tmp[i].path = path
+        tmp[i].temPath = '<a class="jhlink" href="javascript:openNewWindowPath(\'' + path + '\')">' + path + '</a>';
+        
+        var status = '';
+        if(tmp[i].loadingStatus) {
+            status = '<span style="color:#cecece;">' + tmp[i].loadingStatus + '</span>';
+        } else {
+            if(tmp[i].status != 'start'){
+                status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
+            } else {
+                status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
+            }
+        }
+        
+
+        var autostart = '';
+        var autostartChecked = tmp[i].autostartStatus == 'start'? 'checked' : '';
+        autostart = '<div class="autostart-item">\
+            <input class="btswitch btswitch-ios" id="autostart_' + tmp[i].id + '" type="checkbox" ' + autostartChecked + '>\
+            <label class="btswitch-btn" for="autostart_' + tmp[i].id + '" onclick="toggleAutostart(\'' + tmp[i].id + '\')"></label></div>';
+        
+        tbody += '<tr>\
+                    <td style="width: 180px;">'+tmp[i].temPath+'</td>\
+                    <td style="width: 180px;">'+tmp[i].name+'</td>' +
+                    '<td style="width: 100px;">'+autostart+'</td>' +
+                    '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
+                    <td style="text-align: right;width: 280px;">\
+                        '+opt+
+                        '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
+                        // '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
+                        '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
+                        '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
+                    </td>\
+                </tr>';
+    }
+    $(".plugin-table-body").html(tbody);
 }
 
 function clearRefreshTableTask() {
@@ -104,14 +115,22 @@ function clearRefreshTableTask() {
 }
 
 function startRefreshTableTask() {
-    clearRefreshTableTask();
-    refreshTableTask = setInterval(function(){
-        if($('.jianghujs-panel').length == 0) {
-            clearRefreshTableTask();
-            return;
-        }
-        refreshTable();
-    }, 5000);
+    // clearRefreshTableTask();
+    // refreshTableTask = setInterval(function(){
+    //     if($('.jianghujs-panel').length == 0) {
+    //         clearRefreshTableTask();
+    //         return;
+    //     }
+    //     refreshTable();
+    // }, 5000);
+}
+
+function handleSearch() {
+    setTimeout(() => {
+        let search = $("#jianghujsSearchInput").val();
+        let filteredList = tableData.filter(x => x.name.indexOf(search) > -1);
+        renderTableData(filteredList);
+    }, 0)
 }
 
 // 绑定关闭事件

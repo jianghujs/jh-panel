@@ -30,7 +30,6 @@ def getPluginDir():
 def getServerDir():
     return mw.getServerDir() + '/' + getPluginName()
 
-
 def getInitDFile():
     if app_debug:
         return '/tmp/' + getPluginName()
@@ -69,7 +68,6 @@ def initDb():
     DDB.config.storage_directory = db_dir
 
 def getDb(table):
-    DDB.config.storage_directory = getServerDir() + '/data/'
     if not DDB.at(table).exists():
         DDB.at(table).create({})
     return DDB.at(table)
@@ -572,6 +570,7 @@ def checkProjectNameExist():
     return mw.returnJson(True, 'ok', False)
 
 if __name__ == "__main__":
+    DDB.config.storage_directory = getServerDir() + '/data/'
     func = sys.argv[1]
     if func == 'status':
         print(status())

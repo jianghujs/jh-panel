@@ -83,7 +83,6 @@ function createSendTask(name = ''){
             period_day = "";
             period_minute_n = "selected";
         }
-        debugger
 
         var layerID = layer.open({
             type: 1,

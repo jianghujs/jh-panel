@@ -245,6 +245,7 @@ def projectUpdate():
 def projectList():
     data = getAll('project')
     echos = {item.get('echo', '') for item in data}
+    paths = {item.get('path', '') for item in data}
 
     # autostartStatus
     autostartStatusCmd = "ls -R /etc/rc4.d"
@@ -252,17 +253,20 @@ def projectList():
     autostartStatusMap = {echo: ('start' if echo in autostartStatusExec[0] else 'stop') for echo in echos}
 
     # status
-    statusMap = {}
-    for item in data:
-        path = item.get('path', '') 
-        statusCmd = "ps -ef|grep " + path + " |grep -v grep |grep -v python | awk '{print $0}'"
-        statusExec = mw.execShell(statusCmd)
-        statusMap[path] = 'start' if statusExec[0] != '' else 'stop'
+    statusCmd = "ps -ef | grep -v grep | grep -v python | awk '{print $0}'"
+    statusExec = mw.execShell(statusCmd)
+    statusMap = {path: ('start' if path in statusExec[0] else 'stop') for path in paths}
 
     # loadingStatus
-    loadingStatusCmd = "ls -R %s/script" % getServerDir()
-    loadingStatusExec = mw.execShell(loadingStatusCmd)
-    loadingStatusMap = {echo: (mw.readFile(getServerDir() + '/script/' + echo + '_status') if echo + "_status" in loadingStatusExec[0] else '') for echo in echos}
+    server_dir = getServerDir()
+    loadingStatusMap = {}
+    for echo in echos:
+        status_file = server_dir + '/script/' + echo + '_status'
+        if os.path.isfile(status_file):
+            with open(status_file, 'r') as f:
+                loadingStatusMap[echo] = f.read()
+        else:
+            loadingStatusMap[echo] = ''
 
     for item in data:
         path = item.get('path', '') 

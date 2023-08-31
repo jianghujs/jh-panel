@@ -253,7 +253,7 @@ def projectList():
     autostartStatusMap = {echo: ('start' if echo in autostartStatusExec[0] else 'stop') for echo in echos}
 
     # status
-    statusCmd = "ps -ef | grep -v grep | grep -v python | awk '{print $0}'"
+    statusCmd = """ps -ef | grep -v grep | grep -v python | grep 'jianghujs' | awk -F'baseDir":"' '{print $2}' | awk -F'","' '{print $1}'"""
     statusExec = mw.execShell(statusCmd)
     statusMap = {path: ('start' if path in statusExec[0] else 'stop') for path in paths}
 

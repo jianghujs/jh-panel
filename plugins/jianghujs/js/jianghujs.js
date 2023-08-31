@@ -51,11 +51,18 @@ function refreshTable() {
 
         var tmp = rdata['data'];
         tableData = tmp;
-        renderTableData(tmp);
+        renderTableData();
 	});
 }
 
-function renderTableData(tmp) {
+function renderTableData() {
+    let tmp = tableData;
+    
+    let search = $("#jianghujsSearchInput").val();
+    if (search) {
+        tmp = tableData.filter(x => x.name.indexOf(search) > -1);
+    }
+    
     var tbody = '';
     for(var i=0;i<tmp.length;i++){
         var opt = '';
@@ -115,21 +122,19 @@ function clearRefreshTableTask() {
 }
 
 function startRefreshTableTask() {
-    // clearRefreshTableTask();
-    // refreshTableTask = setInterval(function(){
-    //     if($('.jianghujs-panel').length == 0) {
-    //         clearRefreshTableTask();
-    //         return;
-    //     }
-    //     refreshTable();
-    // }, 5000);
+    clearRefreshTableTask();
+    refreshTableTask = setInterval(function(){
+        if($('.jianghujs-panel').length == 0) {
+            clearRefreshTableTask();
+            return;
+        }
+        refreshTable();
+    }, 5000);
 }
 
 function handleSearch() {
     setTimeout(() => {
-        let search = $("#jianghujsSearchInput").val();
-        let filteredList = tableData.filter(x => x.name.indexOf(search) > -1);
-        renderTableData(filteredList);
+        renderTableData();
     }, 0)
 }
 

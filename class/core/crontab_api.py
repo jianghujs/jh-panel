@@ -449,6 +449,12 @@ class crontab_api:
         data = {}
         data['stype'] = stype
         data['orderOpt'] = bak_data
+        
+        default_db = 'sites'
+        # if stype == 'site' or stype == 'logs':
+        #     stype == 'sites'
+
+        data['data'] = mw.M(default_db).field('name,ps').select()
         # data['data'] = mw.M(stype).field('name,ps').select()
         return mw.getJson(data)
     ##### ----- start ----- ###

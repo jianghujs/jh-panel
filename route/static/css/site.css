@@ -1738,7 +1738,9 @@ html .menu .menu_exit:hover {
 
 .bt-w-con {
     margin-left: 110px;
-    position: relative
+    position: relative;
+    height: 550px;
+    overflow-y: auto;
 }
 
 .explain-describe-list{

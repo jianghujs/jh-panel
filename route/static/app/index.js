@@ -532,8 +532,9 @@ function checkUpdate() {
     },'json');
 }
 
-function updateServerCode() {
-    var loadT = layer.msg(lan.index.update_server_code, { icon: 16, time: 0, shade: [0.3, '#000'] });
+async function updateServerCode() {
+    await execScriptAndShowLog(`${lan.index.update_server_code}...`, `cd /www/server/jh-panel/ && git pull`);
+    var loadT = layer.msg("正在更新服务器...", { icon: 16, time: 0, shade: [0.3, '#000'] });
     $.get('/system/update_server_code', function(rdata) {
         layer.close(loadT);
         if (rdata.status == true) {

@@ -146,6 +146,7 @@ migrate_project() {
 
   # 传输目录文件
   echo "开始传输项目文件..."
+  echo "忽略：${rsync_exclude_string}"
   rsync -avu -e "ssh -p ${remote_port}" ${rsync_exclude_string} --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
   
   echo "开始传输软链配置..."

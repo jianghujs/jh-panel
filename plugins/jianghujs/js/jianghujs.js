@@ -693,13 +693,7 @@ if ! command -v npm > /dev/null;then\n\
 fi\n\
 WEB_DIR=' + path + '\n\
 cd $WEB_DIR\n\
-attempt=0\n\
-until [ $attempt -ge 3 ]\n\
-do\n\
-  npm start && break  # substitute your command here\n\
-  attempt=$[$attempt+1]\n\
-  sleep 5\n\
-done\n\
+npm start\n\
     ';
 
 

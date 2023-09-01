@@ -175,7 +175,7 @@ class WebShell {
 					}
 
 					var menudiv = '<ul class="contextmenu">\
-							<li><a class="shell_copy_btn menu_ssh" data-clipboard-text="'+ selectText + '" ' + style_str + '>复制到剪切板</a></li>\
+							<li><a class="shell_copy_btn menu_ssh" data-clipboard-text="'+ encodeURI(selectText) + '" ' + style_str + '>复制到剪切板</a></li>\
 							<li><a  onclick="webShell.shell_paste_text()" '+ paste_str+'>粘贴选中项</a></li>\
 							<li><a onclick="webShell.shell_to_baidu()" ' + style_str + '>百度搜索</a></li>\
 							<li><a onclick="webShell.shell_to_google()" ' + style_str + '>谷歌搜索</a></li>\
@@ -243,7 +243,7 @@ class WebShell {
 			var clipboard = new ClipboardJS('.shell_copy_btn');
 			clipboard.on('success', function (e) {
 					layer.msg('复制成功!');
-					setCookie('shell_copy_body', e.text);
+					setCookie('shell_copy_body', decodeURI(e.text));
 					this.remove_ssh_menu();
 					this.gterm.focus();
 			}.bind(this));

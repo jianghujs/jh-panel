@@ -304,7 +304,7 @@ done
     '''
     lines = autostart_script.split('\n')
     for i, line in enumerate(lines):
-        if line.strip().startswith("npm start") and "&& break" not in line:
+        if (line.strip().startswith("npm start") or line.strip().startswith("npm run start")) and "&& break" not in line:
             lines[i] = retry_logic.format(line.strip())
     autostart_script = '\n'.join(lines)
 

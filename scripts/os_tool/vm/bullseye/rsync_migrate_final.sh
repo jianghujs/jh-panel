@@ -146,17 +146,16 @@ migrate_project() {
   # 在文件中替换字符串"${project_dir}"为"\${deploy_dir}"
   sed -i "s|${project_dir}|${target_project_dir}|g" $MIGRATE_DIR/symbolic_links.sh 
 
+  cp $MIGRATE_DIR/symbolic_links.sh ${project_dir}/symbolic_links.sh
+
   # 传输目录文件
   echo "开始传输项目文件..."
   echo "忽略：${rsync_exclude_array[@]}"
   rsync -avu -e "ssh -p ${remote_port}" "${rsync_exclude_array[@]}" --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
   
-  echo "开始传输软链配置..."
-  # 传输软链配置脚本
-  rsync -avu -e "ssh -p ${remote_port}" --progress --delete $MIGRATE_DIR/symbolic_links.sh root@${remote_ip}:$MIGRATE_DIR/symbolic_links.sh  &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
   echo "在目标服务器执行软链配置更新..."
   # 执行软链配置脚本
-  ssh -p $remote_port root@${remote_ip} "bash ${MIGRATE_DIR}/symbolic_links.sh"
+  ssh -p $remote_port root@${remote_ip} "bash ${target_project_dir}/symbolic_links.sh && rm -f ${target_project_dir}/symbolic_links.sh"
 }
 
 # 根据用户的选择运行对应的脚本

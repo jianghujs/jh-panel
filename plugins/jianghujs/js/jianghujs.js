@@ -31,7 +31,7 @@ function refreshTable() {
                 <th>名称</th>' +
                 '<th>开机自启</th>' +
                 '<th>状态</th>\
-                <th style="text-align: right;" width="150">操作</th></tr>\
+                <th style="text-align: right;" width="280">操作</th></tr>\
             </thead>\
             <tbody class="plugin-table-body"></tbody>\
         </table>\

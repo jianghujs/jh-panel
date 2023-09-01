@@ -10,7 +10,7 @@ echo "netEnvCn: ${netEnvCn}"
 _os=`uname`
 echo "use system: ${_os}"
 
-if [ grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release ]; then
+if grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release; then
 	OSNAME='debian'
 elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
 	OSNAME='ubuntu'
@@ -36,6 +36,11 @@ fi
 URLBase="${toolURLBase}/${osType}/${CODENAME}"
 echo "URLBase: ${URLBase}"
 export URLBase
+
+if ! wget -q --spider "${URLBase}/index.sh"; then
+  echo "暂不支持在当前系统执行host脚本"
+	exit
+fi
 
 # 检查并创建子文件夹
 if [ ! -d "$osType" ]; then

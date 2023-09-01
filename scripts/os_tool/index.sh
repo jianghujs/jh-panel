@@ -38,7 +38,7 @@ echo "URLBase: ${URLBase}"
 export URLBase
 
 if ! wget -q --spider "${URLBase}/index.sh"; then
-  echo "暂不支持在${_os}执行${osType}脚本"
+  echo "暂不支持在${OSNAME}执行${osType}脚本"
 	exit
 fi
 

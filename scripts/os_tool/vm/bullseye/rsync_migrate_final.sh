@@ -47,6 +47,8 @@ fi
 read -p "请输入目标服务器SSH端口(默认: 10022): " remote_port
 remote_port=${remote_port:-10022}
 
+timestamp=$(date +%s)
+
 # 定义xtrabackup迁移函数
 migrate_xtrabackup() {
 
@@ -147,6 +149,7 @@ migrate_project() {
   # 传输目录文件
   echo "开始传输项目文件..."
   echo "忽略：${rsync_exclude_string}"
+  echo "传输命令：rsync -avu -e "ssh -p ${remote_port}" ${rsync_exclude_string} --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log"
   rsync -avu -e "ssh -p ${remote_port}" ${rsync_exclude_string} --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
   
   echo "开始传输软链配置..."

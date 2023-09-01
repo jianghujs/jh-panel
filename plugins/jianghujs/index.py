@@ -291,7 +291,7 @@ def projectToggleAutostart():
     autostart_script = project['autostart_script']
     if autostart_script == '':
         return mw.returnJson(False, '请配置项目自启动脚本!')
-
+    
     # 自动添加重试逻辑
     retry_logic = '''
 attempt=0
@@ -310,9 +310,10 @@ done
 
 
     # 创建自启动脚本文件
-    autostartFile = '/etc/init.d/' +  echo
+    autostartFile = '/etc/init.d/' + echo
     mw.writeFile(autostartFile, autostart_script)
     mw.execShell('chmod 755 ' + autostartFile)
+
     
     # 判断自启动脚本是否启用
     autostartStatusFile = '/etc/rc4.d/S01' + echo

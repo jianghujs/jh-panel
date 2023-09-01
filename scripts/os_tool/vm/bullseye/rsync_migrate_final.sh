@@ -134,6 +134,8 @@ migrate_project() {
           # 获取软链接和目标文件的绝对路径
           abs_link=$(readlink -f "$dir/$link")
           abs_target=$(readlink -f "$dir/$target")
+          echo "abs_link:${abs_link}"
+          echo "abs_target:${abs_target}"
 
           # 生成进入目录和创建相同软链接的命令，并将其追加到links.sh文件中
           echo "cd $dir" >> $symbolic_links_file

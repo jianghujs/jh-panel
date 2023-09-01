@@ -103,10 +103,10 @@ migrate_project() {
   target_project_dir=${target_project_dir:-"/www/wwwroot/"}
   read -p "请输入忽略的同步目录列表多个用逗号隔开（默认为：node_modules,logs,run）: " exclude_dirs
   exclude_dirs=${exclude_dirs:-"node_modules,logs,run"}
-  rsync_exclude_string=""
+  rsync_exclude_array=()
   IFS=',' read -ra ADDR <<<"$exclude_dirs"
   for i in "${ADDR[@]}"; do
-    rsync_exclude_string+="--exclude '$i' "
+    rsync_exclude_array+=("--exclude" "$i")
   done
 
   # 将目录下的软链提取到脚本
@@ -148,8 +148,8 @@ migrate_project() {
 
   # 传输目录文件
   echo "开始传输项目文件..."
-  echo "忽略：${rsync_exclude_string}"
-  rsync -avu -e "ssh -p ${remote_port}" $rsync_exclude_string --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
+  echo "忽略：${rsync_exclude_array[@]}"
+  rsync -avu -e "ssh -p ${remote_port}" "${rsync_exclude_array[@]}" --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
   
   echo "开始传输软链配置..."
   # 传输软链配置脚本

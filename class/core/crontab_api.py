@@ -209,6 +209,7 @@ class crontab_api:
         stype = request.form.get('stype', '')
         sname = request.form.get('sname', '')
         sbody = request.form.get('sbody', '')
+
         urladdress = request.form.get('urladdress', '')
 
         if len(iname) < 1:
@@ -683,9 +684,6 @@ echo "--------------------------------------------------------------------------
         return True
 
     def syncToCrond(self, cronInfo):
-        if 'status' in cronInfo:
-            if cronInfo['status'] == 0:
-                return False
         if 'where_hour' in cronInfo:
             cronInfo['hour'] = cronInfo['where_hour']
             cronInfo['minute'] = cronInfo['where_minute']
@@ -700,4 +698,7 @@ echo "--------------------------------------------------------------------------
         wRes = self.writeShell(cuonConfig)
         if type(wRes) != bool:
             return False
+        if 'status' in cronInfo:
+            if cronInfo['status'] == 0:
+                return False
         self.crondReload()

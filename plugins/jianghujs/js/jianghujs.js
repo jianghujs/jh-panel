@@ -99,7 +99,7 @@ function renderTableData() {
         
         tbody += '<tr>\
                     <td style="width: 180px;">'+tmp[i].temPath+'</td>\
-                    <td style="width: 180px;">'+tmp[i].name+'</td>' +
+                    <td style="width: 180px;">'+tmp[i].name+'<span style="display: none">'+tmp[i].echo+'</span>'+'</td>' +
                     '<td style="width: 100px;">'+autostart+'</td>' +
                     '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
                     <td style="text-align: right;width: 280px;">\

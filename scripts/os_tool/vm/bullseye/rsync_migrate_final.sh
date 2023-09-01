@@ -146,7 +146,7 @@ migrate_project() {
 
   cp $MIGRATE_DIR/symbolic_links_origin.sh $MIGRATE_DIR/symbolic_links.sh 
   # 在文件中替换字符串"${project_dir}"为"\${deploy_dir}"
-  sed -i 's|${project_dir}|${target_project_dir}|g' $MIGRATE_DIR/symbolic_links.sh 
+  sed -i 's/${project_dir}/${target_project_dir}/g' $MIGRATE_DIR/symbolic_links.sh 
 
   # 传输目录文件
   echo "开始传输项目文件..."

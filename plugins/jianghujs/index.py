@@ -292,6 +292,23 @@ def projectToggleAutostart():
     if autostart_script == '':
         return mw.returnJson(False, '请配置项目自启动脚本!')
 
+    # 自动添加重试逻辑
+    retry_logic = '''
+attempt=0
+until [ $attempt -ge 3 ]
+do
+    {} && break
+    attempt=$[$attempt+1]
+    sleep 5
+done
+    '''
+    lines = autostart_script.split('\n')
+    for i, line in enumerate(lines):
+        if line.strip().startswith("npm start") and "&& break" not in line:
+            lines[i] = retry_logic.format(line.strip())
+    autostart_script = '\n'.join(lines)
+
+
     # 创建自启动脚本文件
     autostartFile = '/etc/init.d/' +  echo
     mw.writeFile(autostartFile, autostart_script)

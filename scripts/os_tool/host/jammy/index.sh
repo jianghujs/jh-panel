@@ -75,7 +75,11 @@ case $choice in
         # 创建一个数组，用于dialog的checklist选项
         script_options=()
         for key in "${keys[@]}"; do
-            script_options+=("$key" "" on)
+            if [ "$key" == "安装并配置rustdesk自启动" ]; then
+                script_options+=("$key" "" off)
+            else
+                script_options+=("$key" "" on)
+            fi
         done
 
         cmd=(/usr/bin/dialog --separate-output --checklist "请选择要运行的脚本:" 22 76 16)

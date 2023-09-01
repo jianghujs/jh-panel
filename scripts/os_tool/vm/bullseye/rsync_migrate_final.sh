@@ -140,7 +140,7 @@ migrate_project() {
           # 生成进入目录和创建相同软链接的命令，并将其追加到links.sh文件中
           echo "cd $dir" >> $symbolic_links_file
           echo "unlink $link" >> $symbolic_links_file
-          echo "ln -s $abs_target $abs_link" >> $symbolic_links_file
+          echo "ln -s $abs_target $link" >> $symbolic_links_file
       done
   done
 

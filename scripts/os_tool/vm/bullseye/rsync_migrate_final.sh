@@ -106,7 +106,7 @@ migrate_project() {
   rsync_exclude_string=""
   IFS=',' read -ra ADDR <<<"$exclude_dirs"
   for i in "${ADDR[@]}"; do
-    rsync_exclude_string+="--exclude '$i' "
+    rsync_exclude_string+="--exclude \'$i\' "
   done
 
   # 将目录下的软链提取到脚本

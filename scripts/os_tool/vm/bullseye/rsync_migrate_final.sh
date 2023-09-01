@@ -128,6 +128,8 @@ migrate_project() {
           # 提取软链接文件名和目标文件名
           link=$(echo $line | awk '{print $9}')
           target=$(echo $line | awk '{print $11}')
+          echo "link:${link}"
+          echo "target:${target}"
 
           # 获取软链接和目标文件的绝对路径
           abs_link=$(readlink -f "$dir/$link")

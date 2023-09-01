@@ -112,9 +112,8 @@ migrate_project() {
   echo "" >  $symbolic_links_file
 
   # 使用find命令搜索所有目录，排除"node_modules"、"logs"、"run"目录
-  find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -print | while read dir
+  find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -type d -print | while read dir
   do
-      echo "Processing directory links: $dir"
 
       # 如果目录是符号链接，则跳过
       if [ -L "$dir" ]; then
@@ -128,15 +127,12 @@ migrate_project() {
           # 提取软链接文件名和目标文件名
           link=$(echo $line | awk '{print $9}')
           target=$(echo $line | awk '{print $11}')
-          echo "link:${link}"
-          echo "target:${target}"
 
           # 获取软链接和目标文件的绝对路径
           abs_link=$(readlink -f "$dir/$link")
           abs_target=$(readlink -f "$target")
-          echo "abs_link:${abs_link}"
-          echo "abs_target:${abs_target}"
-
+          echo "检测到软链 ==> $dir（$abs_target $link）"
+          
           # 生成进入目录和创建相同软链接的命令，并将其追加到links.sh文件中
           echo "cd $dir" >> $symbolic_links_file
           echo "unlink $link" >> $symbolic_links_file

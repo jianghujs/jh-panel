@@ -141,7 +141,7 @@ migrate_project() {
           echo "ln -s $abs_target $link" >> $symbolic_links_file
       done
   done
-
+  set -x
   cp $MIGRATE_DIR/symbolic_links_origin.sh $MIGRATE_DIR/symbolic_links.sh 
   # 在文件中替换字符串"${project_dir}"为"\${deploy_dir}"
   sed -i "s|${project_dir}|${target_project_dir}|g" $MIGRATE_DIR/symbolic_links.sh 

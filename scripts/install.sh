@@ -20,7 +20,7 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
-if [ grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release ]; then
+if grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release; then
 	OSNAME='debian'
 elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
 	OSNAME='ubuntu'

@@ -69,7 +69,7 @@ done
 # 生成deploy.sh文件
 cat <<EOF > ${MIGRATE_DIR}/deploy.sh
 #!/bin/bash
-for file in "deploy_xtrabackup.sh" "deploy_site.sh" "deploy_project.sh"; do
+for file in "deploy_xtrabackup.sh" "deploy_site.sh" "deploy_project.sh" "deploy_plugin.sh"; do
     if [ -f "\$file" ]; then
         bash \$file
     fi

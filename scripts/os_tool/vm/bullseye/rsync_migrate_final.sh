@@ -145,9 +145,13 @@ migrate_project() {
   sed -i 's|${project_dir}|${target_project_dir}|g' $MIGRATE_DIR/symbolic_links.sh 
 
   # 传输目录文件
+  echo "开始传输项目文件..."
   rsync -avu -e "ssh -p ${remote_port}" ${rsync_exclude_string} --progress --delete ${project_dir} root@${remote_ip}:${target_project_dir} &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
+  
+  echo "开始传输软链配置..."
   # 传输软链配置脚本
   rsync -avu -e "ssh -p ${remote_port}" --progress --delete $MIGRATE_DIR/symbolic_links.sh root@${remote_ip}:$MIGRATE_DIR/symbolic_links.sh  &>> ${MIGRATE_DIR}/rsync_migrate_final_www_$timestamp.log
+  echo "在目标服务器执行软链配置更新..."
   # 执行软链配置脚本
   ssh -p $remote_port root@${remote_ip} "bash ${MIGRATE_DIR}/symbolic_links.sh"
 }

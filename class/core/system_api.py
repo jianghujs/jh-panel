@@ -33,6 +33,7 @@ import requests
 from threading import Thread
 from time import sleep
 import datetime
+import dictdatabase as DDB
 
 
 def mw_async(f):
@@ -942,7 +943,22 @@ class system_api:
                     status,
                     cert_status
                 ))
-        
 
+            # JianghuJS管理器
+            if os.path.exists('/www/server/jianghujs/'):
+                project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/jianghujs/index.py project_list')[0]
+                if project_list_result:
+                    project_list_result = json.loads(project_list_result)
+                    if project_list_result.get('status', False):
+                        project_list = project_list_result.get('data', [])
+                        for project in project_list:
+                            print("项目（%s）：%s" % (
+                                project['name'],
+                                '已启动' if project['status'] == 'start' else '已停止'
+                            ))
+
+            # TODO 数据库表 
+            # if os.path.exists('/www/server/mysql-apt/'):
+            #     database_list_result = mw.execShell('python3 /www/server/')
     
         return mw.returnJson(True, '设置成功!')

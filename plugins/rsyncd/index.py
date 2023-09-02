@@ -421,7 +421,7 @@ def getRec():
         tmp = {}
         tmp["name"] = ""
         tmp["comment"] = ""
-        tmp["path"] = mw.getWwwDir()
+        tmp["path"] = mw.getWwwDir() + '/'
         tmp["pwd"] = mw.getRandomString(16)
         return mw.returnJson(True, 'OK', tmp)
 
@@ -670,7 +670,7 @@ def lsyncdGet():
     info = {
         "secret_key": '',
         "ip": '',
-        "path": mw.getServerDir(),
+        "path": mw.getServerDir() + '/',
         'rsync': rsync,
         'realtime': "true",
         'delete': "false",

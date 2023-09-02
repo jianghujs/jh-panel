@@ -102,7 +102,7 @@ function createSendTask(name = ''){
                 <div class='line'>\
                     <span class='tname'>同步目录</span>\
                     <div class='info-r c4'>\
-                        <input id='inputPath' class='bt-input-text mr5' type='text' name='path' value='"+data["path"]+"' placeholder='请选择同步目录' style='width:310px' /><span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"inputPath\")'></span>\
+                        <input id='inputPath' class='bt-input-text mr5' type='text' name='path' value='"+data["path"]+"' placeholder='请选择同步目录（一般以/结尾）' style='width:310px' /><span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"inputPath\", {\"endSlash\": true})'></span>\
                         <span data-toggle='tooltip' data-placement='top' title='【同步目录】若不以/结尾，则表示将数据同步到二级目录，一般情况下目录路径请以/结尾' class='bt-ico-ask' style='cursor: pointer;'>?</span>\
                     </div>\
                 </div>\
@@ -648,7 +648,7 @@ function addReceive(name = ""){
                     <span class='tname'>同步到</span>\
                     <div class='info-r c4'>\
                         <input id='inputPath' value='"+data["path"]+"' class='bt-input-text' type='text' name='path' placeholder='/' style='width:200px'/>\
-                        <span class='glyphicon glyphicon-folder-open cursor' onclick=\"changePath('inputPath')\"></span>\
+                        <span class='glyphicon glyphicon-folder-open cursor' onclick=\"changePath('inputPath', {'endSlash': true})\"></span>\
                     </div>\
                 </div>\
                 <div class='line'>\

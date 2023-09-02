@@ -222,9 +222,10 @@ function getFormatTime(tm, format) {
 }
 
 
-function changePath(d) {
+function changePath(d, { endSlash = 'false' } = {}) {
 	setCookie('SetId', d);
 	setCookie('SetName', '');
+	setCookie('ChangePathEndSlash', endSlash)
 	var c = layer.open({
 		type: 1,
 		area: "680px",
@@ -419,7 +420,7 @@ function getfilePath() {
 	var a = $("#PathPlace").find("span").text();
 	a = a.replace(new RegExp(/(\\)/g), "/");
 	a_len = a.length;
-	if (a[a_len-1] == '/'){
+	if (getCookie("ChangePathEndSlash") == 'false' && a[a_len-1] == '/'){
 		a = a.substr(0,a_len-1);
 	}
 

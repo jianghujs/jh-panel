@@ -919,7 +919,7 @@ class system_api:
             for site in siteInfo['site_list']:
                 site_name = site['name']
                 status = '运行中' if site['status'] == '1' else '已停止'
-                cert_status = '未部署'
+                cert_status = '未配置'
 
                 # 证书
                 cert_data = site['cert_data']
@@ -932,12 +932,12 @@ class system_api:
                     if cert_endtime < 0:
                         cert_status = '%s到期，已过期%s天' % (cert_not_after, str(cert_endtime))
                     else:
-                        cert_status = '%s到期，还有%s天%s' % (
+                        cert_status = '将于%s到期，还有%s天%s' % (
                             cert_not_after,
                             str(cert_endtime), 
                             ('到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
-                print("网站（%s）: %s（证书：%s）" % (
+                print("网站（%s）: %s（SSL证书%s）" % (
                     site_name,
                     status,
                     cert_status

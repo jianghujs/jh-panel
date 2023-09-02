@@ -581,7 +581,7 @@ def makeLsyncdConf(data):
                 delete_ok = ' --delete '
 
             remote_addr = t['name'] + '@' + t['ip'] + "::" + t['name']
-            cmd = rsync_bin + " -avzP " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
+            cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr
             mw.writeFile(name_dir + "/cmd", cmd)
             mw.execShell("cmod +x " + name_dir + "/cmd")

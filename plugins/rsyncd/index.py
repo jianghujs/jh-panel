@@ -390,6 +390,7 @@ def addRec():
     auth_path = appAuthPwd(args_name)
     pwd_content = args_name + ':' + args_pwd + "\n"
     mw.writeFile(auth_path, pwd_content)
+    mw.execShell("chown root:root " + auth_path)
     mw.execShell("chmod 600 " + auth_path)
 
     path = appConf()

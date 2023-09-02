@@ -1039,3 +1039,7 @@ function openSetNotifyValue() {
 		}
 	},'json');
 }
+
+
+
+$.get('/system/test_report',function(rdata){ })

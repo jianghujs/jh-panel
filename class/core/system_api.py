@@ -32,6 +32,7 @@ import requests
 
 from threading import Thread
 from time import sleep
+import datetime
 
 
 def mw_async(f):
@@ -840,4 +841,108 @@ class system_api:
             config_data['ssl_cert'] = int(ssl_cert)
         
         mw.writeFile(control_notify_value_file, json.dumps(config_data))
+        return mw.returnJson(True, '设置成功!')
+
+    def analyzeMonitorData(self, data, key, over):
+        """ 
+        分析监控数据，统计异常次数(5分钟内的算1次)
+        data: 监控数据list
+        key: 统计字段
+        over: 字段超过多少算异常
+        """
+        overCount = 0
+        total = 0
+        last_time = None
+
+        sorted_data = sorted(data, key=lambda x: x['addtime'])
+        for item in sorted_data:
+            total += item.get(key, 0)
+            if item.get(key, 0) > over:
+                if last_time is None or item['addtime'] - last_time >= 300:
+                    overCount += 1
+                    last_time = item['addtime']
+        return {
+            "average": total / len(data) if data else 0,
+            "overCount": overCount
+        }
+
+    def testReportApi(self):
+        # 近七天
+        start = 1692979201
+        end = 1693645019
+
+        control_notify_config = mw.getControlNotifyConfig()
+        mw.writeFile('/root/3.txt', str(control_notify_config))
+        if control_notify_config['notifyStatus'] == 'open':
+
+            # 监控阈值
+            cpu_notify_value = control_notify_config['cpu']
+            mem_notify_value = control_notify_config['memory']
+            disk_notify_value = control_notify_config['disk']
+            ssl_cert_notify_value = control_notify_config['ssl_cert']
+
+            # cpu(pro)、内存(mem)
+            cpuIoData = mw.M('cpuio').dbfile('system') .where("addtime>=? AND addtime<=?", (start, end)).field('id,pro,mem,addtime').order('id asc') .select()
+            cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
+            memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
+            print("CPU: 平均使用率%.2f%%%s" % (
+                cpuAnalyzeResult.get('average', 0), 
+                ('，异常%s次（使用率超过%s%%）' % (str(cpuAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
+            ))
+            print("内存: 平均使用率%.2f%%%s" % (
+                memAnalyzeResult.get('average', 0), 
+                ('，异常%s次（使用率超过%s%%）' % (str(memAnalyzeResult.get('overCount', 0)), str(mem_notify_value))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
+            ))
+
+            # 负载：资源使用率(pro)
+            loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( start, end)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
+            loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
+            print("资源使用率: 平均使用率%.2f%%%s" % (
+                loadAverageAnalyzeResult.get('average', 0), 
+                ('，异常%s次（使用率超过%s%%）' % (str(loadAverageAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
+            ))
+
+            # 磁盘
+            diskInfo = self.getDiskInfo()
+            print("diskInfo", str(diskInfo))
+            for disk in diskInfo:
+                disk_size_percent = int(disk['size'][3].replace('%', ''))
+                print("磁盘（%s）: 已使用%s（%s/%s）" % (
+                    disk['path'],
+                    disk['size'][3],
+                    disk['size'][1],
+                    disk['size'][0]
+                ))
+
+            # 网站
+            siteInfo = self.getSiteInfo()
+            for site in siteInfo['site_list']:
+                site_name = site['name']
+                status = '运行中' if site['status'] == '1' else '已停止'
+                cert_status = '未部署'
+
+                # 证书
+                cert_data = site['cert_data']
+                ssl_type = site['ssl_type']
+                if cert_data is not None:
+                    cert_not_after = cert_data.get('notAfter', '0000-00-00')
+                    cert_endtime = int(cert_data.get('endtime', 0))
+                    print(cert_data)
+                    site_error_msg = ''
+                    if cert_endtime < 0:
+                        cert_status = '%s到期，已过期%s天' % (cert_not_after, str(cert_endtime))
+                    else:
+                        cert_status = '%s到期，还有%s天%s' % (
+                            cert_not_after,
+                            str(cert_endtime), 
+                            ('到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
+                        )
+                print("网站（%s）: %s（证书：%s）" % (
+                    site_name,
+                    status,
+                    cert_status
+                ))
+        
+
+    
         return mw.returnJson(True, '设置成功!')

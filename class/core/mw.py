@@ -1951,20 +1951,31 @@ def generateCommonNotifyMessage(content):
     return notify_msg
 
 ##################### notify  end #########################################
+def getControlNotifyConfig():
+    control_notify_config = {}
+    control_notify_config['notifyStatus'] = 'close'
+    # 开启异常通知
+    control_notify_pl = 'data/control_notify.pl'
+    if os.path.exists(control_notify_pl):
+        control_notify_config['notifyStatus'] = 'open'
+    # 监控阈值
+    control_notify_value_file = 'data/control_notify_value.conf'
+    if not os.path.exists(control_notify_value_file):
+        writeFile(control_notify_value_file, '{}')
+    
+    control_notify_value_data = json.loads(readFile(control_notify_value_file))
+    control_notify_config['cpu'] = control_notify_value_data['cpu'] if 'cpu' in control_notify_value_data else 80
+    control_notify_config['memory'] = control_notify_value_data['memory'] if 'memory' in control_notify_value_data else 80 
+    control_notify_config['disk'] = control_notify_value_data['disk'] if 'disk' in control_notify_value_data else 80 
+    control_notify_config['ssl_cert'] = control_notify_value_data['ssl_cert'] if 'ssl_cert' in control_notify_value_data else 14 
+    return control_notify_config
+
 
 def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
     control_notify_pl = 'data/control_notify.pl'
-    if os.path.exists(control_notify_pl):
-        control_notify_value_file = 'data/control_notify_value.conf'
-        if not os.path.exists(control_notify_value_file):
-            writeFile(control_notify_value_file, '{}')
-        
-        control_notify_value_data = json.loads(readFile(control_notify_value_file))
-        control_notify_value_data['cpu'] = control_notify_value_data['cpu'] if 'cpu' in control_notify_value_data else 80
-        control_notify_value_data['memory'] = control_notify_value_data['memory'] if 'memory' in control_notify_value_data else 80 
-        control_notify_value_data['disk'] = control_notify_value_data['disk'] if 'disk' in control_notify_value_data else 80 
-        control_notify_value_data['ssl_cert'] = control_notify_value_data['ssl_cert'] if 'ssl_cert' in control_notify_value_data else 14 
 
+    control_notify_config = getControlNotifyConfig()
+    if control_notify_config['notifyStatus'] == 'open':
         # 推送需要的内容
         now_time = getDateFromNow()
         now_day = now_time.split(' ')[0]
@@ -1982,17 +1993,17 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         
         error_msg_arr = []
         # CPU
-        if (cpu_percent > control_notify_value_data['cpu']):
+        if (cpu_percent > control_notify_config['cpu']):
             error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + '%' + ']')
         # 内存
-        if (mem_percent > control_notify_value_data['memory']):
+        if (mem_percent > control_notify_config['memory']):
             error_msg_arr.append('内存负载过高[' + str(mem_percent) + '%' + ']')
         # 磁盘容量
         if len(disk_list) > 0:
             for disk in disk_list:
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
 
-                if disk_size_percent > control_notify_value_data['disk']:
+                if disk_size_percent > control_notify_config['disk']:
                     error_msg_arr.append('磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']')
         # 网站SSL证书
         if len(site_list) > 0:
@@ -2006,7 +2017,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
                     cert_endtime = int(cert_data['endtime'])
                     site_error_msg = ''
                     if ssl_type == 'custom':
-                        if cert_endtime >= 0 and cert_endtime < control_notify_value_data['ssl_cert']:
+                        if cert_endtime >= 0 and cert_endtime < control_notify_config['ssl_cert']:
                             site_error_msg = '网站[' + site['name'] + ']SSL证书还有[' + str(cert_endtime) + '天' + ']过期'
                         elif cert_endtime < 0:
                             site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']'

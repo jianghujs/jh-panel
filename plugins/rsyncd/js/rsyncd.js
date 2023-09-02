@@ -525,9 +525,9 @@ function lsyncdSend(){
             }
 
             con += '<tr>'+
-                '<td>' + list[i]['name']+'</td>' +
-                '<td><a class="btlink overflow_hide" style="width:40px;" onclick="openPath(\''+list[i]['path']+'\')">' + list[i]['path']+'</a></td>' +
-                '<td>' + list[i]['ip']+":"+list[i]['name']+'</td>' +
+                '<td><div class="overflow_hide" style="width: 80px;" title="' + list[i]['name'] + '">' + list[i]['name']+'</div></td>' +
+                '<td><a class="btlink overflow_hide" style="width:40px;" onclick="openPath(\''+list[i]['path']+'\')" title="' + list[i]['path'] + '">' + list[i]['path']+'</a></td>' +
+                '<td><div class="overflow_hide" style="width: 120px;" title="' + list[i]['ip']+":"+list[i]['name'] + '">' + list[i]['ip']+":"+list[i]['name']+'</div></td>' +
                 '<td>' + mode+'</td>' +
                 '<td>' + period +'</td>' +
                 '<td>\

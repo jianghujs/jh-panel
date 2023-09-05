@@ -1018,7 +1018,25 @@ def getDbBackupImportList():
 
 
 def getDbList():
+
+    pdb = pMysqlDb()
     database_list = pSqliteDb('databases').field('id,pid,name,username,password,accept,rw,ps,addtime').select()
+    
+    # startTime = time.time()
+    for database in database_list:
+        
+        # 计算大小
+        sql = "select sum(DATA_LENGTH)+sum(INDEX_LENGTH) as sum_size from information_schema.tables  where table_schema='%s'" % database['name']
+        data_sum = pdb.query(sql)
+        data = 0
+        if data_sum[0]['sum_size'] != None:
+            data = data_sum[0]['sum_size']
+        database['sizeByte'] = float(data)
+        database['size'] = mw.toSize(data)
+
+    # finishTime = time.time() - startTime
+    # print("查询数据库大小用时[" + str(round(finishTime, 2)) + "]秒")
+
     return mw.returnJson(True, 'ok', database_list)
 
 

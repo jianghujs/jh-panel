@@ -967,7 +967,7 @@ class system_api:
                         for database in database_list:
                             print("数据库（%s）：%s" % (
                                 database['name'],
-                                '已启动' if database.get('status', '') == 'start' else ''
+                                database.get('size') if database.get('size', None) is not None  else ''
                             ))
     
         return mw.returnJson(True, '设置成功!')

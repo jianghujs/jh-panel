@@ -316,9 +316,6 @@ def systemTask():
             # 网站
             siteInfo = sm.getSiteInfo()
 
-            # 数据库
-            mysqlInfo = sm.getMysqlInfo()
-
             # 报告
             mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo)
 
@@ -356,6 +353,7 @@ def systemTask():
                         'one'], load_average['five'], load_average['fifteen'], addtime))
 
                     # Database
+                    mysqlInfo = sm.getMysqlInfo()
                     database_list = mysqlInfo.get('database_list', [])
                     sql.table('database').add('total_size,total_bytes,list,addtime', (
                         mysqlInfo.get('total_size', 0),

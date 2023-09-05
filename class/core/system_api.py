@@ -937,14 +937,15 @@ class system_api:
             ssl_cert_notify_value = control_notify_config['ssl_cert']
 
             # cpu(pro)、内存(mem)
+            sysinfo_tips = []
             cpuIoData = mw.M('cpuio').dbfile('system') .where("addtime>=? AND addtime<=?", (start, end)).field('id,pro,mem,addtime').order('id asc') .select()
             cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
             memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
-            print("CPU: 平均使用率%.2f%%%s" % (
+            sysinfo_tips.append("CPU: 平均使用率%.2f%%%s" % (
                 cpuAnalyzeResult.get('average', 0), 
                 ('，异常%s次（使用率超过%s%%）' % (str(cpuAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
-            print("内存: 平均使用率%.2f%%%s" % (
+            sysinfo_tips.append("内存: 平均使用率%.2f%%%s" % (
                 memAnalyzeResult.get('average', 0), 
                 ('，异常%s次（使用率超过%s%%）' % (str(memAnalyzeResult.get('overCount', 0)), str(mem_notify_value))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
@@ -952,17 +953,16 @@ class system_api:
             # 负载：资源使用率(pro)
             loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( start, end)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
             loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
-            print("资源使用率: 平均使用率%.2f%%%s" % (
+            sysinfo_tips.append("资源使用率: 平均使用率%.2f%%%s" % (
                 loadAverageAnalyzeResult.get('average', 0), 
                 ('，异常%s次（使用率超过%s%%）' % (str(loadAverageAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
 
             # 磁盘
             diskInfo = self.getDiskInfo()
-            print("diskInfo", str(diskInfo))
             for disk in diskInfo:
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
-                print("磁盘（%s）: 已使用%s（%s/%s）" % (
+                sysinfo_tips.append("磁盘（%s）: 已使用%s（%s/%s）" % (
                     disk['path'],
                     disk['size'][3],
                     disk['size'][1],
@@ -970,6 +970,7 @@ class system_api:
                 ))
 
             # 网站
+            siteinfo_tips = []
             siteInfo = self.getSiteInfo()
             for site in siteInfo['site_list']:
                 site_name = site['name']
@@ -992,25 +993,26 @@ class system_api:
                             str(cert_endtime), 
                             ('到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
-                print("网站（%s）: %s（SSL证书%s）" % (
+                siteinfo_tips.append("网站（%s）: %s（SSL证书%s）" % (
                     site_name,
                     status,
                     cert_status
                 ))
 
             # JianghuJS管理器
+            jianghujsinfo_tips = []
             jianghujs_Info = self.getJianghujsInfo()
             if(jianghujs_Info['status'] == 'start'):
                 project_list = jianghujs_Info['project_list']
                 for project in project_list:
-                    print("项目（%s）：%s" % (
+                    jianghujsinfo_tips.append("%s：%s" % (
                         project['name'],
                         '已启动' if project['status'] == 'start' else '已停止'
                     ))
 
             # 数据库表 
+            mysqlinfo_tips = []
             mysql_info = self.getMysqlInfo()
-            
             # 第一天的数据库情况
             start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (start_timestamp_of_start, end_timestamp_of_start)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
             start_database_list = '[]'
@@ -1024,9 +1026,46 @@ class system_api:
                     start_database = start_database_list_dict.get(database.get('name', ''), {})
                     size_change = database.get('size_bytes', 0) - start_database.get('size_bytes', 0)
 
-                    print("数据库（%s）：%s" % (
+                    mysqlinfo_tips.append("%s：%s" % (
                         database['name'],
                         '变化：' + ('+' if size_change > 0 else '') + mw.toSize(size_change)
                     ))
-    
+
+
+            report_content = """
+<h2>服务器周报：%(start_date)s-%(end_date)s</h2>
+
+<h5>系统资源</h5>
+
+<ul>
+%(sysinfo_tips)s
+</ul>
+
+<h5>网站</h5>
+
+<ul>
+%(siteinfo_tips)s
+</ul>
+
+
+<h5>项目</h5>
+
+<ul>
+%(jianghujsinfo_tips)s
+</ul>
+
+<h5>数据库</h5>
+
+<ul>
+%(mysqlinfo_tips)s
+</ul>
+            """ % {
+                "start_date": start_date.date(),
+                "end_date": end_date.date(),
+                "sysinfo_tips": ''.join(f'<li>{item}</li>\n' for item in sysinfo_tips),
+                "siteinfo_tips": ''.join(f'<li>{item}</li>\n' for item in siteinfo_tips),
+                "jianghujsinfo_tips": ''.join(f'<li>{item}</li>\n' for item in jianghujsinfo_tips),
+                "mysqlinfo_tips": ''.join(f'<li>{item}</li>\n' for item in mysqlinfo_tips)
+            }
+            mw.notifyMessage(msg=report_content, msgtype="html", stype='服务器报告', trigger_time=0)
         return mw.returnJson(True, '设置成功!')

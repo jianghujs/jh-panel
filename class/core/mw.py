@@ -1847,11 +1847,11 @@ def emailNotifyMessage(data):
         if data['smtp_ssl'] == 'ssl':
             memail.sendSSL(data['smtp_host'], data['smtp_port'],
                            data['username'], data['password'],
-                           data['to_mail_addr'], data['subject'], data['content'])
+                           data['to_mail_addr'], data['subject'], data['content'], data.get('contentType', 'text'))
         else:
             memail.send(data['smtp_host'], data['smtp_port'],
                         data['username'], data['password'],
-                        data['to_mail_addr'], data['subject'], data['content'])
+                        data['to_mail_addr'], data['subject'], data['content'], data.get('contentType', 'text'))
         return True
     except Exception as e:
         print(getTracebackInfo())
@@ -1883,7 +1883,7 @@ def updateNoticeLockData(stype, data):
     lock_data[stype] = data
     writeFile(lock_file, json.dumps(lock_data))
 
-def notifyMessageTry(msg, stype='common', trigger_time=300, is_write_log=True):
+def notifyMessageTry(msg, msgtype='text', stype='common', trigger_time=300, is_write_log=True):
 
     lock_file = getPanelTmp() + '/notify_lock.json'
     if not os.path.exists(lock_file):
@@ -1926,6 +1926,7 @@ def notifyMessageTry(msg, stype='common', trigger_time=300, is_write_log=True):
             t = data['email']['data']
             t['subject'] = '江湖面板通知'
             t['content'] = msg
+            t['contentType'] = msgtype
             do_notify = emailNotifyMessage(t)
     return do_notify
 
@@ -1935,9 +1936,9 @@ def notifyMessageTry(msg, stype='common', trigger_time=300, is_write_log=True):
 # stype 通知类型
 # trigger_time 间隔时间（秒）
 # is_write_log 是否写入日志
-def notifyMessage(msg, stype='common', trigger_time=300, is_write_log=True):
+def notifyMessage(msg, msgtype='text', stype='common', trigger_time=300, is_write_log=True):
     try:
-        return notifyMessageTry(msg, stype, trigger_time, is_write_log)
+        return notifyMessageTry(msg, msgtype, stype, trigger_time, is_write_log)
     except Exception as e:
         writeFileLog(getTracebackInfo())
         return False
@@ -2032,7 +2033,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         # 发送异常报告
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
-            notifyMessage(notify_msg, '面板监控', 600)
+            notifyMessage(msg=notify_msg, stype='面板监控', trigger_time=600)
         
             # 更新lock文件
             updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)

@@ -1143,7 +1143,7 @@ function dbList(page, search){
     if(typeof(search) != 'undefined'){
         _data['search'] = search;
     }
-    myPost('get_db_list', _data, function(data){
+    myPost('get_db_list_page', _data, function(data){
         var rdata = $.parseJSON(data.data);
         var list = '';
         for(i in rdata.data){

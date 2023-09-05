@@ -957,8 +957,17 @@ class system_api:
                                 '已启动' if project['status'] == 'start' else '已停止'
                             ))
 
-            # TODO 数据库表 
-            # if os.path.exists('/www/server/mysql-apt/'):
-            #     database_list_result = mw.execShell('python3 /www/server/')
+            # 数据库表 
+            if os.path.exists('/www/server/mysql-apt/'):
+                database_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list')[0]
+                if database_list_result:
+                    database_list_result = json.loads(database_list_result)
+                    if database_list_result.get('status', False):
+                        database_list = database_list_result.get('data', []) 
+                        for database in database_list:
+                            print("数据库（%s）：%s" % (
+                                database['name'],
+                                '已启动' if database.get('status', '') == 'start' else ''
+                            ))
     
         return mw.returnJson(True, '设置成功!')

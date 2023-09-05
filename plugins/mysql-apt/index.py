@@ -1018,6 +1018,11 @@ def getDbBackupImportList():
 
 
 def getDbList():
+    database_list = pSqliteDb('databases').field('id,pid,name,username,password,accept,rw,ps,addtime').select()
+    return mw.returnJson(True, 'ok', database_list)
+
+
+def getDbListPage():
     args = getArgs()
     page = 1
     page_size = 10
@@ -1064,7 +1069,6 @@ def getDbList():
     data['info'] = info
 
     return mw.getJson(data)
-
 
 def syncGetDatabases():
     pdb = pMysqlDb()
@@ -2631,6 +2635,8 @@ if __name__ == "__main__":
         print(initMysqlPwd())
     elif func == 'get_db_list':
         print(getDbList())
+    elif func == 'get_db_list_page':
+        print(getDbListPage())
     elif func == 'set_db_backup':
         print(setDbBackup())
     elif func == 'get_import_db_backup_script':

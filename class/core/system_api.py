@@ -895,8 +895,10 @@ class system_api:
 
     def testReportApi(self):
         # 近七天
-        start = 1692979201
-        end = 1693645019
+        start = 1693238401
+        end = 1693904481
+        start_date = datetime.datetime.fromtimestamp(start)
+        end_date = datetime.datetime.fromtimestamp(end)
 
         control_notify_config = mw.getControlNotifyConfig()
         mw.writeFile('/root/3.txt', str(control_notify_config))
@@ -982,12 +984,24 @@ class system_api:
 
             # 数据库表 
             mysql_info = self.getMysqlInfo()
+            
+            # 第一天的数据库情况
+            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (start, end)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
+            start_database_list = []
+            if len(start_mysql_info) > 0:
+                start_database_list = start_mysql_info[0].get('list', '[]')
+            start_database_list_dict = {item.get('name', ''): item for item in json.loads(start_database_list)}
+            start_database_list_dict['jianghujs_1table_crud']['size_bytes'] = 0
+
             if(mysql_info['status'] == 'start'):
                 database_list = mysql_info['database_list']
                 for database in database_list:
+                    start_database = start_database_list_dict.get(database.get('name', ''), {})
+                    size_change = database.get('size_bytes', 0) - start_database.get('size_bytes', 0)
+
                     print("数据库（%s）：%s" % (
                         database['name'],
-                        database.get('size') if database.get('size', None) is not None  else ''
+                        '变化：' + ('+' if size_change > 0 else '') + mw.toSize(size_change)
                     ))
     
         return mw.returnJson(True, '设置成功!')

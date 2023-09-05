@@ -1017,11 +1017,13 @@ def getDbBackupImportList():
     return mw.returnJson(True, 'ok', rdata)
 
 
-def getDbList():
-
+def getMysqlInfo():
+    mysql_info = {
+        "status": status()
+    }
     pdb = pMysqlDb()
     database_list = pSqliteDb('databases').field('id,pid,name,username,password,accept,rw,ps,addtime').select()
-    
+    total_bytes = 0
     # startTime = time.time()
     for database in database_list:
         
@@ -1031,13 +1033,18 @@ def getDbList():
         data = 0
         if data_sum[0]['sum_size'] != None:
             data = data_sum[0]['sum_size']
-        database['sizeByte'] = float(data)
+        database['size_bytes'] = float(data)
         database['size'] = mw.toSize(data)
+        total_bytes += float(data)
+
+    mysql_info['total_bytes'] = total_bytes
+    mysql_info['total_size'] = mw.toSize(total_bytes)
+    mysql_info['database_list'] = database_list
 
     # finishTime = time.time() - startTime
     # print("查询数据库大小用时[" + str(round(finishTime, 2)) + "]秒")
 
-    return mw.returnJson(True, 'ok', database_list)
+    return mw.returnJson(True, 'ok', mysql_info)
 
 
 def getDbListPage():
@@ -2651,8 +2658,8 @@ if __name__ == "__main__":
         print(setMyPort())
     elif func == 'init_pwd':
         print(initMysqlPwd())
-    elif func == 'get_db_list':
-        print(getDbList())
+    elif func == 'get_mysql_info':
+        print(getMysqlInfo())
     elif func == 'get_db_list_page':
         print(getDbListPage())
     elif func == 'set_db_backup':

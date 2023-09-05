@@ -316,6 +316,9 @@ def systemTask():
             # 网站
             siteInfo = sm.getSiteInfo()
 
+            # 数据库
+            mysqlInfo = sm.getMysqlInfo()
+
             # 报告
             mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo)
 
@@ -351,6 +354,15 @@ def systemTask():
                         lpro = 100
                     sql.table('load_average').add('pro,one,five,fifteen,addtime', (lpro, load_average[
                         'one'], load_average['five'], load_average['fifteen'], addtime))
+
+                    # Database
+                    database_list = mysqlInfo.get('database_list', [])
+                    sql.table('database').add('total_size,total_bytes,list,addtime', (
+                        mysqlInfo.get('total_size', 0),
+                        mysqlInfo.get('total_tytes', 0),
+                        json.dumps(mysqlInfo.get('database_list', [])),
+                        addtime
+                    ))
 
                     lpro = None
                     load_average = None

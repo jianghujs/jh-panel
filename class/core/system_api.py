@@ -812,6 +812,32 @@ class system_api:
         siteInfo['ssl_count'] = len( list(filter(lambda x: x['cert_data'] is not None, site_list)))
         return siteInfo
 
+    def getJianghujsInfo(self):
+        jianghujs_info = {
+            "status": "stop"
+        }
+        if os.path.exists('/www/server/jianghujs/'):
+            project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/jianghujs/index.py project_list')[0]
+            if project_list_result:
+                project_list_result = json.loads(project_list_result)
+                if project_list_result.get('status', False):
+                    jianghujs_info['status'] = 'start'
+                    jianghujs_info['project_list'] = project_list_result.get('data', [])
+        return jianghujs_info
+
+    def getMysqlInfo(self):
+        mysql_info = {
+            "status": "stop"
+        }
+
+        if os.path.exists('/www/server/mysql-apt/'):
+            mysql_info_result = mw.execShell('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_mysql_info')[0]
+            if mysql_info_result:
+                mysql_info_result = json.loads(mysql_info_result)
+                if mysql_info_result.get('status', False):
+                    mysql_info = mysql_info_result.get('data', {})
+        return mysql_info
+
     def getNotifyValueApi(self):
         control_notify_value_file = 'data/control_notify_value.conf'
         if not os.path.exists(control_notify_value_file):
@@ -945,29 +971,23 @@ class system_api:
                 ))
 
             # JianghuJS管理器
-            if os.path.exists('/www/server/jianghujs/'):
-                project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/jianghujs/index.py project_list')[0]
-                if project_list_result:
-                    project_list_result = json.loads(project_list_result)
-                    if project_list_result.get('status', False):
-                        project_list = project_list_result.get('data', [])
-                        for project in project_list:
-                            print("项目（%s）：%s" % (
-                                project['name'],
-                                '已启动' if project['status'] == 'start' else '已停止'
-                            ))
+            jianghujs_Info = self.getJianghujsInfo()
+            if(jianghujs_Info['status'] == 'start'):
+                project_list = jianghujs_Info['project_list']
+                for project in project_list:
+                    print("项目（%s）：%s" % (
+                        project['name'],
+                        '已启动' if project['status'] == 'start' else '已停止'
+                    ))
 
             # 数据库表 
-            if os.path.exists('/www/server/mysql-apt/'):
-                database_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list')[0]
-                if database_list_result:
-                    database_list_result = json.loads(database_list_result)
-                    if database_list_result.get('status', False):
-                        database_list = database_list_result.get('data', []) 
-                        for database in database_list:
-                            print("数据库（%s）：%s" % (
-                                database['name'],
-                                database.get('size') if database.get('size', None) is not None  else ''
-                            ))
+            mysql_info = self.getMysqlInfo()
+            if(mysql_info['status'] == 'start'):
+                database_list = mysql_info['database_list']
+                for database in database_list:
+                    print("数据库（%s）：%s" % (
+                        database['name'],
+                        database.get('size') if database.get('size', None) is not None  else ''
+                    ))
     
         return mw.returnJson(True, '设置成功!')

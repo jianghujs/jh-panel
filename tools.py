@@ -23,6 +23,8 @@ sys.path.append(os.getcwd() + "/class/core")
 import mw
 import db
 
+import system_api
+
 # cmd = 'ls /usr/local/lib/ | grep python  | cut -d \\  -f 1 | awk \'END {print}\''
 # info = mw.execShell(cmd)
 # p = "/usr/local/lib/" + info[0].strip() + "/site-packages"
@@ -189,6 +191,12 @@ def getLocalIp():
         sock.close()
     print(local_ip) 
 
+
+def generateSystemReport():
+    sm = system_api.system_api()
+    sm.generateSystemReport()
+
+
 if __name__ == "__main__":
     method = sys.argv[1]
     if method == 'panel':
@@ -204,6 +212,8 @@ if __name__ == "__main__":
         getServerIp()
     elif method == 'getLocalIp':
         getLocalIp()
+    elif method == 'generateSystemReport':
+        generateSystemReport()
     elif method == "cli":
         clinum = 0
         try:

@@ -124,7 +124,7 @@ class crontab_api:
         status = 1
         if cronInfo['status'] == status:
             status = 0
-            self.removeForCrond(cronInfo['echo'])
+            self.removeCrond(cronInfo['echo'])
         else:
             cronInfo['status'] = 1
             self.syncToCrond(cronInfo)
@@ -255,7 +255,7 @@ class crontab_api:
 
         addData = mw.M('crontab').where('id=?', (sid,)).save('name,type,where1,where_hour,where_minute,saveAllDay,saveOther,saveMaxDay,backup_to,sbody,urladdress', (get[
             'name'], field_type, get['where1'], get['hour'], get['minute'], get['saveAllDay'], get['saveOther'], get['saveMaxDay'], get['backup_to'], get['sbody'], get['urladdress']))
-        self.removeForCrond(cronInfo['echo'])
+        self.removeCrond(cronInfo['echo'])
         self.syncToCrond(cronInfo)
         mw.writeLog('计划任务', '修改计划任务[' + cronInfo['name'] + ']成功')
         return mw.returnJson(True, '修改成功')
@@ -344,7 +344,7 @@ class crontab_api:
 
         # print(cronConfig)
         if not mw.isAppleSystem():
-            wRes = self.writeShell(cronConfig)
+            wRes = self.writeCrond(cronConfig)
             if type(wRes) != bool:
                 return wRes
             self.crondReload()
@@ -383,7 +383,7 @@ class crontab_api:
     def delete(self, tid):
 
         find = mw.M('crontab').where("id=?", (tid,)).field('name,echo').find()
-        if not self.removeForCrond(find['echo']):
+        if not self.removeCrond(find['echo']):
             return (False, '无法写入文件，请检查是否开启了系统加固功能!')
 
         cronPath = mw.getServerDir() + '/cron'
@@ -621,7 +621,7 @@ echo "--------------------------------------------------------------------------
         return shell
 
     # 将Shell脚本写到文件
-    def writeShell(self, config):
+    def writeCrond(self, config):
         u_file = '/var/spool/cron/crontabs/root'
         if not os.path.exists(u_file):
             # file = '/var/spool/cron/root'
@@ -660,7 +660,7 @@ echo "--------------------------------------------------------------------------
                 mw.execShell("systemctl reload crond")
 
     # 从crond删除
-    def removeForCrond(self, echo):
+    def removeCrond(self, echo):
         u_file = '/var/spool/cron/crontabs/root'
         if not os.path.exists(u_file):
             file = '/var/spool/cron/root'
@@ -695,7 +695,7 @@ echo "--------------------------------------------------------------------------
             return cronName
         cuonConfig += ' ' + cronPath + '/' + cronName + \
             ' >> ' + cronPath + '/' + cronName + '.log 2>&1'
-        wRes = self.writeShell(cuonConfig)
+        wRes = self.writeCrond(cuonConfig)
         if type(wRes) != bool:
             return False
         if 'status' in cronInfo:

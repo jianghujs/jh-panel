@@ -28,12 +28,15 @@ import db
 import mw
 
 import config_api
+import crontab_api
 import requests
 
 from threading import Thread
 from time import sleep
 import datetime
 import dictdatabase as DDB
+
+crontabApi = crontab_api.crontab_api()
 
 
 def mw_async(f):
@@ -592,6 +595,7 @@ class system_api:
 
         control_file = 'data/control.conf'
         control_notify_pl = 'data/control_notify.pl'
+        control_report_notify_pl = 'data/control_report_notify.pl'
 
         stat_pl = 'data/only_netio_counters.pl'
 
@@ -610,6 +614,14 @@ class system_api:
             mw.execShell("rm -rf " + control_notify_pl)
         elif stype == '5':
             mw.execShell("echo 'True' > " + control_notify_pl)
+        elif stype == '6':
+            # 删除服务器周报
+            mw.execShell("rm -rf " + control_report_notify_pl)
+            crontabApi.removeCrond('system_report.sh')
+        elif stype == '7':
+            # 添加服务器周报
+            mw.execShell("echo 'True' > " + control_report_notify_pl)
+            crontabApi.writeCrond('0 0 * * 0 /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
         elif stype == 'del':
             if not mw.isRestart():
                 return mw.returnJson(False, '请等待所有安装任务完成再执行')
@@ -637,6 +649,11 @@ class system_api:
                 data['notify_status'] = True
             else:
                 data['notify_status'] = False
+
+            if os.path.exists(control_report_notify_pl):
+                data['report_notify_status'] = True
+            else:
+                data['report_notify_status'] = False
 
             if os.path.exists(stat_pl):
                 data['stat_all_status'] = True
@@ -893,17 +910,24 @@ class system_api:
             "overCount": overCount
         }
 
-    def testReportApi(self):
+    def generateSystemReport(self):
+        # filename = 'data/control_report_notify.pl'
+        # if not os.path.exists(filename):
+        #     time.sleep(10)
+        #     continue
+        now = datetime.datetime.now()
         # 近七天
-        start = 1693238401
-        end = 1693904481
+        end_datetime = datetime.datetime(now.year, now.month, now.day)
+        start_datetime = end_datetime - datetime.timedelta(days=7)
+        end = int(time.mktime(end_datetime.timetuple()))
+        start = int(time.mktime(start_datetime.timetuple()))
         start_date = datetime.datetime.fromtimestamp(start)
         end_date = datetime.datetime.fromtimestamp(end)
         start_timestamp_of_start =  datetime.datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0) 
         end_timestamp_of_start = start_timestamp_of_start + datetime.timedelta(days=1)
+        print("报表：%s-%s" % (start_date, end_date))
 
         control_notify_config = mw.getControlNotifyConfig()
-        mw.writeFile('/root/3.txt', str(control_notify_config))
         if control_notify_config['notifyStatus'] == 'open':
 
             # 监控阈值

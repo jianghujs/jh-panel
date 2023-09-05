@@ -139,6 +139,12 @@ function getStatus(){
 			$("#openNotify").html("<input class='btswitch btswitch-ios' id='notify_switch' type='checkbox'><label class='btswitch-btn' for='notify_switch' onclick='setControl(\"opennotify\",false)'></label>");
 		}
 
+		if(rdata.report_notify_status) {
+			$("#openReport").html("<input class='btswitch btswitch-ios' id='report_notify_switch' type='checkbox' checked><label class='btswitch-btn' for='report_notify_switch' onclick='setControl(\"openReportNotify\", true)'></label>");
+		} else {
+			$("#openReport").html("<input class='btswitch btswitch-ios' id='report_notify_switch' type='checkbox'><label class='btswitch-btn' for='report_notify_switch' onclick='setControl(\"openReportNotify\",false)'></label>");
+		}
+
 		if(rdata.stat_all_status){
 			$("#statAll").html("<input class='btswitch btswitch-ios' id='stat_witch' type='checkbox' checked><label class='btswitch-btn' for='stat_witch' onclick='setControl(\"stat\",true)'></label>");
 		} else{
@@ -183,6 +189,8 @@ function setControl(act, value=false){
 		}
 	} else if (act == 'opennotify'){
 		var type = $("#notify_switch").prop('checked')?'4':'5';
+	} else if (act == 'openReportNotify') {
+		var type = $("#report_notify_switch").prop('checked')?'6':'7';
 	}
 	
 	loadT = layer.msg('正在处理,请稍候...',{icon:16,time:0})

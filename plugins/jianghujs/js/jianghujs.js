@@ -218,9 +218,9 @@ function openCreateItem() {
                         <span>每天</span>\
                         <span>\
                             <input type='hidden' id='cronId' name='cronId' value=''>\
-                            <input type='number' id='cronHour' name='hour' value='20' maxlength='2' max='23' min='0'>\
+                            <input type='number' id='cronHour' name='hour' value='1' maxlength='2' max='23' min='0'>\
                             <span class='name'>:</span>\
-                            <input type='number' id='cronMinute' name='minute' value='30' maxlength='2' max='59' min='0'>\
+                            <input type='number' id='cronMinute' name='minute' value='0' maxlength='2' max='59' min='0'>\
                         </span>\
                     </div>\
                 </div>\
@@ -375,8 +375,8 @@ async function openEditItem(id) {
         $('#logCleanConfig').hide();
     }
     $('#cronId').val(cron ? cron.id : '');
-    $('#cronHour').val(cron ? cron.where_hour : '20');
-    $('#cronMinute').val(cron ? cron.where_minute : '30');
+    $('#cronHour').val(cron ? cron.where_hour : '1');
+    $('#cronMinute').val(cron ? cron.where_minute : '0');
     $('#saveAllDay').val(cron ? cron.saveAllDay : '3');
     $('#saveOther').val(cron ? cron.saveOther : '1');
     $('#saveMaxDay').val(cron ? cron.saveMaxDay : '30');

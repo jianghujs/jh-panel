@@ -1004,10 +1004,10 @@ class system_api:
                     if cert_endtime < 0:
                         cert_status = '%s到期，已过期<span style="color: red">%s</span>天' % (cert_not_after, str(cert_endtime))
                     else:
-                        cert_status = '将于%s到期，还有%s天%s' % (
+                        cert_status = '将于%s到期，还有%s天%s到期' % (
                             cert_not_after,
                             ("<span style='color: red'>%s</span>" if cert_endtime < 14 else "<span>%s</span>") % str(cert_endtime), 
-                            ('到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
+                            ('，到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
                 siteinfo_tips.append({
                     "name": site_name,

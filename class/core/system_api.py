@@ -1080,7 +1080,7 @@ class system_api:
             mw.notifyMessage(
                 msg=report_content, 
                 msgtype="html", 
-                title="%(title)s(%(ip)s)服务器%(start_date)s至%(end_date)s报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
+                title="%(title)s(%(ip)s)服务器周报" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
                 stype='服务器报告', 
                 trigger_time=0
             )

@@ -14,7 +14,7 @@ def _format_addr(s):
     return formataddr((Header(name, 'utf-8').encode(), addr))
 
 
-def send(smtp_host, smtp_port, username, password, to_mail, subject, content, contentType):
+def send(smtp_host, smtp_port, username, password, to_mails, subject, content, contentType):
 
     smtp = smtplib.SMTP(timeout=5)
     smtp.connect(smtp_host, port=smtp_port)
@@ -27,10 +27,10 @@ def send(smtp_host, smtp_port, username, password, to_mail, subject, content, co
     else: 
         msg = MIMEText(content, 'plain', 'utf-8')
     msg['From'] = _format_addr(username)
-    msg['To'] = _format_addr(to_mail)
+    msg['To'] = to_mails
     msg['Subject'] = Header(subject, 'utf-8').encode()
 
-    smtp.sendmail(from_addr=username, to_addrs=to_mail, msg=msg.as_string())
+    smtp.sendmail(from_addr=username, to_addrs=to_mails.split(","), msg=msg.as_string())
     return True
 
 

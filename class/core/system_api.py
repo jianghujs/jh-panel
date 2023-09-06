@@ -943,11 +943,11 @@ class system_api:
             memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
             sysinfo_tips.append("CPU: 平均使用率%.2f%%%s" % (
                 cpuAnalyzeResult.get('average', 0), 
-                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpuAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
+                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(cpuAnalyzeResult.get('overCount', 0)))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
             sysinfo_tips.append("内存: 平均使用率%.2f%%%s" % (
                 memAnalyzeResult.get('average', 0), 
-                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(memAnalyzeResult.get('overCount', 0)), str(mem_notify_value))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
+                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(mem_notify_value), str(memAnalyzeResult.get('overCount', 0)))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
 
             # 负载：资源使用率(pro)
@@ -955,7 +955,7 @@ class system_api:
             loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
             sysinfo_tips.append("资源使用率: 平均使用率%.2f%%%s" % (
                 loadAverageAnalyzeResult.get('average', 0), 
-                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(loadAverageAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
+                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(loadAverageAnalyzeResult.get('overCount', 0)))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
 
             # 磁盘

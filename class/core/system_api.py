@@ -916,7 +916,7 @@ class system_api:
         csql_list = csql.split(';')
         for index in range(len(csql_list)):
             sql.execute(csql_list[index], ())
-            
+
         # filename = 'data/control_report_notify.pl'
         # if not os.path.exists(filename):
         #     time.sleep(10)
@@ -1032,40 +1032,44 @@ class system_api:
                     start_database = start_database_list_dict.get(database.get('name', ''), {})
                     size_change = database.get('size_bytes', 0) - start_database.get('size_bytes', 0)
 
-                    mysqlinfo_tips.append("%s：%s" % (
+                    mysqlinfo_tips.append("%s：变化：%s 总大小：%s" % (
                         database['name'],
-                        '变化：' + (('<span style="color: green">+%s</span>' if size_change > 0 else '<span>%s</span>') % mw.toSize(size_change)) 
+                        (('<span style="color: green">+%s</span>' if size_change > 0 else '<span>%s</span>') % mw.toSize(size_change)),
+                        database['size']
                     ))
 
 
             report_content = """
-<h2>服务器周报：%(start_date)s-%(end_date)s</h2>
+<h2>%(title)s(%(ip)s)-周报 </h2>
+<h3>日期：%(start_date)s至%(end_date)s</h3>
 
-<h5>系统资源</h5>
+<h3 style="font-size: bold;">系统资源</h3>
 
 <ul>
 %(sysinfo_tips)s
 </ul>
 
-<h5>网站</h5>
+<h3 style="font-size: bold;">网站</h3>
 
 <ul>
 %(siteinfo_tips)s
 </ul>
 
 
-<h5>项目</h5>
+<h3 style="font-size: bold;">项目</h3>
 
 <ul>
 %(jianghujsinfo_tips)s
 </ul>
 
-<h5>数据库</h5>
+<h3 style="font-size: bold;">数据库</h3>
 
 <ul>
 %(mysqlinfo_tips)s
 </ul>
             """ % {
+                "title": mw.getConfig('title'),
+                "ip": mw.getHostAddr(),
                 "start_date": start_date.date(),
                 "end_date": end_date.date(),
                 "sysinfo_tips": ''.join(f'<li>{item}</li>\n' for item in sysinfo_tips),

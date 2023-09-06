@@ -911,6 +911,12 @@ class system_api:
         }
 
     def generateSystemReport(self):
+        sql = db.Sql().dbfile('system')
+        csql = mw.readFile('data/sql/system.sql')
+        csql_list = csql.split(';')
+        for index in range(len(csql_list)):
+            sql.execute(csql_list[index], ())
+            
         # filename = 'data/control_report_notify.pl'
         # if not os.path.exists(filename):
         #     time.sleep(10)

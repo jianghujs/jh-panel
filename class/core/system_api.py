@@ -999,7 +999,7 @@ class system_api:
                             str(cert_endtime), 
                             ('到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
-                siteinfo_tips.append("网站（%s）: %s（SSL证书%s）" % (
+                siteinfo_tips.append("%s: %s（SSL证书%s）" % (
                     site_name,
                     status,
                     cert_status

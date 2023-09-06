@@ -980,7 +980,7 @@ class system_api:
             siteInfo = self.getSiteInfo()
             for site in siteInfo['site_list']:
                 site_name = site['name']
-                status = '运行中' if site['status'] == '1' else '<span style="color: red">已停止</span>'
+                status = '<span style="color: green">运行中</span>' if site['status'] == '1' else '<span style="color: red">已停止</span>'
                 cert_status = '未配置'
 
                 # 证书
@@ -996,10 +996,10 @@ class system_api:
                     else:
                         cert_status = '将于%s到期，还有%s天%s' % (
                             cert_not_after,
-                            str(cert_endtime), 
+                            ("<span style='color: red'>%s</span>" if cert_endtime < 14 else "<span>%s</span>") % str(cert_endtime), 
                             ('到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
-                siteinfo_tips.append("网站（%s）: %s（SSL证书%s）" % (
+                siteinfo_tips.append("%s: %s（SSL证书%s）" % (
                     site_name,
                     status,
                     cert_status
@@ -1013,7 +1013,7 @@ class system_api:
                 for project in project_list:
                     jianghujsinfo_tips.append("%s：%s" % (
                         project['name'],
-                        '已启动' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
+                        '<span style="color: green">已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
                     ))
 
             # 数据库表 

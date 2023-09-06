@@ -943,11 +943,11 @@ class system_api:
             memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
             sysinfo_tips.append("CPU: 平均使用率%.2f%%%s" % (
                 cpuAnalyzeResult.get('average', 0), 
-                ('，异常%s次（使用率超过%s%%）' % (str(cpuAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
+                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpuAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
             sysinfo_tips.append("内存: 平均使用率%.2f%%%s" % (
                 memAnalyzeResult.get('average', 0), 
-                ('，异常%s次（使用率超过%s%%）' % (str(memAnalyzeResult.get('overCount', 0)), str(mem_notify_value))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
+                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(memAnalyzeResult.get('overCount', 0)), str(mem_notify_value))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
 
             # 负载：资源使用率(pro)
@@ -955,7 +955,7 @@ class system_api:
             loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
             sysinfo_tips.append("资源使用率: 平均使用率%.2f%%%s" % (
                 loadAverageAnalyzeResult.get('average', 0), 
-                ('，异常%s次（使用率超过%s%%）' % (str(loadAverageAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
+                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(loadAverageAnalyzeResult.get('overCount', 0)), str(cpu_notify_value))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
             ))
 
             # 磁盘
@@ -974,7 +974,7 @@ class system_api:
             siteInfo = self.getSiteInfo()
             for site in siteInfo['site_list']:
                 site_name = site['name']
-                status = '运行中' if site['status'] == '1' else '已停止'
+                status = '运行中' if site['status'] == '1' else '<span style="color: red">已停止</span>'
                 cert_status = '未配置'
 
                 # 证书
@@ -986,7 +986,7 @@ class system_api:
                     print(cert_data)
                     site_error_msg = ''
                     if cert_endtime < 0:
-                        cert_status = '%s到期，已过期%s天' % (cert_not_after, str(cert_endtime))
+                        cert_status = '%s到期，已过期<span style="color: red">%s</span>天' % (cert_not_after, str(cert_endtime))
                     else:
                         cert_status = '将于%s到期，还有%s天%s' % (
                             cert_not_after,
@@ -1007,7 +1007,7 @@ class system_api:
                 for project in project_list:
                     jianghujsinfo_tips.append("%s：%s" % (
                         project['name'],
-                        '已启动' if project['status'] == 'start' else '已停止'
+                        '已启动' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
                     ))
 
             # 数据库表 
@@ -1028,7 +1028,7 @@ class system_api:
 
                     mysqlinfo_tips.append("%s：%s" % (
                         database['name'],
-                        '变化：' + ('+' if size_change > 0 else '') + mw.toSize(size_change)
+                        '变化：' + (('<span style="color: green">+%s</span>' if size_change > 0 else '<span>%s</span>') % mw.toSize(size_change)) 
                     ))
 
 

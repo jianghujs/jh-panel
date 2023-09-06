@@ -947,40 +947,51 @@ class system_api:
             cpuIoData = mw.M('cpuio').dbfile('system') .where("addtime>=? AND addtime<=?", (start, end)).field('id,pro,mem,addtime').order('id asc') .select()
             cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
             memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
-            sysinfo_tips.append("CPU: 平均使用率%.2f%%%s" % (
-                cpuAnalyzeResult.get('average', 0), 
-                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(cpuAnalyzeResult.get('overCount', 0)))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
-            ))
-            sysinfo_tips.append("内存: 平均使用率%.2f%%%s" % (
-                memAnalyzeResult.get('average', 0), 
-                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(mem_notify_value), str(memAnalyzeResult.get('overCount', 0)))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
-            ))
+            sysinfo_tips.append({
+                "name": "CPU",
+                "desc": "平均使用率%.2f%%%s" % (
+                    cpuAnalyzeResult.get('average', 0), 
+                    ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(cpuAnalyzeResult.get('overCount', 0)))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
+                )
+            })
+            sysinfo_tips.append({
+                "name": "内存",
+                "desc": "平均使用率%.2f%%%s" % (
+                    memAnalyzeResult.get('average', 0), 
+                    ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(mem_notify_value), str(memAnalyzeResult.get('overCount', 0)))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
+                )
+            })
 
             # 负载：资源使用率(pro)
             loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( start, end)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
             loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
-            sysinfo_tips.append("资源使用率: 平均使用率%.2f%%%s" % (
-                loadAverageAnalyzeResult.get('average', 0), 
-                ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(loadAverageAnalyzeResult.get('overCount', 0)))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
-            ))
+            sysinfo_tips.append({
+                "name": "资源使用率",
+                "desc": "平均使用率%.2f%%%s" % (
+                    loadAverageAnalyzeResult.get('average', 0), 
+                    ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(loadAverageAnalyzeResult.get('overCount', 0)))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
+                )
+            })
 
             # 磁盘
             diskInfo = self.getDiskInfo()
             for disk in diskInfo:
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
-                sysinfo_tips.append("磁盘（%s）: 已使用%s（%s/%s）" % (
-                    disk['path'],
-                    disk['size'][3],
-                    disk['size'][1],
-                    disk['size'][0]
-                ))
+                sysinfo_tips.append({
+                    "name": "磁盘（%s）" % disk['path'],
+                    "desc": "已使用%s（%s/%s）" % (
+                        disk['size'][3],
+                        disk['size'][1],
+                        disk['size'][0]
+                    )
+                })
 
             # 网站
             siteinfo_tips = []
             siteInfo = self.getSiteInfo()
             for site in siteInfo['site_list']:
                 site_name = site['name']
-                status = '<span style="color: green">运行中</span>' if site['status'] == '1' else '<span style="color: red">已停止</span>'
+                status = '<span>运行中</span>' if site['status'] == '1' else '<span style="color: red">已停止</span>'
                 cert_status = '未配置'
 
                 # 证书
@@ -989,7 +1000,6 @@ class system_api:
                 if cert_data is not None:
                     cert_not_after = cert_data.get('notAfter', '0000-00-00')
                     cert_endtime = int(cert_data.get('endtime', 0))
-                    print(cert_data)
                     site_error_msg = ''
                     if cert_endtime < 0:
                         cert_status = '%s到期，已过期<span style="color: red">%s</span>天' % (cert_not_after, str(cert_endtime))
@@ -999,11 +1009,13 @@ class system_api:
                             ("<span style='color: red'>%s</span>" if cert_endtime < 14 else "<span>%s</span>") % str(cert_endtime), 
                             ('到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
-                siteinfo_tips.append("%s: %s（SSL证书%s）" % (
-                    site_name,
-                    status,
-                    cert_status
-                ))
+                siteinfo_tips.append({
+                    "name": site_name,
+                    "desc": "%s（SSL证书%s）" % (
+                        status,
+                        cert_status
+                    )
+                })
 
             # JianghuJS管理器
             jianghujsinfo_tips = []
@@ -1011,10 +1023,12 @@ class system_api:
             if(jianghujs_Info['status'] == 'start'):
                 project_list = jianghujs_Info['project_list']
                 for project in project_list:
-                    jianghujsinfo_tips.append("%s：%s" % (
-                        project['name'],
-                        '<span style="color: green">已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
-                    ))
+                    jianghujsinfo_tips.append({
+                        "name": project['name'],
+                        "desc": "%s" % (
+                            '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
+                        )
+                    })
 
             # 数据库表 
             mysqlinfo_tips = []
@@ -1031,51 +1045,71 @@ class system_api:
                 for database in database_list:
                     start_database = start_database_list_dict.get(database.get('name', ''), {})
                     size_change = database.get('size_bytes', 0) - start_database.get('size_bytes', 0)
-
-                    mysqlinfo_tips.append("%s：变化：%s 总大小：%s" % (
-                        database['name'],
-                        (('<span style="color: green">+%s</span>' if size_change > 0 else '<span>%s</span>') % mw.toSize(size_change)),
-                        database['size']
-                    ))
+                    mysqlinfo_tips.append({
+                        "name": database['name'],
+                        "desc": "变化：%s<br/>总大小：%s" % (
+                            (('<span style="color: green">+%s</span>' if size_change > 0 else '<span>%s</span>') % mw.toSize(size_change)),
+                            database['size']
+                        )
+                    })
 
 
             report_content = """
+<style>
+h3 { font-size: bold; }
+table {
+    border-top: 1px solid #999;
+    border-left: 1px solid #999;
+    border-spacing: 0;
+    width: 100%%;
+}
+table tr td {
+    padding: 5px;
+    line-height: 20px;
+}
+table tr td:first-child {
+    width: 30%%;
+}
+table tr td:nth-child(2) {
+    width: 70%%;
+}
+</style>
+
 <h2>%(title)s(%(ip)s)-周报 </h2>
-<h3>日期：%(start_date)s至%(end_date)s</h3>
+<h3 style="color: #cecece">日期：%(start_date)s至%(end_date)s</h3>
 
-<h3 style="font-size: bold;">系统资源</h3>
-
-<ul>
+<h3>系统资源：</h3>
+<table border>
 %(sysinfo_tips)s
-</ul>
+</table>
 
-<h3 style="font-size: bold;">网站</h3>
+<h3>网站：</h3>
 
-<ul>
+<table border>
 %(siteinfo_tips)s
-</ul>
+</table>
 
 
-<h3 style="font-size: bold;">项目</h3>
+<h3>项目：</h3>
 
-<ul>
+<table border>
 %(jianghujsinfo_tips)s
-</ul>
+</table>
 
-<h3 style="font-size: bold;">数据库</h3>
+<h3>数据库：</h3>
 
-<ul>
+<table border>
 %(mysqlinfo_tips)s
-</ul>
+</table>
             """ % {
                 "title": mw.getConfig('title'),
                 "ip": mw.getHostAddr(),
                 "start_date": start_date.date(),
                 "end_date": end_date.date(),
-                "sysinfo_tips": ''.join(f'<li>{item}</li>\n' for item in sysinfo_tips),
-                "siteinfo_tips": ''.join(f'<li>{item}</li>\n' for item in siteinfo_tips),
-                "jianghujsinfo_tips": ''.join(f'<li>{item}</li>\n' for item in jianghujsinfo_tips),
-                "mysqlinfo_tips": ''.join(f'<li>{item}</li>\n' for item in mysqlinfo_tips)
+                "sysinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
+                "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in siteinfo_tips),
+                "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in jianghujsinfo_tips),
+                "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in mysqlinfo_tips)
             }
             mw.notifyMessage(
                 msg=report_content, 

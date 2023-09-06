@@ -1082,7 +1082,7 @@ table tr td:nth-child(2) {
 
 </style>
 
-<h2>%(title)s(%(ip)s)-周报 </h2>
+<h2>%(title)s(%(ip)s)-服务器运行周报 </h2>
 <h3 style="color: #cecece">日期：%(start_date)s至%(end_date)s</h3>
 
 <h3>系统资源：</h3>

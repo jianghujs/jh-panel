@@ -1077,5 +1077,11 @@ class system_api:
                 "jianghujsinfo_tips": ''.join(f'<li>{item}</li>\n' for item in jianghujsinfo_tips),
                 "mysqlinfo_tips": ''.join(f'<li>{item}</li>\n' for item in mysqlinfo_tips)
             }
-            mw.notifyMessage(msg=report_content, msgtype="html", stype='服务器报告', trigger_time=0)
+            mw.notifyMessage(
+                msg=report_content, 
+                msgtype="html", 
+                title="%(title)s(%(ip)s)服务器%(start_date)s至%(end_date)s报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
+                stype='服务器报告', 
+                trigger_time=0
+            )
         return mw.returnJson(True, '设置成功!')

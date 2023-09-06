@@ -1883,7 +1883,7 @@ def updateNoticeLockData(stype, data):
     lock_data[stype] = data
     writeFile(lock_file, json.dumps(lock_data))
 
-def notifyMessageTry(msg, msgtype='text', stype='common', trigger_time=300, is_write_log=True):
+def notifyMessageTry(msg, msgtype='text', title='江湖面板通知', stype='common', trigger_time=300, is_write_log=True):
 
     lock_file = getPanelTmp() + '/notify_lock.json'
     if not os.path.exists(lock_file):
@@ -1924,7 +1924,7 @@ def notifyMessageTry(msg, msgtype='text', stype='common', trigger_time=300, is_w
     if 'email' in data and 'enable' in data['email']:
         if data['email']['enable']:
             t = data['email']['data']
-            t['subject'] = '江湖面板通知'
+            t['subject'] = title
             t['content'] = msg
             t['contentType'] = msgtype
             do_notify = emailNotifyMessage(t)
@@ -1936,9 +1936,9 @@ def notifyMessageTry(msg, msgtype='text', stype='common', trigger_time=300, is_w
 # stype 通知类型
 # trigger_time 间隔时间（秒）
 # is_write_log 是否写入日志
-def notifyMessage(msg, msgtype='text', stype='common', trigger_time=300, is_write_log=True):
+def notifyMessage(msg, msgtype='text', title='江湖面板通知', stype='common', trigger_time=300, is_write_log=True):
     try:
-        return notifyMessageTry(msg, msgtype, stype, trigger_time, is_write_log)
+        return notifyMessageTry(msg, msgtype, title, stype, trigger_time, is_write_log)
     except Exception as e:
         writeFileLog(getTracebackInfo())
         return False

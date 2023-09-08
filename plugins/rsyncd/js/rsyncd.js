@@ -579,6 +579,7 @@ function rsyncdReceive(){
 		var con = '';
 
         con += '<div style="padding-top:1px;">\
+                <button class="btn btn-success btn-sm" onclick="addReceive();">创建接收任务</button>\
                 <button class="btn btn-success btn-sm" onclick="rsyncdConf();">配置</button>\
                 <button class="btn btn-success btn-sm" onclick="rsyncdLog();">日志</button>\
             </div>';
@@ -588,7 +589,7 @@ function rsyncdReceive(){
         con += '<th>服务名</th>';
         con += '<th>路径</th>';
         con += '<th>备注</th>';
-        con += '<th>操作(<a class="btlink" onclick="addReceive()">添加</a>)</th>';
+        con += '<th>操作</th>';
         con += '</tr></thead>';
 
         con += '<tbody>';

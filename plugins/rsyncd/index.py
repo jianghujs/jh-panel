@@ -952,7 +952,7 @@ def testSSHRsync():
         return data[1]
 
     rsync_bin = mw.execShell('which rsync')[0].strip()
-    cmd = """%(rsync_bin)s --dry-run -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s' %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": args['ssh_port'], "key_path": args['key_path'], "path": args["path"], "ip": args['ip'] , "target_path": args['target_path']}
+    cmd = """%(rsync_bin)s --dry-run -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s' --exclude 'node_modules' --exclude 'logs' --exclude 'run' %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": args['ssh_port'], "key_path": args['key_path'], "path": args["path"], "ip": args['ip'] , "target_path": args['target_path']}
     data = mw.execShell(cmd)
     return mw.returnJson(False if "Permission denied" in data[0] else True, str(data))
 

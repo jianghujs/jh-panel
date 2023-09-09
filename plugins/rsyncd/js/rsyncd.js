@@ -84,6 +84,24 @@ function createSendTask(name = ''){
             period_minute_n = "selected";
         }
 
+        // 连接方式选中
+        var conn_type_key = "";
+        var conn_type_user = "";
+        var conn_type_ssh = "";
+        if(data['conn_type'] == 'ssh') {
+            conn_type_key = "";
+            conn_type_user = "";
+            conn_type_ssh = "selected";
+        } else if(data['conn_type'] == 'user') {
+            conn_type_key = "";
+            conn_type_user = "selected";
+            conn_type_ssh = "";
+        } else {
+            conn_type_key = "selected";
+            conn_type_user = "";
+            conn_type_ssh = "";
+        }
+
         var layerID = layer.open({
             type: 1,
             area: ['600px','500px'],
@@ -155,9 +173,9 @@ function createSendTask(name = ''){
                     <span class='tname'>连接方式</span>\
                     <div class='info-r c4'>\
                         <select class='bt-input-text' name='conn_type' style='width:100px'>\
-                            <option value='key'>密钥</option>\
-                            <option value='user'>帐号</option>\
-                            <option value='ssh'>SSH</option>\
+                            <option value='key' " + conn_type_key +  ">密钥</option>\
+                            <option value='user' " + conn_type_user + ">帐号</option>\
+                            <option value='ssh' " + conn_type_ssh + ">SSH</option>\
                         </select>\
                         <span data-toggle='tooltip' data-placement='top' title='密钥和账号的方式，需要目标服务器添加接收配置获取。SSH不需要目标服务器添加配置。SSH方式以root账号连接，常用于同步需要高权限的数据。' class='bt-ico-ask' style='cursor: pointer;'>?</span>\
                         <span style='margin-left: 45px;margin-right: 10px;'>压缩传输</span>\
@@ -195,19 +213,19 @@ function createSendTask(name = ''){
                 <div class='line conn-ssh'>\
                     <span class='tname'>SSH端口</span>\
                     <div class='info-r c4'>\
-                        <input class='bt-input-text' type='number' name='ssh_port' min='0'  value='"+(data["rsync"]["ssh_port"] || 22)+"' style='width:310px' />\
+                        <input class='bt-input-text' type='number' name='ssh_port' min='0'  value='"+(data["ssh_port"] || 22)+"' style='width:310px' />\
                     </div>\
                 </div>\
                 <div class='line conn-ssh'>\
                     <span class='tname'>公钥文件</span>\
                     <div class='info-r c4'>\
-                        <input class='bt-input-text' name='rsa_pub' value='"+(data["rsync"]["rsa_pub"] || '/root/.ssh/id_rsa.pub')+"' placeholder='公钥文件位置（如：/root/.ssh/id_rsa.pub）' style='width:310px' />\
+                        <input class='bt-input-text' name='rsa_pub' value='"+(data["rsa_pub"] || '/root/.ssh/id_rsa.pub')+"' placeholder='公钥文件位置（如：/root/.ssh/id_rsa.pub）' style='width:310px' />\
                     </div>\
                 </div>\
                 <div class='line conn-ssh'>\
                     <span class='tname'>目标目录</span>\
                     <div class='info-r c4'>\
-                        <input class='bt-input-text' name='target_path' value='"+(data["rsync"]["target_path"] || '')+"' style='width:310px' />\
+                        <input class='bt-input-text' name='target_path' value='"+(data["target_path"] || '')+"' style='width:310px' />\
                     </div>\
                 </div>\
                 <ul class=\"help-info-text c7\">\
@@ -215,15 +233,12 @@ function createSendTask(name = ''){
               </form>",
             success:function(){
                 $('[data-toggle="tooltip"]').tooltip();
-
-                $(".conn-user").hide();
-                $(".conn-ssh").hide();
-                $("select[name='conn_type']").change(function(){
-                    if($(this).val() == 'key'){
+                function handleConnTypeChange(conn_type) {
+                    if(conn_type == 'key'){
                         $(".conn-key").show();
                         $(".conn-user").hide();
                         $(".conn-ssh").hide();
-                    }else if($(this).val() == 'user'){
+                    }else if(conn_type == 'user'){
                         $(".conn-key").hide();
                         $(".conn-user").show();
                         $(".conn-ssh").hide();
@@ -232,6 +247,11 @@ function createSendTask(name = ''){
                         $(".conn-user").hide();
                         $(".conn-ssh").show();
                     }
+                }
+                
+                handleConnTypeChange(data['conn_type'] || 'key')
+                $("select[name='conn_type']").change(function(){
+                    handleConnTypeChange($(this).val());
                 });
 
 

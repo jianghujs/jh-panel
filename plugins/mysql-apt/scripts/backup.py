@@ -56,17 +56,8 @@ class backupTools:
         mysql_root = mw.M('config').dbPos(db_path, db_name).where(
             "id=?", (1,)).getField('mysql_root')
 
-        my_conf_path = db_path + '/etc/my.cnf'
-        mycnf = mw.readFile(my_conf_path)
-        rep = "\[mysqldump\]\nuser=root"
-        sea = "[mysqldump]\n"
-        subStr = sea + "user=root\npassword=" + mysql_root + "\n"
-        mycnf = mycnf.replace(sea, subStr)
-        if len(mycnf) > 100:
-            mw.writeFile(db_path + '/etc/my.cnf', mycnf)
-
-        cmd = db_path + "/bin/usr/bin/mysqldump --defaults-file=" + my_conf_path + "  --single-transaction --quick --default-character-set=utf8 " + \
-            name + " | gzip > " + filename
+        cmd = db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
+            name + " -uroot -p" + mysql_root + " | gzip > " + filename
         mw.execShell(cmd)
 
         if not os.path.exists(filename):
@@ -76,11 +67,6 @@ class backupTools:
             print(
                 "----------------------------------------------------------------------------")
             return
-
-        mycnf = mw.readFile(db_path + '/etc/my.cnf')
-        mycnf = mycnf.replace(subStr, sea)
-        if len(mycnf) > 100:
-            mw.writeFile(db_path + '/etc/my.cnf', mycnf)
 
         endDate = time.strftime('%Y/%m/%d %X', time.localtime())
         outTime = time.time() - startTime

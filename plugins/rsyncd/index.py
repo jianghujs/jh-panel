@@ -586,7 +586,7 @@ def makeLsyncdConf(data):
             remote_addr = t['name'] + '@' + t['ip'] + "::" + t['name']
             cmd = ''
             if t['conn_type'] == 'ssh':
-                cmd = """%(rsync_bin)s -avu -e 'ssh -p %(ssh_port)s' --bwlimit=%(bwlimit)s --exclude-from=%(cmd_exclude)s %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": t['ssh_port'], "bwlimit": t['rsync']['bwlimit'], "cmd_exclude": cmd_exclude, "path": t["path"], "ip": t['ip'] , "target_path": t['target_path']}
+                cmd = """%(rsync_bin)s -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s' --bwlimit=%(bwlimit)s --exclude-from=%(cmd_exclude)s %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": t['ssh_port'], "key_path": t['key_path'], "bwlimit": t['rsync']['bwlimit'], "cmd_exclude": cmd_exclude, "path": t["path"], "ip": t['ip'] , "target_path": t['target_path']}
             else:
                 cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr
@@ -793,14 +793,14 @@ def lsyncdAdd():
         info['password'] = args['password']
         info['port'] = args['port']
     else:
-        data = checkArgs(args, ['ssh_port', 'rsa_pub', 'target_path'])
+        data = checkArgs(args, ['ssh_port', 'key_path', 'target_path'])
         if not data[0]:
             return data[1]
         info['name'] = ip + "@" + args["target_path"].rstrip('/').split('/').pop()
         info['password'] = ''
         info['port'] = ''
         info['ssh_port'] = args['ssh_port']
-        info['rsa_pub'] = args['rsa_pub']
+        info['key_path'] = args['key_path']
         info['target_path'] = args['target_path']
 
     rsync = {
@@ -944,36 +944,14 @@ def lsyncdAddExclude():
 
 def testSSHRsync():
     args = getArgs()
-    data = checkArgs(args, ['host', 'port', 'username', 'key_path'])
+    data = checkArgs(args, ['ip', 'ssh_port', 'key_path', 'path', 'target_path'])
     if not data[0]:
         return data[1]
-    host = args['host']
-    port = args['port']
-    username = args['username']
-    key_path = args['key_path']
 
-    # 创建SSH客户端
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-    # 尝试连接
-    try:
-        private_key = paramiko.RSAKey(filename=key_path)
-        client.connect(hostname=host, port=port, username=username, pkey=private_key)
-
-        # 执行rsync命令，这里只是一个简单的测试
-        stdin, stdout, stderr = client.exec_command('rsync --version')
-        output = stdout.read()
-
-        # 如果命令执行成功，rsync应该返回其版本信息
-        if output:
-            return mw.returnJson(True, 'rsync version:' + str(output.decode()))
-        else:
-            return mw.returnJson(False, 'rsync test failed:' + str(stderr.read().decode()))
-    except Exception as e:
-        return mw.returnJson(False, 'SSH connection failed:' + str(e))
-    finally:
-        client.close()
+    rsync_bin = mw.execShell('which rsync')[0].strip()
+    cmd = """%(rsync_bin)s --dry-run -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s' %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": args['ssh_port'], "key_path": args['key_path'], "path": args["path"], "ip": args['ip'] , "target_path": args['target_path']}
+    data = mw.execShell(cmd)
+    return mw.returnJson(False if "Permission denied" in data[0] else True, str(data))
 
 if __name__ == "__main__":
     func = sys.argv[1]

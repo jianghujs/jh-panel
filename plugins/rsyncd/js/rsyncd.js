@@ -220,9 +220,9 @@ function createSendTask(name = ''){
                     </div>\
                 </div>\
                 <div class='line conn-ssh'>\
-                    <span class='tname'>公钥文件</span>\
+                    <span class='tname'>密钥文件</span>\
                     <div class='info-r c4'>\
-                        <input class='bt-input-text' name='rsa_pub' value='"+(data["rsa_pub"] || '/root/.ssh/id_rsa.pub')+"' placeholder='公钥文件位置（如：/root/.ssh/id_rsa.pub）' style='width:310px' />\
+                        <input class='bt-input-text' name='key_path' value='"+(data["key_path"] || '/root/.ssh/id_rsa')+"' placeholder='密钥文件位置（如：/root/.ssh/id_rsa.pub）' style='width:310px' />\
                     </div>\
                 </div>\
                 <div class='line conn-ssh'>\
@@ -347,10 +347,10 @@ function createSendTask(name = ''){
                     }
                 } else {
                     args['ssh_port'] = $("input[name='ssh_port']").val();
-                    args['rsa_pub'] = $("input[name='rsa_pub']").val();
+                    args['key_path'] = $("input[name='key_path']").val();
                     args['target_path'] = $("input[name='target_path']").val();
-                    if (!args['ssh_port'] || !args['rsa_pub'] || !args['target_path']){
-                        layer.msg('请输入SSH端口、公钥文件、目标目录信息');
+                    if (!args['ssh_port'] || !args['key_path'] || !args['target_path']){
+                        layer.msg('请输入SSH端口、密钥文件、目标目录信息');
                         return false;
                     }
                 }
@@ -365,7 +365,7 @@ function createSendTask(name = ''){
                 var port = Number($("input[name='u_port']").val());
                 args['port'] = port;
                 args['ssh_port'] = $("input[name='ssh_port']").val();
-                args['rsa_pub'] = $("input[name='rsa_pub']").val();
+                args['key_path'] = $("input[name='key_path']").val();
                 args['target_path'] = $("input[name='target_path']").val();
 
                 
@@ -385,14 +385,13 @@ function createSendTask(name = ''){
                 args['minute-n'] = $('input[name="minute-n"]').val();
 
                 if(args['conn_type'] == 'ssh') {
-                    let testResult = JSON.parse((await rsPost('test_ssh_rsync', {'host': args['ip'], 'port': args['ssh_port'], 'username': 'root', 'key_path': args['rsa_pub']})).data)
+                    let testResult = JSON.parse((await rsPost('test_ssh_rsync', args)).data)
                     if (!testResult.status) {
-                        layer.msg("使用公钥文件连接服务器失败!<br/>请检查文件内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
+                        layer.msg("使用密钥文件连接服务器失败!<br/>请检查对应的公钥内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
                         return 
                     }
                 }
-                print("haha")
-                return
+                
                 rsPost('lsyncd_add', args, function(rdata){
                     var rdata = $.parseJSON(rdata.data);
                     layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});

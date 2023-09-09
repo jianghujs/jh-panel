@@ -91,18 +91,18 @@ function createSendTask(name = ''){
         var conn_type_key = "";
         var conn_type_user = "";
         var conn_type_ssh = "";
-        if(data['conn_type'] == 'ssh') {
-            conn_type_key = "";
+        if(data['conn_type'] == 'key') {
+            conn_type_key = "selected";
             conn_type_user = "";
-            conn_type_ssh = "selected";
+            conn_type_ssh = "";
         } else if(data['conn_type'] == 'user') {
             conn_type_key = "";
             conn_type_user = "selected";
             conn_type_ssh = "";
         } else {
-            conn_type_key = "selected";
+            conn_type_key = "";
             conn_type_user = "";
-            conn_type_ssh = "";
+            conn_type_ssh = "selected";
         }
 
         var layerID = layer.open({
@@ -252,7 +252,7 @@ function createSendTask(name = ''){
                     }
                 }
                 
-                handleConnTypeChange(data['conn_type'] || 'key')
+                handleConnTypeChange(data['conn_type'] || 'ssh')
                 $("select[name='conn_type']").change(function(){
                     handleConnTypeChange($(this).val());
                 });
@@ -391,7 +391,7 @@ function createSendTask(name = ''){
                         return 
                     }
                 }
-                
+
                 rsPost('lsyncd_add', args, function(rdata){
                     var rdata = $.parseJSON(rdata.data);
                     layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});

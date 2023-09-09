@@ -691,9 +691,12 @@ def lsyncdGet():
         "secret_key": '',
         "ip": '',
         "path": mw.getWwwDir() + '/',
+        "target_path": mw.getWwwDir() + '/',
         'rsync': rsync,
-        'realtime': "true",
+        'realtime': "false",
         'delete': "false",
+        'period': "minute",
+        "minute-n": 120
     }
     if res[0]:
         list_index = res[1]

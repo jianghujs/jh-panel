@@ -689,7 +689,7 @@ def lsyncdGet():
     info = {
         "secret_key": '',
         "ip": '',
-        "path": mw.getServerDir() + '/',
+        "path": mw.getWwwDir() + '/',
         'rsync': rsync,
         'realtime': "true",
         'delete': "false",
@@ -854,7 +854,6 @@ def lsyncdRun():
     cmd += ('mkdir -p $LOG_DIR\n')
     cmd += "bash " + app_dir + "/cmd >> $LOG_DIR/run_$timestamp.log" + " 2>&1 &\n"
     cmd += ('python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR\n')
-    print("CMD+++>", cmd, "<++++CMD")
     mw.execShell(cmd)
     return mw.returnJson(True, "执行成功!")
 

@@ -1,29 +1,32 @@
 function rsPost(method,args,callback, title){
-
-    var _args = null; 
-    if (typeof(args) == 'string'){
-        _args = JSON.stringify(toArrayObject(args));
-    } else {
-        _args = JSON.stringify(args);
-    }
-
-    var _title = '正在获取...';
-    if (typeof(title) != 'undefined'){
-        _title = title;
-    }
-
-    var loadT = layer.msg(_title, { icon: 16, time: 0, });
-    $.post('/plugins/run', {name:'rsyncd', func:method, args:_args}, function(data) {
-        layer.close(loadT);
-        if (!data.status){
-            layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});
-            return;
+    return new Promise((resolve, reject) => {   
+        var _args = null; 
+        if (typeof(args) == 'string'){
+            _args = JSON.stringify(toArrayObject(args));
+        } else {
+            _args = JSON.stringify(args);
         }
 
-        if(typeof(callback) == 'function'){
-            callback(data);
+        var _title = '正在获取...';
+        if (typeof(title) != 'undefined'){
+            _title = title;
         }
-    },'json'); 
+
+        var loadT = layer.msg(_title, { icon: 16, time: 0, });
+        $.post('/plugins/run', {name:'rsyncd', func:method, args:_args}, function(data) {
+            layer.close(loadT);
+            if (!data.status){
+                layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+                return;
+            }
+
+
+            if(typeof(callback) == 'function'){
+                callback(data);
+            }
+            resolve(data)
+        },'json'); 
+    })
 }
 
 ///////////////// ----------------- 发送配置 ---------------- //////////////
@@ -322,7 +325,7 @@ function createSendTask(name = ''){
                     }
                 });
             },
-            yes:function(index){
+            yes:async function(index){
                 var args = {};
                 var conn_type = $("select[name='conn_type']").val();
         
@@ -381,6 +384,15 @@ function createSendTask(name = ''){
                 args['minute'] = $('input[name="minute"]').val();
                 args['minute-n'] = $('input[name="minute-n"]').val();
 
+                if(args['conn_type'] == 'ssh') {
+                    let testResult = JSON.parse((await rsPost('test_ssh_rsync', {'host': args['ip'], 'port': args['ssh_port'], 'username': 'root', 'key_path': args['rsa_pub']})).data)
+                    if (!testResult.status) {
+                        layer.msg("使用公钥文件连接服务器失败!<br/>请检查文件内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
+                        return 
+                    }
+                }
+                print("haha")
+                return
                 rsPost('lsyncd_add', args, function(rdata){
                     var rdata = $.parseJSON(rdata.data);
                     layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});

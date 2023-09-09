@@ -6,6 +6,7 @@ import os
 import json
 import re
 import sys
+import paramiko
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -940,6 +941,40 @@ def lsyncdAddExclude():
     makeLsyncdConf(data)
     return mw.returnJson(True, "OK!", exclude_list)
 
+
+def testSSHRsync():
+    args = getArgs()
+    data = checkArgs(args, ['host', 'port', 'username', 'key_path'])
+    if not data[0]:
+        return data[1]
+    host = args['host']
+    port = args['port']
+    username = args['username']
+    key_path = args['key_path']
+
+    # 创建SSH客户端
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    # 尝试连接
+    try:
+        private_key = paramiko.RSAKey(filename=key_path)
+        client.connect(hostname=host, port=port, username=username, pkey=private_key)
+
+        # 执行rsync命令，这里只是一个简单的测试
+        stdin, stdout, stderr = client.exec_command('rsync --version')
+        output = stdout.read()
+
+        # 如果命令执行成功，rsync应该返回其版本信息
+        if output:
+            return mw.returnJson(True, 'rsync version:' + str(output.decode()))
+        else:
+            return mw.returnJson(False, 'rsync test failed:' + str(stderr.read().decode()))
+    except Exception as e:
+        return mw.returnJson(False, 'SSH connection failed:' + str(e))
+    finally:
+        client.close()
+
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':
@@ -994,5 +1029,7 @@ if __name__ == "__main__":
         print(lsyncdRemoveExclude())
     elif func == 'lsyncd_add_exclude':
         print(lsyncdAddExclude())
+    elif func == 'test_ssh_rsync':
+        print(testSSHRsync())
     else:
         print('error')

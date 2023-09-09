@@ -157,7 +157,9 @@ function createSendTask(name = ''){
                         <select class='bt-input-text' name='conn_type' style='width:100px'>\
                             <option value='key'>密钥</option>\
                             <option value='user'>帐号</option>\
+                            <option value='ssh'>SSH</option>\
                         </select>\
+                        <span data-toggle='tooltip' data-placement='top' title='密钥和账号的方式，需要目标服务器添加接收配置获取。SSH不需要目标服务器添加配置。SSH方式以root账号连接，常用于同步需要高权限的数据。' class='bt-ico-ask' style='cursor: pointer;'>?</span>\
                         <span style='margin-left: 45px;margin-right: 10px;'>压缩传输</span>\
                         <select class='bt-input-text' name='compress' style='width:100px'>\
                             <option value='true' "+compress_true+">开启</option>\
@@ -175,19 +177,37 @@ function createSendTask(name = ''){
                 <div class='line conn-user'>\
                     <span class='tname'>用户名</span>\
                     <div class='info-r c4'>\
-                        <input class='bt-input-text' type='text' name='u_user' min='0'  value='"+data["name"]+"' style='width:310px' />\
+                        <input class='bt-input-text' type='text' name='u_user' min='0'  value='"+(data["name"]||'')+"' style='width:310px' />\
                     </div>\
                 </div>\
                 <div class='line conn-user'>\
                     <span class='tname'>密码</span>\
                     <div class='info-r c4'>\
-                        <input class='bt-input-text' type='text' name='u_pass' min='0'  value='"+data["password"]+"' style='width:310px' />\
+                        <input class='bt-input-text' type='text' name='u_pass' min='0'  value='"+(data["password"]||'')+"' style='width:310px' />\
                     </div>\
                 </div>\
                 <div class='line conn-user'>\
                     <span class='tname'>端口</span>\
                     <div class='info-r c4'>\
                         <input class='bt-input-text' type='number' name='u_port' min='0'  value='"+data["rsync"]["port"]+"' style='width:310px' />\
+                    </div>\
+                </div>\
+                <div class='line conn-ssh'>\
+                    <span class='tname'>SSH端口</span>\
+                    <div class='info-r c4'>\
+                        <input class='bt-input-text' type='number' name='ssh_port' min='0'  value='"+(data["rsync"]["ssh_port"] || 22)+"' style='width:310px' />\
+                    </div>\
+                </div>\
+                <div class='line conn-ssh'>\
+                    <span class='tname'>公钥文件</span>\
+                    <div class='info-r c4'>\
+                        <input class='bt-input-text' name='rsa_pub' value='"+(data["rsync"]["rsa_pub"] || '/root/.ssh/id_rsa.pub')+"' placeholder='公钥文件位置（如：/root/.ssh/id_rsa.pub）' style='width:310px' />\
+                    </div>\
+                </div>\
+                <div class='line conn-ssh'>\
+                    <span class='tname'>目标目录</span>\
+                    <div class='info-r c4'>\
+                        <input class='bt-input-text' name='target_path' value='"+(data["rsync"]["target_path"] || '')+"' style='width:310px' />\
                     </div>\
                 </div>\
                 <ul class=\"help-info-text c7\">\
@@ -197,13 +217,20 @@ function createSendTask(name = ''){
                 $('[data-toggle="tooltip"]').tooltip();
 
                 $(".conn-user").hide();
+                $(".conn-ssh").hide();
                 $("select[name='conn_type']").change(function(){
                     if($(this).val() == 'key'){
-                        $(".conn-user").hide();
                         $(".conn-key").show();
-                    }else{
-                        $(".conn-user").show();
+                        $(".conn-user").hide();
+                        $(".conn-ssh").hide();
+                    }else if($(this).val() == 'user'){
                         $(".conn-key").hide();
+                        $(".conn-user").show();
+                        $(".conn-ssh").hide();
+                    } else {
+                        $(".conn-key").hide();
+                        $(".conn-user").hide();
+                        $(".conn-ssh").show();
                     }
                 });
 
@@ -286,13 +313,21 @@ function createSendTask(name = ''){
                         layer.msg('请输入接收密钥！');
                         return false;
                     }
-                } else {
+                } else if (conn_type == 'user') {
                     args['sname'] = $("input[name='u_user']").val();
                     args['password'] = $("input[name='u_pass']").val();
                     var port = Number($("input[name='u_port']").val());
                     args['port'] = port;
                     if (!args['sname'] || !args['password'] || !args['port']){
                         layer.msg('请输入帐号、密码、端口信息');
+                        return false;
+                    }
+                } else {
+                    args['ssh_port'] = $("input[name='ssh_port']").val();
+                    args['rsa_pub'] = $("input[name='rsa_pub']").val();
+                    args['target_path'] = $("input[name='target_path']").val();
+                    if (!args['ssh_port'] || !args['rsa_pub'] || !args['target_path']){
+                        layer.msg('请输入SSH端口、公钥文件、目标目录信息');
                         return false;
                     }
                 }
@@ -306,6 +341,9 @@ function createSendTask(name = ''){
                 args['password'] = $("input[name='u_pass']").val();
                 var port = Number($("input[name='u_port']").val());
                 args['port'] = port;
+                args['ssh_port'] = $("input[name='ssh_port']").val();
+                args['rsa_pub'] = $("input[name='rsa_pub']").val();
+                args['target_path'] = $("input[name='target_path']").val();
 
                 
                 args['ip'] = $('input[name="ip"]').val();
@@ -579,6 +617,7 @@ function rsyncdReceive(){
 		var con = '';
 
         con += '<div style="padding-top:1px;">\
+                <button class="btn btn-success btn-sm" onclick="addReceive();">创建接收任务</button>\
                 <button class="btn btn-success btn-sm" onclick="rsyncdConf();">配置</button>\
                 <button class="btn btn-success btn-sm" onclick="rsyncdLog();">日志</button>\
             </div>';
@@ -588,7 +627,7 @@ function rsyncdReceive(){
         con += '<th>服务名</th>';
         con += '<th>路径</th>';
         con += '<th>备注</th>';
-        con += '<th>操作(<a class="btlink" onclick="addReceive()">添加</a>)</th>';
+        con += '<th>操作</th>';
         con += '</tr></thead>';
 
         con += '<tbody>';

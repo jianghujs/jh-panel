@@ -563,6 +563,7 @@ def makeLsyncdConf(data):
         for x in range(len(lsyncd_list)):
 
             t = lsyncd_list[x]
+
             name_dir = send_dir + "/" + t["name"]
             if not os.path.exists(name_dir):
                 mw.execShell("mkdir -p " + name_dir)
@@ -580,8 +581,13 @@ def makeLsyncdConf(data):
             if t['delete'] == "true":
                 delete_ok = ' --delete '
 
+            
             remote_addr = t['name'] + '@' + t['ip'] + "::" + t['name']
-            cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
+            cmd = ''
+            if t['conn_type'] == 'ssh':
+                cmd = """%(rsync_bin)s -avu -e 'ssh -p %(ssh_port)s' --bwlimit=%(bwlimit)s --exclude-from=%(cmd_exclude)s %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": t['ssh_port'], "bwlimit": t['rsync']['bwlimit'], "cmd_exclude": cmd_exclude, "path": t["path"], "ip": t['ip'] , "target_path": t['target_path']}
+            else:
+                cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr
             mw.writeFile(name_dir + "/cmd", cmd)
             mw.execShell("cmod +x " + name_dir + "/cmd")
@@ -593,11 +599,16 @@ def makeLsyncdConf(data):
             content += "sync {\n"
             content += "\tdefault.rsync,\n"
             content += "\tsource = \"" + t['path'] + "\",\n"
-            content += "\ttarget = \"" + remote_addr + "\",\n"
+
+            if t['conn_type'] == 'ssh':
+                content += "\host = \"" + t['ip'] + "\",\n"
+                content += "\ttarget_dir = \"" + t['target_path'] + "\",\n"
+            else:
+                content += "\ttarget = \"" + remote_addr + "\",\n"
+
             content += "\tdelete = " + t['delete'] + ",\n"
             content += "\tdelay = " + t['delay'] + ",\n"
             content += "\tinit = false,\n"
-
             exclude_str = json.dumps(t['exclude'])
             exclude_str = exclude_str.replace("[", "{")
             exclude_str = exclude_str.replace("]", "}")
@@ -610,13 +621,21 @@ def makeLsyncdConf(data):
             content += "\t\tarchive = true,\n"
             content += "\t\tverbose = true,\n"
             content += "\t\tcompress = " + t['rsync']['compress'] + ",\n"
-            content += "\t\tpassword_file = \"" + cmd_pass + "\",\n"
 
+            if t['conn_type'] != 'ssh':
+                content += "\t\tpassword_file = \"" + cmd_pass + "\",\n"
+            
             content += "\t\t_extra = {\"--bwlimit=" + t['rsync'][
                 'bwlimit'] + "\", \"--port=" + str(t['rsync']['port']) + "\"},\n"
 
             content += "\t}\n"
-            content += "}\n"
+
+            # ssh
+            if t['conn_type'] == 'ssh':
+                content += "\tssh = {\n"
+                content += "\t\port = \"" + t['ssh_port'] + "\"\n"
+                content += "\t}\n"
+                content += "}\n"
 
     path = getServerDir() + "/lsyncd.conf"
     mw.writeFile(path, content)
@@ -764,7 +783,7 @@ def lsyncdAdd():
             info['port'] = m['C']
         except Exception as e:
             return mw.returnJson(False, "接收密钥格式错误!")
-    else:
+    elif conn_type == 'user':
         data = checkArgs(args, ['sname', 'password'])
         if not data[0]:
             return data[1]
@@ -772,10 +791,20 @@ def lsyncdAdd():
         info['name'] = args['sname']
         info['password'] = args['password']
         info['port'] = args['port']
+    else:
+        data = checkArgs(args, ['ssh_port', 'rsa_pub', 'target_path'])
+        if not data[0]:
+            return data[1]
+        info['name'] = ip + "@" + args["target_path"].rstrip('/').split('/').pop()
+        info['password'] = ''
+        info['port'] = ''
+        info['ssh_port'] = args['ssh_port']
+        info['rsa_pub'] = args['rsa_pub']
+        info['target_path'] = args['target_path']
 
     rsync = {
         'bwlimit': bwlimit,
-        "port": info['port'],
+        "port": info.get('port', ''),
         "compress": compress,
         "archive": "true",
         "verbose": "true"
@@ -825,6 +854,7 @@ def lsyncdRun():
     cmd += ('mkdir -p $LOG_DIR\n')
     cmd += "bash " + app_dir + "/cmd >> $LOG_DIR/run_$timestamp.log" + " 2>&1 &\n"
     cmd += ('python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR\n')
+    print("CMD+++>", cmd, "<++++CMD")
     mw.execShell(cmd)
     return mw.returnJson(True, "执行成功!")
 

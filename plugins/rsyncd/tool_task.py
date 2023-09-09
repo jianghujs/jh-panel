@@ -86,9 +86,10 @@ def createBgTaskByName(name, args):
         _minute = ''
 
     cmd = '''
+timestamp=$(date +%Y%m%d_%H%M%S)
 rname=%s
 plugin_path=%s
-logs_file=$plugin_path/send/${rname}/run.log
+logs_file=$plugin_path/send/${rname}logs/run_$timestamp.log
 ''' % (name, getServerDir())
     cmd += 'echo "★【`date +"%Y-%m-%d %H:%M:%S"`】 STSRT" >> $logs_file' + "\n"
     cmd += 'echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" >> $logs_file' + "\n"

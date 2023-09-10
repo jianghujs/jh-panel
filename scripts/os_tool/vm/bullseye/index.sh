@@ -35,6 +35,7 @@ show_menu() {
     echo "1. 初始化环境"
     echo "2. 生成指定域名SSH密钥"
     echo "3. 服务器迁移"
+    echo "4. 检查数据库表"
     echo "========================================================"
 }
 
@@ -55,6 +56,9 @@ case $choice in
     ;;
 3)
     download_and_run migrate_index.sh
+    ;;
+4)
+    download_and_run check_database.sh
     ;;
 esac
 

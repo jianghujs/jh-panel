@@ -270,7 +270,7 @@ function requestApi(method,args,callback){
         if(args.showLoading != false) {
             var loadT = layer.msg('正在获取中...', { icon: 16, time: 0});
         }
-        $.post('/plugins/run', {name:'docker', func:method, args:_args}, function(data) {
+        $.post('/plugins/run', {name:'cmd', func:method, args:_args}, function(data) {
             layer.close(loadT);
             if (!data.status){
                 layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});

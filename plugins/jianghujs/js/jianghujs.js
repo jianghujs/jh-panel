@@ -102,12 +102,14 @@ function renderTableData() {
                     <td style="width: 180px;">'+tmp[i].name+'<span style="display: none">'+tmp[i].echo+'</span>'+'</td>' +
                     '<td style="width: 100px;">'+autostart+'</td>' +
                     '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
-                    <td style="text-align: right;width: 280px;">\
-                        '+opt+
-                        '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
-                        // '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
-                        '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
-                        '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
+                    <td style="text-align: right;">\
+                        <div style="width: 200px; float: right;">\
+                            '+opt+
+                            '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
+                            // '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
+                            '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
+                            '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
+                        </div>\
                     </td>\
                 </tr>';
     }

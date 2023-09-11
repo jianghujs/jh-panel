@@ -789,6 +789,53 @@ def repoList():
 
     return mw.returnJson(True, 'ok', repostory_info)
 
+def dockerComposeDir():
+    return getServerDir() + '/docker-compose'
+
+def dockerComposeList():
+    result = []  
+    docker_compose_dir = dockerComposeDir()
+    for d_walk in os.walk(docker_compose_dir):
+        for d_list in d_walk[2]:
+            if mw.getFileSuffix(d_list) == 'yml': 
+                filepath = '%s/%s' % (docker_compose_dir, d_list)
+                result.append({
+                    'filename': d_list,
+                    'path': filepath,
+                    'size': mw.getPathSize(filepath),
+                    'sizeTxt': mw.toSize(mw.getPathSize(filepath)),
+                    'createTime': os.path.getctime(filepath)
+                })
+    return mw.returnJson(True, 'ok', result)
+
+def dockerComposeAddOrUpdate():
+    args = getArgs()
+    data = checkArgs(args, ['name', 'content'])
+    if not data[0]:
+        return data[1]
+
+    name = args['name']
+    content = args['content']
+
+    docker_compose_dir = dockerComposeDir()
+    
+    if not os.path.exists(docker_compose_dir):
+        mw.execShell('mkdir -p ' + docker_compose_dir)
+    docker_compose_file = docker_compose_dir + '/' + name + '.yml'
+    mw.writeFile(docker_compose_file, content)
+    mw.execShell('chmod 750 ' + docker_compose_file)
+    
+    return mw.returnJson(True, '添加成功!')
+
+def dockerComposeRemove():
+    args = getArgs()
+    data = checkArgs(args, ['path'])
+    if not data[0]:
+        return data[1]
+    
+    name = args['name']    
+    os.remove(path)
+    return mw.returnJson(True, '删除成功!')
 
 if __name__ == "__main__":
     func = sys.argv[1]

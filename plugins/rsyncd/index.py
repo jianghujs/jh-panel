@@ -587,7 +587,7 @@ def makeLsyncdConf(data):
             remote_addr = t['name'] + '@' + t['ip'] + "::" + t['name']
             cmd = ''
             if t['conn_type'] == 'ssh':
-                cmd = """%(rsync_bin)s -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s' --bwlimit=%(bwlimit)s --exclude-from=%(cmd_exclude)s %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": t['ssh_port'], "key_path": t['key_path'], "bwlimit": t['rsync']['bwlimit'], "cmd_exclude": cmd_exclude, "path": t["path"], "ip": t['ip'] , "target_path": t['target_path']}
+                cmd = """%(rsync_bin)s -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s -o UserKnownHostsFile=/root/.ssh/known_hosts  -o StrictHostKeyChecking=no' --bwlimit=%(bwlimit)s --exclude-from=%(cmd_exclude)s %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": t['ssh_port'], "key_path": t['key_path'], "bwlimit": t['rsync']['bwlimit'], "cmd_exclude": cmd_exclude, "path": t["path"], "ip": t['ip'] , "target_path": t['target_path']}
             else:
                 cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr
@@ -959,6 +959,29 @@ def testSSH():
     except Exception as e:
         return mw.returnJson(False, str(e))
 
+
+def getAddKnownHostsScript():
+    args = getArgs()
+    data = checkArgs(args, ['ip', 'ssh_port'])
+
+    if not data[0]:
+        return data[1]
+
+    host = "%(ip)s:%(port)s" % {"ip": args['ip'], "port": args['ssh_port']}
+    is_host_in_known_hosts = mw.checkExistHostInKnownHosts(host)
+    cmd = ""
+    if not is_host_in_known_hosts:
+        cmd += """
+        echo "正在添加服务器到已知主机列表..."
+        {
+            echo "\n" >> ~/.ssh/known_hosts
+            ssh-keyscan %(host)s >> ~/.ssh/known_hosts
+            /etc/init.d/ssh restart
+        } || echo "添加可信域名失败"
+        """ % {'host': host}
+
+    return cmd
+
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':
@@ -1015,5 +1038,7 @@ if __name__ == "__main__":
         print(lsyncdAddExclude())
     elif func == 'test_ssh':
         print(testSSH())
+    elif func == 'get_add_known_hosts_script':
+        print(getAddKnownHostsScript())
     else:
         print('error')

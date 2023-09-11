@@ -393,15 +393,21 @@ function createSendTask(name = ''){
                     }
                 }
 
-                rsPost('lsyncd_add', args, function(rdata){
+                rsPost('lsyncd_add', args, async function(rdata){
                     var rdata = $.parseJSON(rdata.data);
                     layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});
 
                     if (rdata.status){
-                         setTimeout(function(){
+                        
+                        let addKnownHostsScriptData = await rsPost('get_add_known_hosts_script', args);
+                        if (addKnownHostsScriptData.data) {
+                            await execScriptAndShowLog('正在添加可信地址...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});    
+                        }
+
+                        setTimeout(function(){
                             layer.close(index);
                             lsyncdSend();
-                         },2000);
+                        },500);
                         return;
                     }
                 });

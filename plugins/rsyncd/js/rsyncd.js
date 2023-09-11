@@ -385,6 +385,12 @@ function createSendTask(name = ''){
                 args['minute-n'] = $('input[name="minute-n"]').val();
 
                 if(args['conn_type'] == 'ssh') {
+                    let addKnownHostsScriptData = await rsPost('get_add_known_hosts_script', { ip: args['ip'] });
+                    if (addKnownHostsScriptData.data) {
+                        await execScriptAndShowLog('正在添加ip地址到已知主机列表...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+
                     let testResult = JSON.parse((await rsPost('test_ssh_rsync', args)).data)
                     if (!testResult.status) {
                         layer.msg("使用密钥文件连接服务器失败!<br/>请检查对应的公钥内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});

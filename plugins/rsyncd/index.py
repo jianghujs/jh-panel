@@ -956,6 +956,28 @@ def testSSHRsync():
     data = mw.execShell(cmd)
     return mw.returnJson(False if "Permission denied" in data[0] else True, str(data))
 
+def getAddKnownHostsScript():
+    args = getArgs()
+    data = checkArgs(args, ['ip'])
+
+    if not data[0]:
+        return data[1]
+
+    ip = args['ip']
+    is_host_in_known_hosts = mw.checkExistHostInKnownHosts(ip)
+    cmd = ""
+    if not is_host_in_known_hosts:
+        cmd += """
+        echo "正在添加git服务器到已知主机列表..."
+        {
+            echo "\n" >> ~/.ssh/known_hosts
+            ssh-keyscan %(ip)s >> ~/.ssh/known_hosts
+            /etc/init.d/ssh restart
+        } || echo "添加可信域名失败"
+        """ % {'ip': ip}
+
+    return cmd
+
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':
@@ -1012,5 +1034,7 @@ if __name__ == "__main__":
         print(lsyncdAddExclude())
     elif func == 'test_ssh_rsync':
         print(testSSHRsync())
+    elif func == 'get_add_known_hosts_script':
+        print(getAddKnownHostsScript())
     else:
         print('error')

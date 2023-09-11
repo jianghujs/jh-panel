@@ -56,57 +56,13 @@ download_and_run() {
 # 根据用户的选择执行对应的操作
 case $choice in
     1)
-        echo "初始化环境"
-        
-        # 定义一个关联数组来存储你的脚本
-        declare -A scripts
-        scripts=(
-        ["切换apt源"]="switch_apt_sources.sh"
-        ["分配固定IP"]="set_static_ip_multi_network.sh"
-        ["禁用睡眠"]="nosleep.sh"
-        ["安装并配置xrdp自启动"]="install_xrdp.sh"
-        ["安装并配置rustdesk自启动"]="install_rustdesk.sh"
-        ["安装并配置VirtualBox自启动"]="install_virtualbox.sh"
-        )
-
-        # 创建一个数组，用于存储键的顺序
-        keys=("切换apt源" "分配固定IP" "禁用睡眠" "安装并配置xrdp自启动" "安装并配置rustdesk自启动" "安装并配置VirtualBox自启动")
-
-        # 创建一个数组，用于dialog的checklist选项
-        script_options=()
-        for key in "${keys[@]}"; do
-            if [ "$key" == "安装并配置rustdesk自启动" ]; then
-                script_options+=("$key" "" off)
-            else
-                script_options+=("$key" "" on)
-            fi
-        done
-
-        cmd=(/usr/bin/dialog --separate-output --checklist "请选择要运行的脚本:" 22 76 16)
-        choices=$("${cmd[@]}" "${script_options[@]}" 2>&1 >/dev/tty)
-
-        # 根据用户的选择以正确的顺序运行对应的脚本
-        for key in "${keys[@]}"; do
-            for choice in $choices; do
-                if [ "$choice" == "$key" ]; then
-                    script_file=${scripts[$choice]}
-                    download_and_run ${script_file}
-                    break
-                fi
-            done
-        done
-        
-        # 提示用户是否需要重启
-        read -p "部分设置需要重启系统才能生效，是否重启？[Y/n]（默认为Y）： " response
-        if [[ "$response" =~ ^([yY][eE][sS]|[yY]|"")$ ]]; then
-            sudo reboot
-        fi
+        download_and_run index__init.sh
         ;;
     2)
-        download_and_run virtualbox_vm_auto_start.sh
+        download_and_run index__virtualbox_vm_auto_start.sh
         ;;
     3)
-        download_and_run virtualbox_vm_auto_snapshot.sh
+        download_and_run index__virtualbox_vm_auto_snapshot.sh
         ;;
 esac
 

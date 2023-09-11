@@ -32,9 +32,9 @@ echo "初始化环境"
 # 定义一个关联数组来存储你的脚本
 declare -A scripts
 scripts=(
-["分配固定IP"]="set_static_ip.sh"
-["配置SSH权限"]="ssh_root_login.sh"
-["安装江湖面板"]="install_jhpanel.sh"
+["分配固定IP"]="init__set_static_ip.sh"
+["配置SSH权限"]="init__ssh_root_login.sh"
+["安装江湖面板"]="init__install_jhpanel.sh"
 )
 
 # 定义一个数组来存储脚本的顺序

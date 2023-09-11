@@ -21,10 +21,10 @@ fi
 # 定义一个关联数组来存储你的脚本
 declare -A scripts
 scripts=(
-["xtrabackup"]="migrate_xtrabackup.sh"
-["网站"]="migrate_site.sh"
-["项目文件"]="migrate_project.sh"
-["插件数据-jianghujs管理器"]="migrate_plugin_data.sh"
+["xtrabackup"]="migrate__migrate_xtrabackup.sh"
+["网站"]="migrate__migrate_site.sh"
+["项目文件"]="migrate__migrate_project.sh"
+["插件数据-jianghujs管理器"]="migrate__migrate_plugin_data.sh"
 )
 
 # 定义一个数组来存储脚本的顺序
@@ -94,7 +94,7 @@ sync=${sync:-n}
 case $sync in
   [Yy]*) 
     # ./rsync_migrate_package.sh
-    download_and_run rsync_migrate_package.sh
+    download_and_run migrate__rsync_migrate_package.sh
     ;;
   [Nn]*)
     exit;;

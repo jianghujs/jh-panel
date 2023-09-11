@@ -27,8 +27,9 @@ fi
 
 show_menu() {
     echo "==================vm bullseye os-tools=================="
-    echo "请选择修复工具:"
-    echo "1. 修复数据库文件（修复可读写但xtrabackup备份报错的数据表）"
+    echo "请选择迁移模式:"
+    echo "1. 生成迁移包（全数据打包）"
+    echo "2. 上线同步（数据库恢复文件+项目文件rsync同步）"
     echo "========================================================"
 }
 
@@ -39,10 +40,30 @@ show_menu
 read -p "请输入选项数字（默认1）: " choice
 choice=${choice:-"1"}
 
+# 获取迁移临时文件存放目录
+read -p "请输入迁移临时文件存放目录（默认/www/migrate/）: " dir
+dir=${dir:-/www/migrate/}
+export MIGRATE_DIR=$dir
+# 如果目录不存在，则创建它，如果目录存在，则清空目录
+if [ -d "$dir" ]; then
+    read -p "目录已存在，是否清空目录？（默认y）[y/n] " yn
+    yn=${yn:-y}
+    case $yn in
+        [Yy]* ) rm -rf $dir/*;;
+        [Nn]* ) exit;;
+        * ) echo "请输入y或n";;
+    esac
+else
+    mkdir -p $dir
+fi
+
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run check_database.sh
+    download_and_run migrate__get_migrate_package.sh
+    ;;
+2)
+    download_and_run migrate__rsync_migrate_final.sh
     ;;
 esac
 

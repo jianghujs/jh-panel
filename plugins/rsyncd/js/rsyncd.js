@@ -266,6 +266,7 @@ function createSendTask(name = ''){
                     $('.hour input,.minute input').val('0');
                     $('.minute-n input').val('1');
                 }   
+
                 $('.synchronization').change(function(event) {
                     var selVal = $('.synchronization option:selected').val();
                     if (selVal == "false"){
@@ -293,7 +294,13 @@ function createSendTask(name = ''){
                     }
                 });
 
-
+                $("input[name='path']").change(function(event) {
+                    let val = $(this).val();
+                    if (val) {
+                        $("input[name='target_path']").val(val);
+                    }
+                });
+                
                 var selVal = $('#period select option:selected').val();
                 if (selVal == 'day'){
                     $('.hour,.minute').show();
@@ -399,10 +406,10 @@ function createSendTask(name = ''){
 
                     if (rdata.status){
                         
-                        let addKnownHostsScriptData = await rsPost('get_add_known_hosts_script', args);
-                        if (addKnownHostsScriptData.data) {
-                            await execScriptAndShowLog('正在添加可信地址...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});    
-                        }
+                        // let addKnownHostsScriptData = await rsPost('get_add_known_hosts_script', args);
+                        // if (addKnownHostsScriptData.data) {
+                        //     await execScriptAndShowLog('正在添加可信地址...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});    
+                        // }
 
                         setTimeout(function(){
                             layer.close(index);

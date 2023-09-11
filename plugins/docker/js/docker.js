@@ -953,13 +953,13 @@ function repoLogin() {
         content: '<div class="bt-docker-con docker_content">' +
             '<style>.line .tname{width:120px;}</style>' +
             '<div class="soft-man-con pd20 pb70 private_pull">' +
-            '<div class="line"><span class="tname">Repository Type</span><div class="info-r c4"><select class="bt-input-text mr5 project_version" name="dtype" style="width:250px">' + _option1 + '</select></div></div>' +
-            '<div class="line"><span class="tname">Name:</span><div class="info-r"><input class="bt-input-text" type="text" name="ctm_name" style="width:250px" value="' + obj.name + '"></div></div>' +
-            '<div class="line"><span class="tname">Username:</span><div class="info-r"><input class="bt-input-text" type="text" name="user" style="width:250px" value="' + obj.user_name + '"></div></div>' +
-            '<div class="line"><span class="tname">Password:</span><div class="info-r"><input class="bt-input-text" type="password" name="passwd" style="width:250px" value="' + obj.user_pass + '"></div></div>' +
-            '<div class="line"><span class="tname">Repository Name:</span><div class="info-r"><input class="bt-input-text" type="text" name="hub_name" style="width:250px" value="' + obj.hub_name + '"></div></div>' +
-            '<div class="line"><span class="tname">Namespaces:</span><div class="info-r"><input class="bt-input-text" type="text" name="namespace" style="width:250px" value="' + obj.namespace + '"></div></div>' +
-            '<div class="line" style="display:none"><span class="tname">Registry:</span><div class="info-r"><input class="bt-input-text" type="text" name="registry" style="width:250px" value="' + obj.registry + '"></div></div>' +
+            '<div class="line"><span class="tname">仓库类型：</span><div class="info-r c4"><select class="bt-input-text mr5 project_version" name="dtype" style="width:250px">' + _option1 + '</select></div></div>' +
+            '<div class="line"><span class="tname">名称:</span><div class="info-r"><input class="bt-input-text" type="text" name="ctm_name" style="width:250px" value="' + obj.name + '"></div></div>' +
+            '<div class="line"><span class="tname">用户名:</span><div class="info-r"><input class="bt-input-text" type="text" name="user" style="width:250px" value="' + obj.user_name + '"></div></div>' +
+            '<div class="line"><span class="tname">密码:</span><div class="info-r"><input class="bt-input-text" type="password" name="passwd" style="width:250px" value="' + obj.user_pass + '"></div></div>' +
+            '<div class="line"><span class="tname">仓库名称:</span><div class="info-r"><input class="bt-input-text" type="text" name="hub_name" style="width:250px" value="' + obj.hub_name + '"></div></div>' +
+            '<div class="line"><span class="tname">命名空间:</span><div class="info-r"><input class="bt-input-text" type="text" name="namespace" style="width:250px" value="' + obj.namespace + '"></div></div>' +
+            '<div class="line" style="display:none"><span class="tname">地址:</span><div class="info-r"><input class="bt-input-text" type="text" name="registry" style="width:250px" value="' + obj.registry + '"></div></div>' +
             '<div class="bt-form-submit-btn"><button type="button" class="btn btn-sm btn-success login_aliyun">登录</button></div>' +
             '</div>' +
             '</div>',
@@ -1061,9 +1061,9 @@ function repoList() {
                 <div class="tablescroll">\
                     <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
                     <thead><tr>\
-                    <th>Name</th>\
-                    <th>Repository Name</th>\
-                    <th>NameSpace</th>\
+                    <th>名称</th>\
+                    <th>仓库名称</th>\
+                    <th>命名空间</th>\
                     <th>地址</th>\
                     <th style="text-align:right;">操作</th></tr></thead>\
                     <tbody>\

@@ -113,6 +113,7 @@ logs_file=$plugin_path/send/${rname}/logs/run_$timestamp.log
     }
 
     task_id = api.add(params)
+
     if task_id > 0:
         cfg["task_id"] = task_id
         cfg["name"] = name

@@ -7,6 +7,7 @@ import json
 import re
 import sys
 import paramiko
+from paramiko import RSAKey
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -945,38 +946,18 @@ def lsyncdAddExclude():
     return mw.returnJson(True, "OK!", exclude_list)
 
 
-def testSSHRsync():
+def testSSH():
     args = getArgs()
-    data = checkArgs(args, ['ip', 'ssh_port', 'key_path', 'path', 'target_path'])
+    data = checkArgs(args, ['ip', 'ssh_port', 'key_path'])
     if not data[0]:
         return data[1]
-
-    rsync_bin = mw.execShell('which rsync')[0].strip()
-    cmd = """%(rsync_bin)s --dry-run -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s' --exclude 'node_modules' --exclude 'logs' --exclude 'run' %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": args['ssh_port'], "key_path": args['key_path'], "path": args["path"], "ip": args['ip'] , "target_path": args['target_path']}
-    data = mw.execShell(cmd)
-    return mw.returnJson(False if "Permission denied" in data[0] else True, str(data))
-
-def getAddKnownHostsScript():
-    args = getArgs()
-    data = checkArgs(args, ['ip'])
-
-    if not data[0]:
-        return data[1]
-
-    ip = args['ip']
-    is_host_in_known_hosts = mw.checkExistHostInKnownHosts(ip)
-    cmd = ""
-    if not is_host_in_known_hosts:
-        cmd += """
-        echo "正在添加git服务器到已知主机列表..."
-        {
-            echo "\n" >> ~/.ssh/known_hosts
-            ssh-keyscan %(ip)s >> ~/.ssh/known_hosts
-            /etc/init.d/ssh restart
-        } || echo "添加可信域名失败"
-        """ % {'ip': ip}
-
-    return cmd
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # 自动添加主机名和主机密钥
+    try:
+        ssh.connect(hostname=args['ip'], port=args['ssh_port'], username='root', pkey=RSAKey(filename=args['key_path']), timeout=2)  # 你的主机名，用户名和密码
+        return mw.returnJson(True, '连接成功')
+    except Exception as e:
+        return mw.returnJson(False, str(e))
 
 if __name__ == "__main__":
     func = sys.argv[1]
@@ -1032,9 +1013,7 @@ if __name__ == "__main__":
         print(lsyncdRemoveExclude())
     elif func == 'lsyncd_add_exclude':
         print(lsyncdAddExclude())
-    elif func == 'test_ssh_rsync':
-        print(testSSHRsync())
-    elif func == 'get_add_known_hosts_script':
-        print(getAddKnownHostsScript())
+    elif func == 'test_ssh':
+        print(testSSH())
     else:
         print('error')

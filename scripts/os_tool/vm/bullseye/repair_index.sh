@@ -5,12 +5,8 @@ set -e
 download_and_run() {
     local script_name=$1
     wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
-    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
     bash /tmp/vm_${script_name} ${@:2}
-    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
 }
-
-download_and_run switch_apt_sources.sh 4
 
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
@@ -31,11 +27,8 @@ fi
 
 show_menu() {
     echo "==================vm bullseye os-tools=================="
-    echo "请选择一个操作:"
-    echo "1. 初始化环境"
-    echo "2. 生成指定域名SSH密钥"
-    echo "3. 服务器迁移"
-    echo "4. 服务器修复"
+    echo "请选择修复工具:"
+    echo "1. 修复数据库文件（修复可读写但xtrabackup备份报错的数据表）"
     echo "========================================================"
 }
 
@@ -43,22 +36,13 @@ show_menu() {
 show_menu
 
 # 读取用户的选择
-read -p "请输入选项数字: " choice
-
+read -p "请输入选项数字（默认1）: " choice
+choice=${choice:-"1"}
 
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run init_index.sh
-    ;;
-2)
-    download_and_run ssh_keygen_to_host.sh
-    ;;
-3)
-    download_and_run migrate_index.sh
-    ;;
-4)
-    download_and_run repair_index.sh
+    download_and_run check_database.sh
     ;;
 esac
 

@@ -16,12 +16,12 @@ OSNAME_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F
 
 version=$2
 
-Install_docker()
+Install_cmd()
 {
-	echo '正在安装Docker...' > $install_tmp
-	mkdir -p $serverPath/docker
+	echo '正在安装cmd...' > $install_tmp
+	mkdir -p $serverPath/cmd
 
-	# install docker
+	# install cmd
 	apt-get update
 	apt-get install \
 		ca-certificates \
@@ -55,13 +55,13 @@ Install_docker()
 		docker-compose -v
 	fi
 
-	echo $version > $serverPath/docker/version.pl
+	echo $version > $serverPath/cmd/version.pl
 	echo '安装完成' > $install_tmp
 }
 
-Uninstall_docker()
+Uninstall_cmd()
 {
-	echo '正在卸载Docker...' > $install_tmp
+	echo '正在卸载cmd...' > $install_tmp
 
 	# uninstall docker
 	apt-get purge docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras -y
@@ -71,13 +71,13 @@ Uninstall_docker()
 	# uninstall docker-compose
 	rm -rf /usr/local/bin/docker-compose
 
-	rm -rf $serverPath/docker
+	rm -rf $serverPath/cmd
 	echo "卸载完成" > $install_tmp
 }
 
 action=$1
 if [ "${1}" == 'install' ];then
-	Install_docker
+	Install_cmd
 else
-	Uninstall_docker
+	Uninstall_cmd
 fi

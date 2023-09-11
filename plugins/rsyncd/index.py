@@ -826,6 +826,9 @@ def lsyncdAdd():
             ".git",
             ".gitignore",
             ".user.ini",
+            "node_modules",
+            "logs",
+            "run",
         ]
 
     data = getDefaultConf()

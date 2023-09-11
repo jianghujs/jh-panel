@@ -424,7 +424,7 @@ async function openDeployItem() {
                 <div class='line'>\
                     <span class='tname'>项目Git地址</span>\
                     <div class='info-r c4'>\
-                        <input onchange='handleGitUrlChange()' id='projectGitUrl' class='bt-input-text' type='text' name='gitUrl' placeholder='项目Git地址' style='width:458px' />\
+                        <input oninput='handleGitUrlChange()' id='projectGitUrl' class='bt-input-text' type='text' name='gitUrl' placeholder='项目Git地址' style='width:458px' />\
                     </div>\
                 </div>\
                 <div class='line'>\
@@ -650,8 +650,8 @@ async function submitDeployItemStep1(deployLayer) {
     let addKnownHostsScriptData = await requestApi('get_add_known_hosts_script', { gitUrl: encodeURIComponent(gitUrl) });
     if (addKnownHostsScriptData.data) {
         await execScriptAndShowLog('正在添加git地址到已知主机列表...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
     let cloneScriptData = await requestApi('get_clone_script', { gitUrl: encodeURIComponent(gitUrl), path: encodeURIComponent(path) });
     await execScriptAndShowLog('正在拉取代码...', cloneScriptData.data);
 

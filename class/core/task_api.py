@@ -156,7 +156,7 @@ class task_api:
         # 使用os.system执行命令，不会返回结果
         data = mw.execShell('source /root/.bashrc && ' + tempFilePath + ' > ' + log_path + ' 2>&1')
         # 删除临时文件
-        mw.execShell('rm -f ' + tempFilePath)
+        os.remove( tempFilePath)
         if data[2] != 0:
             return mw.returnJson(False, '执行失败' )
         return mw.returnJson(True, 'ok')

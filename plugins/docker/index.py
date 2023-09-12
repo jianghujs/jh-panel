@@ -805,6 +805,7 @@ def composeFileList():
             filepath = '%s/%s' % (compose_file_dir, d_list)
             result.append({
                 'filename': d_list,
+                'dir': compose_file_dir,
                 'path': filepath,
                 'size': mw.getPathSize(filepath),
                 'sizeTxt': mw.toSize(mw.getPathSize(filepath)),

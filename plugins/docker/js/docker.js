@@ -1100,6 +1100,7 @@ function composeFileList() {
                     <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
                     <thead><tr>\
                     <th>文件名</th>\
+                    <th>状态</th>\
                     <th style="text-align:right;">操作</th></tr></thead>\
                     <tbody>\
                     ' + '</tbody></table>\
@@ -1129,10 +1130,26 @@ function composeFileListRender() {
         var rlist = rdata.data;
         composeFileListData = rlist;
         for (var i = 0; i < rlist.length; i++) {
+            var opt = '';
+            if(rlist[i].status != 'start'){
+                opt += '<a href="javascript:composeFileScriptExcute(\''+rlist[i].filename+'\', \'start\', \''+rlist[i].path+'\')" class="btlink">启动</a> | ';
+            }else{
+                opt += '<a href="javascript:composeFileScriptExcute(\''+rlist[i].filename+'\', \'stop\', \''+rlist[i].path+'\')" class="btlink">停止</a> | ';
+                opt += '<a href="javascript:composeFileScriptExcute(\''+rlist[i].filename+'\', \'restart\', \''+rlist[i].path+'\')" class="btlink">重启</a> | ';
+            }
+            
+            var status = '';
+            if(rlist[i].status != 'start'){
+                status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
+            } else {
+                status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
+            }
 
             list += '<tr>';
-            list += '<td>' + rlist[i]['filename'] + '</td>';
+            list += '<td><a class="jhlink" href="javascript:openNewWindowPath(\'' + rlist[i].dir + '\')">' + rlist[i]['filename'] + '</a></td>'
+            list += '<td>' + status + '</td>';
             list += '<td class="text-right">\
+                    ' + opt + '\
                     <a href="javascript:;" onclick="openEditComposeFile(\'' + rlist[i]['filename'] + '\')" class="btlink">编辑</a>\
                     <a href="javascript:;" onclick="deleteComposeFile(\'' + rlist[i]['filename'] + '\')" class="btlink">删除</a>\
                     </td>';
@@ -1239,3 +1256,26 @@ function deleteComposeFile(filename) {
         });
     });
 }
+
+function composeFileScriptExcute(filename, opt, path) {
+    cmd = ''
+    switch(opt) {
+        case 'start':
+            cmd = 'up -d'
+            break;
+        case 'stop':
+            cmd = 'down'
+            break;
+        default:
+            cmd = opt;
+            break;
+    }
+    let script = `cd /www/server/docker/ \n docker-compose -f ${path} ${cmd}`;
+    layer.msg('执行成功',{icon:1});
+    excuteScriptTask(`docker插件[${filename}:${opt}]`, script)
+}
+
+// 绑定执行完毕事件
+$(document).on('messageBoxLayerClose', function(e){
+    composeFileListRender();
+});

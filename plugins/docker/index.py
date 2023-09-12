@@ -6,6 +6,7 @@ import os
 import time
 import re
 import json
+from urllib.parse import unquote, urlparse
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -167,6 +168,10 @@ def utc_to_local(utc_time_str, utc_format='%Y-%m-%dT%H:%M:%S'):
     time_str = local_dt.strftime(local_format)
     return int(time.mktime(time.strptime(time_str, local_format)))
 
+
+def getScriptArg(arg):
+    args = getArgs()
+    return unquote(args[arg], 'utf-8').replace('+', ' ').replace("\r\n", "\n").replace("\\n", "\n")
 
 def conList():
     c = getDClient()
@@ -789,55 +794,73 @@ def repoList():
 
     return mw.returnJson(True, 'ok', repostory_info)
 
-def dockerComposeDir():
+def composeFileDir():
     return getServerDir() + '/docker-compose'
 
-def dockerComposeList():
+def composeFileList():
     result = []  
-    docker_compose_dir = dockerComposeDir()
-    for d_walk in os.walk(docker_compose_dir):
+    compose_file_dir = composeFileDir()
+    for d_walk in os.walk(compose_file_dir):
         for d_list in d_walk[2]:
-            if mw.getFileSuffix(d_list) == 'yml': 
-                filepath = '%s/%s' % (docker_compose_dir, d_list)
-                result.append({
-                    'filename': d_list,
-                    'path': filepath,
-                    'size': mw.getPathSize(filepath),
-                    'sizeTxt': mw.toSize(mw.getPathSize(filepath)),
-                    'createTime': os.path.getctime(filepath)
-                })
+            filepath = '%s/%s' % (compose_file_dir, d_list)
+            result.append({
+                'filename': d_list,
+                'path': filepath,
+                'size': mw.getPathSize(filepath),
+                'sizeTxt': mw.toSize(mw.getPathSize(filepath)),
+                'createTime': os.path.getctime(filepath)
+            })
     return mw.returnJson(True, 'ok', result)
 
-def dockerComposeAddOrUpdate():
+def composeFileSave():
     args = getArgs()
-    data = checkArgs(args, ['name', 'content'])
+    data = checkArgs(args, ['filename', 'content'])
     if not data[0]:
         return data[1]
 
-    name = args['name']
-    content = args['content']
+    filename = args['filename']
+    content = getScriptArg('content')
 
-    docker_compose_dir = dockerComposeDir()
+    compose_file_dir = composeFileDir()
     
-    if not os.path.exists(docker_compose_dir):
-        mw.execShell('mkdir -p ' + docker_compose_dir)
-    docker_compose_file = docker_compose_dir + '/' + name + '.yml'
-    mw.writeFile(docker_compose_file, content)
-    mw.execShell('chmod 750 ' + docker_compose_file)
+    if not os.path.exists(compose_file_dir):
+        mw.execShell('mkdir -p ' + compose_file_dir)
+    compose_file = compose_file_dir + '/' + filename
+    mw.writeFile(compose_file, content)
+    mw.execShell('chmod 750 ' + compose_file)
     
     return mw.returnJson(True, '添加成功!')
 
-def dockerComposeRemove():
+def composeFileGet():
     args = getArgs()
-    data = checkArgs(args, ['path'])
+    data = checkArgs(args, ['filename'])
+    if not data[0]:
+        return data[1]
+
+    filename = args['filename']
+    compose_file_dir = composeFileDir()
+    
+    if not os.path.exists(compose_file_dir):
+        mw.execShell('mkdir -p ' + compose_file_dir)
+    compose_file = compose_file_dir + '/' + filename
+    content = mw.readFile(compose_file)
+    return mw.returnJson(True, 'ok', {
+        "filename": filename,
+        "content": content
+    })
+
+def composeFileRemove():
+    args = getArgs()
+    data = checkArgs(args, ['filename'])
     if not data[0]:
         return data[1]
     
-    name = args['name']    
+    filename = args['filename']   
+    path = composeFileDir() + "/" + filename
     os.remove(path)
     return mw.returnJson(True, '删除成功!')
 
-def dockerComposeRunScript():
+def composeFileRunScript():
     args = getArgs()
     data = checkArgs(args, ['path', 'cmd'])
     if not data[0]:
@@ -914,5 +937,13 @@ if __name__ == "__main__":
         print(dockerLogout())
     elif func == 'repo_list':
         print(repoList())
+    elif func == 'compose_file_list':
+        print(composeFileList())
+    elif func == 'compose_file_save':
+        print(composeFileSave())
+    elif func == 'compose_file_get':
+        print(composeFileGet())
+    elif func == 'compose_file_remove':
+        print(composeFileRemove())
     else:
         print('error')

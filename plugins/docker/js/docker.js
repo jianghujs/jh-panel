@@ -1,3 +1,5 @@
+var composeFileListData = [];
+
 function dPostOrgin(args, callback) {
     $.post('/plugins/run', args, function(data) {
         callback(data);
@@ -5,31 +7,35 @@ function dPostOrgin(args, callback) {
 }
 
 function dPost(method, version, args, callback) {
-    var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
+    return new Promise((resolve) => {
+            
+        var loadT = layer.msg('正在获取...', { icon: 16, time: 0, shade: 0.3 });
 
-    var req_data = {};
-    req_data['name'] = 'docker';
-    req_data['func'] = method;
-    req_data['version'] = version;
+        var req_data = {};
+        req_data['name'] = 'docker';
+        req_data['func'] = method;
+        req_data['version'] = version;
 
-    if (typeof(args) == 'string') {
-        req_data['args'] = JSON.stringify(toArrayObject(args));
-    } else {
-        req_data['args'] = JSON.stringify(args);
-    }
-
-    dPostOrgin(req_data, function(data) {
-        layer.close(loadT);
-        if (!data.status) {
-            //错误展示10S
-            layer.msg(data.msg, { icon: 0, time: 2000, shade: [10, '#000'] });
-            return;
+        if (typeof(args) == 'string') {
+            req_data['args'] = JSON.stringify(toArrayObject(args));
+        } else {
+            req_data['args'] = JSON.stringify(args);
         }
 
-        if (typeof(callback) == 'function') {
-            callback(data);
-        }
-    });
+        dPostOrgin(req_data, function(data) {
+            layer.close(loadT);
+            if (!data.status) {
+                //错误展示10S
+                layer.msg(data.msg, { icon: 0, time: 2000, shade: [10, '#000'] });
+                return;
+            }
+
+            if (typeof(callback) == 'function') {
+                callback(data);
+            }
+            resolve(data);
+        });
+    })
 }
 
 function dPostCallbak(method, version, args, callback) {
@@ -1081,4 +1087,155 @@ function repoList() {
     });
 
     repoListRender();
+}
+
+
+
+function composeFileList() {
+
+    var con = '<div class="safe bgw">\
+            <button title="" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;" onclick="openEditComposeFile();">添加Compose文件</button>\
+            <div class="divtable mtb10">\
+                <div class="tablescroll">\
+                    <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
+                    <thead><tr>\
+                    <th>文件名</th>\
+                    <th style="text-align:right;">操作</th></tr></thead>\
+                    <tbody>\
+                    ' + '</tbody></table>\
+                </div>\
+                <div id="composeFileList" class="dataTables_paginate paging_bootstrap page"></div>\
+            </div>\
+        </div>';
+
+    $(".soft-man-con").html(con);
+
+
+    composeFileListRender();
+}
+
+
+
+function composeFileListRender() {
+    dPost('compose_file_list', '', {}, function(rdata) {
+        var rdata = $.parseJSON(rdata.data);
+        console.log(rdata);
+        if (!rdata.status) {
+            layer.msg(rdata.msg, { icon: 2, time: 2000 });
+            return;
+        }
+
+        var list = '';
+        var rlist = rdata.data;
+        composeFileListData = rlist;
+        for (var i = 0; i < rlist.length; i++) {
+
+            list += '<tr>';
+            list += '<td>' + rlist[i]['filename'] + '</td>';
+            list += '<td class="text-right">\
+                    <a href="javascript:;" onclick="openEditComposeFile(\'' + rlist[i]['filename'] + '\')" class="btlink">编辑</a>\
+                    <a href="javascript:;" onclick="deleteComposeFile(\'' + rlist[i]['filename'] + '\')" class="btlink">删除</a>\
+                    </td>';
+            list += '</tr>';
+        }
+
+        $('#con_list tbody').html(list);
+    });
+}
+
+async function openEditComposeFile(filename) {
+    var codeMirror = null;
+    let editItem = {
+        filename: 'docker-compose.demo.yml',
+        content: `\
+version: '3'\n\
+services:\n\
+    demo:\n\
+    image: demo:latest\n\
+    ports:\n\
+        - "1234:80"\n\
+    volumes:\n\
+        - ./data/test/:/usr/data # 数据文件建议挂载到./data/xxx/下\n\
+        - ./conf/test/:/usr/conf # 配置文件建议挂载到./conf/xxx/下\n\
+        `
+    }
+    if(filename) {
+        let rdata = await dPost('compose_file_get', {}, {filename});
+        let data = JSON.parse(rdata.data);
+        editItem = data.data;
+    }
+    var editComposeFileLayer = layer.open({
+        type: 1,
+        skin: 'demo-class',
+		area: ["90%", "80%"],
+        title: `${filename? '编辑' : '添加'}Compose文件`,
+        closeBtn: 2,
+        btn: ['保存', '取消'],
+        shift: 0,
+        shadeClose: false,
+        content: "\
+        <form class='compose-file-con bt-form pd20 pb70'>\
+            <div class='line'>\
+                <span class='tname'>文件名</span>\
+                    <div class='info-r c4'>\
+                        <input class='bt-input-text' type='text' name='filename' placeholder='文件名' style='width:258px' value='" + editItem.filename + "'/>\
+                    </div>\
+            </div>\
+            <div class='line'>\
+                <span class='tname'>文件内容</span>\
+                <div class='info-r c4'>\
+				    <textarea class='mCustomScrollbar bt-input-text' id='composeContent' name='content' style='width:100%;margin:0 auto;line-height: 1.8;position: relative;top: 10px;' value='' />\
+			    </div>\
+            </div>\
+        </form>",
+        success: function(layero, layer_id) {
+            $("#composeContent").text(editItem.content);
+                    
+            let height = $(window).height() * 0.8;
+            $("#composeContent").height(height - 200);
+            codeMirror = CodeMirror.fromTextArea(document.getElementById("composeContent"), {
+                extraKeys: {
+                    "Ctrl-F": "findPersistent",
+                    "Ctrl-H": "replaceAll",
+                    "Ctrl-S": function() {
+                        $("#composeContent").text(codeMirror.getValue());
+                    }
+                },
+                mode: 'yaml',
+                lineNumbers: true,
+                matchBrackets: true,
+                matchtags: true,
+                autoMatchParens: true
+            });
+            codeMirror.focus();
+            codeMirror.setSize("auto", height - 250);
+        },
+        yes: function(layers, index) {
+            $("#composeContent").text(codeMirror.getValue());
+            
+            dPost('compose_file_save', {}, {
+                filename: $('input[name=filename]').val(),
+                content: codeMirror.getValue()
+            }, function(rdata) {
+                var rdata = $.parseJSON(rdata['data']);
+                showMsg(rdata.msg, function() {
+                    composeFileListRender();
+                    layer.close(layers);
+                }, { icon: rdata.status ? 1 : 2, time: 2000 });
+            });
+        }
+    });
+}
+
+
+
+function deleteComposeFile(filename) {
+    safeMessage('确认删除文件[' + filename + ']', '删除[' + filename + ']后无法撤回，请谨慎操作！', function(){
+        var data = "filename="+filename;
+        dPost('compose_file_remove', {}, data, function(data){
+	        composeFileListRender();
+        	var rdata = $.parseJSON(data.data);
+	        layer.msg(rdata.msg,{icon:rdata.status?1:2});
+        });
+    });
 }

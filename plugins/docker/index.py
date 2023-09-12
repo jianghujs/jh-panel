@@ -837,6 +837,17 @@ def dockerComposeRemove():
     os.remove(path)
     return mw.returnJson(True, '删除成功!')
 
+def dockerComposeRunScript():
+    args = getArgs()
+    data = checkArgs(args, ['path', 'cmd'])
+    if not data[0]:
+        return data[1]
+
+    path = args['path']
+    cmd = args['cmd']
+    script = """docker-compose -f %(path)s %(cmd)s""" % ({"path": path, "cmd": cmd}) 
+    return script
+
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'status':

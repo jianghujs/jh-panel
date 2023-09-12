@@ -803,13 +803,15 @@ def composeFileList():
     for d_walk in os.walk(compose_file_dir):
         for d_list in d_walk[2]:
             filepath = '%s/%s' % (compose_file_dir, d_list)
+            status_data = mw.execShell("docker-compose -f "+ filepath + " ps | awk 'NR==3' | cut -c 1")
             result.append({
                 'filename': d_list,
                 'dir': compose_file_dir,
                 'path': filepath,
                 'size': mw.getPathSize(filepath),
                 'sizeTxt': mw.toSize(mw.getPathSize(filepath)),
-                'createTime': os.path.getctime(filepath)
+                'createTime': os.path.getctime(filepath),
+                'status': 'stop' if status_data[0] == '' else 'start'
             })
     return mw.returnJson(True, 'ok', result)
 

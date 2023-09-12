@@ -1270,7 +1270,7 @@ function composeFileScriptExcute(filename, opt, path) {
             cmd = opt;
             break;
     }
-    let script = `cd /www/server/docker/ \n docker-compose -f ${path} ${cmd}`;
+    let script = `docker-compose -f ${path} ${cmd}`;
     layer.msg('执行成功',{icon:1});
     excuteScriptTask(`docker插件[${filename}:${opt}]`, script)
 }

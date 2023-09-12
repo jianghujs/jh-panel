@@ -1168,12 +1168,12 @@ async function openEditComposeFile(filename) {
 version: '3'\n\
 services:\n\
     demo:\n\
-    image: demo:latest\n\
-    ports:\n\
-        - "1234:80"\n\
-    volumes:\n\
-        - ./data/test/:/usr/data # 数据文件建议挂载到./data/xxx/下\n\
-        - ./conf/test/:/usr/conf # 配置文件建议挂载到./conf/xxx/下\n\
+        image: demo:latest\n\
+        ports:\n\
+            - "1234:80"\n\
+        volumes:\n\
+            - ./data/test/:/usr/data # 数据文件建议挂载到./data/xxx/下\n\
+            - ./conf/test/:/usr/conf # 配置文件建议挂载到./conf/xxx/下\n\
         `
     }
     if(filename) {

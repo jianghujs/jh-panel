@@ -59,7 +59,7 @@ DEPLOY_DIR=\${DEPLOY_DIR:-"/www/wwwroot/"}
 
 
 
-if [ -f "./project_files/jianghujs.zip" ]; then
+if [ -f "./plugin_files/jianghujs.zip" ]; then
     # 删除/www/server/jianghujs目录
     rm -rf /www/server/jianghujs
 
@@ -68,7 +68,7 @@ if [ -f "./project_files/jianghujs.zip" ]; then
 fi
 
 
-if [ -f "./project_files/docker.zip" ]; then
+if [ -f "./plugin_files/docker.zip" ]; then
     # 删除/www/server/docker目录
     rm -rf /www/server/docker
 

@@ -109,6 +109,8 @@ migrate_project() {
     rsync_exclude_array+=("--exclude" "$i")
   done
 
+  echo "开始提取目录下的软链..."
+
   # 将目录下的软链提取到脚本
   symbolic_links_file="${MIGRATE_DIR}/symbolic_links_origin.sh"
   echo "" >  $symbolic_links_file
@@ -141,12 +143,14 @@ migrate_project() {
           echo "ln -s $abs_target $link" >> $symbolic_links_file
       done
   done
-  
+
+  echo "提取目录软链完成✅"  
   cp $MIGRATE_DIR/symbolic_links_origin.sh $MIGRATE_DIR/symbolic_links.sh 
   # 在文件中替换字符串"${project_dir}"为"\${deploy_dir}"
   sed -i "s|${project_dir}|${target_project_dir}|g" $MIGRATE_DIR/symbolic_links.sh 
 
   cp $MIGRATE_DIR/symbolic_links.sh ${project_dir}/symbolic_links.sh
+
 
   # 传输目录文件
   echo "开始传输项目文件..."

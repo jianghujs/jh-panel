@@ -7,6 +7,7 @@ import time
 import re
 import json
 from urllib.parse import unquote, urlparse
+import dictdatabase as DDB
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -82,6 +83,51 @@ def checkArgs(self, data, ck=[]):
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
 
+
+# https://github.com/mkrd/DictDataBase
+def initDb():
+    db_dir = getServerDir() + '/data/'
+    if not os.path.exists(db_dir):
+        mw.execShell('mkdir -p ' + db_dir)
+    DDB.config.storage_directory = db_dir
+
+def getDb(table):
+    if not DDB.at(table).exists():
+        DDB.at(table).create({})
+    return DDB.at(table)
+
+def saveOne(table, id, data):
+    if type(id) is not str:
+        id = str(id)
+    exist = getOne(table, id)
+    if exist:
+        data = {'id': id, **exist, **data}
+    else:
+        data = {'id': id, **data}
+    with getDb(table).session() as (session, db):
+        db[id] = data
+        session.write()
+
+def getAll(table):
+    result = getDb(table).read()
+    if result:
+        return list(result.values())
+    return []
+
+def getOne(table, id):
+    if type(id) is not str:
+        id = str(id)
+    for item in getAll(table):
+        if item['id'] == id:
+            return item
+    return None
+
+def deleteOne(table, id):
+    if type(id) is not str:
+        id = str(id)
+    with getDb(table).session() as (session, db):
+        del db[id]
+        session.write()
 
 def status():
     data = mw.execShell(
@@ -794,6 +840,153 @@ def repoList():
 
     return mw.returnJson(True, 'ok', repostory_info)
 
+
+def makeScriptFile(filename, content):
+    scriptPath = getServerDir() + '/script'
+    if not os.path.exists(scriptPath):
+        mw.execShell('mkdir -p ' + scriptPath)
+    scriptFile = scriptPath + '/' + filename
+    mw.writeFile(scriptFile, content)
+    mw.execShell('chmod 750 ' + scriptFile)
+
+def projectList():
+    data = getAll('project')
+    echos = {item.get('echo', '') for item in data}
+    paths = {item.get('path', '') for item in data}
+
+    # status
+    statusCmd = """ps -ef | grep -v grep | grep -v python | grep 'jianghujs' | awk -F'baseDir":"' '{print $2}' | awk -F'","' '{print $1}'"""
+    statusExec = mw.execShell(statusCmd)
+    statusMap = {path: ('start' if path in statusExec[0] else 'stop') for path in paths}
+
+    # loadingStatus
+    server_dir = getServerDir()
+    loadingStatusMap = {}
+    for echo in echos:
+        status_file = server_dir + '/script/' + echo + '_status'
+        if os.path.isfile(status_file):
+            with open(status_file, 'r') as f:
+                loadingStatusMap[echo] = f.read()
+        else:
+            loadingStatusMap[echo] = ''
+
+    for item in data:
+        path = item.get('path', '') 
+        echo = item.get('echo', '')
+        item['status'] = statusMap[path]
+        item['loadingStatus'] = loadingStatusMap[echo]
+
+    return mw.returnJson(True, 'ok', data)
+
+
+def projectAdd():
+    args = getArgs()
+    data = checkArgs(args, ['name', 'path', 'composeFileName', 'composeFileContent', 'startScript', 'reloadScript', 'stopScript'])
+    if not data[0]:
+        return data[1]
+    name = args['name']
+    path = unquote(args['path'], 'utf-8')
+    composeFileName = args['composeFileName']
+    composeFileContent = getScriptArg('composeFileContent')
+    startScript = getScriptArg('startScript')
+    reloadScript = getScriptArg('reloadScript')
+    stopScript = getScriptArg('stopScript')
+
+    if not os.path.exists(path):
+        mw.execShell('mkdir -p ' + path)
+    composeFile = path + '/' + composeFileName
+    mw.writeFile(composeFile, composeFileContent)
+    mw.execShell('chmod 750 ' + composeFile)
+
+
+    echo =  mw.md5(str(time.time()) + '_docker')
+    id = int(time.time())
+    saveOne('project', id, {
+        'name': name,
+        'path': path,
+        'start_script': startScript,
+        'reload_script': reloadScript,
+        'stop_script': stopScript,
+        'create_time': int(time.time()),
+        'echo': echo
+    })
+    statusFile = '%s/script/%s_status' % (getServerDir(), echo)
+    makeScriptFile(echo + '_start.sh', 'touch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
+    makeScriptFile(echo + '_reload.sh', 'touch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))
+    makeScriptFile(echo + '_stop.sh', 'touch %s\necho "停止中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, stopScript, statusFile))
+    
+    return mw.returnJson(True, '添加成功!')
+
+def projectEdit():
+    args = getArgs()
+    data = checkArgs(args, ['id', 'name', 'path', 'composeFileName', 'composeFileContent', 'startScript', 'reloadScript', 'stopScript'])
+    if not data[0]:
+        return data[1]
+    id = args['id']
+    name = args['name']
+    path = unquote(args['path'], 'utf-8')
+    composeFileName = args['composeFileName']
+    composeFileContent = getScriptArg('composeFileContent')
+    startScript = getScriptArg('startScript')
+    reloadScript = getScriptArg('reloadScript')
+    stopScript = getScriptArg('stopScript')
+    project = getOne('project', id)
+    if not project:
+        return mw.returnJson(False, '项目不存在!')
+    echo = project.get('echo', '')
+    saveOne('project', id, {
+        'name': name,
+        'path': path,
+        'start_script': startScript,
+        'reload_script': reloadScript,
+        'stop_script': stopScript
+    })
+    statusFile = '%s/script/%s_status' % (getServerDir(), echo)
+    makeScriptFile(echo + '_start.sh', 'echo "正在启动项目，请稍侯..."\ntouch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
+    makeScriptFile(echo + '_reload.sh', 'echo "正在重启项目，请稍侯..."\ntouch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))
+    makeScriptFile(echo + '_stop.sh', 'echo "正在停止项目，请稍侯..."\ntouch %s\necho "停止中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, stopScript, statusFile))
+    return mw.returnJson(True, '修改成功!')
+
+def projectDelete():
+    args = getArgs()
+    data = checkArgs(args, ['id'])
+    if not data[0]:
+        return data[1]
+
+    id = args['id']    
+    deleteOne('project', id)
+    return mw.returnJson(True, '删除成功!')
+
+def checkProjectNameExist():
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+
+    if not data[0]:
+        return data[1]
+    
+    name = unquote(args['name'], 'utf-8')
+    for item in getAll('project'):
+        if item['name'] == name:
+            return mw.returnJson(True, 'ok', True)
+    return mw.returnJson(True, 'ok', False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def composeFileDir():
     return getServerDir() + '/docker-compose'
 
@@ -941,6 +1134,19 @@ if __name__ == "__main__":
         print(dockerLogout())
     elif func == 'repo_list':
         print(repoList())
+    elif func == 'project_list':
+        print(projectList())
+    elif func == 'project_add':
+        print(projectAdd())
+    elif func == 'project_edit':
+        print(projectEdit())
+    elif func == 'project_delete':
+        print(projectDelete())
+    elif func == 'check_project_name_exist':
+        print(checkProjectNameExist())
+
+
+
     elif func == 'compose_file_list':
         print(composeFileList())
     elif func == 'compose_file_save':

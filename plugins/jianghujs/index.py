@@ -498,6 +498,7 @@ def getCloneScript():
         """ % {'path': path}
     cmd += """
     echo "正在拉取项目文件..."
+    export GIT_SSH_COMMAND='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
     git clone --progress %(git_url)s %(path)s
     echo "拉取项目文件成功"
     """ % {'git_url': git_url, 'path': path}

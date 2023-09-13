@@ -31,14 +31,14 @@ mkdir -p ${MIGRATE_DIR}/plugin_files/
 if [ -d "/www/server/jianghujs" ]; then
     # 打包/www/server/jianghujs目录下的data和script目录到${MIGRATE_DIR}/jianghujs.zip
     pushd /www/server/jianghujs/ > /dev/null
-    zip -r ${MIGRATE_DIR}/plugin_files/jianghujs.zip .
+    zip -r ${MIGRATE_DIR}/plugin_files/jianghujs.zip ./data ./script
     popd > /dev/null
 fi
 
 if [ -d "/www/server/docker" ]; then
     # 打包/www/server/docker目录下的data和script目录到${MIGRATE_DIR}/docker.zip
     pushd /www/server/docker/ > /dev/null
-    zip -r ${MIGRATE_DIR}/plugin_files/docker.zip .
+    zip -r ${MIGRATE_DIR}/plugin_files/docker.zip ./data ./script
     popd > /dev/null
 fi
 

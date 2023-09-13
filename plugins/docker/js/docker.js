@@ -1099,7 +1099,7 @@ function projectList() {
 
     var con = '<div class="safe bgw">\
             <button title="" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;" onclick="openCreateProject();">新建项目</button>\
-            <button title="" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;" onclick="openImportProject();">导入项目</button>\
+            <button title="" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;" onclick="openImportProject();">导入项目</button>\
             <div class="divtable mtb10">\
                 <div class="tablescroll">\
                     <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\

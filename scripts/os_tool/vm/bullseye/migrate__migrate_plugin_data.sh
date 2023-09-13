@@ -46,7 +46,7 @@ fi
 cat << EOF > ${MIGRATE_DIR}/deploy_plugin.sh
 #!/bin/bash
 
-read -p "恢复jianghujs管理器数据后原数据将丢失，确定要这样做吗？（默认y）[y/n]: " confirm
+read -p "恢复后原插件数据将丢失，确定要这样做吗？（默认y）[y/n]: " confirm
 confirm=\${confirm:-"y"}
 
 if [ "\$confirm" != "y" ]; then

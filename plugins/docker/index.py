@@ -86,6 +86,7 @@ def checkArgs(self, data, ck=[]):
 
 # https://github.com/mkrd/DictDataBase
 def initDb():
+    DDB.config.storage_directory = getServerDir() + '/data/'
     db_dir = getServerDir() + '/data/'
     if not os.path.exists(db_dir):
         mw.execShell('mkdir -p ' + db_dir)
@@ -154,6 +155,7 @@ def dockerOp(method):
 
 
 def start():
+    initDb()
     return dockerOp('start')
 
 
@@ -974,103 +976,19 @@ def checkProjectNameExist():
             return mw.returnJson(True, 'ok', True)
     return mw.returnJson(True, 'ok', False)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def composeFileDir():
-    return getServerDir() + '/docker-compose'
-
-def composeFileList():
-    result = []  
-    compose_file_dir = composeFileDir()
-    for d_walk in os.walk(compose_file_dir):
-        for d_list in d_walk[2]:
-            filepath = '%s/%s' % (compose_file_dir, d_list)
-            if os.path.isfile(filepath):
-                status_data = mw.execShell("docker-compose -f "+ filepath + " ps | awk 'NR==3' | cut -c 1")
-                result.append({
-                    'filename': d_list,
-                    'dir': compose_file_dir,
-                    'path': filepath,
-                    'size': mw.getPathSize(filepath),
-                    'sizeTxt': mw.toSize(mw.getPathSize(filepath)),
-                    'createTime': os.path.getctime(filepath),
-                    'status': 'stop' if status_data[0] == '' else 'start'
-                })
-    return mw.returnJson(True, 'ok', result)
-
-def composeFileSave():
+def getProjectComposeFileContent():
     args = getArgs()
-    data = checkArgs(args, ['filename', 'content'])
-    if not data[0]:
-        return data[1]
+    data = checkArgs(args, ['path', 'composeFileName'])
 
-    filename = args['filename']
-    content = getScriptArg('content')
-
-    compose_file_dir = composeFileDir()
-    
-    if not os.path.exists(compose_file_dir):
-        mw.execShell('mkdir -p ' + compose_file_dir)
-    compose_file = compose_file_dir + '/' + filename
-    mw.writeFile(compose_file, content)
-    mw.execShell('chmod 750 ' + compose_file)
-    
-    return mw.returnJson(True, '添加成功!')
-
-def composeFileGet():
-    args = getArgs()
-    data = checkArgs(args, ['filename'])
-    if not data[0]:
-        return data[1]
-
-    filename = args['filename']
-    compose_file_dir = composeFileDir()
-    
-    if not os.path.exists(compose_file_dir):
-        mw.execShell('mkdir -p ' + compose_file_dir)
-    compose_file = compose_file_dir + '/' + filename
-    content = mw.readFile(compose_file)
-    return mw.returnJson(True, 'ok', {
-        "filename": filename,
-        "content": content
-    })
-
-def composeFileRemove():
-    args = getArgs()
-    data = checkArgs(args, ['filename'])
     if not data[0]:
         return data[1]
     
-    filename = args['filename']   
-    path = composeFileDir() + "/" + filename
-    os.remove(path)
-    return mw.returnJson(True, '删除成功!')
-
-def composeFileRunScript():
-    args = getArgs()
-    data = checkArgs(args, ['path', 'cmd'])
-    if not data[0]:
-        return data[1]
-
-    path = args['path']
-    cmd = args['cmd']
-    script = """docker-compose -f %(path)s %(cmd)s""" % ({"path": path, "cmd": cmd}) 
-    return script
+    path = unquote(args['path'], 'utf-8')
+    composeFileName = unquote(args['composeFileName'], 'utf-8')
+    composeFilePath = path + '/' + composeFileName
+    if os.path.exists(composeFilePath):
+        return mw.readFile(composeFilePath)
+    return ''
 
 if __name__ == "__main__":
     func = sys.argv[1]
@@ -1148,16 +1066,7 @@ if __name__ == "__main__":
         print(projectDelete())
     elif func == 'check_project_name_exist':
         print(checkProjectNameExist())
-
-
-
-    elif func == 'compose_file_list':
-        print(composeFileList())
-    elif func == 'compose_file_save':
-        print(composeFileSave())
-    elif func == 'compose_file_get':
-        print(composeFileGet())
-    elif func == 'compose_file_remove':
-        print(composeFileRemove())
+    elif func == 'get_project_compose_file_content':
+        print(getProjectComposeFileContent())
     else:
         print('error')

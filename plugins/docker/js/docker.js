@@ -1,4 +1,6 @@
 var composeFileListData = [];
+var importProjectLayer = [];
+let codeMirror = null;
 
 function dPostOrgin(args, callback) {
     $.post('/plugins/run', args, function(data) {
@@ -1097,6 +1099,7 @@ function projectList() {
 
     var con = '<div class="safe bgw">\
             <button title="" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;" onclick="openCreateProject();">新建项目</button>\
+            <button title="" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;" onclick="openImportProject();">导入项目</button>\
             <div class="divtable mtb10">\
                 <div class="tablescroll">\
                     <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
@@ -1190,6 +1193,21 @@ function checkProjectNameExist(projectName) {
 }
 
 
+async function checkPathExist(path) {
+    return new Promise(function(resolve, reject) {
+        $.post('/files/check_exist_path',{path},function(rdata){
+            if(rdata.data) {
+                safeMessage('目录已存在','<a style="color:red;">目录['+path+']已存在，要删除目录重新部署吗？</a>删除后将无法恢复,请谨慎操作。<br/>确认请输入结果:',function(){
+                    resolve(true);
+                });
+            } else {
+                resolve(false);
+            }
+        },'json');
+    });
+}
+
+
 function handlePathChange() {
     let path = document.getElementById('projectPath').value;
     let name = (path || '').split('/').pop();
@@ -1212,7 +1230,7 @@ services:\n\
 
     $('#projectName').val(name);
     $('#composeFileName').val(composeFileName);
-    if(!$('#composeFileContent').text()) {
+    if(codeMirror && !$('#composeFileContent').text()) {
         $("#composeFileContent").text(composeFileContent);
         codeMirror.setValue(composeFileContent);
     }
@@ -1231,7 +1249,7 @@ function handleProjectNameChange() {
 
 
 function openCreateProject() {
-    addLayer = layer.open({
+    var addLayer = layer.open({
         type: 1,
         skin: 'demo-class',
 		area: ['900px', "80%"],
@@ -1314,7 +1332,9 @@ function openCreateProject() {
             var form = $("#addForm").serialize();
 
             let name = $('#projectName').val();
+            let path = $('#projectPath').val();
             await checkProjectNameExist(name);
+            await checkPathExist(path);
 
             layer.msg('正在添加,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
             let data = await dPost('project_add', {}, form);
@@ -1332,7 +1352,7 @@ function openCreateProject() {
 function openEditProject(id) {
     editItem = composeFileListData.find(item => item.id == id) || {};
     
-    addLayer = layer.open({
+    var editLayer = layer.open({
         type: 1,
         skin: 'demo-class',
 		area: ['900px', "80%"],
@@ -1447,104 +1467,132 @@ function projectDelete(id, name) {
 
 
 
-function openImportProject() {
-    addLayer = layer.open({
+async function openImportProject() {
+    importProjectLayer = layer.open({
         type: 1,
         skin: 'demo-class',
-		area: ['900px', "80%"],
-        title: '添加项目',
-        closeBtn: 2,
+		area: '900px',
+        title: '导入项目',
+        closeBtn: 1,
         shift: 0,
         shadeClose: false,
         content: "\
-        <form class='docker-add-project-form bt-form pd20 pb70' id='addForm'>\
-            <div class='line'>\
-                <span class='tname'>项目根目录</span>\
-                <div class='info-r c4'>\
-                    <input onchange='handlePathChange()' id='projectPath' class='bt-input-text mr5' type='text' name='path' value='"+'/www/wwwroot'+"/' placeholder='"+'/www/wwwroot'+"' style='width:670px' />\
-                    <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"projectPath\")'></span>\
+        <form class='docker-import-project-form bt-form pd20 pb70' id='importForm'>\
+            <div class='step1'>\
+                <div class='line'>\
+                    <span class='tname'>项目根目录</span>\
+                    <div class='info-r c4'>\
+                        <input onchange='handlePathChange()' id='projectPath' class='bt-input-text mr5' type='text' name='path' value='"+'/www/wwwroot'+"/' placeholder='"+'/www/wwwroot'+"' style='width:670px' />\
+                        <span class='glyphicon glyphicon-folder-open cursor' onclick='changePath(\"projectPath\")'></span>\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>项目名称</span>\
+                    <div class='info-r c4'>\
+                        <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:670px' />\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>Compose文件名</span>\
+                    <div class='info-r c4'>\
+                        <input id='composeFileName' class='bt-input-text' type='text' name='composeFileName' placeholder='Compose文件名' style='width:670px'/>\
+                    </div>\
                 </div>\
             </div>\
-            <div class='line'>\
-                <span class='tname'>项目名称</span>\
-                <div class='info-r c4'>\
-                    <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:670px' />\
+            <div class='step2'>\
+                <div class='line'>\
+                    <span class='tname'>Compose文件内容</span>\
+                    <div class='info-r c4'>\
+                        <textarea class='mCustomScrollbar bt-input-text' id='composeFileContent' name='composeFileContent' style='width:650px;margin:0 auto;line-height: 1.8;position: relative;top: 10px;' value='' />\
+                    </div>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>Compose文件名</span>\
-                <div class='info-r c4'>\
-                    <input id='composeFileName' class='bt-input-text' type='text' name='composeFileName' placeholder='Compose文件名' style='width:670px'/>\
+                <div class='line'>\
+                    <span class='tname'>启动脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectStartScript' class='bt-input-text' name='startScript' style='width:670px;height:50px;line-height:22px' /></textarea>\
+                    </div>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>Compose文件内容</span>\
-                <div class='info-r c4'>\
-				    <textarea class='mCustomScrollbar bt-input-text' id='composeFileContent' name='composeFileContent' style='width:650px;margin:0 auto;line-height: 1.8;position: relative;top: 10px;' value='' />\
-			    </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>启动脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectStartScript' class='bt-input-text' name='startScript' style='width:670px;height:100px;line-height:22px' /></textarea>\
+                <div class='line'>\
+                    <span class='tname'>重启脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectReloadScript' class='bt-input-text' name='reloadScript' style='width:670px;height:50px;line-height:22px' /></textarea>\
+                    </div>\
                 </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>重启脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectReloadScript' class='bt-input-text' name='reloadScript' style='width:670px;height:100px;line-height:22px' /></textarea>\
-                </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>停止脚本</span>\
-                <div class='info-r c4'>\
-                    <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:670px;height:100px;line-height:22px' /></textarea>\
+                <div class='line'>\
+                    <span class='tname'>停止脚本</span>\
+                    <div class='info-r c4'>\
+                        <textarea id='projectStopScript' class='bt-input-text' name='stopScript' style='width:670px;height:50px;line-height:22px' /></textarea>\
+                    </div>\
                 </div>\
             </div>\
             <div class='bt-form-submit-btn'>\
-                <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(addLayer)'>取消</button>\
-                <button type='button' class='btn btn-success btn-sm btn-title' onclick=\"submitCreateItem()\">提交</button>\
+                <button type='button' class='btn btn-danger btn-sm btn-title' onclick='layer.close(importProjectLayer)'>取消</button>\
+                <button type='button' class='step1-btn btn btn-success btn-sm btn-title' onclick=\"submitImportItemStep1(importProjectLayer)\">解析&下一步</button>\
+                <button type='button' class='step2-back-btn btn btn-success btn-sm btn-title' onclick=\"importItemBackStep1()\">上一步</button>\
+                <button type='button' class='step2-btn btn btn-success btn-sm btn-title' onclick=\"submitImportItem()\">保存</button>\
             </div>\
         </form>",
-        success: function(layero, layer_id) {
-            $("#composeFileContent").text('');
-            let height = $(window).height() * 0.8;
-            $("#composeFileContent").height(height - 200);
-            codeMirror = CodeMirror.fromTextArea(document.getElementById("composeFileContent"), {
-                extraKeys: {
-                    "Ctrl-F": "findPersistent",
-                    "Ctrl-H": "replaceAll",
-                    "Ctrl-S": function() {
-                        $("#composeFileContent").text(codeMirror.getValue());
-                    }
-                },
-                mode: 'yaml',
-                lineNumbers: true,
-                matchBrackets: true,
-                matchtags: true,
-                autoMatchParens: true
-            });
-            codeMirror.focus();
-            codeMirror.setSize("670px", height - 250);
-        },
-        yes: async function(layers, index) {
-            $("#composeFileContent").text(codeMirror.getValue());
-
-            var form = $("#addForm").serialize();
-
-            let name = $('#projectName').val();
-            await checkProjectNameExist(name);
-
-            layer.msg('正在添加,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
-            let data = await dPost('project_add', {}, form);
-            let rdata = $.parseJSON(data.data);
-            if(!rdata.status) {
-                layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
-            }
-            layer.close(layers);
-            projectListRender();
+        success: function() {
+            codeMirror = null;
+            $("#importForm .step2, #importForm .step2-btn, #importForm .step2-back-btn").hide();
         }
     });
+}
+
+
+async function submitImportItemStep1(importProjectLayer) {
+    const form = $("#importForm").serialize() + '&showLoading=false';
+    const path = $("#projectPath").val();
+    const name = $("#projectName").val();
+    const composeFileName = $("#composeFileName").val();
+
+    if (!path) {
+        layer.msg('路径不能为空',{icon:2, time:2000});
+        return;
+    }
+    await checkProjectNameExist(name);
+
+    dPost('get_project_compose_file_content', {}, form, function(rdata) {
+        composeFileContent = rdata.data;
+        $('#composeFileContent').val(composeFileContent);
+        let height = $(window).height() * 0.8;
+        $("#composeFileContent").height(height - 200);
+        codeMirror = CodeMirror.fromTextArea(document.getElementById("composeFileContent"), {
+            extraKeys: {
+                "Ctrl-F": "findPersistent",
+                "Ctrl-H": "replaceAll",
+                "Ctrl-S": function() {
+                    $("#composeFileContent").text(codeMirror.getValue());
+                }
+            },
+            mode: 'yaml',
+            lineNumbers: true,
+            matchBrackets: true,
+            matchtags: true,
+            autoMatchParens: true
+        });
+        codeMirror.focus();
+        codeMirror.setSize("670px", height - 250);
+        refreshLayerCenter(importProjectLayer);
+    })
+    handlePathChange()
+
+    $("#importForm .step1, #importForm .step1-btn").hide();
+    $("#importForm .step2, #importForm .step2-btn").show();
+}
+
+async function submitImportItem() {
+    var importForm = $("#importForm").serialize();
+    let data = await dPost('project_add', {}, importForm);
+    
+    let rdata = $.parseJSON(data.data);
+    if(rdata.status) {
+        layer.close(importProjectLayer);
+        projectListRender();
+        return
+    }
+    layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+    
 }
 
 function projectScriptExcute(opt, id) {
@@ -1567,204 +1615,3 @@ $(document).on('messageBoxLayerClose', function(e){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-function composeFileList() {
-
-    var con = '<div class="safe bgw">\
-            <button title="" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;" onclick="openEditComposeFile();">添加Compose文件</button>\
-            <div class="divtable mtb10">\
-                <div class="tablescroll">\
-                    <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
-                    <thead><tr>\
-                    <th>文件名</th>\
-                    <th>状态</th>\
-                    <th style="text-align:right;">操作</th></tr></thead>\
-                    <tbody>\
-                    ' + '</tbody></table>\
-                </div>\
-                <div id="composeFileList" class="dataTables_paginate paging_bootstrap page"></div>\
-            </div>\
-        </div>';
-
-    $(".soft-man-con").html(con);
-
-
-    composeFileListRender();
-}
-
-
-
-function composeFileListRender() {
-    dPost('compose_file_list', '', {}, function(rdata) {
-        var rdata = $.parseJSON(rdata.data);
-        console.log(rdata);
-        if (!rdata.status) {
-            layer.msg(rdata.msg, { icon: 2, time: 2000 });
-            return;
-        }
-
-        var list = '';
-        var rlist = rdata.data;
-        composeFileListData = rlist;
-        for (var i = 0; i < rlist.length; i++) {
-            var opt = '';
-            if(rlist[i].status != 'start'){
-                opt += '<a href="javascript:composeFileScriptExcute(\''+rlist[i].filename+'\', \'start\', \''+rlist[i].path+'\')" class="btlink">启动</a> | ';
-            }else{
-                opt += '<a href="javascript:composeFileScriptExcute(\''+rlist[i].filename+'\', \'stop\', \''+rlist[i].path+'\')" class="btlink">停止</a> | ';
-                opt += '<a href="javascript:composeFileScriptExcute(\''+rlist[i].filename+'\', \'restart\', \''+rlist[i].path+'\')" class="btlink">重启</a> | ';
-            }
-            
-            var status = '';
-            if(rlist[i].status != 'start'){
-                status = '<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span>';
-            } else {
-                status = '<span style="color:rgb(92, 184, 92)" class="glyphicon glyphicon-play"></span>';
-            }
-
-            list += '<tr>';
-            list += '<td><a class="jhlink" href="javascript:openNewWindowPath(\'' + rlist[i].dir + '\')">' + rlist[i]['filename'] + '</a></td>'
-            list += '<td>' + status + '</td>';
-            list += '<td class="text-right">\
-                    ' + opt + '\
-                    <a href="javascript:;" onclick="openEditComposeFile(\'' + rlist[i]['filename'] + '\')" class="btlink">编辑</a>\
-                    <a href="javascript:;" onclick="deleteComposeFile(\'' + rlist[i]['filename'] + '\')" class="btlink">删除</a>\
-                    </td>';
-            list += '</tr>';
-        }
-
-        $('#con_list tbody').html(list);
-    });
-}
-
-async function openEditComposeFile(filename) {
-    var codeMirror = null;
-    let editItem = {
-        filename: 'docker-compose.demo.yml',
-        content: `\
-version: '3'\n\
-services:\n\
-    demo:\n\
-        image: demo:latest\n\
-        ports:\n\
-            - "1234:80"\n\
-        volumes:\n\
-            - ./data/test/:/usr/data # 数据文件建议挂载到./data/xxx/下\n\
-            - ./conf/test/:/usr/conf # 配置文件建议挂载到./conf/xxx/下\n\
-        `
-    }
-    if(filename) {
-        let rdata = await dPost('compose_file_get', {}, {filename});
-        let data = JSON.parse(rdata.data);
-        editItem = data.data;
-    }
-    var editComposeFileLayer = layer.open({
-        type: 1,
-        skin: 'demo-class',
-		area: ["90%", "80%"],
-        title: `${filename? '编辑' : '添加'}Compose文件`,
-        closeBtn: 2,
-        btn: ['保存', '取消'],
-        shift: 0,
-        shadeClose: false,
-        content: "\
-        <form class='compose-file-con bt-form pd20 pb70'>\
-            <div class='line'>\
-                <span class='tname'>文件名</span>\
-                    <div class='info-r c4'>\
-                        <input class='bt-input-text' type='text' name='filename' placeholder='文件名' style='width:258px' value='" + editItem.filename + "'/>\
-                    </div>\
-            </div>\
-            <div class='line'>\
-                <span class='tname'>文件内容</span>\
-                <div class='info-r c4'>\
-				    <textarea class='mCustomScrollbar bt-input-text' id='composeContent' name='content' style='width:100%;margin:0 auto;line-height: 1.8;position: relative;top: 10px;' value='' />\
-			    </div>\
-            </div>\
-        </form>",
-        success: function(layero, layer_id) {
-            $("#composeContent").text(editItem.content);
-                    
-            let height = $(window).height() * 0.8;
-            $("#composeContent").height(height - 200);
-            codeMirror = CodeMirror.fromTextArea(document.getElementById("composeContent"), {
-                extraKeys: {
-                    "Ctrl-F": "findPersistent",
-                    "Ctrl-H": "replaceAll",
-                    "Ctrl-S": function() {
-                        $("#composeContent").text(codeMirror.getValue());
-                    }
-                },
-                mode: 'yaml',
-                lineNumbers: true,
-                matchBrackets: true,
-                matchtags: true,
-                autoMatchParens: true
-            });
-            codeMirror.focus();
-            codeMirror.setSize("auto", height - 250);
-        },
-        yes: function(layers, index) {
-            $("#composeContent").text(codeMirror.getValue());
-            
-            dPost('compose_file_save', {}, {
-                filename: $('input[name=filename]').val(),
-                content: codeMirror.getValue()
-            }, function(rdata) {
-                var rdata = $.parseJSON(rdata['data']);
-                showMsg(rdata.msg, function() {
-                    composeFileListRender();
-                    layer.close(layers);
-                }, { icon: rdata.status ? 1 : 2, time: 2000 });
-            });
-        }
-    });
-}
-
-
-
-function deleteComposeFile(filename) {
-    safeMessage('确认删除文件[' + filename + ']', '删除[' + filename + ']后无法撤回，请谨慎操作！', function(){
-        var data = "filename="+filename;
-        dPost('compose_file_remove', {}, data, function(data){
-	        composeFileListRender();
-        	var rdata = $.parseJSON(data.data);
-	        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        });
-    });
-}
-
-function composeFileScriptExcute(filename, opt, path) {
-    cmd = ''
-    switch(opt) {
-        case 'start':
-            cmd = 'up -d'
-            break;
-        case 'stop':
-            cmd = 'down'
-            break;
-        default:
-            cmd = opt;
-            break;
-    }
-    let script = `docker-compose -f ${path} ${cmd}`;
-    layer.msg('执行成功',{icon:1});
-    excuteScriptTask(`docker插件[${filename}:${opt}]`, script)
-}

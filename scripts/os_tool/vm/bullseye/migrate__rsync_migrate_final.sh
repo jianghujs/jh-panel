@@ -132,6 +132,12 @@ migrate_project() {
           link=$(echo $line | awk '{print $9}')
           target=$(echo $line | awk '{print $11}')
 
+          # 检查软链接是否存在
+          if [ ! -e "$dir/$link" ]; then
+              echo "软链失效，跳过 ==> $dir/$link"
+              continue
+          fi
+
           # 获取软链接和目标文件的绝对路径
           abs_link=$(readlink -f "$dir/$link")
           abs_target=$(readlink -f "$target")

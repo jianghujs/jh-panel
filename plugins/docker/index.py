@@ -904,6 +904,8 @@ def projectAdd():
     saveOne('project', id, {
         'name': name,
         'path': path,
+        'compose_file_name': composeFileName,
+        'compose_file_content': composeFileContent,
         'start_script': startScript,
         'reload_script': reloadScript,
         'stop_script': stopScript,
@@ -937,6 +939,8 @@ def projectEdit():
     saveOne('project', id, {
         'name': name,
         'path': path,
+        'compose_file_name': composeFileName,
+        'compose_file_content': composeFileContent,
         'start_script': startScript,
         'reload_script': reloadScript,
         'stop_script': stopScript

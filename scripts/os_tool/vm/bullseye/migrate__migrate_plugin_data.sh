@@ -18,7 +18,7 @@ MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 # 从环境变量中获取PROJECT_DIR值
 project_dir=${PROJECT_DIR:-""}
 if [ -z "$project_dir" ]; then
-    read -p "请输入jianghujs项目所在目录（默认/www/wwwroot/）: " project_dir
+    read -p "请输入项目所在目录（默认/www/wwwroot/）: " project_dir
     project_dir=${project_dir:-"/www/wwwroot/"}
 fi
 
@@ -28,10 +28,19 @@ migrate_info_plugin='{"project_dir": "'${project_dir}'"}'
 # 创建${MIGRATE_DIR}/plugin_files目录
 mkdir -p ${MIGRATE_DIR}/plugin_files/
 
-# 打包/www/server/jianghujs目录下的data和script目录到${MIGRATE_DIR}/jianghujs.zip
-pushd /www/server/jianghujs/ > /dev/null
-zip -r ${MIGRATE_DIR}/plugin_files/jianghujs.zip ./data ./script
-popd > /dev/null
+if [ -d "/www/server/jianghujs" ]; then
+    # 打包/www/server/jianghujs目录下的data和script目录到${MIGRATE_DIR}/jianghujs.zip
+    pushd /www/server/jianghujs/ > /dev/null
+    zip -r ${MIGRATE_DIR}/plugin_files/jianghujs.zip .
+    popd > /dev/null
+fi
+
+if [ -d "/www/server/docker" ]; then
+    # 打包/www/server/docker目录下的data和script目录到${MIGRATE_DIR}/docker.zip
+    pushd /www/server/docker/ > /dev/null
+    zip -r ${MIGRATE_DIR}/plugin_files/docker.zip .
+    popd > /dev/null
+fi
 
 # 在${MIGRATE_DIR}生成deploy_plugin.sh
 cat << EOF > ${MIGRATE_DIR}/deploy_plugin.sh
@@ -48,14 +57,37 @@ fi
 # 从环境变量中获取DEPLOY_DIR值
 DEPLOY_DIR=\${DEPLOY_DIR:-"/www/wwwroot/"}
 
-# 删除/www/server/jianghujs目录
-rm -rf /www/server/jianghujs
 
-# 解压./plugin_files/jianghujs.zip到/www/server/jianghujs
-unzip -o ./plugin_files/jianghujs.zip -d /www/server/jianghujs
+
+if [ -f "./project_files/jianghujs.zip" ]; then
+    # 删除/www/server/jianghujs目录
+    rm -rf /www/server/jianghujs
+
+    # 解压./plugin_files/jianghujs.zip到/www/server/jianghujs
+    unzip -o ./plugin_files/jianghujs.zip -d /www/server/jianghujs
+fi
+
+
+if [ -f "./project_files/docker.zip" ]; then
+    # 删除/www/server/docker目录
+    rm -rf /www/server/docker
+
+    # 解压./plugin_files/docker.zip到/www/server/docker
+    unzip -o ./plugin_files/docker.zip -d /www/server/docker
+fi
 
 # 在/www/server/jianghujs/目录下执行以下脚本替换项目目录
 pushd /www/server/jianghujs/ > /dev/null
+find . -type f -print0 | while read -d \$'\0' file
+do
+  echo "正在替换\${file}"
+  sed -i "s#${project_dir}#\${DEPLOY_DIR}#g" "\$file"
+done
+popd > /dev/null
+
+
+# 在/www/server/docker/目录下执行以下脚本替换项目目录
+pushd /www/server/docker/ > /dev/null
 find . -type f -print0 | while read -d \$'\0' file
 do
   echo "正在替换\${file}"

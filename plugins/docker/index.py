@@ -991,6 +991,7 @@ def getProjectComposeFileContent():
     return ''
 
 if __name__ == "__main__":
+    initDb()
     func = sys.argv[1]
     if func == 'status':
         print(status())

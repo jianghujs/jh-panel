@@ -1162,7 +1162,7 @@ function projectListRender() {
             }
 
             list += '<tr>';
-            list += '<td><a class="jhlink" href="javascript:openNewWindowPath(\'' + rlist[i].dir + '\')">' + rlist[i]['path'] + '</a></td>'
+            list += '<td><a class="jhlink" href="javascript:openNewWindowPath(\'' + rlist[i].path + '\')">' + rlist[i]['path'] + '</a></td>'
             list += '<td>' + rlist[i]['name'] + '</td>'
             list += '<td>' + status + '</td>';
             list += '<td class="text-right">\
@@ -1567,7 +1567,7 @@ async function submitImportItemStep1(importProjectLayer) {
         layer.msg("Compose文件名不能为空", { icon: 2 });
         return
     }
-    
+
     await checkProjectNameExist(name);
 
     dPost('get_project_compose_file_content', {}, form, function(rdata) {

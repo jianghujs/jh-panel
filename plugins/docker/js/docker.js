@@ -1333,6 +1333,15 @@ function openCreateProject() {
 
             let name = $('#projectName').val();
             let path = $('#projectPath').val();
+            let composeFileName = $('#composeFileName').val();
+            if (!name) {
+                layer.msg("项目名称不能为空", { icon: 2 });
+                return
+            }
+            if (!composeFileName) {
+                layer.msg("Compose文件名不能为空", { icon: 2 });
+                return
+            }
             await checkProjectNameExist(name);
             await checkPathExist(path);
 
@@ -1550,6 +1559,15 @@ async function submitImportItemStep1(importProjectLayer) {
         layer.msg('路径不能为空',{icon:2, time:2000});
         return;
     }
+    if (!name) {
+        layer.msg("项目名称不能为空", { icon: 2 });
+        return
+    }
+    if (!composeFileName) {
+        layer.msg("Compose文件名不能为空", { icon: 2 });
+        return
+    }
+    
     await checkProjectNameExist(name);
 
     dPost('get_project_compose_file_content', {}, form, function(rdata) {

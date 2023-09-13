@@ -852,12 +852,12 @@ def makeScriptFile(filename, content):
 def projectList():
     data = getAll('project')
     echos = {item.get('echo', '') for item in data}
-    paths = {item.get('path', '') for item in data}
+    names = {item.get('name', '') for item in data}
 
     # status
-    statusCmd = """ps -ef | grep -v grep | grep -v python | grep 'jianghujs' | awk -F'baseDir":"' '{print $2}' | awk -F'","' '{print $1}'"""
+    statusCmd = """docker ps"""
     statusExec = mw.execShell(statusCmd)
-    statusMap = {path: ('start' if path in statusExec[0] else 'stop') for path in paths}
+    statusMap = {name: ('start' if name in statusExec[0] else 'stop') for name in names}
 
     # loadingStatus
     server_dir = getServerDir()
@@ -870,10 +870,10 @@ def projectList():
         else:
             loadingStatusMap[echo] = ''
 
-    for item in data:
-        path = item.get('path', '') 
+    for item in data: 
+        name = item.get('name', '')
         echo = item.get('echo', '')
-        item['status'] = statusMap[path]
+        item['status'] = statusMap[name]
         item['loadingStatus'] = loadingStatusMap[echo]
 
     return mw.returnJson(True, 'ok', data)

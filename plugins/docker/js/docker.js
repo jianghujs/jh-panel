@@ -1556,7 +1556,7 @@ function projectScriptExcute(opt, id) {
 
 // 绑定执行完毕事件
 $(document).on('messageBoxLayerClose', function(e){
-    composeFileListRender();
+    projectListRender();
 });
 
 
@@ -1768,8 +1768,3 @@ function composeFileScriptExcute(filename, opt, path) {
     layer.msg('执行成功',{icon:1});
     excuteScriptTask(`docker插件[${filename}:${opt}]`, script)
 }
-
-// 绑定执行完毕事件
-$(document).on('messageBoxLayerClose', function(e){
-    composeFileListRender();
-});

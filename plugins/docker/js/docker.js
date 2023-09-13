@@ -1220,8 +1220,8 @@ services:\n\
         ports:\n\
             - "1234:80"\n\
         volumes:\n\
-            - ./data/test/:/usr/data # 数据文件建议挂载到./data/xxx/下\n\
-            - ./conf/test/:/usr/conf # 配置文件建议挂载到./conf/xxx/下\n\
+            - ./data/:/usr/data # 数据文件建议挂载到项目文件夹下./data/下\n\
+            - ./conf/:/usr/conf # 配置文件建议挂载到./conf/下\n\
     `;
     let startScript = `docker-compose -f ${path}/${composeFileName} up -d`;
     let reloadScript = `docker-compose -f ${path}/${composeFileName} restart`;

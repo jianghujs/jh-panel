@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -e
 # 让用户输入用户名，如果没有输入则使用默认值
 read -p "请输入虚拟机所在用户：" username
 
@@ -35,10 +35,26 @@ while true; do
             read -p "请输入新硬盘大小（单位MB）：" disk_size
             disk_name=$(basename "$vm_disk")
             disk_path=$(dirname "$vm_disk")
-            disk_bak="${disk_path}/${disk_name}_$(date +%y%m%d%H%M%S)_bak.vdi"
-            sudo -u $username VBoxManage clonehd "$vm_disk" "$disk_bak" --format VDI
-            sudo -u $username VBoxManage modifyhd "$vm_disk" --resize $disk_size
-            echo "虚拟硬盘已扩容至${disk_size}MB，原硬盘已备份为${disk_bak}"
+            
+            # 提示是否需要进行备份虚拟硬盘
+            read -p "是否需要备份备份？（默认y）[y/n]: " backup_choice
+            backup_choice=${backup_choice:-"y"}
+            
+            if [ $backup_choice == "y" ]; then
+                disk_bak="${disk_path}/${disk_name}_$(date +%y%m%d%H%M%S)_bak.vdi"
+                echo "正在备份到${disk_bak}..."
+                sudo -u $username VBoxManage clonehd "$vm_disk" "$disk_bak" --format VDI
+                echo "备份完成✅"
+            fi
+            
+            read -p "确定要扩容${vm_disk}到${disk_size}M吗？（默认y）[y/n]: " resize_choice
+            resize_choice=${resize_choice:-"y"}
+        
+            if [ $resize_choice == "y" ]; then
+                echo "正在扩容${vm_disk}至${disk_size}M..."
+                sudo -u $username VBoxManage modifyhd "$vm_disk" --resize $disk_size
+                echo "扩容完成✅"
+            fi
         fi
     fi
 done

@@ -33,8 +33,9 @@ show_menu() {
     echo "==================host jammy os-tools=================="
     echo "请选择一个操作:"
     echo "1. 初始化环境"
-    echo "2. 配置VirtualBox虚拟机自启动"
-    echo "3. 配置virtualbox虚拟机定时快照"
+    echo "2. VirtualBox虚拟机自启动"
+    echo "3. Virtualbox虚拟机定时快照"
+    echo "4. Virtualbox虚拟机磁盘扩容"
     echo "======================================================="
 }
 
@@ -63,6 +64,9 @@ case $choice in
         ;;
     3)
         download_and_run index__virtualbox_vm_auto_snapshot.sh
+        ;;
+    4)
+        download_and_run index__virtualbox_vm_diskresize.sh
         ;;
 esac
 

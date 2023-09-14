@@ -1097,8 +1097,8 @@ class system_api:
                 if disk_size_percent > disk_notify_value:
                     sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
             if len(sysinfo_summary_tips) > 0:
-                summary_tips.append("、".join(["aq", "a"]) + '平均使用率过高，有服务中断停机风险')
-            # 网站概要信息
+                summary_tips.append("、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险')
+           # 网站概要信息
             siteinfo_summary_tips = []
             for site in siteInfo['site_list']:
                 site_name = site['name']
@@ -1110,8 +1110,8 @@ class system_api:
                     site_error_msg = ''
                     if not (ssl_type == 'lets' or ssl_type == 'acme') and cert_endtime < ssl_cert_notify_value:
                         siteinfo_summary_tips.append(site_name)
-            if len(sysinfo_summary_tips) > 0:
-                summary_tips.append("域名（" + "、".join(["aq", "a"]) + '）证书需要及时更新')
+            if len(siteinfo_summary_tips) > 0:
+                summary_tips.append("域名（" + "、".join(siteinfo_summary_tips) + '）证书需要及时更新')
             # 无异常默认信息
             if len(summary_tips) == 0:
                 summary_tips.append("服务运行正常，继续保持！")

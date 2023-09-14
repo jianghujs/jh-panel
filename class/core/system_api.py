@@ -924,6 +924,7 @@ class system_api:
             "overCount": overCount
         }
 
+    # 生成并发送服务器报告
     def generateSystemReport(self):
         sql = db.Sql().dbfile('system')
         csql = mw.readFile('data/sql/system.sql')

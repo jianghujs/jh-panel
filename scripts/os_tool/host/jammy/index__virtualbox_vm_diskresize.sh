@@ -37,7 +37,7 @@ while true; do
             disk_path=$(dirname "$vm_disk")
             
             # 提示是否需要进行备份虚拟硬盘
-            read -p "是否需要备份备份？（默认y）[y/n]: " backup_choice
+            read -p "是否需要备份虚拟硬盘？（默认y）[y/n]: " backup_choice
             backup_choice=${backup_choice:-"y"}
             
             if [ $backup_choice == "y" ]; then

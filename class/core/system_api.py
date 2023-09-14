@@ -1020,7 +1020,7 @@ class system_api:
                     else:
                         cert_status = '将于%s到期，还有%s天%s到期' % (
                             cert_not_after,
-                            ("<span style='color: red'>%s</span>" if cert_endtime < 14 else "<span>%s</span>") % str(cert_endtime), 
+                            ("<span style='color: red'>%s</span>" if cert_endtime < ssl_cert_notify_value else "<span>%s</span>") % str(cert_endtime), 
                             ('，到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
                 siteinfo_tips.append({
@@ -1081,6 +1081,41 @@ class system_api:
                     })
 
 
+            # 生成概要信息
+            summary_tips = []
+            # 系统资源概要信息
+            sysinfo_summary_tips = []
+            if cpuAnalyzeResult.get('average', 0) > cpu_notify_value:
+                sysinfo_summary_tips.append("CPU")
+            if memAnalyzeResult.get('average', 0) > mem_notify_value:
+                sysinfo_summary_tips.append("内存")
+            if loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value:
+                sysinfo_summary_tips.append("资源使用率")
+            for disk in diskInfo:
+                disk_size_percent = int(disk['size'][3].replace('%', ''))
+                if disk_size_percent > disk_notify_value:
+                    sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
+            if len(sysinfo_summary_tips) > 0:
+                summary_tips.append("、".join(["aq", "a"]) + '平均使用率过高，有服务中断停机风险')
+            # 网站概要信息
+            siteinfo_summary_tips = []
+            for site in siteInfo['site_list']:
+                site_name = site['name']
+                cert_data = site['cert_data']
+                ssl_type = site['ssl_type']
+                if cert_data is not None:
+                    cert_not_after = cert_data.get('notAfter', '0000-00-00')
+                    cert_endtime = int(cert_data.get('endtime', 0))
+                    site_error_msg = ''
+                    if not (ssl_type == 'lets' or ssl_type == 'acme') and cert_endtime < ssl_cert_notify_value:
+                        siteinfo_summary_tips.append(site_name)
+            if len(sysinfo_summary_tips) > 0:
+                summary_tips.append("域名（" + "、".join(["aq", "a"]) + '）证书需要及时更新')
+            # 无异常默认信息
+            if len(summary_tips) == 0:
+                summary_tips.append("服务运行正常，继续保持！")
+
+
             report_content = """
 <style>
 h3 { font-size: bold; }
@@ -1111,6 +1146,12 @@ table tr td:nth-child(2) {
 
 <h2>%(title)s(%(ip)s)-服务器运行周报 </h2>
 <h3 style="color: #cecece">日期：%(start_date)s至%(end_date)s</h3>
+<div style="display: flex; flex-direction: column;align-items: center;">
+    <h3>概要信息：</h3>
+    <ul>
+    %(summary_content)s
+    </ul>
+</div>
 
 <h3>系统资源：</h3>
 <table border>
@@ -1150,7 +1191,9 @@ table tr td:nth-child(2) {
                 "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
                 "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
-                "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', '')))
+                "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', ''))),
+                "summary_content": ''.join(f"<li>{item}</li>\n" for item in summary_tips)
+
             }
             mw.notifyMessage(
                 msg=report_content, 

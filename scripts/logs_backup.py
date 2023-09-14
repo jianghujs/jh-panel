@@ -47,15 +47,16 @@ def split_logs(oldFileName, save):
 def split_all(save):
     sites = mw.M('sites').field('name').select()
     for site in sites:
-        oldFileName = logsPath + site['name'] + px
+        oldFileName = logsPath + '/' + site['name'] + px
         split_logs(oldFileName, save)
 
 if __name__ == '__main__':
     save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
     if len(sys.argv) > 2:
         save = json.loads(sys.argv[2])
-    if sys.argv[1].find('ALL') == 0:
-        split_all(num)
+
+    if sys.argv[1].find('backupAll') >= 0:
+        split_all(save)
     else:
         siteName = sys.argv[1]
         if siteName[-4:] == '.log':

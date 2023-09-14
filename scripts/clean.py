@@ -2,12 +2,14 @@
 #-----------------------------
 # 文件夹清理工具
 # python3 /www/server/jh-panel/scripts/clean.py /root/test '{"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}'
+# python3 /www/server/jh-panel/scripts/clean.py /root/test '{"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"} jianghujs.*.js'
 #-----------------------------
 
 import sys
 import os
 import json
 import datetime
+import fnmatch
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -27,7 +29,7 @@ import time
 
 class cleanTools:
 
-    def cleanPath(self, path, save):
+    def cleanPath(self, path, save, pattern):
         if not os.path.exists(path):
             print("|---[" + path + "]不存在")
             return
@@ -43,7 +45,7 @@ class cleanTools:
 
         # 获取目录下的所有文件
         files = []
-        for filename in os.listdir(path):
+        for filename in fnmatch.filter(os.listdir(path), pattern):
             files.append({
                 'filename': path + '/' + filename,
                 'addtime': time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(os.path.getctime(path + '/' + filename)))
@@ -98,5 +100,7 @@ if __name__ == "__main__":
     save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
     if len(sys.argv) > 2:
         save = json.loads(sys.argv[2])
-    
-    clean.cleanPath(path, save)
+    pattern = *
+    if len(sys.argv) > 3:
+        save = json.loads(sys.argv[3])
+    clean.cleanPath(path, save, pattern)

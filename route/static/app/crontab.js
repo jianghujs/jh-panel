@@ -280,6 +280,8 @@ function planAdd(){
 		var where1 = $("#ptime input[name='where1']").val();
 		$("#set-Config input[name='where1']").val(where1);
 	}
+
+	// 备份所有-切分成多个定时任务
 	// if(sName == 'backupAll'){
 	// 	var alist = $("ul[aria-labelledby='backdata'] li a");
 	// 	var dataList = new Array();

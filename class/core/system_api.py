@@ -842,6 +842,20 @@ class system_api:
                     jianghujs_info['project_list'] = project_list_result.get('data', [])
         return jianghujs_info
 
+    def getDockerInfo(self):
+        docker_info = {
+            "status": "stop"
+        }
+        if os.path.exists('/www/server/docker/'):
+            project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/docker/index.py project_list')[0]
+            if project_list_result:
+                project_list_result = json.loads(project_list_result)
+                if project_list_result.get('status', False):
+                    docker_info['status'] = 'start'
+                    docker_info['project_list'] = project_list_result.get('data', [])
+        return docker_info
+
+
     def getMysqlInfo(self):
         mysql_info = {
             "status": "stop"
@@ -1030,6 +1044,19 @@ class system_api:
                         )
                     })
 
+            # Docker管理器
+            dockerinfo_tips = []
+            docker_Info = self.getDockerInfo()
+            if(docker_Info['status'] == 'start'):
+                project_list = docker_Info['project_list']
+                for project in project_list:
+                    dockerinfo_tips.append({
+                        "name": project['name'],
+                        "desc": "%s" % (
+                            '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
+                        )
+                    })
+
             # 数据库表 
             mysqlinfo_tips = []
             mysql_info = self.getMysqlInfo()
@@ -1097,10 +1124,16 @@ table tr td:nth-child(2) {
 </table>
 
 
-<h3>项目：</h3>
+<h3>JianghuJS项目：</h3>
 
 <table border class="project-table">
 %(jianghujsinfo_tips)s
+</table>
+
+<h3>Docker项目：</h3>
+
+<table border class="project-table">
+%(dockerinfo_tips)s
 </table>
 
 <h3>数据库：</h3>
@@ -1116,6 +1149,7 @@ table tr td:nth-child(2) {
                 "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
                 "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
+                "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
                 "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', '')))
             }
             mw.notifyMessage(

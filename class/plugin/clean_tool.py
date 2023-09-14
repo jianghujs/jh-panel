@@ -12,8 +12,8 @@ def cleanPath(path, save, pattern):
         return
 
     print("|---开始清理过期文件")
-    print("path:", path)
-    print('pattern:', pattern)
+    print("|---清理目录:", path)
+    print('|---文件通配符:', pattern)
     # 清理多余备份
     saveAllDay = int(save.get('saveAllDay'))
     saveOther = int(save.get('saveOther'))

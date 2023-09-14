@@ -17,11 +17,13 @@ if sys.platform != 'darwin':
 
 chdir = os.getcwd()
 sys.path.append(chdir + '/class/core')
+sys.path.append(chdir + '/class/plugin')
 
 # importlib.reload(sys)
 # sys.setdefaultencoding('utf-8')
 
 import mw
+import clean_tool
 print('==================================================================')
 print('★[' + time.strftime("%Y/%m/%d %H:%M:%S") + ']，切割日志')
 print('==================================================================')
@@ -39,7 +41,7 @@ def split_logs(oldFileName, save):
     newFileName = oldFileName + '_' + time.strftime("%Y-%m-%d_%H%M%S") + '.log'
     shutil.move(oldFileName, newFileName)
     print('|---已切割日志到:' + newFileName)
-    mw.execShell("""python3 /www/server/jh-panel/scripts/clean.py %(logsPath)s '%(save)s' %(pattern)s""" % {"logsPath": logsPath, "save": save, "pattern": oldFileName + '_' + "*"})
+    clean_tool.cleanPath(logsPath, save, oldFileName.replace(logsPath + '/', "") + '_' + "*")
 
 
 def split_all(save):

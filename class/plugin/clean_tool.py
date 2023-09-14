@@ -4,13 +4,16 @@ import os
 import json
 import datetime
 import fnmatch
+import time
 
-def cleanPath(self, path, save, pattern):
+def cleanPath(path, save, pattern):
     if not os.path.exists(path):
         print("|---[" + path + "]不存在")
         return
 
     print("|---开始清理过期文件")
+    print("path:", path)
+    print('pattern:', pattern)
     # 清理多余备份
     saveAllDay = int(save.get('saveAllDay'))
     saveOther = int(save.get('saveOther'))

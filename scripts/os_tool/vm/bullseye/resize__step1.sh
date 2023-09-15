@@ -67,10 +67,9 @@ echo "请重启系统后执行“服务器扩容-扩容步骤2”脚本"
 echo "====================================================================="
 
 # 重启提示
-read -p "要重启系统吗？[y/n]" reboot_confirm
+read -p "要重启系统吗？（默认y）[y/n]" reboot_confirm
 reboot_confirm=${reboot_confirm:-y}
 if [ "$reboot_confirm" = "y" ]; then
-    echo "重启系统..."
     reboot
 fi
 

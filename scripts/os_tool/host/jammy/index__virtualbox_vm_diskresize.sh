@@ -34,8 +34,8 @@ while true; do
         else            
             # 获取当前硬盘大小
             current_disk_size=$(sudo -u $username VBoxManage showhdinfo "$vm_disk" | grep "Capacity" | awk '{print $2}')
-            echo "当前硬盘大小：${current_disk_size}"
-            read -p "请输入新硬盘大小（单位MB：" disk_size
+            echo "当前硬盘大小（单位MB）：${current_disk_size}"
+            read -p "请输入新硬盘大小（单位MB）：" disk_size
             disk_name=$(basename "$vm_disk")
             disk_path=$(dirname "$vm_disk")
 

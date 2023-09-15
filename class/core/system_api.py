@@ -901,6 +901,41 @@ class system_api:
         mw.writeFile(control_notify_value_file, json.dumps(config_data))
         return mw.returnJson(True, '设置成功!')
 
+    def getReportCycleApi(self):
+        control_report_cycle_file = 'data/control_report_cycle.conf'
+        if not os.path.exists(control_report_cycle_file):
+            mw.writeFile(control_report_cycle_file, '{}')
+        config_data = json.loads(mw.readFile(control_report_cycle_file))
+        return mw.returnData(True, 'ok', config_data)
+    
+
+    def setReportCycleApi(self):
+        field_type = request.form.get('type', '')
+        week = request.form.get('week', '')
+        where1 = request.form.get('where1', '')
+        hour = request.form.get('hour', '')
+        minute = request.form.get('minute', '')
+        
+        params = {
+            'type': field_type,
+            'week': week,
+            'where1': where1,
+            'hour': hour,
+            'minute': minute
+        }
+
+        cronConfig, get, name = crontabApi.getCrondCycle(params)
+
+        
+        control_report_cycle_file = 'data/control_report_cycle.conf'
+        
+        crontabApi.removeCrond('system_report.sh')
+        crontabApi.writeCrond(cronConfig + ' /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
+
+        mw.writeFile(control_report_cycle_file, json.dumps(params))
+
+        return mw.returnJson(True, '设置成功!')
+
     def analyzeMonitorData(self, data, key, over):
         """ 
         分析监控数据，统计异常次数(5分钟内的算1次)

@@ -31,13 +31,13 @@ while true; do
         # 判断硬盘是否在Snapshots目录下
         if [[ $vm_disk == *"/Snapshots/"* ]]; then
             echo "当前虚拟机存在快照点，为保证数据完整，请将虚拟机最新快照点clone出一个新的虚拟机，在新虚拟机上进行扩容操作"
-        else
-            read -p "请输入新硬盘大小（单位MB）：" disk_size
-            disk_name=$(basename "$vm_disk")
-            disk_path=$(dirname "$vm_disk")
-
+        else            
             # 获取当前硬盘大小
             current_disk_size=$(sudo -u $username VBoxManage showhdinfo "$vm_disk" | grep "Capacity" | awk '{print $2}')
+            echo "当前硬盘大小：${current_disk_size}"
+            read -p "请输入新硬盘大小（单位MB：" disk_size
+            disk_name=$(basename "$vm_disk")
+            disk_path=$(dirname "$vm_disk")
 
             # 判断输入的大小是否小于当前硬盘大小
             if (( disk_size < current_disk_size )); then

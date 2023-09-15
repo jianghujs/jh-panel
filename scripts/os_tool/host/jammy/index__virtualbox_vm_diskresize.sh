@@ -37,7 +37,7 @@ while true; do
             disk_path=$(dirname "$vm_disk")
 
             # 获取当前硬盘大小
-            current_disk_size=$(sudo -u $username VBoxManage showhdinfo "$vm_disk" | grep "Disk size" | awk '{print $3}')
+            current_disk_size=$(sudo -u $username VBoxManage showhdinfo "$vm_disk" | grep "Capacity" | awk '{print $2}')
 
             # 判断输入的大小是否小于当前硬盘大小
             if (( disk_size < current_disk_size )); then

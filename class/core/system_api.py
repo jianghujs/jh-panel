@@ -1180,7 +1180,7 @@ table tr td:nth-child(2) {
 
 </style>
 
-<h2>%(title)s(%(ip)s)-服务器运行周报 </h2>
+<h2>%(title)s(%(ip)s)-服务器运行报告 </h2>
 <h3 style="color: #cecece">日期：%(start_date)s至%(end_date)s</h3>
 <div style="display: flex; flex-direction: column;align-items: center;">
     <h3>概要信息：</h3>
@@ -1234,7 +1234,7 @@ table tr td:nth-child(2) {
             mw.notifyMessage(
                 msg=report_content, 
                 msgtype="html", 
-                title="%(title)s(%(ip)s)服务器周报" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
+                title="%(title)s(%(ip)s)服务器报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
                 stype='服务器报告', 
                 trigger_time=0
             )

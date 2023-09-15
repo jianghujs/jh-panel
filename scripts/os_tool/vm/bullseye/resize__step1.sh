@@ -3,7 +3,7 @@ set -e
 
 # 确认清空分区表
 read -p "确定要清空重新生成分区吗？可能会丢失硬盘数据，请确定已经做好数据备份！（默认n）[y/n]" confirm
-confirm=${confirm:-y}
+confirm=${confirm:-n}
 if [ "$confirm" != "y" ]; then
     exit
 fi

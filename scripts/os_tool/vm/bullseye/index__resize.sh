@@ -43,10 +43,10 @@ choice=${choice:-"1"}
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run resize_step1.sh
+    download_and_run resize__step1.sh
     ;;
 2)
-    download_and_run resize_step2.sh
+    download_and_run resize__step2.sh
     ;;
 esac
 

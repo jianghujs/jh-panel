@@ -56,7 +56,7 @@ while true; do
                 echo "备份完成✅"
             fi
             
-            read -p "确定要扩容${vm_disk}到${disk_size}M吗？（默认y）[y/n]: " resize_choice
+            read -p "确定要扩容${vm_disk}到${disk_size}MB吗？（默认y）[y/n]: " resize_choice
             resize_choice=${resize_choice:-"y"}
         
             if [ $resize_choice == "y" ]; then

@@ -35,6 +35,15 @@ while true; do
             read -p "请输入新硬盘大小（单位MB）：" disk_size
             disk_name=$(basename "$vm_disk")
             disk_path=$(dirname "$vm_disk")
+
+            # 获取当前硬盘大小
+            current_disk_size=$(sudo -u $username VBoxManage showhdinfo "$vm_disk" | grep "Disk size" | awk '{print $3}')
+
+            # 判断输入的大小是否小于当前硬盘大小
+            if (( disk_size < current_disk_size )); then
+                echo "新硬盘大小不能小于原硬盘大小"
+                continue
+            fi
             
             # 提示是否需要进行备份虚拟硬盘
             read -p "是否需要备份虚拟硬盘？（默认y）[y/n]: " backup_choice

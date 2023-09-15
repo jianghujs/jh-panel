@@ -1,4 +1,3 @@
-echo "分区调整完成✅"
 mkswap /dev/sda5
 swapon /dev/sda5
 echo "启用swap分区完成✅"

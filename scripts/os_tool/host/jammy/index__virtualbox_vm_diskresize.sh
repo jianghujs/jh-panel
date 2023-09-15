@@ -28,6 +28,15 @@ while true; do
         # 查询虚拟机使用的虚拟硬盘文件
         vm_disk=$(sudo -u $username VBoxManage showvminfo "$vm_name" --machinereadable | grep '.vdi\|.vmdk\|.vhd' | awk -F '=' '{print $2}' | tr -d '"')
 
+        # 查询虚拟机状态
+        vm_state=$(sudo -u $username VBoxManage showvminfo "$vm_name" --machinereadable | grep "VMState=" | awk -F '"' '{print $2}')
+
+        # 判断虚拟机是否在运行状态
+        if [ "$vm_state" != "powered off" ]; then
+            echo "虚拟机正在运行，请关闭虚拟机后再执行操作"
+            continue
+        fi
+
         # 判断硬盘是否在Snapshots目录下
         if [[ $vm_disk == *"/Snapshots/"* ]]; then
             echo "当前虚拟机存在快照点，为保证数据完整，请将虚拟机最新快照点clone出一个新的虚拟机，在新虚拟机上进行扩容操作"

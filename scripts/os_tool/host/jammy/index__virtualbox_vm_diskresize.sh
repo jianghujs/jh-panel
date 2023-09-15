@@ -32,7 +32,7 @@ while true; do
         vm_state=$(sudo -u $username VBoxManage showvminfo "$vm_name" --machinereadable | grep "VMState=" | awk -F '"' '{print $2}')
 
         # 判断虚拟机是否在运行状态
-        if [ "$vm_state" != "powered off" ]; then
+        if [ "$vm_state" == "running" ]; then
             echo "虚拟机正在运行，请关闭虚拟机后再执行操作"
             continue
         fi

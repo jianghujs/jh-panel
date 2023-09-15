@@ -57,6 +57,10 @@ swap
 w
 EOF
 
+# 更新/etc/fstab
+swap_uuid=$(blkid -s UUID -o value /dev/sda5)
+sed -i '/swap/ s/UUID=[^ ]*/UUID=$swap_uuid/g' /etc/fstab
+echo "更新/etc/fstab完成✅"
 
 echo ""
 echo "===========================分区调整完成✅=========================="

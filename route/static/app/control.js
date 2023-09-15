@@ -1267,11 +1267,11 @@ function submitReportCycleForm() {
 	var where1 = $('#excode_week b').attr('val');
 	$("#set-Config input[name='where1']").val(where1);
 
-	if(where1 > is1 || where1 < is2){
-		$("#ptime input[name='where1']").focus();
-		layer.msg('表单不合法,请重新输入!',{icon:2});
-		return;
-	}
+	// if(where1 > is1 || where1 < is2){
+	// 	$("#ptime input[name='where1']").focus();
+	// 	layer.msg('表单不合法,请重新输入!',{icon:2});
+	// 	return;
+	// }
 	
 	var hour = $("#ptime input[name='hour']").val();
 	if(hour > 23 || hour < 0){

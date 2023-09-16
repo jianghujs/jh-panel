@@ -1204,11 +1204,11 @@ function openSetReportCycle() {
 								</ul>\
 							</div>\
 							<div class='plan_hms pull-left mr20 bt-input-text'>\
-								<span><input type='number' name='hour' value='" + (reportCycleValue.hour || 1) + "' maxlength='2' max='23' min='0'></span>\
+								<span><input type='number' name='hour' value='" + (reportCycleValue.hour || 0) + "' maxlength='2' max='23' min='0'></span>\
 								<span class='name'>小时</span>\
 							</div>\
 							<div class='plan_hms pull-left mr20 bt-input-text'>\
-								<span><input type='number' name='minute' value='" + (reportCycleValue.minute || 30) + "' maxlength='2' max='59' min='0'></span>\
+								<span><input type='number' name='minute' value='" + (reportCycleValue.minute || 0) + "' maxlength='2' max='59' min='0'></span>\
 								<span class='name'>分钟</span>\
 							</div>\
 						</div>\

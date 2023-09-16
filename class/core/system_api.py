@@ -982,8 +982,8 @@ class system_api:
         start = int(time.mktime(start_datetime.timetuple()))
         start_date = datetime.datetime.fromtimestamp(start)
         end_date = datetime.datetime.fromtimestamp(end)
-        start_timestamp_of_start =  datetime.datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0) 
-        end_timestamp_of_start = start_timestamp_of_start + datetime.timedelta(days=1)
+        start_timestamp =  start_datetime.timestamp()
+        end_timestamp = end_datetime.timestamp()
         print("报表：%s-%s" % (start_date, end_date))
 
         control_notify_config = mw.getControlNotifyConfig()
@@ -1099,8 +1099,8 @@ class system_api:
             # 数据库表 
             mysqlinfo_tips = []
             mysql_info = self.getMysqlInfo()
-            # 第一天的数据库情况
-            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (start_timestamp_of_start, end_timestamp_of_start)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
+            # 开始的数据库情况
+            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (start_timestamp, end_timestamp)).field('id,total_size,total_bytes,list,addtime').order('id asc').limit('0,1').select()
             start_database_list = '[]'
             if len(start_mysql_info) > 0:
                 start_database_list = start_mysql_info[0].get('list', '[]')

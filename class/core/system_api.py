@@ -971,10 +971,13 @@ class system_api:
         # if not os.path.exists(filename):
         #     time.sleep(10)
         #     continue
+        
         now = datetime.datetime.now()
-        # 近七天
-        end_datetime = datetime.datetime(now.year, now.month, now.day)
-        start_datetime = end_datetime - datetime.timedelta(days=7)
+        # end_datetime = datetime.datetime(now.year, now.month, now.day)
+        # start_datetime = end_datetime - datetime.timedelta(days=7)
+        end_datetime = now
+        start_datetime = mw.getReportCycleStartTime(end_datetime)
+
         end = int(time.mktime(end_datetime.timetuple()))
         start = int(time.mktime(start_datetime.timetuple()))
         start_date = datetime.datetime.fromtimestamp(start)

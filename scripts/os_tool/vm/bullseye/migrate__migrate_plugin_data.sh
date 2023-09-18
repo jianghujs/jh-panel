@@ -59,41 +59,49 @@ DEPLOY_DIR=\${DEPLOY_DIR:-"/www/wwwroot/"}
 
 
 
-if [ -f "./plugin_files/jianghujs.zip" ]; then
-    # 删除/www/server/jianghujs目录
-    rm -rf /www/server/jianghujs
+if [ -d "/www/server/jianghujs" ]; then
+    if [ -f "./plugin_files/jianghujs.zip" ]; then
+        # 删除/www/server/jianghujs目录
+        rm -rf /www/server/jianghujs
 
-    # 解压./plugin_files/jianghujs.zip到/www/server/jianghujs
-    unzip -o ./plugin_files/jianghujs.zip -d /www/server/jianghujs
+        # 解压./plugin_files/jianghujs.zip到/www/server/jianghujs
+        unzip -o ./plugin_files/jianghujs.zip -d /www/server/jianghujs
+        
+        # 在/www/server/jianghujs/目录下执行以下脚本替换项目目录
+        pushd /www/server/jianghujs/ > /dev/null
+        find . -type f -print0 | while read -d \$'\0' file
+        do
+        echo "正在替换\${file}"
+        sed -i "s#${project_dir}#\${DEPLOY_DIR}#g" "\$file"
+        done
+        popd > /dev/null
+    fi
+
+
 fi
 
 
-if [ -f "./plugin_files/docker.zip" ]; then
-    # 删除/www/server/docker目录
-    rm -rf /www/server/docker
+if [ -d "/www/server/docker" ]; then
+    if [ -f "./plugin_files/docker.zip" ]; then
+        # 删除/www/server/docker目录
+        rm -rf /www/server/docker
 
-    # 解压./plugin_files/docker.zip到/www/server/docker
-    unzip -o ./plugin_files/docker.zip -d /www/server/docker
+        # 解压./plugin_files/docker.zip到/www/server/docker
+        unzip -o ./plugin_files/docker.zip -d /www/server/docker
+
+            
+        # 在/www/server/docker/目录下执行以下脚本替换项目目录
+        pushd /www/server/docker/ > /dev/null
+        find . -type f -print0 | while read -d \$'\0' file
+        do
+        echo "正在替换\${file}"
+        sed -i "s#${project_dir}#\${DEPLOY_DIR}#g" "\$file"
+        done
+        popd > /dev/null
+    fi
 fi
 
-# 在/www/server/jianghujs/目录下执行以下脚本替换项目目录
-pushd /www/server/jianghujs/ > /dev/null
-find . -type f -print0 | while read -d \$'\0' file
-do
-  echo "正在替换\${file}"
-  sed -i "s#${project_dir}#\${DEPLOY_DIR}#g" "\$file"
-done
-popd > /dev/null
 
-
-# 在/www/server/docker/目录下执行以下脚本替换项目目录
-pushd /www/server/docker/ > /dev/null
-find . -type f -print0 | while read -d \$'\0' file
-do
-  echo "正在替换\${file}"
-  sed -i "s#${project_dir}#\${DEPLOY_DIR}#g" "\$file"
-done
-popd > /dev/null
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_plugin.sh
 

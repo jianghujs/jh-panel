@@ -695,6 +695,7 @@ if ! command -v npm > /dev/null;then\n\
 fi\n\
 WEB_DIR=' + path + '\n\
 cd $WEB_DIR\n\
+npm i\n\
 npm start\n\
     ';
 

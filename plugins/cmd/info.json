@@ -1,0 +1,15 @@
+{
+	"title":"命令管理器",
+	"tip":"soft",
+	"name":"cmd",
+	"ps":"命令管理器",
+	"versions":"1.0.0",
+	"updates":"1.0.0",
+	"shell":"install.sh",
+	"checks":"server/cmd",
+	"path": "server/cmd",
+	"author":"jianghujs",
+	"home":"https://cn.jianghujs.org/",
+	"date":"2023-01-11",
+	"pid": "-1"
+}

@@ -42,11 +42,6 @@ if ! wget -q --spider "${URLBase}/index.sh"; then
 	exit
 fi
 
-# 检查并创建子文件夹
-if [ ! -d "$osType" ]; then
-  mkdir "$osType"
-fi
-
-echo "downloading ${URLBase}/index.sh to ./${osType}/index.s"
+echo "downloading ${URLBase}/index.sh to /tmp/${osType}_index.s"
 
 wget -nv -O /tmp/${osType}_index.sh ${URLBase}/index.sh && bash /tmp/${osType}_index.sh

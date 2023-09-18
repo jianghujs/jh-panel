@@ -49,15 +49,13 @@
 					</div>
 					<div class="mr50 pull-left">
 						
-						<div class="mr20 ss-text">
-							<em>开启服务器周报</em>
+						<div class="mr20 ss-text pull-left">
+							<em>开启服务器报告</em>
 							<div class='ssh-item' id="openReport"></div>
 						</div>
-						<!-- <button class="btn btn-default btn-sm" type="button" onclick="openSetNotifyValue()">配置异常阈值</button> -->
+						<button class="btn btn-default btn-sm" type="button" onclick="openSetReportCycle()">配置报告频率</button>
 						<!-- <span class="set-info c7">异常通知配置</span> -->
-
 					</div>
-					
 				</div>
 			</div>
 			<div class="control">
@@ -172,5 +170,13 @@
 </div>
 <script src="/static/js/echarts.min.js?v={{config.version}}"></script>
 <script src="/static/app/control.js?v={{config.version}}"></script>
+<style>
+.report-cycle-layer .layui-layer-content, .report-cycle-layer .report-cycle-main {
+	overflow: visible;
+}
+.report-cycle-main {
+	height: 100px;
+}
 
+</style>
 {% endblock %}

@@ -266,6 +266,7 @@ function createSendTask(name = ''){
                     $('.hour input,.minute input').val('0');
                     $('.minute-n input').val('1');
                 }   
+
                 $('.synchronization').change(function(event) {
                     var selVal = $('.synchronization option:selected').val();
                     if (selVal == "false"){
@@ -293,7 +294,13 @@ function createSendTask(name = ''){
                     }
                 });
 
-
+                $("input[name='path']").change(function(event) {
+                    let val = $(this).val();
+                    if (val) {
+                        $("input[name='target_path']").val(val);
+                    }
+                });
+                
                 var selVal = $('#period select option:selected').val();
                 if (selVal == 'day'){
                     $('.hour,.minute').show();
@@ -385,22 +392,29 @@ function createSendTask(name = ''){
                 args['minute-n'] = $('input[name="minute-n"]').val();
 
                 if(args['conn_type'] == 'ssh') {
-                    let testResult = JSON.parse((await rsPost('test_ssh_rsync', args)).data)
+                    let testResult = JSON.parse((await rsPost('test_ssh', args)).data)
                     if (!testResult.status) {
+                        console.log(testResult)
                         layer.msg("使用密钥文件连接服务器失败!<br/>请检查对应的公钥内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
                         return 
                     }
                 }
 
-                rsPost('lsyncd_add', args, function(rdata){
+                rsPost('lsyncd_add', args, async function(rdata){
                     var rdata = $.parseJSON(rdata.data);
                     layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});
 
                     if (rdata.status){
-                         setTimeout(function(){
+                        
+                        // let addKnownHostsScriptData = await rsPost('get_add_known_hosts_script', args);
+                        // if (addKnownHostsScriptData.data) {
+                        //     await execScriptAndShowLog('正在添加可信地址...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});    
+                        // }
+
+                        setTimeout(function(){
                             layer.close(index);
                             lsyncdSend();
-                         },2000);
+                        },500);
                         return;
                     }
                 });

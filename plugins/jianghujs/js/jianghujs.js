@@ -102,12 +102,14 @@ function renderTableData() {
                     <td style="width: 180px;">'+tmp[i].name+'<span style="display: none">'+tmp[i].echo+'</span>'+'</td>' +
                     '<td style="width: 100px;">'+autostart+'</td>' +
                     '<td style="width: 100px;" id="S' + tmp[i].id + '">' + status + '</td>\
-                    <td style="text-align: right;width: 280px;">\
-                        '+opt+
-                        '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
-                        // '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
-                        '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
-                        '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
+                    <td style="text-align: right;">\
+                        <div style="width: 200px; float: right;">\
+                            '+opt+
+                            '<a href="javascript:projectUpdate(\''+tmp[i].path+'\')" class="btlink">git pull</a> | ' + 
+                            // '<a style="display: none;" href="javascript:openProjectLogs(\''+tmp[i].id+'\')" class="btlink">日志</a> | ' + 
+                            '<a href="javascript:openEditItem(\''+tmp[i].id+'\')" class="btlink">编辑</a> | ' + 
+                            '<a href="javascript:deleteItem(\''+tmp[i].id+'\', \''+tmp[i].name+'\')" class="btlink">删除</a>\
+                        </div>\
                     </td>\
                 </tr>';
     }
@@ -424,7 +426,7 @@ async function openDeployItem() {
                 <div class='line'>\
                     <span class='tname'>项目Git地址</span>\
                     <div class='info-r c4'>\
-                        <input onchange='handleGitUrlChange()' id='projectGitUrl' class='bt-input-text' type='text' name='gitUrl' placeholder='项目Git地址' style='width:458px' />\
+                        <input oninput='handleGitUrlChange()' id='projectGitUrl' class='bt-input-text' type='text' name='gitUrl' placeholder='项目Git地址' style='width:458px' />\
                     </div>\
                 </div>\
                 <div class='line'>\
@@ -650,8 +652,8 @@ async function submitDeployItemStep1(deployLayer) {
     let addKnownHostsScriptData = await requestApi('get_add_known_hosts_script', { gitUrl: encodeURIComponent(gitUrl) });
     if (addKnownHostsScriptData.data) {
         await execScriptAndShowLog('正在添加git地址到已知主机列表...', addKnownHostsScriptData.data, {logWindowSuccessTimeout: -1});
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
     let cloneScriptData = await requestApi('get_clone_script', { gitUrl: encodeURIComponent(gitUrl), path: encodeURIComponent(path) });
     await execScriptAndShowLog('正在拉取代码...', cloneScriptData.data);
 

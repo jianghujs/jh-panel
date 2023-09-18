@@ -10,7 +10,7 @@ download_and_run() {
     echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
 }
 
-download_and_run switch_apt_sources.sh 4
+download_and_run index__switch_apt_sources.sh 4
 
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
@@ -35,7 +35,8 @@ show_menu() {
     echo "1. 初始化环境"
     echo "2. 生成指定域名SSH密钥"
     echo "3. 服务器迁移"
-    echo "4. 检查数据库表"
+    echo "4. 服务器修复"
+    echo "5. 服务器扩容"
     echo "========================================================"
 }
 
@@ -49,16 +50,19 @@ read -p "请输入选项数字: " choice
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run init_env.sh
+    download_and_run index__init.sh
     ;;
 2)
-    download_and_run ssh_keygen_to_host.sh
+    download_and_run index__ssh_keygen_to_host.sh
     ;;
 3)
-    download_and_run migrate_index.sh
+    download_and_run index__migrate.sh
     ;;
 4)
-    download_and_run check_database.sh
+    download_and_run index__repair.sh
+    ;;
+5)
+    download_and_run index__resize.sh
     ;;
 esac
 

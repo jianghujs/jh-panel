@@ -89,7 +89,11 @@ def createBgTaskByName(name, args):
 timestamp=$(date +%%Y%%m%%d_%%H%%M%%S)
 rname=%s
 plugin_path=%s
-logs_file=$plugin_path/send/${rname}/logs/run_$timestamp.log
+log_path=$plugin_path/send/${rname}/logs
+if [ ! -d "$log_path" ]; then
+  mkdir -p "$log_path"
+fi
+logs_file=$log_path/run_$timestamp.log
 ''' % (name, getServerDir())
     cmd += 'echo "★【`date +"%Y-%m-%d %H:%M:%S"`】 STSRT" >> $logs_file' + "\n"
     cmd += 'echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" >> $logs_file' + "\n"
@@ -113,6 +117,7 @@ logs_file=$plugin_path/send/${rname}/logs/run_$timestamp.log
     }
 
     task_id = api.add(params)
+
     if task_id > 0:
         cfg["task_id"] = task_id
         cfg["name"] = name

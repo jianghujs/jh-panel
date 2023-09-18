@@ -1952,6 +1952,33 @@ def generateCommonNotifyMessage(content):
     return notify_msg
 
 ##################### notify  end #########################################
+# 根据配置的服务器报告频率获取报告开始时间
+def getReportCycleStartTime(end_datetime):
+    control_report_cycle_file = 'data/control_report_cycle.conf'
+    if not os.path.exists(control_report_cycle_file):
+        writeFile(control_report_cycle_file, '{}')
+    report_cycle_config = json.loads(readFile(control_report_cycle_file))
+    cycle_type = report_cycle_config.get('type', 'week')
+    start_datetime = None
+    if cycle_type == "day":
+        start_datetime = end_datetime - datetime.timedelta(days=1)            
+    elif cycle_type == "day-n":
+        cycle_where1 = int(report_cycle_config.get('where1', '0'))
+        start_datetime = end_datetime - datetime.timedelta(days=cycle_where1)  
+    elif cycle_type == "hour":
+        start_datetime = end_datetime - datetime.timedelta(hours=1)  
+    elif cycle_type == "hour-n":
+        cycle_where1 = int(report_cycle_config.get('where1', '0'))
+        start_datetime = end_datetime - datetime.timedelta(hours=cycle_where1)  
+    elif cycle_type == "minute-n":
+        cycle_where1 = int(report_cycle_config.get('where1', '0'))
+        start_datetime = end_datetime - datetime.timedelta(minutes=cycle_where1)  
+    elif cycle_type == "week":
+        start_datetime = end_datetime - datetime.timedelta(days=7)
+    elif cycle_type == "month":
+        start_datetime = end_datetime - datetime.timedelta(days=30)
+    return start_datetime
+    
 def getControlNotifyConfig():
     control_notify_config = {}
     control_notify_config['notifyStatus'] = 'close'

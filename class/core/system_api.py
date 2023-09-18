@@ -842,6 +842,20 @@ class system_api:
                     jianghujs_info['project_list'] = project_list_result.get('data', [])
         return jianghujs_info
 
+    def getDockerInfo(self):
+        docker_info = {
+            "status": "stop"
+        }
+        if os.path.exists('/www/server/docker/'):
+            project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/docker/index.py project_list')[0]
+            if project_list_result:
+                project_list_result = json.loads(project_list_result)
+                if project_list_result.get('status', False):
+                    docker_info['status'] = 'start'
+                    docker_info['project_list'] = project_list_result.get('data', [])
+        return docker_info
+
+
     def getMysqlInfo(self):
         mysql_info = {
             "status": "stop"
@@ -887,6 +901,41 @@ class system_api:
         mw.writeFile(control_notify_value_file, json.dumps(config_data))
         return mw.returnJson(True, '设置成功!')
 
+    def getReportCycleApi(self):
+        control_report_cycle_file = 'data/control_report_cycle.conf'
+        if not os.path.exists(control_report_cycle_file):
+            mw.writeFile(control_report_cycle_file, '{}')
+        config_data = json.loads(mw.readFile(control_report_cycle_file))
+        return mw.returnData(True, 'ok', config_data)
+    
+
+    def setReportCycleApi(self):
+        field_type = request.form.get('type', '')
+        week = request.form.get('week', '')
+        where1 = request.form.get('where1', '')
+        hour = request.form.get('hour', '')
+        minute = request.form.get('minute', '')
+        
+        params = {
+            'type': field_type,
+            'week': week,
+            'where1': where1,
+            'hour': hour,
+            'minute': minute
+        }
+
+        cronConfig, get, name = crontabApi.getCrondCycle(params)
+
+        
+        control_report_cycle_file = 'data/control_report_cycle.conf'
+        
+        crontabApi.removeCrond('system_report.sh')
+        crontabApi.writeCrond(cronConfig + ' /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
+
+        mw.writeFile(control_report_cycle_file, json.dumps(params))
+
+        return mw.returnJson(True, '设置成功!')
+
     def analyzeMonitorData(self, data, key, over):
         """ 
         分析监控数据，统计异常次数(5分钟内的算1次)
@@ -910,6 +959,7 @@ class system_api:
             "overCount": overCount
         }
 
+    # 生成并发送服务器报告
     def generateSystemReport(self):
         sql = db.Sql().dbfile('system')
         csql = mw.readFile('data/sql/system.sql')
@@ -921,16 +971,19 @@ class system_api:
         # if not os.path.exists(filename):
         #     time.sleep(10)
         #     continue
+        
         now = datetime.datetime.now()
-        # 近七天
-        end_datetime = datetime.datetime(now.year, now.month, now.day)
-        start_datetime = end_datetime - datetime.timedelta(days=7)
+        # end_datetime = datetime.datetime(now.year, now.month, now.day)
+        # start_datetime = end_datetime - datetime.timedelta(days=7)
+        end_datetime = now
+        start_datetime = mw.getReportCycleStartTime(end_datetime)
+
         end = int(time.mktime(end_datetime.timetuple()))
         start = int(time.mktime(start_datetime.timetuple()))
         start_date = datetime.datetime.fromtimestamp(start)
         end_date = datetime.datetime.fromtimestamp(end)
-        start_timestamp_of_start =  datetime.datetime(start_date.year, start_date.month, start_date.day, 0, 0, 0) 
-        end_timestamp_of_start = start_timestamp_of_start + datetime.timedelta(days=1)
+        start_timestamp =  start_datetime.timestamp()
+        end_timestamp = end_datetime.timestamp()
         print("报表：%s-%s" % (start_date, end_date))
 
         control_notify_config = mw.getControlNotifyConfig()
@@ -1006,7 +1059,7 @@ class system_api:
                     else:
                         cert_status = '将于%s到期，还有%s天%s到期' % (
                             cert_not_after,
-                            ("<span style='color: red'>%s</span>" if cert_endtime < 14 else "<span>%s</span>") % str(cert_endtime), 
+                            ("<span style='color: red'>%s</span>" if cert_endtime < ssl_cert_notify_value else "<span>%s</span>") % str(cert_endtime), 
                             ('，到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
                 siteinfo_tips.append({
@@ -1030,11 +1083,24 @@ class system_api:
                         )
                     })
 
+            # Docker管理器
+            dockerinfo_tips = []
+            docker_Info = self.getDockerInfo()
+            if(docker_Info['status'] == 'start'):
+                project_list = docker_Info['project_list']
+                for project in project_list:
+                    dockerinfo_tips.append({
+                        "name": project['name'],
+                        "desc": "%s" % (
+                            '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
+                        )
+                    })
+
             # 数据库表 
             mysqlinfo_tips = []
             mysql_info = self.getMysqlInfo()
-            # 第一天的数据库情况
-            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (start_timestamp_of_start, end_timestamp_of_start)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
+            # 开始的数据库情况
+            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (start_timestamp, end_timestamp)).field('id,total_size,total_bytes,list,addtime').order('id asc').limit('0,1').select()
             start_database_list = '[]'
             if len(start_mysql_info) > 0:
                 start_database_list = start_mysql_info[0].get('list', '[]')
@@ -1052,6 +1118,41 @@ class system_api:
                             database['size']
                         )
                     })
+
+
+            # 生成概要信息
+            summary_tips = []
+            # 系统资源概要信息
+            sysinfo_summary_tips = []
+            if cpuAnalyzeResult.get('average', 0) > cpu_notify_value:
+                sysinfo_summary_tips.append("CPU")
+            if memAnalyzeResult.get('average', 0) > mem_notify_value:
+                sysinfo_summary_tips.append("内存")
+            if loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value:
+                sysinfo_summary_tips.append("资源使用率")
+            for disk in diskInfo:
+                disk_size_percent = int(disk['size'][3].replace('%', ''))
+                if disk_size_percent > disk_notify_value:
+                    sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
+            if len(sysinfo_summary_tips) > 0:
+                summary_tips.append("、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险')
+           # 网站概要信息
+            siteinfo_summary_tips = []
+            for site in siteInfo['site_list']:
+                site_name = site['name']
+                cert_data = site['cert_data']
+                ssl_type = site['ssl_type']
+                if cert_data is not None:
+                    cert_not_after = cert_data.get('notAfter', '0000-00-00')
+                    cert_endtime = int(cert_data.get('endtime', 0))
+                    site_error_msg = ''
+                    if not (ssl_type == 'lets' or ssl_type == 'acme') and cert_endtime < ssl_cert_notify_value:
+                        siteinfo_summary_tips.append(site_name)
+            if len(siteinfo_summary_tips) > 0:
+                summary_tips.append("域名（" + "、".join(siteinfo_summary_tips) + '）证书需要及时更新')
+            # 无异常默认信息
+            if len(summary_tips) == 0:
+                summary_tips.append("服务运行正常，继续保持！")
 
 
             report_content = """
@@ -1082,8 +1183,14 @@ table tr td:nth-child(2) {
 
 </style>
 
-<h2>%(title)s(%(ip)s)-服务器运行周报 </h2>
+<h2>%(title)s(%(ip)s)-服务器运行报告 </h2>
 <h3 style="color: #cecece">日期：%(start_date)s至%(end_date)s</h3>
+<div style="display: flex; flex-direction: column;align-items: center;">
+    <h3>概要信息：</h3>
+    <ul>
+    %(summary_content)s
+    </ul>
+</div>
 
 <h3>系统资源：</h3>
 <table border>
@@ -1097,10 +1204,16 @@ table tr td:nth-child(2) {
 </table>
 
 
-<h3>项目：</h3>
+<h3>JianghuJS项目：</h3>
 
 <table border class="project-table">
 %(jianghujsinfo_tips)s
+</table>
+
+<h3>Docker项目：</h3>
+
+<table border class="project-table">
+%(dockerinfo_tips)s
 </table>
 
 <h3>数据库：</h3>
@@ -1116,12 +1229,15 @@ table tr td:nth-child(2) {
                 "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
                 "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
-                "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', '')))
+                "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
+                "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', ''))),
+                "summary_content": ''.join(f"<li>{item}</li>\n" for item in summary_tips)
+
             }
             mw.notifyMessage(
                 msg=report_content, 
                 msgtype="html", 
-                title="%(title)s(%(ip)s)服务器周报" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
+                title="%(title)s(%(ip)s)服务器报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
                 stype='服务器报告', 
                 trigger_time=0
             )

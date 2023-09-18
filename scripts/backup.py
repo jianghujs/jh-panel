@@ -130,11 +130,13 @@ class backupTools:
             db_path, db_name).field('name').select()
         for database in databases:
             self.backupDatabase(database['name'], save)
+        print('|----备份所有数据库任务完成')
 
     def backupSiteAll(self, save):
         sites = mw.M('sites').field('name').select()
         for site in sites:
             self.backupSite(site['name'], save)
+        print('|----备份所有网站任务完成')
     
     def cleanBackup(self, type, pid, save):
         # 清理多余备份
@@ -198,12 +200,12 @@ if __name__ == "__main__":
         save = json.loads(sys.argv[3])
 
     if type == 'site':
-        if sys.argv[2] == 'ALL':
+        if sys.argv[2].find('backupAll') >= 0:
             backup.backupSiteAll(save)
         else:
             backup.backupSite(name, save)
     elif type == 'database':
-        if sys.argv[2] == 'ALL':
+        if sys.argv[2].find('backupAll') >= 0:
             backup.backupDatabaseAll(save)
         else:
             backup.backupDatabase(name, save)

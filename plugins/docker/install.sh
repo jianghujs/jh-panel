@@ -2,49 +2,40 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
-
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
 rootPath=$(dirname "$rootPath")
 serverPath=$(dirname "$rootPath")
 
+# cd /www/server/mdserver-web/plugins/docker && /bin/bash install.sh uninstall 1.0
+# cd /www/server/mdserver-web/plugins/docker && /bin/bash install.sh install 1.0
+
 install_tmp=${rootPath}/tmp/mw_install.pl
+VERSION=$2
 
-bash ${rootPath}/scripts/getos.sh
-OSNAME=`cat ${rootPath}/data/osname.pl`
-OSNAME_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F "\"" '{print $2}'`
+if [ -f ${rootPath}/bin/activate ];then
+	source ${rootPath}/bin/activate
+fi
 
-version=$2
-
-Install_docker()
+Install_Docker()
 {
-	echo '正在安装Docker...' > $install_tmp
-	mkdir -p $serverPath/docker
+	# which docker
+	# if [ "$?" == "0" ];then
+	# 	echo '安装已经完成docker' > $install_tmp
+	# 	exit 0
+	# fi
 
-	# install docker
-	apt-get update
-	apt-get install \
-		ca-certificates \
-		curl \
-		gnupg \
-		lsb-release -y
+	echo '正在安装脚本文件...' > $install_tmp
+	mkdir -p $serverPath/source
 
-	mkdir -p /etc/apt/keyrings
-	rm -rf /etc/apt/keyrings/docker.gpg
-	curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+	if [ ! -d  $serverPath/docker ];then
+		curl -fsSL https://get.docker.com | bash
+		mkdir -p $serverPath/docker
+	fi
 
-	echo \
-	"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-	$(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-	apt-get update  
-
-	chmod a+r /etc/apt/keyrings/docker.gpg
-	apt-get update
+	pip install docker
+	pip install pytz
 	
-	ceVersion=$(apt-cache madison docker-ce | grep ${version} | awk '{print $3}')
-	apt-get install docker-ce=${ceVersion} -y --allow-downgrades
-
 	# install docker-compose
 	if [ -x "$(command -v docker-compose)" ]; then
 		echo "Docker-compose had been installed"
@@ -55,29 +46,52 @@ Install_docker()
 		docker-compose -v
 	fi
 
-	echo $version > $serverPath/docker/version.pl
-	echo '安装完成' > $install_tmp
+	if [ -d $serverPath/docker ];then
+		echo "${VERSION}" > $serverPath/docker/version.pl
+		echo '安装完成' > $install_tmp
+
+		cd ${rootPath} && python3 ${rootPath}/plugins/docker/index.py start
+		cd ${rootPath} && python3 ${rootPath}/plugins/docker/index.py initd_install
+	fi
 }
 
-Uninstall_docker()
+Uninstall_Docker()
 {
-	echo '正在卸载Docker...' > $install_tmp
+	CMD=yum
+	which apt
+	if [ "$?" == "0" ];then
+		CMD=apt
+	fi
 
-	# uninstall docker
-	apt-get purge docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras -y
-	rm -rf /var/lib/docker
-	rm -rf /var/lib/containerd
+	if [ -f /usr/lib/systemd/system/docker.service ];then
+		systemctl stop docker
+		systemctl disable docker
+		rm -rf /usr/lib/systemd/system/docker.service
+		systemctl daemon-reload
+	fi
+
+	$CMD remove -y docker docker-ce-cli containerd.io
+	# docker-client \
+	# docker-client-latest \
+	# docker-common \
+	# docker-latest \
+	# docker-latest-logrotate \
+	# docker-logrotate \
+	# docker-selinux \
+	# docker-engine-selinux \
+	# docker-engine \
+	# docker-ce
 
 	# uninstall docker-compose
 	rm -rf /usr/local/bin/docker-compose
 
 	rm -rf $serverPath/docker
-	echo "卸载完成" > $install_tmp
+	echo "Uninstall_Docker" > $install_tmp
 }
 
 action=$1
 if [ "${1}" == 'install' ];then
-	Install_docker
+	Install_Docker
 else
-	Uninstall_docker
+	Uninstall_Docker
 fi

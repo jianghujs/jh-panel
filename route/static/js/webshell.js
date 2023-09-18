@@ -93,6 +93,8 @@ class WebShell {
 	}
 
 	async open() {
+		return new Promise( async (resolve) => {
+			
 			await this.initTerm();
 			await this.initSocket();	
 
@@ -113,6 +115,7 @@ class WebShell {
 					if (currentDir && currentDir.startsWith("/")) {
 							this.socket.emit('webssh', `cd ${currentDir}\n`);
 					}
+					resolve(this.socket);
 			}.bind(this), 600);
 
 			this.term_box = layer.open({
@@ -156,6 +159,7 @@ class WebShell {
 					this.setupClipboard();
 					this.setupShellButton();
 			}.bind(this), 100);
+		})
 	}
 
 	setupContextMenu() {

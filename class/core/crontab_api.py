@@ -494,7 +494,7 @@ class crontab_api:
         elif params['type'] == "minute-n":
             cuonConfig = self.minute_N(params)
         elif params['type'] == "week":
-            params['where1'] = params['week']
+            params['week'] = params['where1']
             cuonConfig = self.week(params)
         elif params['type'] == "month":
             cuonConfig = self.month(params)

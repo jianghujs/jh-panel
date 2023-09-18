@@ -56,7 +56,7 @@ else
                 log_echo "没有数据表"
             else
                 # 使用innochecksum检查数据页是否损坏
-                innochecksum "$TABLE_FILE" 2>&1 | grep -q "Error"
+                innochecksum "$TABLE_FILE" 2>&1 | grep -Eq "Error|Fail"
                 if [ $? -eq 0 ]; then
                     ((corruptedTableCount++))
                     log_echo "$TB: 已损坏"

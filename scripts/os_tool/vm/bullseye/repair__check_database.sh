@@ -64,8 +64,8 @@ else
 
                     echo "-- 数据库: $DB, 数据表: $TB" >> "$RECOVER_FILENAME"
                     TB_RECOVER="${TB}_recover"
-                    echo "CREATE TABLE $DB.$TB_RECOVER AS SELECT * FROM $DB.$TB;" >> "$RECOVER_FILENAME"
-                    echo "TRUNCATE TABLE $DB.$TB;" >> "$RECOVER_FILENAME"
+                    echo "CREATE TABLE $DB.$TB_RECOVER LIKE $DB.$TB;" >> "$RECOVER_FILENAME"
+                    echo "INSERT INTO $DB.$TB_RECOVER SELECT * FROM $DB.$TB;" >> "$RECOVER_FILENAME"
                     echo "DROP TABLE $DB.$TB;" >> "$RECOVER_FILENAME"
                     echo "ALTER TABLE $DB.$TB_RECOVER RENAME TO $DB.$TB;" >> "$RECOVER_FILENAME"
                     echo >> "$RECOVER_FILENAME"

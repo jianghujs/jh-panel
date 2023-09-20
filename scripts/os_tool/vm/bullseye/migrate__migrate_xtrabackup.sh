@@ -114,7 +114,7 @@ else
 fi
 
 # 更新xtrabackup密码
-xtrabackup_change_pwd_result=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py change_setting "{password:${mysql_pwd}}")
+xtrabackup_change_pwd_result=\$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py change_setting "{password:${mysql_pwd}}")
 xtrabackup_change_pwd_status=\$(echo \$xtrabackup_change_pwd_result | jq -r '.status')
 xtrabackup_change_pwd_msg=\$(echo \$xtrabackup_change_pwd_result | jq -r '.msg')
 echo \$xtrabackup_change_pwd_status

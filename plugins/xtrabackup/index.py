@@ -107,13 +107,14 @@ def getSetting():
 
 def changeSetting():
     args = getArgs()
-    data = checkArgs(args, ['port', 'user', 'password'])
+    data = checkArgs(args, ['password'])
     if not data[0]:
         return data[1]
 
-    port = args['port']
-    user = args['user']
-    password = args['password']
+    port = args.get('port', None)
+    user = args.get('user', None)
+    password = args.get('password', None)
+    
     file = getConf()
     content = mw.readFile(file)
     if port is not None:

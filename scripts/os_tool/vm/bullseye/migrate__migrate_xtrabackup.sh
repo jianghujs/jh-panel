@@ -99,10 +99,33 @@ echo "恢复xtrabackup文件成功✔"
 # 使用 \www\server\jh-panel\plugins\mysql-apt\index.py set_root_pwd [migrate_info_xtrabackup文件中的mysql_root_psw]
 mysql_pwd=\$(jq -r '.mysql_root_psw' ./migrate_info_xtrabackup.json)
 pushd /www/server/jh-panel > /dev/null
-python3 /www/server/jh-panel/plugins/mysql-apt/index.py fix_root_pwd "{password:${mysql_pwd}}"
-python3 /www/server/jh-panel/plugins/xtrabackup/index.py change_setting "{password:${mysql_pwd}}"
+# python3 /www/server/jh-panel/plugins/mysql-apt/index.py fix_root_pwd "{password:${mysql_pwd}}"
+# python3 /www/server/jh-panel/plugins/xtrabackup/index.py change_setting "{password:${mysql_pwd}}"
+
+# 更新mysql密码
+mysql_change_pwd_result=\$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py fix_root_pwd "{password:${mysql_pwd}}")
+mysql_change_pwd_status=\$(echo \$mysql_change_pwd_result | jq -r '.status')
+mysql_change_pwd_msg=\$(echo \$mysql_change_pwd_result | jq -r '.msg')
+if [ \$mysql_change_pwd_status == "true" ]
+then
+    echo "更新mysql密码成功✔"
+else
+    echo "更新mysql密码失败，错误信息为：\$mysql_change_pwd_msg"
+fi
+
+# 更新xtrabackup密码
+xtrabackup_change_pwd_result=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py change_setting "{password:${mysql_pwd}}")
+xtrabackup_change_pwd_status=\$(echo \$xtrabackup_change_pwd_result | jq -r '.status')
+xtrabackup_change_pwd_msg=\$(echo \$xtrabackup_change_pwd_result | jq -r '.msg')
+echo \$xtrabackup_change_pwd_status
+if [ \$xtrabackup_change_pwd_status == "true" ]
+then
+    echo "更新xtrabackup mysql密码成功✔"
+else
+    echo "更新xtrabackup mysql密码失败，错误信息为：\$xtrabackup_change_pwd_msg"
+fi
+
 popd > /dev/null
-echo "更新mysql密码成功✔"
 
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_xtrabackup.sh

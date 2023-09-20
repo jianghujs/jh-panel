@@ -53,7 +53,7 @@ migrate_info_xtrabackup=$(echo ${migrate_info_xtrabackup} | jq --arg backup_file
 
 # 获取mysql密码：执行 python3 plugins/mysql-apt/index.py get_db_list，并将返回的结果转成json对象，从中获取info.root_pwd的值就是mysql的密码， 设置migrate_info_xtrabackup.mysql_root_psw为此密码
 pushd /www/server/jh-panel > /dev/null
-mysql_info=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list)
+mysql_info=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list_page)
 popd > /dev/null
 mysql_pwd=$(echo ${mysql_info} | jq -r '.info.root_pwd')
 migrate_info_xtrabackup=$(echo ${migrate_info_xtrabackup} | jq --arg mysql_pwd ${mysql_pwd} '. + {mysql_root_psw: $mysql_pwd}')

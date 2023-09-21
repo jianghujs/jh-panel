@@ -43,22 +43,20 @@ APT_INSTALL()
 	mkdir -p $myDir
 	mkdir -p $serverPath/mysql-apt/bin
 
-	# https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
-	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
-	chmod +x ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
-	cd ${myDir} && tar vxf ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+	cd ${myDir}
 
 	apt update -y
 	apt install -y libnuma1 libaio1 libmecab2
 
-	dpkg -X mysql-common_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
-	dpkg -X mysql-community-client-plugins_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
-	dpkg -X mysql-community-client-core_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
-	dpkg -X mysql-community-client_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
-	dpkg -X mysql-client_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
-	dpkg -X mysql-community-server-core_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
-	dpkg -X mysql-community-server_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
-	dpkg -X mysql-server_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
+	wget --no-check-certificate -O ${myDir}/mysql-client-core-5.7_arm64.deb  https://launchpad.net/~ubuntu-security-proposed/+archive/ubuntu/ppa/+build/25998745/+files/mysql-client-core-5.7_5.7.42-0ubuntu0.18.04.1_arm64.deb
+	wget --no-check-certificate -O ${myDir}/mysql-client-5.7_arm64.deb  https://launchpad.net/~ubuntu-security-proposed/+archive/ubuntu/ppa/+build/25998745/+files/mysql-client-5.7_5.7.42-0ubuntu0.18.04.1_arm64.deb
+	wget --no-check-certificate -O ${myDir}/mysql-server-core-5.7_arm64.deb  https://launchpad.net/~ubuntu-security-proposed/+archive/ubuntu/ppa/+build/25998745/+files/mysql-server-core-5.7_5.7.42-0ubuntu0.18.04.1_arm64.deb
+	wget --no-check-certificate -O ${myDir}/mysql-server-5.7_arm64.deb  https://launchpad.net/~ubuntu-security-proposed/+archive/ubuntu/ppa/+build/25998745/+files/mysql-server-5.7_5.7.42-0ubuntu0.18.04.1_arm64.deb
+	
+	dpkg -X mysql-client-core-5.7_arm64.deb $serverPath/mysql-apt/bin
+	dpkg -X mysql-client-5.7_arm64.deb $serverPath/mysql-apt/bin
+	dpkg -X mysql-server-core-5.7_arm64.deb $serverPath/mysql-apt/bin
+	dpkg -X mysql-server-core-5.7_arm64.deb $serverPath/mysql-apt/bin
 	#######
 }
 
@@ -66,6 +64,7 @@ APT_UNINSTALL()
 {
 	###
 	rm -rf $myDir
+	# apt remove -y mysql-server
 	###
 }
 

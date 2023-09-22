@@ -43,13 +43,14 @@ APT_INSTALL()
 	mkdir -p $myDir
 	mkdir -p $serverPath/mysql-apt/bin
 
+	apt update -y
+	apt install -y libnuma1 libaio1 libmecab2
+	cd ${myDir} 
+
 	# https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 	wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 	chmod +x ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
-	cd ${myDir} && tar vxf ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
-
-	apt update -y
-	apt install -y libnuma1 libaio1 libmecab2
+	tar vxf ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 
 	dpkg -X mysql-common_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin
 	dpkg -X mysql-community-client-plugins_${SUFFIX_NAME}.deb $serverPath/mysql-apt/bin

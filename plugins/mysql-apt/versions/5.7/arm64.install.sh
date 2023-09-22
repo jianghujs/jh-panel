@@ -43,10 +43,9 @@ APT_INSTALL()
 	mkdir -p $myDir
 	mkdir -p $serverPath/mysql-apt/bin
 
-	cd ${myDir}
-
 	apt update -y
 	apt install -y libnuma1 libaio1 libmecab2
+	cd ${myDir}
 
 	wget --no-check-certificate -O ${myDir}/mysql-client-core-5.7_arm64.deb  https://launchpad.net/~ubuntu-security-proposed/+archive/ubuntu/ppa/+build/25998745/+files/mysql-client-core-5.7_5.7.42-0ubuntu0.18.04.1_arm64.deb
 	wget --no-check-certificate -O ${myDir}/mysql-client-5.7_arm64.deb  https://launchpad.net/~ubuntu-security-proposed/+archive/ubuntu/ppa/+build/25998745/+files/mysql-client-5.7_5.7.42-0ubuntu0.18.04.1_arm64.deb

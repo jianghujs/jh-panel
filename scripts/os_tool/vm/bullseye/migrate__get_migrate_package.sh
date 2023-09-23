@@ -24,7 +24,7 @@ scripts=(
 ["xtrabackup"]="migrate__migrate_xtrabackup.sh"
 ["网站"]="migrate__migrate_site.sh"
 ["项目文件"]="migrate__migrate_project.sh"
-["插件数据-jianghujs管理器"]="migrate__migrate_plugin_data.sh"
+["插件数据"]="migrate__migrate_plugin_data.sh"
 )
 
 # 定义一个数组来存储脚本的顺序

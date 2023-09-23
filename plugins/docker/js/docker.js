@@ -1255,7 +1255,7 @@ function openCreateProject() {
 		area: ['900px', "80%"],
         title: '新建项目',
         closeBtn: 2,
-        btn: ['保存', '取消'],
+        btn: ['提交', '取消'],
         shift: 0,
         shadeClose: false,
         content: "\

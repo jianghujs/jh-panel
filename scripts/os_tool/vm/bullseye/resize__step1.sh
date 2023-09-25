@@ -54,6 +54,8 @@ l
 t
 5
 swap
+a
+1
 w
 EOF
 

@@ -174,7 +174,7 @@ fi
                 shell_cron += ' ' + cron_path + '/' + echo + \
                     ' >> ' + logs_file + ' 2>&1'
 
-                api.writeShell(shell_cron)
+                api.writeCrond(shell_cron)
 
                 insert_id = mw.M('crontab').add('name,type,where1,where_hour,where_minute,echo,addtime,status,save,backup_to,stype,sname,sbody,urladdress', (
                     "[勿删]续签Let's Encrypt证书", 'day', '', '0', '10', echo, time.strftime('%Y-%m-%d %X', time.localtime()), '1', '', 'localhost', 'toShell', '', cmd, ''))

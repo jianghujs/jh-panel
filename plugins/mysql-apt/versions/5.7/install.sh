@@ -50,6 +50,8 @@ APT_INSTALL()
 	if [[ `arch` =~ "x86_64" ]];then
 		# https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 		wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://cdn.mysql.com/archives/mysql-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
+		# wget --no-check-certificate -O ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${SUFFIX_NAME}.deb-bundle.tar?spm=a2c6h.25603864.0.0.2bd563afjw9OEj
+
 		chmod +x ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 		tar vxf ${myDir}/mysql-server_${SUFFIX_NAME}.deb-bundle.tar
 

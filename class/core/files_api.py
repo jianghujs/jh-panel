@@ -815,6 +815,8 @@ class files_api:
                     if not sfile:
                         continue
                     sfiles += " '" + sfile + "'"
+                if not os.path.exists(dfile):
+                    os.makedirs(dfile)
                 mw.execShell("cd " + path + " && tar -zxvf " + sfiles +
                              " -C " + dfile + " > " + tmps + " 2>&1 &")
 

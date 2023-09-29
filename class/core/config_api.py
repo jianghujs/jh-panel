@@ -40,7 +40,7 @@ class config_api:
 
     # 取面板列表
     def getPanelListApi(self):
-        data = mw.M('panel').fielal(
+        data = mw.M('panel').field(
             'id,title,url,username,password,click,addtime').order('click desc').select()
         return mw.getJson(data)
 

@@ -137,7 +137,7 @@ function createSendTask(name = ''){
                         <span data-toggle='tooltip' data-placement='top' title='【同步方式】增量： 数据更改/增加时同步，且只追加和替换文件\n【同步方式】完全： 保持两端的数据与目录结构的一致性，会同步删除、追加和替换文件和目录' class='bt-ico-ask' style='cursor: pointer;'>?</span>\
                         <span style='margin-left: 20px;margin-right: 10px;'>同步周期</span>\
                         <select class='bt-input-text synchronization' name='realtime' style='width:100px'>\
-                            <option value='true' "+realtime_true+">实时同步</option>\
+                            <option value='true' "+realtime_true+">手动同步</option>\
                             <option value='false' "+realtime_false+">定时同步</option>\
                         </select>\
                     </div>\
@@ -600,9 +600,9 @@ function lsyncdSend(){
                 mode = '增量';
             }
 
-            var period = "实时";
-            if (list[i]['realtime'] == 'true'){
-                period = '实时';
+            var period = "手动";
+            if (list[i]['realtime'] == 'true'){ // realtime 没实现，现在做为 manual 手动
+                period = '手动';
             } else {
                 period = '定时';
             }

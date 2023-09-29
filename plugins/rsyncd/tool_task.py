@@ -51,6 +51,7 @@ def getConfigTpl():
 def createBgTask(data):
     removeBgTask()
     for d in data:
+        #  realtime 没实现，现在前端做为 manual 手动
         if d['realtime'] == "false":
             createBgTaskByName(d['name'], d)
 

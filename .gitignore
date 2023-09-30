@@ -172,7 +172,6 @@ plugins/bk_demo
 plugins/mail
 plugins/fastdfs
 plugins/v2ray
-plugins/frp
 debug.out
 
 ddb_storage/*

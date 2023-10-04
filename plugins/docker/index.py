@@ -857,9 +857,10 @@ def projectList():
     names = {item.get('name', '') for item in data}
 
     # status
-    statusCmd = """docker ps"""
+    statusCmd = """docker container ls --filter label=com.docker.compose.project --format '{{.Label "com.docker.compose.project"}}'"""
     statusExec = mw.execShell(statusCmd)
-    statusMap = {name: ('start' if name in statusExec[0] else 'stop') for name in names}
+    projects = statusExec[0].split('\n')
+    statusMap = {name: ('start' if name in projects else 'stop') for name in names}
 
     # loadingStatus
     server_dir = getServerDir()

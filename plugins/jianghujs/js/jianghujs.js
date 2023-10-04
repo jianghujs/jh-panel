@@ -20,6 +20,8 @@ function refreshTable() {
             <div>\
                 <button class="btn btn-success btn-sm va0" onclick="openDeployItem();">部署项目</button>\
                 <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">导入项目</button>\
+                <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectStartBatch();">批量启动</button>\
+                <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectStopBatch();">批量停止</button>\
             </div>\
             <div>\
                 <input type="text" id="jianghujsSearchInput" class="search ser-text pull-left" placeholder="请输入关键词" onkeydown="handleSearch()"/>\
@@ -27,6 +29,7 @@ function refreshTable() {
         </div>\
         <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
             <thead>\
+                <th width="30"><input class="check" onclick="checkSelectAll();" type="checkbox"></th>\
                 <th>目录</th>\
                 <th>名称</th>' +
                 '<th>开机自启</th>' +
@@ -53,6 +56,42 @@ function refreshTable() {
         tableData = tmp;
         renderTableData();
 	});
+}
+
+// 选中的 id
+let checkedIds = []
+// 点击选中
+function checkSelect() {
+    setTimeout(function () {
+        var list = $('.plugin-table-body input[type="checkbox"].check:checked');
+        checkedIds = list.toArray().map(o => o.value)
+        var num = list.length
+        // console.log(num);
+        if (num == 1) {
+            $('button[batch="true"]').hide();
+            $('button[batch="false"]').show();
+        }else if (num>1){
+            $('button[batch="true"]').show();
+            $('button[batch="false"]').show();
+        }else{
+            $('button[batch="true"]').hide();
+            $('button[batch="false"]').hide();
+        }
+    },5)
+}
+// 点击全选
+function checkSelectAll() {
+    setTimeout(function () {
+        var num = $('thead input[type="checkbox"].check:checked').length;
+        if (num > 0) {
+            // 全选
+            $('.plugin-table-body input[type="checkbox"].check').prop('checked', true);;
+        } else {
+            // 取消全选
+            $('.plugin-table-body input[type="checkbox"].check').prop('checked', false);;
+        }
+        checkSelect()
+    },5)
 }
 
 function renderTableData() {
@@ -96,8 +135,14 @@ function renderTableData() {
         autostart = '<div class="autostart-item">\
             <input class="btswitch btswitch-ios" id="autostart_' + tmp[i].id + '" type="checkbox" ' + autostartChecked + '>\
             <label class="btswitch-btn" for="autostart_' + tmp[i].id + '" onclick="toggleAutostart(\'' + tmp[i].id + '\')"></label></div>';
+
+        var checked = ''
+        if (checkedIds.includes(tmp[i]['id'])) {
+            checked = 'checked'
+        }
         
         tbody += '<tr>\
+                    <td><input value="'+tmp[i]['id']+'" class="check" onclick="checkSelect();" ' + checked +' type="checkbox"></td>\
                     <td style="width: 180px;">'+tmp[i].temPath+'</td>\
                     <td style="width: 180px;">'+tmp[i].name+'<span style="display: none">'+tmp[i].echo+'</span>'+'</td>' +
                     '<td style="width: 100px;">'+autostart+'</td>' +
@@ -544,24 +589,6 @@ function projectScriptExcute(scriptKey, id) {
     });
 }
 
-function projectStart(path) {
-    var data = "path="+path;
-    requestApi('project_start', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        refreshTable();
-    });
-}
-
-function projectStop(path) {
-    var data = "path="+path;
-    requestApi('project_stop', data, function(data){
-        var rdata = $.parseJSON(data.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2});
-        refreshTable();
-    });
-}
-
 function projectUpdate(path) {
     var data = "path="+path;
     requestApi('project_update', data, function(data){
@@ -570,6 +597,18 @@ function projectUpdate(path) {
         layer.msg(rdata.msg,{icon:rdata.status?1:2});
         messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });
+}
+
+function projectStartBatch() {
+    var list = $('.plugin-table-body input[type="checkbox"].check:checked');
+    checkedIds = list.toArray().map(o => o.value)
+    projectScriptExcute('start', checkedIds.join(','))
+}
+
+function projectStopBatch() {
+    var list = $('.plugin-table-body input[type="checkbox"].check:checked');
+    checkedIds = list.toArray().map(o => o.value)
+    projectScriptExcute('stop', checkedIds.join(','))
 }
 
 

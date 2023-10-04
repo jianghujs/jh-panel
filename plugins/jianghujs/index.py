@@ -137,23 +137,25 @@ def projectScriptExcute():
     data = checkArgs(args, ['id', 'scriptKey'])
     if not data[0]:
         return data[1]
-    id = args['id']
+    ids = args['id']
     scriptKey = args['scriptKey']
-    data = getOne('project', id)
-    if not data:
-        return mw.returnJson(False, '项目不存在!')
-    scriptFile = getServerDir() + '/script/' + data.get('echo', '') + "_" + scriptKey + ".sh"
-    if not os.path.exists(scriptFile):
-        return mw.returnJson(False, '脚本不存在!')
-    logFile = getServerDir() + '/script/' + data.get('echo', '') + '.log'
-    os.system('chmod +x ' + scriptFile)
+    for id in ids:
+        data = getOne('project', id)
+        if not data:
+            return mw.returnJson(False, '项目不存在!')
+        scriptFile = getServerDir() + '/script/' + data.get('echo', '') + "_" + scriptKey + ".sh"
+        if not os.path.exists(scriptFile):
+            return mw.returnJson(False, '脚本不存在!')
+        logFile = getServerDir() + '/script/' + data.get('echo', '') + '.log'
+        os.system('chmod +x ' + scriptFile)
 
-    # data = mw.execShell('source /root/.bashrc && ' + scriptFile + ' >> ' + logFile )
+        # data = mw.execShell('source /root/.bashrc && ' + scriptFile + ' >> ' + logFile )
 
-    mw.addAndTriggerTask(
-        name = '执行江湖管理器命令[' + scriptKey + ': ' + data.get('name', '') + ']',
-        execstr = 'source /root/.bashrc && ' + scriptFile + ' >> ' + logFile
-    )
+        mw.addAndTriggerTask(
+            name = '执行江湖管理器命令[' + scriptKey + ': ' + data.get('name', '') + ']',
+            execstr = 'source /root/.bashrc && ' + scriptFile + ' >> ' + logFile
+        )
+        time.sleep(1)
 
     return mw.returnJson(True, '添加执行任务成功!')
     

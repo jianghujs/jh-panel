@@ -1,7 +1,7 @@
 var webShell = null;
 
 $(window).unload(() => {
-	webShell.dropInstance();
+	webShell && webShell.dropInstance();
 });
 
 class WebShell {

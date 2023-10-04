@@ -69,8 +69,9 @@ function getSList(isdisplay) {
         page = '&p=' + isdisplay;
         setCookie('p' + getCookie('soft_type'), isdisplay);
     }
+    var limit = '&limit=100'
 
-    var condition = (searchParams + type + page).slice(1);
+    var condition = (searchParams + type + page + limit).slice(1);
     $.get('/plugins/list?' + condition, '', function(rdata) {
         layer.close(loadT);
         var tBody = '';
@@ -175,6 +176,8 @@ function getSList(isdisplay) {
         loadImage();
     },'json');
 }
+// 注册到 window
+window.getSList = getSList
 
 function installPreInspection(name, ver, callback){
     var loading = layer.msg('正在检查安装环境...', { icon: 16, time: 0, shade: [0.3, '#000'] });
@@ -197,6 +200,9 @@ function runInstall(data){
     $.post("/plugins/install", data, function(rdata) {
         layer.closeAll();
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+        // 强行更新 window.runningTask，触发刷新
+        window.runningTask = window.runningTask || []
+        window.runningTask.push('install')
         getSList();
     },'json');
 }
@@ -287,6 +293,9 @@ function runUninstallVersion(name, title, version){
             layer.close(loadT)
             getSList();
             layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+            // 强行更新 window.runningTask，触发刷新
+            window.runningTask = window.runningTask || []
+            window.runningTask.push('uninstall') 
         },'json');
     });
 }
@@ -449,6 +458,8 @@ function indexSoft() {
         },'json');
     };
 }
+// 注册到 window
+window.indexSoft = indexSoft
 
 
 function importPluginOpen(){

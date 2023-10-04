@@ -954,6 +954,38 @@ setInterval(function(){
 	getTaskCount();
 },6000);
 
+// 获取安装任务是否有更新，更新则刷新侧边栏
+window.runningTask = []
+function checkTaskUpdateSidebar() {
+	$.post("/task/list", "tojs=GetTaskList&table=tasks&limit=10&p=1", function(g) {
+		g = JSON.parse(g);
+		const newRunningTask = []
+		for (var d = 0; d < g.data.length; d++) {
+			if (g.data[d].status === "0" && g.data[d].name.startsWith('安装')) {
+				newRunningTask.push(d.id)
+			}
+		}
+		if (window.runningTask.length === 0) {
+			window.runningTask = newRunningTask
+			return
+		}
+		if (JSON.stringify(window.runningTask) === JSON.stringify(newRunningTask)) {
+			return
+		}
+		window.runningTask = newRunningTask
+		console.log('刷新侧边栏', window.runningTask, newRunningTask)
+		// 刷新侧边栏
+		window.indexSoft && window.indexSoft()
+		if (window.location.href.endsWith('/soft')) {
+			// 刷新软件搜索栏
+			window.getSList && window.getSList()
+		}
+	})
+}
+setInterval(function() {
+	checkTaskUpdateSidebar();
+},6000);
+
 function setSelectChecked(c, d) {
 	var a = document.getElementById(c);
 	for(var b = 0; b < a.options.length; b++) {

@@ -615,13 +615,14 @@ class system_api:
         elif stype == '5':
             mw.execShell("echo 'True' > " + control_notify_pl)
         elif stype == '6':
-            # 删除服务器周报
+            # 删除服务器报告
             mw.execShell("rm -rf " + control_report_notify_pl)
             crontabApi.removeCrond('system_report.sh')
         elif stype == '7':
-            # 添加服务器周报
+            # 添加服务器报告
             mw.execShell("echo 'True' > " + control_report_notify_pl)
             crontabApi.writeCrond('0 0 * * 0 /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
+            crontabApi.crondReload()
         elif stype == 'del':
             if not mw.isRestart():
                 return mw.returnJson(False, '请等待所有安装任务完成再执行')

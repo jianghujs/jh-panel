@@ -622,7 +622,7 @@ class system_api:
             # 添加服务器报告
             mw.execShell("echo 'True' > " + control_report_notify_pl)
             crontabApi.writeCrond('0 0 * * 0 /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
-            crontabApi.crondReload()
+            
         elif stype == 'del':
             if not mw.isRestart():
                 return mw.returnJson(False, '请等待所有安装任务完成再执行')
@@ -934,6 +934,7 @@ class system_api:
         crontabApi.writeCrond(cronConfig + ' /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
 
         mw.writeFile(control_report_cycle_file, json.dumps(params))
+        crontabApi.crondReload()
 
         return mw.returnJson(True, '设置成功!')
 

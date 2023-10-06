@@ -932,9 +932,9 @@ class system_api:
         
         crontabApi.removeCrond('system_report.sh')
         crontabApi.writeCrond(cronConfig + ' /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
+        crontabApi.crondReload()
 
         mw.writeFile(control_report_cycle_file, json.dumps(params))
-        crontabApi.crondReload()
 
         return mw.returnJson(True, '设置成功!')
 

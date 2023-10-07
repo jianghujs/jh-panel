@@ -32,6 +32,9 @@ pushd /www/server/web_conf/ > /dev/null
 zip -r ${MIGRATE_DIR}/web_conf.zip .
 popd > /dev/null
 
+# 复制letsencrypt.json
+cp -r /www/server/jh-panel/data/letsencrypt.json ${MIGRATE_DIR}/letsencrypt.json
+
 # 在迁移临时文件存放目录生成deploy_site.sh，内容如下：
 cat << EOF > ${MIGRATE_DIR}/deploy_site.sh
 #!/bin/bash
@@ -51,6 +54,9 @@ fi
 # 执行 python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo，传入当前目录下的migrate_info_site文件路径恢复站点数据
 python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/migrate_info_site.json
 echo "导入站点数据完成✔!"
+
+# 恢复letsencrypt.json
+cp -r \$(pwd)/letsencrypt.json /www/server/jh-panel/data/letsencrypt.json
 
 # 解压覆盖当前目录下的web_conf.zip到/www/server/web_conf/
 unzip -o ./web_conf.zip -d /www/server/web_conf/

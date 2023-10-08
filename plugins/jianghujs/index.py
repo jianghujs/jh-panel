@@ -137,7 +137,7 @@ def projectScriptExcute():
     data = checkArgs(args, ['id', 'scriptKey'])
     if not data[0]:
         return data[1]
-    ids = args['id']
+    ids = args['id'].split(',')
     scriptKey = args['scriptKey']
     for id in ids:
         data = getOne('project', id)

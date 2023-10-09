@@ -226,11 +226,6 @@ def backupList():
     return mw.returnJson(True, 'ok', result)
 
 def getRecoveryBackupScript():
-    args = getArgs()
-    data = checkArgs(args, ['filename'])
-    if not data[0]:
-        return data[1]
-    filename = args['filename']
 
     # 获取的mysql目录
     mysqlDir = ''
@@ -252,7 +247,11 @@ def getRecoveryBackupScript():
     recoveryScript += ('mv %s %s_%s\n' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
     recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
     recoveryScript += ('mkdir -p /www/server/xtrabackup/logs\n')
-    recoveryScript += ('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s\n' % (filename))
+
+    recoveryScript += ('cp -r %(baseBackupPath)s /www/backup/xtrabackup_data_restore\n' %  {'baseBackupPath':getBaseBackupPath()})
+    recoveryScript += ('xtrabackup --prepare --apply-log-only --target-dir=/www/backup/xtrabackup_data_restore &>> /root/xtrabackup.log\n')
+    recoveryScript += ('xtrabackup --prepare --apply-log-only --target-dir=//www/backup/xtrabackup_data_restore --incremental-dir=%(incBackupPath)s &>> /root/xtrabackup.log\n' %  {'incBackupPath':getIncBackupPath()} )
+    
     recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
     recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
     recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))

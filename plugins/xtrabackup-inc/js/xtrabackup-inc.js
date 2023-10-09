@@ -238,46 +238,7 @@ function doMysqlBackup(content) {
 }
 
 
-function openRecoveryBackup(filename) {
-    myPost('get_recovery_backup_script',{filename}, function(data) {
-		let rdata = $.parseJSON(data.data);
-        openEditCode({
-            title: '执行恢复',
-            content: rdata.data,
-            width: '640px',
-            height: '400px',
-            submitBtn: '执行',
-            onSubmit: (content) => {
-                doRecoveryBackup(content)
-            }
-        })
-    });
-}
 
-function doRecoveryBackup(content) {
-    myPost('do_recovery_backup', {content: encodeURIComponent(content)}, function(data){
-        var rdata = $.parseJSON(data.data);
-        if(!rdata.status) {
-            backupIncHtml();
-            setTimeout(() => {
-                layer.msg(rdata.msg,{icon:2, time:2000});
-            }, 500)
-            return;
-        };
-        layer.open({
-            area: ['500px', '300px'],
-            title: '添加恢复任务成功',
-            content: rdata.msg,
-            btn: [],
-            // cancel: function(index, layero){ 
-            //     layer.close(index);
-            //     backupIncHtml();
-            // } 
-        });    
-        $("#openEditCodeCloseBtn").click();
-        messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
-    });
-}
 
 function doDeleteBackup(filename) {
     myPost('do_delete_backup', {filename}, function(data){
@@ -389,5 +350,54 @@ function openXtrabackupInc() {
             name: '执行Xtrabackup增量版命令[增量备份]',
             content: rdata.data
         })
+    });
+}
+
+
+
+function recoveryIncHtml(){
+    var con = `\
+    <button class="btn btn-default btn-sm va0" onclick="openRecoveryBackup();">全量恢复</button>`;
+    $(".soft-man-con").html(con);
+}
+
+
+function openRecoveryBackup() {
+    myPost('get_recovery_backup_script','', function(data) {
+		let rdata = $.parseJSON(data.data);
+        openEditCode({
+            title: '执行恢复',
+            content: rdata.data,
+            width: '640px',
+            height: '400px',
+            submitBtn: '执行',
+            onSubmit: (content) => {
+                doRecoveryBackup(content)
+            }
+        })
+    });
+}
+
+function doRecoveryBackup(content) {
+    myPost('do_recovery_backup', {content: encodeURIComponent(content)}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            setTimeout(() => {
+                layer.msg(rdata.msg,{icon:2, time:2000});
+            }, 500)
+            return;
+        };
+        layer.open({
+            area: ['500px', '300px'],
+            title: '添加恢复任务成功',
+            content: rdata.msg,
+            btn: [],
+            // cancel: function(index, layero){ 
+            //     layer.close(index);
+            //     mysqlBackupHtml();
+            // } 
+        });    
+        $("#openEditCodeCloseBtn").click();
+        messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });
 }

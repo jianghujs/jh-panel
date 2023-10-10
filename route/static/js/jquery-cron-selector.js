@@ -15,9 +15,109 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
 
 ;(function () {
   $.fn.extend({
-    reportCycleValue: {},
+    cronSelectorValue: {},
     createCronSelector: function (value = {}) {
-      this.reportCycleValue = value;
+      const getselectname = () => {
+        $(this).find(".dropdown ul li a").click(function(){
+          var txt = $(this).text();
+          var type = $(this).attr("value");
+          $(this).parents(".dropdown").find("button b").text(txt).attr("val",type);
+        });
+      }
+      
+      //清理
+      const closeOpt = () => {
+        $(this).find(".ptime").html('');
+      }
+  
+      //星期
+      const toWeek = () => {
+        var mBody = '<div class="dropdown planweek pull-left mr20">\
+                <button class="excode_week btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">\
+                <b val="0">' + weekArray[parseInt(this.cronSelectorValue.week || '0')] + '</b> <span class="caret"></span>\
+                </button>\
+                <ul class="dropdown-menu" role="menu" aria-labelledby="excode_week">\
+                <li><a role="menuitem" tabindex="-1" href="javascript:;" value="1">周一</a></li>\
+                <li><a role="menuitem" tabindex="-1" href="javascript:;" value="2">周二</a></li>\
+                <li><a role="menuitem" tabindex="-1" href="javascript:;" value="3">周三</a></li>\
+                <li><a role="menuitem" tabindex="-1" href="javascript:;" value="4">周四</a></li>\
+                <li><a role="menuitem" tabindex="-1" href="javascript:;" value="5">周五</a></li>\
+                <li><a role="menuitem" tabindex="-1" href="javascript:;" value="6">周六</a></li>\
+                <li><a role="menuitem" tabindex="-1" href="javascript:;" value="0">周日</a></li>\
+                </ul>\
+              </div>';
+        $(this).find(".ptime").html(mBody);
+        getselectname();
+      }
+  
+      //指定1
+      const toWhere1 = (ix) => {
+        var mBody ='<div class="plan_hms pull-left mr20 bt-input-text">\
+                <span><input type="number" name="where1" value="' + (this.cronSelectorValue.where1 || 3) + '" maxlength="2" max="31" min="0"></span>\
+                <span class="name">'+ix+'</span>\
+              </div>';
+        $(this).find(".ptime").append(mBody);
+      }
+  
+      //小时
+      const toHour = () => {
+        var mBody = '<div class="plan_hms pull-left mr20 bt-input-text">\
+                <span><input type="number" name="hour" value="' + (this.cronSelectorValue.hour || 0) + '" maxlength="2" max="23" min="0"></span>\
+                <span class="name">小时</span>\
+                </div>';
+        $(this).find(".ptime").append(mBody);
+      }
+  
+      //分钟
+      const toMinute = () => {
+        var mBody = '<div class="plan_hms pull-left mr20 bt-input-text">\
+                <span><input type="number" name="minute" value="' + (this.cronSelectorValue.minute || 0) + '" maxlength="2" max="59" min="0"></span>\
+                <span class="name">分钟</span>\
+                </div>';
+        $(this).find(".ptime").append(mBody);	
+      }
+  
+      const handleStypeChange = (type) => {
+        switch(type){
+          case 'day':
+            closeOpt();
+            toHour();
+            toMinute();
+            break;
+          case 'day-n':
+            closeOpt();
+            toWhere1('天');
+            toHour();
+            toMinute();
+            break;
+          case 'hour':
+            closeOpt();
+            toMinute();
+            break;
+          case 'hour-n':
+            closeOpt();
+            toWhere1('小时');
+            toMinute();
+            break;
+          case 'minute-n':
+            closeOpt();
+            toWhere1('分钟');
+            break;
+          case 'week':
+            closeOpt();
+            toWeek();
+            toHour();
+            toMinute();
+            break;
+          case 'month':
+            closeOpt();
+            toWhere1('日');
+            toHour();
+            toMinute();
+            break;
+        }
+      }
+      this.cronSelectorValue = value;
       var html = "<div class='report-cycle-main pd20 pb70'>\
         <div class='clearfix plan'>\
           <div class='dropdown plancycle pull-left mr20'>\
@@ -71,21 +171,16 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
         </form>\
       </div>" 
       $(this).append(html)
-      this.initDropdown();
-      return this;
-    },
-
-    initDropdown: function() {
-      var that = this;
       $(this).find(".dropdown ul li a").click(function() {
         var txt = $(this).text();
         var type = $(this).attr("value");
         $(this).parents(".dropdown").find("button b").text(txt).attr("val",type);
-        that.handleStypeChange(type);
+        handleStypeChange(type);
       });
-      if(this.reportCycleValue.type) {
-        this.handleStypeChange(this.reportCycleValue.type);
+      if(this.cronSelectorValue.type) {
+        handleStypeChange(this.cronSelectorValue.type);
       }
+      return this;
     },
 
     getCronSelectorData: function() {
@@ -155,112 +250,8 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
         $(this).find(".set-Config input[name='where1']").val(where1);
       }
       let data = $(this).find(".set-Config").serialize();
-      console.log("获取的值:", data)
       return data;
-    },
-
-    getselectname: function(){
-      $(this).find(".dropdown ul li a").click(function(){
-        var txt = $(this).text();
-        var type = $(this).attr("value");
-        $(this).parents(".dropdown").find("button b").text(txt).attr("val",type);
-      });
-    },
-    
-    //清理
-    closeOpt: function(){
-      $(this).find(".ptime").html('');
-    },
-
-    //星期
-    toWeek: function(){
-      var mBody = '<div class="dropdown planweek pull-left mr20">\
-              <button class="excode_week btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">\
-              <b val="0">' + weekArray[parseInt(this.reportCycleValue.week || '0')] + '</b> <span class="caret"></span>\
-              </button>\
-              <ul class="dropdown-menu" role="menu" aria-labelledby="excode_week">\
-              <li><a role="menuitem" tabindex="-1" href="javascript:;" value="1">周一</a></li>\
-              <li><a role="menuitem" tabindex="-1" href="javascript:;" value="2">周二</a></li>\
-              <li><a role="menuitem" tabindex="-1" href="javascript:;" value="3">周三</a></li>\
-              <li><a role="menuitem" tabindex="-1" href="javascript:;" value="4">周四</a></li>\
-              <li><a role="menuitem" tabindex="-1" href="javascript:;" value="5">周五</a></li>\
-              <li><a role="menuitem" tabindex="-1" href="javascript:;" value="6">周六</a></li>\
-              <li><a role="menuitem" tabindex="-1" href="javascript:;" value="0">周日</a></li>\
-              </ul>\
-            </div>';
-      $(this).find(".ptime").html(mBody);
-      this.getselectname();
-    },
-
-    //指定1
-    toWhere1: function(ix){
-      var mBody ='<div class="plan_hms pull-left mr20 bt-input-text">\
-              <span><input type="number" name="where1" value="' + (this.reportCycleValue.where1 || 3) + '" maxlength="2" max="31" min="0"></span>\
-              <span class="name">'+ix+'</span>\
-            </div>';
-      $(this).find(".ptime").append(mBody);
-    }, 
-
-    //小时
-    toHour: function(){
-      var mBody = '<div class="plan_hms pull-left mr20 bt-input-text">\
-              <span><input type="number" name="hour" value="' + (this.reportCycleValue.hour || 0) + '" maxlength="2" max="23" min="0"></span>\
-              <span class="name">小时</span>\
-              </div>';
-      $(this).find(".ptime").append(mBody);
-    },
-
-    //分钟
-    toMinute: function(){
-      var mBody = '<div class="plan_hms pull-left mr20 bt-input-text">\
-              <span><input type="number" name="minute" value="' + (this.reportCycleValue.minute || 0) + '" maxlength="2" max="59" min="0"></span>\
-              <span class="name">分钟</span>\
-              </div>';
-      $(this).find(".ptime").append(mBody);	
-    },
-
-    handleStypeChange: function(type){
-      switch(type){
-        case 'day':
-          this.closeOpt();
-          this.toHour();
-          this.toMinute();
-          break;
-        case 'day-n':
-          this.closeOpt();
-          this.toWhere1('天');
-          this.toHour();
-          this.toMinute();
-          break;
-        case 'hour':
-          this.closeOpt();
-          this.toMinute();
-          break;
-        case 'hour-n':
-          this.closeOpt();
-          this.toWhere1('小时');
-          this.toMinute();
-          break;
-        case 'minute-n':
-          this.closeOpt();
-          this.toWhere1('分钟');
-          break;
-        case 'week':
-          this.closeOpt();
-          this.toWeek();
-          this.toHour();
-          this.toMinute();
-          break;
-        case 'month':
-          this.closeOpt();
-          this.toWhere1('日');
-          this.toHour();
-          this.toMinute();
-          break;
-      }
     }
   })
 })()
 
-
-createCronSelector

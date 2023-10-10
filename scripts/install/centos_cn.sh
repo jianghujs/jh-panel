@@ -56,7 +56,9 @@ yum install -y expect
 
 #https need
 if [ ! -d /root/.acme.sh ];then	
-	curl https://get.acme.sh | sh
+	git clone https://gitee.com/neilpang/acme.sh.git /www/server/acme.sh
+	cd /www/server/acme.sh
+	./acme.sh --install
 fi
 
 if [ -f /etc/init.d/iptables ];then

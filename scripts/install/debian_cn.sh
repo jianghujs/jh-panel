@@ -80,7 +80,9 @@ localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
 
 # 安装acme.sh(创建和配置https证书)
 if [ ! -d /root/.acme.sh ];then	
-	curl  https://get.acme.sh | sh
+	git clone https://gitee.com/neilpang/acme.sh.git /www/server/acme.sh
+	cd /www/server/acme.sh
+	./acme.sh --install
 fi
 
 # 防火墙开放端口

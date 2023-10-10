@@ -87,10 +87,12 @@ function backupPath(){
         data = JSON.parse(data.data)
         var con = '<div class="line ">\
                 <div class="info-r  ml0">\
+                    <span>全量目录：</span>\
                     <input id="basedir" name="basedir" class="bt-input-text mr5 port" type="text" style="width:330px" value="'+(data.data.base || '/www/backup/xtrabackup_data_base')+'">\
                     <span class="glyphicon cursor mr5 glyphicon-folder-open icon_datadir" onclick="changePath(\'basedir\')"></span>\
                 </div>\
                 <div class="info-r  ml0">\
+                    <span>增量目录：</span>\
                     <input id="incdir" name="incdir" class="bt-input-text mr5 port" type="text" style="width:330px" value="'+(data.data.inc || '/www/backup/xtrabackup_data_incremental')+'">\
                     <span class="glyphicon cursor mr5 glyphicon-folder-open icon_datadir" onclick="changePath(\'incdir\')"></span>\
                 </div>\
@@ -357,7 +359,14 @@ function openXtrabackupInc() {
 
 function recoveryIncHtml(){
     var con = `\
-    <button class="btn btn-success btn-sm va0" onclick="openRecoveryBackup();">增量恢复</button>`;
+    <div class="safe container-fluid mt10" style="overflow: hidden;">
+        <div class="flex align-center">
+            增量恢复：
+        </div>
+        <div class="mtb15 flex align-center">
+            <button class="btn btn-success btn-sm va0 mr20" onclick="openRecoveryBackup();">执行增量恢复</button>
+        </div>
+    </div>`;
     $(".soft-man-con").html(con);
 }
 

@@ -1,30 +1,31 @@
 var mysqlBackupLayer = null; // 执行备份弹窗
 function myPost(method,args,callback, title){
-
-    var _args = null; 
-    if (typeof(args) == 'string'){
-        _args = JSON.stringify(toArrayObject(args));
-    } else {
-        _args = JSON.stringify(args);
-    }
-
-    var _title = '正在获取...';
-    if (typeof(title) != 'undefined'){
-        _title = title;
-    }
-
-    var loadT = layer.msg(_title, { icon: 16, time: 0, });
-    $.post('/plugins/run', {name:'xtrabackup-inc', func:method, args:_args}, function(data) {
-        layer.close(loadT);
-        if (!data.status){
-            layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});
-            return;
+    return new Promise((resolve) => {    
+        var _args = null; 
+        if (typeof(args) == 'string'){
+            _args = JSON.stringify(toArrayObject(args));
+        } else {
+            _args = JSON.stringify(args);
         }
 
-        if(typeof(callback) == 'function'){
-            callback(data);
+        var _title = '正在获取...';
+        if (typeof(title) != 'undefined'){
+            _title = title;
         }
-    },'json'); 
+
+        var loadT = layer.msg(_title, { icon: 16, time: 0, });
+        $.post('/plugins/run', {name:'xtrabackup-inc', func:method, args:_args}, function(data) {
+            layer.close(loadT);
+            if (!data.status){
+                layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+                return;
+            }
+            resolve(data)
+            if(typeof(callback) == 'function'){
+                callback(data);
+            }
+        },'json'); 
+    })
 }
 
 
@@ -295,14 +296,24 @@ function getXtrabackupIncCron() {
     },'json');
 }
 
-function addOrUpdateXtrabackupFullCron(cronSelectorData) {
+async function addOrUpdateXtrabackupFullCron(cronSelectorData) {
+    if(!xtrabackupFullCron.id) {
+        let scriptData = await myPost('full_backup_cron_script','');
+        let scriptRData = $.parseJSON(scriptData.data);
+        xtrabackupFullCron.sBody = xtrabackupFullCron.sbody = scriptRData.data
+    }
     $.post(xtrabackupFullCron.id? '/crontab/modify_crond': '/crontab/add', {...xtrabackupFullCron, ...cronSelectorData},function(rdata){
         getXtrabackupFullCron();
         layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
     },'json');
 }
 
-function addOrUpdateXtrabackupIncCron(cronSelectorData) {
+async function addOrUpdateXtrabackupIncCron(cronSelectorData) {
+    if(!xtrabackupIncCron.id) {
+        let scriptData = await myPost('inc_backup_cron_script','');
+        let scriptRData = $.parseJSON(scriptData.data);
+        xtrabackupIncCron.sBody = xtrabackupIncCron.sbody = scriptRData.data
+    }
     $.post(xtrabackupIncCron.id? '/crontab/modify_crond': '/crontab/add', {...xtrabackupIncCron, ...cronSelectorData},function(rdata){
         getXtrabackupIncCron();
         layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);

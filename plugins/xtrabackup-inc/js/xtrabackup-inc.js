@@ -257,16 +257,24 @@ function doDeleteBackup(filename) {
     // });
 }
 
+function getCron() {
+    console.log($("#xtrabackupFullCronSetting").getCronSelectorData());
+    console.log($("#xtrabackupIncCronSetting").getCronSelectorData());
+}
+
 function backupIncHtml(){
     var con = `\
     <button class="btn btn-success btn-sm va0" onclick="openXtrabackupFull();">全量备份</button>
     <button class="btn btn-success btn-sm va0" onclick="openXtrabackupInc();">增量备份</button>
+    <div id="xtrabackupFullCronSetting"></div>
+    <div id="xtrabackupIncCronSetting"></div>
+    <button class="btn btn-success btn-sm va0" onclick="getCron();">获取cron</button>
     `;
-
-
 
     $(".soft-man-con").html(con);
     setTimeout(() => {
+        $("#xtrabackupFullCronSetting").createCronSelector();
+        $("#xtrabackupIncCronSetting").createCronSelector();
         getXtrabackupCron();
     }, 300)
     

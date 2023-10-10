@@ -257,25 +257,39 @@ function doDeleteBackup(filename) {
     // });
 }
 
-function getCron() {
-    console.log($("#xtrabackupFullCronSetting").getCronSelectorData());
-    console.log($("#xtrabackupIncCronSetting").getCronSelectorData());
-}
-
 function backupIncHtml(){
     var con = `\
-    <button class="btn btn-success btn-sm va0" onclick="openXtrabackupFull();">全量备份</button>
-    <button class="btn btn-default btn-sm" type="button" onclick="openCronSelectorLayer()">配置频率</button>
-    <button class="btn btn-success btn-sm va0" onclick="openXtrabackupInc();">增量备份</button>
-    <div id="xtrabackupFullCronSetting"></div>
-    <div id="xtrabackupIncCronSetting"></div>
-    <button class="btn btn-success btn-sm va0" onclick="getCron();">获取cron</button>
+    <div class="safe container-fluid mt10" style="overflow: hidden;">
+        <div>全量备份：</div>
+        <div class="mtb15 flex align-center">
+            <div class="mr20 ss-text pull-left">
+                <em>开启定时</em>
+                <div class='ssh-item' id="openXtrabackupFullCronSwitch"></div>
+            </div>
+            <button class="btn btn-default btn-sm mr20" type="button" onclick="openCronSelectorLayer()">配置频率</button>
+            <button class="btn btn-default btn-sm va0 mr20" onclick="openXtrabackupFull();">手动执行</button>
+            
+        </div>
+    </div>
+    <div class="safe container-fluid mt10" style="overflow: hidden;">
+        <div>增量备份：</div>
+        <div class="mtb15 flex align-center">
+            <div class="mr20 ss-text pull-left">
+                <em>开启定时</em>
+                <div class='ssh-item' id="openXtrabackupIncCronSwitch"></div>
+            </div>
+            <button class="btn btn-default btn-sm mr20" type="button" onclick="openCronSelectorLayer()">配置频率</button>
+            <button class="btn btn-default btn-sm va0 mr20" onclick="openXtrabackupInc();">手动执行</button>
+            
+        </div>
+    </div>
     `;
 
     $(".soft-man-con").html(con);
+    $("#openXtrabackupFullCronSwitch").createRadioSwitch(true, (checked) => {
+        console.log('hh', $("#openXtrabackupFullCronSwitch").getRadioSwitchValue())
+    });
     setTimeout(() => {
-        
-        $("#xtrabackupIncCronSetting").createCronSelector();
         getXtrabackupCron();
     }, 300)
     

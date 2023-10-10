@@ -17,6 +17,9 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
   $.fn.extend({
     cronSelectorValue: {},
     createCronSelector: function (value = {}) {
+      value.hour = value.hour || value.where_hour;
+      value.minute = value.minute || value.where_minute;
+
       const getselectname = () => {
         $(this).find(".dropdown ul li a").click(function(){
           var txt = $(this).text();
@@ -170,7 +173,7 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
           <input type='submit' />\
         </form>\
       </div>" 
-      $(this).append(html)
+      $(this).html(html)
       $(this).find(".dropdown ul li a").click(function() {
         var txt = $(this).text();
         var type = $(this).attr("value");
@@ -231,6 +234,7 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
       if (type == 'minute-n'){
         var where1 = $(this).find(".ptime input[name='where1']").val();
         $(this).find(".set-Config input[name='where1']").val(where1);
+        $(this).find(".set-Config input[name='minute']").val(where1);
       }
 
       if (type == 'day-n'){
@@ -249,7 +253,15 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
         var where1 = 0;
         $(this).find(".set-Config input[name='where1']").val(where1);
       }
-      let data = $(this).find(".set-Config").serialize();
+
+      // let data = $(this).find(".set-Config").serialize();
+      let data = {
+        type: $(this).find(".set-Config input[name='type']").val(),
+        where1: $(this).find(".set-Config input[name='where1']").val(),
+        hour: $(this).find(".set-Config input[name='hour']").val(),
+        minute: $(this).find(".set-Config input[name='minute']").val(),
+        week: $(this).find(".set-Config input[name='week']").val()
+      }
       return data;
     }
   })

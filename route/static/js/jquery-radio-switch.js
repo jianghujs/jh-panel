@@ -19,7 +19,7 @@
       } else {
         html = `<input class='radio-switch btswitch btswitch-ios'  id='${uuid}' type='checkbox'><label class='btswitch-btn' for='${uuid}'></label>`;
       }
-      $(this).append(html)
+      $(this).html(html)
       $(this).find('.btswitch').click(function() {
         let checked = $(this).prop('checked');
         change && change(checked);

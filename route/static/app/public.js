@@ -2319,7 +2319,7 @@ function openCronSelectorLayer(value, {title, yes} = {}) {
 		shadeClose: false,
 		content: "<div id='cronSelectorLayerContent'></div>",
 		success: function(index, layers) {
-			$("#cronSelectorLayerContent").createCronSelector();
+			$("#cronSelectorLayerContent").createCronSelector(value);
 		},
 		yes: function(layero, layer_id) {
 			yes && yes($("#cronSelectorLayerContent").getCronSelectorData());
@@ -2327,6 +2327,20 @@ function openCronSelectorLayer(value, {title, yes} = {}) {
 		}
 	})
 }
+
+/**
+ * 显示隐藏dom
+ * @param {*} domSelector 
+ * @param {*} visible 
+ */
+function visibleDom(domSelector, visible) {
+		if (visible) {
+				$(domSelector).show()
+		} else {
+				$(domSelector).hide()
+		}
+}
+
 
 /*** 其中功能,针对插件通过库使用 end ***/
 

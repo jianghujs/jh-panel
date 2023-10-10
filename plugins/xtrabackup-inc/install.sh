@@ -40,6 +40,7 @@ Install_xtrabackup_inc()
 	echo $(date "+%Y-%m-%d %H:%M:%S") 'xtrabackup-inc 安装成功' >> $serverPath/xtrabackup-inc/xtrabackup.log
 	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-full.sh.example $serverPath/xtrabackup-inc/xtrabackup-full.sh
 	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc-recovery.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc-recovery.sh
 	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup-inc/index.py initd_install
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' >> $install_tmp
 }

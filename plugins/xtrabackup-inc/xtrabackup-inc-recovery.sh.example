@@ -1,0 +1,19 @@
+#!/bin/bash
+timestamp=$(date +%Y%m%d_%H%M%S)
+LOG_DIR=/www/server/xtrabackup/logs
+systemctl stop $MYSQL_NAME
+mv $MYSQL_DIR/data $MYSQL_DIR/data_$timestamp
+rm -rf /www/backup/xtrabackup_data_restore
+mkdir -p /www/server/xtrabackup/logs
+# 复制全量目录
+cp -r $BACKUP_BASE_PATH /www/backup/xtrabackup_data_restore
+# 合并增量内容
+xtrabackup --prepare --apply-log-only --target-dir=/www/backup/xtrabackup_data_restore &>> /root/xtrabackup.log
+xtrabackup --prepare --apply-log-only --target-dir=//www/backup/xtrabackup_data_restore --incremental-dir=$BACKUP_INC_PATH &>> /root/xtrabackup.log
+# 执行恢复
+xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log
+xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log
+chown -R mysql:mysql $MYSQL_DIR/data 
+chmod -R 755 $MYSQL_DIR/data
+systemctl start $MYSQL_NAME
+python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR

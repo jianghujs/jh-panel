@@ -110,6 +110,10 @@ def getFullScriptFile():
 def getIncScriptFile():
     path = getServerDir() + "/xtrabackup-inc.sh"
     return path
+    
+def getIncRecoveryScriptFile():
+    path = getServerDir() + "/xtrabackup-inc-recovery.sh"
+    return path
 
 def getSetting():
     file = getFullScriptFile()
@@ -229,38 +233,16 @@ def getRecoveryBackupScript():
 
     # 获取的mysql目录
     mysqlDir = ''
+    mysqlName = ''
     if os.path.exists('/www/server/mysql-apt'):
-        mysqlDir = '/www/server/mysql-apt/data'
+        mysqlDir = '/www/server/mysql-apt'
+        mysqlName = 'mysql-apt'
     elif os.path.exists('/www/server/mysql'):
-        mysqlDir = '/www/server/mysql/data'
+        mysqlDir = '/www/server/mysql'
+        mysqlName = 'mysql'
     else :
         return mw.returnJson(False, '未检测到安装的mysql插件!')
-
-    recoveryScript = '#!/bin/bash\n'
-    recoveryScript += ('timestamp=$(date +%Y%m%d_%H%M%S)\n')
-    recoveryScript += ('LOG_DIR=/www/server/xtrabackup/logs\n')
-    if os.path.exists('/www/server/mysql-apt'):
-        recoveryScript += ('systemctl stop mysql-apt\n')
-    elif os.path.exists('/www/server/mysql'):
-        recoveryScript += ('systemctl stop mysql\n')
-
-    recoveryScript += ('mv %s %s_%s\n' % (mysqlDir, mysqlDir, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))))
-    recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
-    recoveryScript += ('mkdir -p /www/server/xtrabackup/logs\n')
-
-    recoveryScript += ('cp -r %(baseBackupPath)s /www/backup/xtrabackup_data_restore\n' %  {'baseBackupPath':getBaseBackupPath()})
-    recoveryScript += ('xtrabackup --prepare --apply-log-only --target-dir=/www/backup/xtrabackup_data_restore &>> /root/xtrabackup.log\n')
-    recoveryScript += ('xtrabackup --prepare --apply-log-only --target-dir=//www/backup/xtrabackup_data_restore --incremental-dir=%(incBackupPath)s &>> /root/xtrabackup.log\n' %  {'incBackupPath':getIncBackupPath()} )
-    
-    recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
-    recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
-    recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
-    recoveryScript += ('chmod -R 755 ' + mysqlDir + '\n')
-    if os.path.exists('/www/server/mysql-apt'):
-        recoveryScript += ('systemctl start mysql-apt\n')
-    elif os.path.exists('/www/server/mysql'):
-        recoveryScript += ('systemctl start mysql\n')
-    recoveryScript += ('python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR\n')
+    recoveryScript = 'echo "正在恢复..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nMYSQL_NAME=%(mysqlName)s\nMYSQL_DIR=%(mysqlDir)s\nset -x\n%(script)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'mysqlName': mysqlName, 'mysqlDir': mysqlDir, 'script': mw.readFile(getIncRecoveryScriptFile()) } 
     return mw.returnJson(True, 'ok', recoveryScript)
 
 def doRecoveryBackup():
@@ -351,7 +333,12 @@ def getIncBackupScript():
 
 def getFullBackupCronScript():
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "正在备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'scriptFile': getFullScriptFile() } 
+    backupCronScript = 'echo "正在备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'scriptFile': getFullScriptFile() } 
+    return mw.returnJson(True, 'ok',  backupCronScript)
+
+def getIncBackupCronScript():
+    # cron中直接执行脚本文件
+    backupCronScript = 'echo "正在备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'scriptFile': getIncScriptFile() } 
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 if __name__ == "__main__":
@@ -374,6 +361,8 @@ if __name__ == "__main__":
         print(getFullBackupCronScript())
     elif func == 'inc_backup_script':
         print(getIncBackupScript())
+    elif func == 'inc_backup_cron_script':
+        print(getIncBackupCronScript())
     elif func == 'get_xtrabackup_cron':
         print(getXtrabackupCron())
     elif func == 'get_setting':

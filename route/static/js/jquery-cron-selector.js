@@ -118,7 +118,7 @@ var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五
         }
       }
       this.cronSelectorValue = value;
-      var html = "<div class='report-cycle-main pd20 pb70'>\
+      var html = "<div class='cron-selector-main pd20' style='height: 100px; overflow: visible;'>\
         <div class='clearfix plan'>\
           <div class='dropdown plancycle pull-left mr20'>\
             <button class='btn btn-default dropdown-toggle' type='button' id='cycle' data-toggle='dropdown' style='width:94px'>\

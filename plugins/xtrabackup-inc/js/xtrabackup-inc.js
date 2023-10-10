@@ -265,6 +265,7 @@ function getCron() {
 function backupIncHtml(){
     var con = `\
     <button class="btn btn-success btn-sm va0" onclick="openXtrabackupFull();">全量备份</button>
+    <button class="btn btn-default btn-sm" type="button" onclick="openCronSelectorLayer()">配置频率</button>
     <button class="btn btn-success btn-sm va0" onclick="openXtrabackupInc();">增量备份</button>
     <div id="xtrabackupFullCronSetting"></div>
     <div id="xtrabackupIncCronSetting"></div>
@@ -273,7 +274,7 @@ function backupIncHtml(){
 
     $(".soft-man-con").html(con);
     setTimeout(() => {
-        $("#xtrabackupFullCronSetting").createCronSelector();
+        
         $("#xtrabackupIncCronSetting").createCronSelector();
         getXtrabackupCron();
     }, 300)

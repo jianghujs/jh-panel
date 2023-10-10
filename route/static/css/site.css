@@ -4914,3 +4914,7 @@ select[disabled]{
 .jhlink:hover {
     cursor: pointer;
 }
+
+.cron-selector-layer .layui-layer-content, .cron-selector-layer .cron-selector-main {
+	overflow: visible !important;
+}

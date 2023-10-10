@@ -2305,6 +2305,29 @@ function refreshLayerCenter(layerIndex){
 			"top":t
 		});
 }
+
+
+function openCronSelectorLayer(value, {title, yes} = {}) {
+	layer.open({
+		type: 1,
+		skin: "cron-selector-layer",
+		area: "550px",
+		title: title || '配置频率',
+		closeBtn: 1,
+		shift: 5,
+		btn: ['保存', '取消'],
+		shadeClose: false,
+		content: "<div id='cronSelectorLayerContent'></div>",
+		success: function(index, layers) {
+			$("#cronSelectorLayerContent").createCronSelector();
+		},
+		yes: function(layero, layer_id) {
+			yes && yes($("#cronSelectorLayerContent").getCronSelectorData());
+			layer.close(layero);
+		}
+	})
+}
+
 /*** 其中功能,针对插件通过库使用 end ***/
 
 

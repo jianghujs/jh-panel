@@ -112,75 +112,6 @@ function backupPath(){
         });
     });
 }
-var xtrabackupCron = {      
-    name: '[勿删]xtrabackup-inc-cron_full',
-    type: 'day',
-    where1: '',
-    week: '',
-    sType: 'toShell',
-    stype: 'toShell',
-    sName: '',
-    backupTo: 'localhost' };
-
-myPost('full_backup_cron_script','', function(data) {
-    let rdata = $.parseJSON(data.data);
-    xtrabackupCron = {  
-        ...xtrabackupCron,
-        
-        hour: $("#xtrabackup-cron input[name='hour']").val(),
-        minute: $("#xtrabackup-cron input[name='minute']").val(),
-        sBody: rdata.data,
-        sbody: rdata.data,
-    }
-});
-
-function doMysqlBackup(content) {
-    myPost('do_mysql_backup', {content: encodeURIComponent(content)}, function(data){
-        var rdata = $.parseJSON(data.data);
-        if(!rdata.status) {
-            backupIncHtml();
-            setTimeout(() => {
-                layer.msg(rdata.msg,{icon:2, time:2000});
-            }, 500)
-            return;
-        };
-        backupIncHtml();
-        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
-        setTimeout(() => {
-            $("#openEditCodeCloseBtn").click();
-            messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
-            
-        }, 1000)
-        
-    });
-}
-
-
-
-
-function doDeleteBackup(filename) {
-    myPost('do_delete_backup', {filename}, function(data){
-        var rdata = $.parseJSON(data.data);
-        if(!rdata.status) {
-            layer.msg(rdata.msg,{icon:2, time:2000});
-            return;
-        };
-        backupIncHtml();
-        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
-    });
-    // safeMessage('确认删除备份文件', '确认后[' + filename + ']文件不可恢复，请谨慎操作！', function(){
-    //     myPost('do_delete_backup', {filename}, function(data){
-    //         var rdata = $.parseJSON(data.data);
-    //         if(!rdata.status) {
-    //             layer.msg(rdata.msg,{icon:2, time:2000});
-    //             return;
-    //         };
-    //         backupIncHtml();
-    //         layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
-    //     });
-    // });
-}
-
 
 var defaultXtrabackupFullCron = {      
     name: '[勿删]xtrabackup-inc全量备份',
@@ -198,9 +129,9 @@ var xtrabackupFullCron = {...defaultXtrabackupFullCron};
 var defaultXtrabackupIncCron = {      
     name: '[勿删]xtrabackup-inc增量备份',
     type: 'minute-n',
-    where1: 3,
+    where1: 30,
     hour: 0,
-    minute: 3,
+    minute: 30,
     week: '',
     sType: 'toShell',
     stype: 'toShell',

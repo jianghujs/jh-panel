@@ -213,22 +213,6 @@ def doMysqlBackup():
         
     return mw.returnJson(True, execResult[0])
 
-
-def backupList():
-    result = []
-    xtrabackup_data_history_path = '/www/backup/xtrabackup_data_history'
-    for d_walk in os.walk(xtrabackup_data_history_path):
-        for d_list in d_walk[2]:
-            if mw.getFileSuffix(d_list) == 'zip': 
-                filepath = '%s/%s' % (xtrabackup_data_history_path, d_list)
-                result.append({
-                    'filename': d_list,
-                    'size': mw.getPathSize(filepath),
-                    'sizeTxt': mw.toSize(mw.getPathSize(filepath)),
-                    'createTime': os.path.getctime(filepath)
-                })
-    return mw.returnJson(True, 'ok', result)
-
 def getRecoveryBackupScript():
 
     # 获取的mysql目录
@@ -242,68 +226,8 @@ def getRecoveryBackupScript():
         mysqlName = 'mysql'
     else :
         return mw.returnJson(False, '未检测到安装的mysql插件!')
-    recoveryScript = 'echo "正在恢复..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nMYSQL_NAME=%(mysqlName)s\nMYSQL_DIR=%(mysqlDir)s\nset -x\n%(script)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'mysqlName': mysqlName, 'mysqlDir': mysqlDir, 'script': mw.readFile(getIncRecoveryScriptFile()) } 
+    recoveryScript = 'echo "开始全量恢复..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nMYSQL_NAME=%(mysqlName)s\nMYSQL_DIR=%(mysqlDir)s\nset -x\n%(script)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'mysqlName': mysqlName, 'mysqlDir': mysqlDir, 'script': mw.readFile(getIncRecoveryScriptFile()) } 
     return mw.returnJson(True, 'ok', recoveryScript)
-
-def doRecoveryBackup():
-    args = getArgs()
-    content = mw.readFile(getConf())
-
-    if args['content'] is not None:
-        content = unquote(str(args['content']), 'utf-8').replace("\\n", "\n")
-
-    # 写入临时文件用于执行
-    tempFilePath = getServerDir() + '/recovery_temp.sh'
-    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(tempFilePath)s\necho 恢复成功' % {'content': content, 'tempFilePath': tempFilePath})
-    mw.execShell('chmod 750 ' + tempFilePath)
-    # 执行脚本
-    log_file = runLog()
-    mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "恢复开始" >> ' + log_file)
-    
-    # mw.execShell("sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file })
-    mw.addAndTriggerTask(
-        name = '执行Xtrabackup命令[恢复]',
-        execstr = "sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file }
-    )
-    
-    execResult = mw.execShell("tail -n 1 " + log_file)
-    
-    # if "恢复成功" in execResult[0]:
-    #     return mw.returnJson(True, '恢复成功; 请前往Mysql插件 <br/>- "从服务器获取"  <br/>- 如果ROOT密码有变动👉"修复ROOT密码" <br/>Tip: 若无法找回密码, 可以使用无密码模式启动mysql, 然后再使用mysql的sql脚本设置密码。')
-    
-    return mw.returnJson(True, execResult[0])
-
-def doDeleteBackup():
-    args = getArgs()
-    data = checkArgs(args, ['filename'])
-    if not data[0]:
-        return data[1]
-    filename = args['filename']
-    mw.execShell('rm -f /www/backup/xtrabackup_data_history/' + filename)
-    return mw.returnJson(True, '删除成功!')
-
-
-def getXtrabackupCron():
-    args = getArgs()
-    data = checkArgs(args, ['xtrabackupCronName'])
-    if not data[0]:
-        return data[1]
-    xtrabackupCronName = args['xtrabackupCronName']
-    cronCount = mw.M('crontab').where('name=?', (xtrabackupCronName,)).count()
-    cronList = mw.M('crontab').where('name=?', (xtrabackupCronName,)).field('id,name,type,where_hour,where_minute,saveAllDay,saveOther,saveMaxDay').select()
-    if cronCount > 0:
-        return mw.returnJson(True,  xtrabackupCronName + ' 已存在', { 
-            'id': cronList[0]['id'],
-            'name': cronList[0]['name'],
-            'type': cronList[0]['type'],
-            'hour': cronList[0]['where_hour'],
-            'minute': cronList[0]['where_minute'],
-            'saveAllDay': cronList[0]['saveAllDay'],
-            'saveOther': cronList[0]['saveOther'],
-            'saveMaxDay': cronList[0]['saveMaxDay']
-        })
-    return mw.returnJson(False, xtrabackupCronName + ' 不存在')    
-
 
 def getBackupPath():
     return mw.returnJson(True, 'ok',  {
@@ -324,21 +248,21 @@ def setBackupPath():
     return mw.returnJson(True, '修改成功!')
 
 def getFullBackupScript():
-    backupScript = 'echo "正在备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'script': mw.readFile(getFullScriptFile()) } 
+    backupScript = 'echo "开始全量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'script': mw.readFile(getFullScriptFile()) } 
     return mw.returnJson(True, 'ok',  backupScript)
 
 def getIncBackupScript():
-    backupScript = 'echo "正在备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'script': mw.readFile(getIncScriptFile()) } 
+    backupScript = 'echo "开始增量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'script': mw.readFile(getIncScriptFile()) } 
     return mw.returnJson(True, 'ok',  backupScript)
 
 def getFullBackupCronScript():
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "正在备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'scriptFile': getFullScriptFile() } 
+    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'scriptFile': getFullScriptFile() } 
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 def getIncBackupCronScript():
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "正在备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'scriptFile': getIncScriptFile() } 
+    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {'baseBackupPath':getBaseBackupPath(), 'incBackupPath':getIncBackupPath(), 'scriptFile': getIncScriptFile() } 
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 if __name__ == "__main__":

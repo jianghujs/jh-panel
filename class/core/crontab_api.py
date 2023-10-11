@@ -311,8 +311,8 @@ class crontab_api:
 
         addData = self.add(params)
         if addData > 0:
-            return mw.returnJson(True, '添加成功')
-        return mw.returnJson(False, '添加失败')
+            return mw.returnJson(True, '添加计划任务成功')
+        return mw.returnJson(False, '添加计划任务失败')
 
     def add(self, params):
 
@@ -376,9 +376,9 @@ class crontab_api:
             data = self.delete(task_id)
             if not data[0]:
                 return mw.returnJson(False, data[1])
-            return mw.returnJson(True, '删除成功')
+            return mw.returnJson(True, '删除计划任务成功')
         except Exception as e:
-            return mw.returnJson(False, '删除失败:' + str(e))
+            return mw.returnJson(False, '删除计划任务失败:' + str(e))
 
     def delete(self, tid):
 

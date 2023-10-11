@@ -65,7 +65,7 @@ case $choice in
 5)
     download_and_run index__resize.sh
     ;;
-5)
+6)
     download_and_run index__arrange.sh
     ;;
 esac

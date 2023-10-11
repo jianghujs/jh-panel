@@ -5,12 +5,8 @@ set -e
 download_and_run() {
     local script_name=$1
     wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
-    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
     bash /tmp/vm_${script_name} ${@:2}
-    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
 }
-
-download_and_run index__switch_apt_sources.sh 4
 
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
@@ -31,13 +27,8 @@ fi
 
 show_menu() {
     echo "==================vm bullseye os-tools=================="
-    echo "请选择一个操作:"
-    echo "1. 初始化环境"
-    echo "2. 生成指定域名SSH密钥"
-    echo "3. 服务器迁移"
-    echo "4. 服务器修复"
-    echo "5. 服务器扩容"
-    echo "6. 服务器整理"
+    echo "请选择整理工具:"
+    echo "1. 整理Upload目录（移动并链接wwwroot下的项目upload目录到wwwstorage）"
     echo "========================================================"
 }
 
@@ -45,28 +36,13 @@ show_menu() {
 show_menu
 
 # 读取用户的选择
-read -p "请输入选项数字: " choice
-
+read -p "请输入选项数字（默认1）: " choice
+choice=${choice:-"1"}
 
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run index__init.sh
-    ;;
-2)
-    download_and_run index__ssh_keygen_to_host.sh
-    ;;
-3)
-    download_and_run index__migrate.sh
-    ;;
-4)
-    download_and_run index__repair.sh
-    ;;
-5)
-    download_and_run index__resize.sh
-    ;;
-5)
-    download_and_run index__arrange.sh
+    download_and_run arrange__move_and_link_upload_to_wwwstorage.sh
     ;;
 esac
 

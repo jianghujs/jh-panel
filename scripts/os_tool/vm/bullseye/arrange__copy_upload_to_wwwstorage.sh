@@ -3,7 +3,7 @@
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
 
-read -p "确定要将${project_dir}下的upload目录移动到${storage_dir}并建立软链接吗？（默认n）[y/n]: " choice
+read -p "确定要将${project_dir}下的upload目录复制到${storage_dir}吗？（默认n）[y/n]: " choice
 choice=${choice:-"n"}
 
 if [ $choice == "y" ]; then
@@ -22,19 +22,10 @@ if [ $choice == "y" ]; then
         mkdir -p "$target_dir"
         
         # 使用 rsync 命令将 upload 目录复制到目标目录
-        echo "|-- 正在移动 $dir 到 $target_dir ..."
+        echo "|-- 正在复制 $dir 到 $target_dir ..."
         rsync -a "$dir/" "$target_dir"
 
-        # 删除原始 upload 目录
-        rm -rf "$dir"
-        
-        echo "|-- 移动 $dir 到 $target_dir 成功✅"
-        
-
-        # 创建软链接
-        ln -s "$target_dir" "$dir"
-
-        echo "|-- 创建 $dir 到 $target_dir 软链接成功✅"
+        echo "|-- 复制 $dir 到 $target_dir 成功✅"
     done
 
     
@@ -43,6 +34,6 @@ if [ $choice == "y" ]; then
     echo "- 项目所在目录：$project_dir"
     echo "- 项目数据存放目录：$storage_dir"
     echo "---------------------------------------------------------------"
-    echo "${project_dir}下的upload目录已全部移动到${storage_dir}并建立软链接"
+    echo "${project_dir}下的upload目录已全部复制到${storage_dir}"
     echo "==============================================================="
 fi

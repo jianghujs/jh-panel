@@ -28,7 +28,9 @@ fi
 show_menu() {
     echo "==================vm bullseye os-tools=================="
     echo "请选择整理工具:"
-    echo "1. 整理Upload目录（移动并链接wwwroot下的项目upload目录到wwwstorage）"
+    echo "1. 整理Upload目录-第①步（复制wwwroot下的项目upload目录到wwwstorage）"
+    echo "2. 整理Upload目录-第②步（链接wwwroot下的项目upload目录到wwwstorage）"
+    echo "3. 整理Upload目录（移动并链接wwwroot下的项目upload目录到wwwstorage）"
     echo "========================================================"
 }
 
@@ -39,9 +41,27 @@ show_menu
 read -p "请输入选项数字（默认1）: " choice
 choice=${choice:-"1"}
 
+default_project_dir="/www/wwwroot/"
+default_storage_dir="/www/wwwstorage/"
+
+read -p "输入项目所在目录（默认为：${default_project_dir}）: " project_dir
+project_dir=${project_dir:-${default_project_dir}}
+export PROJECT_DIR=$project_dir
+
+read -p "输入项目数据存放目录（默认为：${default_storage_dir}）: " storage_dir
+storage_dir=${storage_dir:-${default_storage_dir}}
+export STORAGE_DIR=$storage_dir
+
+
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
+    download_and_run arrange__copy_upload_to_wwwstorage.sh
+    ;;
+2)
+    download_and_run arrange__link_upload_to_wwwstorage.sh
+    ;;
+3)
     download_and_run arrange__move_and_link_upload_to_wwwstorage.sh
     ;;
 esac

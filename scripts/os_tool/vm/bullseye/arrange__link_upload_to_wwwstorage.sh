@@ -3,7 +3,7 @@
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
 
-read -p "确定要将${project_dir}下的upload目录链接到${storage_dir}吗？（默认n）[y/n]: " choice
+read -p "确定要将${project_dir}下的upload目录链接到${storage_dir}吗？确认后可能会清空${project_dir}下的upload目录，请做好数据备份！（默认n）[y/n]: " choice
 choice=${choice:-"n"}
 
 if [ $choice == "y" ]; then
@@ -17,12 +17,9 @@ if [ $choice == "y" ]; then
         target_dir="$project_dir$relative_path"
 
         if [ -d "$target_dir" ]; then
-            read -p "存在${target_dir}目录无法建立软链接，要删除目录吗？（默认n）[y/n]: " rmdir_choice
-            rmdir_choice=${rmdir_choice:-"n"}
-            if [ $rmdir_choice == "y" ]; then 
-                rm -rf "$target_dir"
-                echo "|-- 删除 $target_dir 成功✅"
-            fi
+            echo "|-- 正在删除 $target_dir ..."
+            rm -rf "$target_dir"
+            echo "|-- 删除 $target_dir 成功✅"
         fi
         
         

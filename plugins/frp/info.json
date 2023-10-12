@@ -2,7 +2,7 @@
 	"sort": 7,
 	"ps": "frp内网穿透服务",
 	"name": "frp",
-	"title": "内网穿透服务",
+	"title": "FRP管理器",
 	"shell": "install.sh",
 	"versions":["0.44.0"],
 	"updates":["0.44.0"],

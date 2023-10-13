@@ -178,3 +178,5 @@ ddb_storage/*
 
 mdioks.session-journal
 *.session
+
+node_modules

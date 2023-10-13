@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "knex": "^1.0.1",
+    "mysql": "^2.18.1",
+    "mysql-import": "^5.0.21",
+    "mysqldump": "^3.2.0",
+    "sql-parser": "^0.5.0"
+  }
+}

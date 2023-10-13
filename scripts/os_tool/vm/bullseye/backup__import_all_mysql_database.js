@@ -17,10 +17,7 @@ const connectionConfig = {
   host: '127.0.0.1',
   port: '33067',
   user: 'root',
-  password: '',
-
-  host: '192.168.3.73',
-  password: 'deuuKtRfdCPWA9X4'
+  password: ''
 };
 
 // 文件路径列表

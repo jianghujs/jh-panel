@@ -55,16 +55,17 @@ if ! command -v npm > /dev/null;then
   exit 1
 fi
 
+wget -nv -O /tmp/package.json ${URLBase}/package.json
+pushd /tmp/ > /dev/null
+npm i
+popd > /dev/null
+
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    npm install -g knex@1.0.1
-    npm install -g mysqldump@3.2.0
     download_and_run_node backup__dump_all_mysql_database.js
     ;;
 2)
-    npm install -g mysql@2.18.1
-    npm install -g mysql-import@5.0.21
     download_and_run_node backup__import_all_mysql_database.js
     ;;
 esac

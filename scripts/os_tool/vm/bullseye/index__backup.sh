@@ -9,6 +9,11 @@ download_and_run_bash() {
 }
 
 download_and_run_node() {
+    wget -nv -O /tmp/package.json ${URLBase}/package.json
+    pushd /tmp/ > /dev/null
+    npm i
+    popd > /dev/null
+    
     local script_name=$1
     wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
     node /tmp/vm_${script_name} ${@:2}
@@ -56,11 +61,6 @@ if ! command -v npm > /dev/null;then
   echo "No npm"
   exit 1
 fi
-
-wget -nv -O /tmp/package.json ${URLBase}/package.json
-pushd /tmp/ > /dev/null
-npm i
-popd > /dev/null
 
 # 根据用户的选择执行对应的操作
 case $choice in

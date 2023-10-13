@@ -46,10 +46,6 @@ show_menu
 read -p "请输入选项数字（默认1）: " choice
 choice=${choice:-"1"}
 
-local script_name=$1
-wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
-node /tmp/vm_${script_name} ${@:2}
-
 # 根据用户的选择执行对应的操作
 case $choice in
 1)

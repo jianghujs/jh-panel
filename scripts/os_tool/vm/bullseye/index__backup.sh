@@ -46,6 +46,15 @@ show_menu
 read -p "请输入选项数字（默认1）: " choice
 choice=${choice:-"1"}
 
+if [ -e "/www/server/nodejs/fnm" ];then
+  export PATH="/www/server/nodejs/fnm:$PATH"
+  eval "$(fnm env --use-on-cd --shell bash)"
+fi
+if ! command -v npm > /dev/null;then
+  echo "No npm"
+  exit 1
+fi
+
 # 根据用户的选择执行对应的操作
 case $choice in
 1)

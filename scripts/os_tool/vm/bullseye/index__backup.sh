@@ -36,6 +36,8 @@ show_menu() {
     echo "请选择备份恢复工具:"
     echo "1. MySQL数据库批量导出（导出指定数据库到文件）"
     echo "2. MySQL数据库批量导入（导入文件中的数据库）"
+    echo "3. 使用mydumper批量导出MySQL数据库"
+    echo "4. 使用myloader批量导入MySQL数据库"
     echo "========================================================"
 }
 
@@ -63,10 +65,16 @@ popd > /dev/null
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run_node backup__dump_all_mysql_database.js
+    download_and_run_node backup__dump_mysql_database_all.js
     ;;
 2)
-    download_and_run_node backup__import_all_mysql_database.js
+    download_and_run_node backup__import_mysql_database_all.js
+    ;;
+3)
+    download_and_run_bash backup__dump_mysql_database_mydumper.sh
+    ;;
+4)
+    download_and_run_bash backup__import_mysql_database_myloader.sh
     ;;
 esac
 

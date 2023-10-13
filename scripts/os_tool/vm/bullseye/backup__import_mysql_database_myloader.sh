@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# 检查mydumper是否安装
+if ! command -v mydumper &> /dev/null; then
+    echo "mydumper未安装，正在尝试自动安装..."
+    apt-get update
+    apt-get install mydumper -y
+    if ! command -v mydumper &> /dev/null; then
+        echo "安装mydumper失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
 # 提示输入数据库IP地址，默认为：127.0.0.1
 default_db_host="127.0.0.1"
 read -p "请输入数据库IP地址（默认为：${default_db_host}）：" db_host

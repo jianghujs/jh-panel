@@ -77,15 +77,24 @@ done
 echo "导入迁移包完成✔!"
 EOF
 
-# 打包迁移临时文件存放目录
-timestamp=$(date +%s)
-pushd ${MIGRATE_DIR} > /dev/null
-migrate_file=migrate_package_${local_ip}_${timestamp}.zip
-zip -r ../${migrate_file} .
-popd > /dev/null
-pushd ${MIGRATE_DIR}/../ > /dev/null
-export MIGRATE_FILE=$(pwd)/${migrate_file} 
-popd > /dev/null
+
+# 提示是否rsync同步
+read -p "是否需要打包成zip文件?(默认y)[y/n]" zip_choice
+zip_choice=${zip_choice:-y}
+if [ "$zip_choice" == "y" ]; then
+    # 打包迁移临时文件存放目录
+    timestamp=$(date +%s)
+    pushd ${MIGRATE_DIR} > /dev/null
+    migrate_file=migrate_package_${local_ip}_${timestamp}.zip
+    zip -r ../${migrate_file} .
+    popd > /dev/null
+    pushd ${MIGRATE_DIR}/../ > /dev/null
+    export MIGRATE_FILE=$(pwd)/${migrate_file} 
+    popd > /dev/null
+else
+    export MIGRATE_FILE=$(MIGRATE_DIR) 
+fi
+
 
 # 提示是否rsync同步
 read -p "是否要使用rsync将备份文件同步到其他服务器?(默认n)[y/n]" sync
@@ -111,7 +120,9 @@ echo ""
 echo "===========================生成迁移包完成✅=========================="
 echo "------------------------------基本信息-------------------------------"
 echo "- 迁移临时文件存放目录：$MIGRATE_DIR"
-echo "- 迁移包路径：$MIGRATE_FILE"
+if [ $zip_choice == "y" ]; then
+    echo "- 迁移包压缩文件路径：$MIGRATE_FILE"
+fi
 if [ $sync == "y" ]; then
 echo "- 已将文件同步到以下服务器："
 echo "  - 服务器IP：${RSYNC_MIGRATE_PACKAGE_REMOTE_IP}"

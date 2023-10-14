@@ -267,10 +267,15 @@ function deleteCron(id) {
 function openXtrabackupFull() {
     myPost('full_backup_script','', function(data) {
 		let rdata = $.parseJSON(data.data);
-        openEditCodeAndExcute({
+        openEditCode({
             title: '执行全量备份',
-            name: '执行Xtrabackup增量版命令[全量备份]',
-            content: rdata.data
+            content: rdata.data,
+            width: '640px',
+            height: '400px',
+            submitBtn: '执行',
+            onSubmit: (content) => {
+                doTaskWithLock('全量备份', content)
+            }
         })
     });
 }
@@ -278,10 +283,15 @@ function openXtrabackupFull() {
 function openXtrabackupInc() {
     myPost('inc_backup_script','', function(data) {
 		let rdata = $.parseJSON(data.data);
-        openEditCodeAndExcute({
+        openEditCode({
             title: '执行增量备份',
-            name: '执行Xtrabackup增量版命令[增量备份]',
-            content: rdata.data
+            content: rdata.data,
+            width: '640px',
+            height: '400px',
+            submitBtn: '执行',
+            onSubmit: (content) => {
+                doTaskWithLock('增量备份', content)
+            }
         })
     });
 }
@@ -312,14 +322,14 @@ function openRecoveryBackup() {
             height: '400px',
             submitBtn: '执行',
             onSubmit: (content) => {
-                doRecoveryBackup(content)
+                doTaskWithLock('增量恢复', content)
             }
         })
     });
 }
 
-function doRecoveryBackup(content) {
-    myPost('do_recovery_backup', {content: encodeURIComponent(content)}, function(data){
+function doTaskWithLock(name, content) {
+    myPost('do_task_with_lock', {name, content: encodeURIComponent(content)}, function(data){
         var rdata = $.parseJSON(data.data);
         if(!rdata.status) {
             setTimeout(() => {
@@ -329,7 +339,7 @@ function doRecoveryBackup(content) {
         };
         layer.open({
             area: ['500px', '300px'],
-            title: '添加恢复任务成功',
+            title: '添加' + name + '任务成功',
             content: rdata.msg,
             btn: [],
             // cancel: function(index, layero){ 

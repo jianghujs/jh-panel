@@ -713,7 +713,7 @@ pushd ${path}/config > /dev/null
 cp config.prod.example.js config.prod.js
 echo "|- 复制配置文件完成✅"
 popd > /dev/null`;
-        if (true) {
+        if ($("#isLinkUpload").prop('checked')) {
             defaultDeployScript += `
 # 建立upload软链
 if [ -d "${path}/upload/" ]; then

@@ -92,7 +92,7 @@ if [ "$zip_choice" == "y" ]; then
     export MIGRATE_FILE=$(pwd)/${migrate_file} 
     popd > /dev/null
 else
-    export MIGRATE_FILE=$(MIGRATE_DIR) 
+    export MIGRATE_FILE=${MIGRATE_DIR} 
 fi
 
 

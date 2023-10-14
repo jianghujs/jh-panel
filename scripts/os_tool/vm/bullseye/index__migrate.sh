@@ -50,7 +50,7 @@ if [ -d "$dir" ]; then
     yn=${yn:-y}
     case $yn in
         [Yy]* ) rm -rf $dir/*;;
-        [Nn]* ) exit;;
+        [Nn]* ) echo "已跳过清空目录";;
         * ) echo "请输入y或n";;
     esac
 else

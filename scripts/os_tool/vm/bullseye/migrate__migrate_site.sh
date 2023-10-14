@@ -62,5 +62,9 @@ cp -r \$(pwd)/letsencrypt.json /www/server/jh-panel/data/letsencrypt.json
 unzip -o ./web_conf.zip -d /www/server/web_conf/
 echo "恢复网站配置完成✔!"
 
+# 重启openresty
+python3 plugins/openresty/index.py restart
+echo "重启openresty完成✔!"
+
 EOF
 chmod +x ${MIGRATE_DIR}/deploy_site.sh

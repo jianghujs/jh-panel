@@ -9,6 +9,11 @@ download_and_run_bash() {
 }
 
 download_and_run_node() {
+    wget -nv -O /tmp/package.json ${URLBase}/package.json
+    pushd /tmp/ > /dev/null
+    npm i
+    popd > /dev/null
+    
     local script_name=$1
     wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
     node /tmp/vm_${script_name} ${@:2}
@@ -34,8 +39,11 @@ fi
 show_menu() {
     echo "==================vm bullseye os-tools=================="
     echo "请选择备份恢复工具:"
-    echo "1. MySQL数据库批量导出（导出指定数据库到文件）"
-    echo "2. MySQL数据库批量导入（导入文件中的数据库）"
+    echo "1. MySQL数据库备份-mysqldump版（使用mysqldump批量导出数据库）"
+    echo "2. MySQL数据库恢复-mysqldump版（批量恢复使用mysqldump导出的数据库文件，视图部分逐条执行）"
+    echo "3. MySQL数据库备份-mydumper版（使用mydumper批量导出数据库）"
+    echo "4. MySQL数据库恢复-mydumper版（恢复使用myloader批量导出的数据库文件）"
+    echo "提示：mysqldump版适用于导出数据库结构合并到其他服务器，mydumper版适用于大数据量的快速备份恢复。"
     echo "========================================================"
 }
 
@@ -55,18 +63,19 @@ if ! command -v npm > /dev/null;then
   exit 1
 fi
 
-wget -nv -O /tmp/package.json ${URLBase}/package.json
-pushd /tmp/ > /dev/null
-npm i
-popd > /dev/null
-
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run_node backup__dump_all_mysql_database.js
+    download_and_run_node backup__dump_mysql_database_all.js
     ;;
 2)
-    download_and_run_node backup__import_all_mysql_database.js
+    download_and_run_node backup__import_mysql_database_all.js
+    ;;
+3)
+    download_and_run_bash backup__dump_mysql_database_mydumper.sh
+    ;;
+4)
+    download_and_run_bash backup__import_mysql_database_myloader.sh
     ;;
 esac
 

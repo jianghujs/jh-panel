@@ -201,7 +201,7 @@ let replace = [
     console.log(`- 带数据表：${withDataTablesInput}`)
     console.log(`- 导出目录：${sqlFileDir}`)
     console.log("---------------------------后续操作指引❗❗----------------------------")
-    console.log(`请在${sqlFileDir}复制到目标服务器并执行批量导入工具进行批量导入：`)
+    console.log(`请在${sqlFileDir}复制到目标服务器并执行 服务器备份恢复-MySQL数据库批量导入 脚本工具进行批量导入`)
     console.log("=====================================================================")
     rl.close();
     process.exit(0);

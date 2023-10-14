@@ -487,6 +487,12 @@ async function openDeployItem() {
                         <input id='projectName' class='bt-input-text' type='text' name='name' placeholder='项目名称' style='width:458px' />\
                     </div>\
                 </div>\
+                <div class='line'>\
+                    <span class='tname'></span>\
+                    <div class='info-r c4 flex'>\
+                        <input id='isLinkUpload' name='isLinkUpload' type='checkbox' style='margin: 2px; margin-right: 5px;'></input><label for='isLinkUpload' style='font-weight: normal; margin-top: 3px;'>自动链接「项目目录下的upload目录」到「/www/wwwstorage/项目名称/upload/」</label>\
+                    </div>\
+                </div>\
             </div>\
             <div class='step2' hidden>\
                 <div class='line'>\
@@ -697,7 +703,32 @@ async function submitDeployItemStep1(deployLayer) {
     await execScriptAndShowLog('正在拉取代码...', cloneScriptData.data);
 
     requestApi('get_project_deploy_file', form, function(rdata) {
-        deployScript = rdata.data || ('cd ' + path + '\nnpm i --loglevel verbose\ncd config\ncp config.prod.example.js config.prod.js');
+        defaultDeployScript = `
+# 安装依赖
+cd ${path}
+npm i --loglevel verbose
+echo "|- 安装依赖完成✅"
+# 复制配置文件
+pushd ${path}/config > /dev/null
+cp config.prod.example.js config.prod.js
+echo "|- 复制配置文件完成✅"
+popd > /dev/null`;
+        if (true) {
+            defaultDeployScript += `
+# 建立upload软链
+if [ -d "${path}/upload/" ]; then
+    rmdir ${path}/upload/
+    echo "|- 已删除${path}/upload/"
+fi
+if [ ! -d "/www/wwwstorage/${name}/upload/" ]; then
+    mkdir -p /www/wwwstorage/${name}/upload/
+    echo "|- 已创建/www/wwwstorage/${name}/upload/"
+fi
+ln -s /www/wwwstorage/${name}/upload/ upload
+echo "|- 建立upload软链完成✅"`
+        }
+
+        deployScript = rdata.data || defaultDeployScript;
         $('#projectDeployScript').val(deployScript);
     })
     handlePathChange()

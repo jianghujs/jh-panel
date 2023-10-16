@@ -337,16 +337,6 @@ function doTaskWithLock(name, content) {
             }, 500)
             return;
         };
-        layer.open({
-            area: ['500px', '300px'],
-            title: '添加' + name + '任务成功',
-            content: rdata.msg,
-            btn: [],
-            // cancel: function(index, layero){ 
-            //     layer.close(index);
-            //     mysqlBackupHtml();
-            // } 
-        });    
         $("#openEditCodeCloseBtn").click();
         messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });

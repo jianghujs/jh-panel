@@ -1,6 +1,5 @@
 # coding:utf-8
 
-import mw
 import sys
 import io
 import os
@@ -9,6 +8,7 @@ import re
 from urllib.parse import unquote
 
 sys.path.append(os.getcwd() + "/class/core")
+import mw
 
 app_debug = False
 if mw.isAppleSystem():
@@ -270,10 +270,8 @@ def doTaskWithLock():
 
     # 加锁
     execTime = time.time()
-    lockFile = '/www/server/xtrabackup-inc/logs/inc_task_lock'
-    if not os.path.exists(lockFile):
-        mw.writeFile(lockFile, str(execTime))
-    else:
+    lockFile = '/www/server/xtrabackup-inc/inc_task_lock'
+    if os.path.exists(lockFile):
         lock_date = mw.readFile(lockFile)
         # 30 分钟未解锁则失效
         if (execTime - float(lock_date)) < 60 * 30:
@@ -281,8 +279,8 @@ def doTaskWithLock():
 
     # 写入临时文件用于执行
     tempFilePath = getServerDir() + '/xtrabackup_inc_temp.sh'
-    mw.writeFile(tempFilePath, '%(content)s\nrm -f %(lockFile)s\nrm -f %(tempFilePath)s\necho 恢复成功' %
-                 {'content': content, 'lockFile': lockFile, 'tempFilePath': tempFilePath})
+    mw.writeFile(tempFilePath, 'echo $(date +%%s) > %(lockFile)s\n%(content)s\nrm -f %(lockFile)s\nrm -f %(tempFilePath)s\necho %(name)s成功' %
+                 {'name': name, 'content': content, 'lockFile': lockFile, 'tempFilePath': tempFilePath})
     mw.execShell('chmod 750 ' + tempFilePath)
     # 执行脚本
     log_file = runLog()

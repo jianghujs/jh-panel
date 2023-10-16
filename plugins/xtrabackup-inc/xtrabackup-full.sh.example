@@ -1,4 +1,10 @@
 #!/bin/bash
+
+# 检查锁
+if [ -f /www/server/xtrabackup-inc/inc_task_lock ]; then
+    exit
+fi
+
 timestamp=$(date +%Y%m%d_%H%M%S)
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
 rm -rf $BACKUP_BASE_PATH

@@ -1167,7 +1167,7 @@ function projectListRender() {
             list += '<td>' + status + '</td>';
             list += '<td class="text-right">\
                     ' + opt + '\
-                    <a href="javascript:;" onclick="openEditProject(\'' + rlist[i]['id'] + '\')" class="btlink">编辑</a>\
+                    <a href="javascript:;" onclick="openEditProject(\'' + rlist[i]['id'] + '\')" class="btlink">编辑</a> | \
                     <a href="javascript:;" onclick="projectDelete(\'' + rlist[i]['id'] + '\', \'' + rlist[i]['name'] + '\')" class="btlink">删除</a>\
                     </td>';
             list += '</tr>';

@@ -279,7 +279,7 @@ def doTaskWithLock():
 
     # 写入临时文件用于执行
     tempFilePath = getServerDir() + '/xtrabackup_inc_temp.sh'
-    mw.writeFile(tempFilePath, 'echo $(date +%%s) > %(lockFile)s\n%(content)s\nrm -f %(lockFile)s\nrm -f %(tempFilePath)s\necho %(name)s成功' %
+    mw.writeFile(tempFilePath, 'LOCK_FILE_PATH=%(lockFile)s\n%(content)s\nrm -f %(tempFilePath)s\necho %(name)s成功' %
                  {'name': name, 'content': content, 'lockFile': lockFile, 'tempFilePath': tempFilePath})
     mw.execShell('chmod 750 ' + tempFilePath)
     # 执行脚本

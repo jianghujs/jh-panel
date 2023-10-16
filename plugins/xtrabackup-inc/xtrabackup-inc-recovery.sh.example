@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # 检查锁
-if [ -f /www/server/xtrabackup-inc/inc_task_lock ]; then
+if [ -e $LOCK_FILE_PATH ]; then
+    echo "已有任务在执行，请稍后重试"
     exit
 fi
+
+# 加锁
+echo $(date +%s) > $LOCK_FILE_PATH
 
 timestamp=$(date +%Y%m%d_%H%M%S)
 LOG_DIR=/www/server/xtrabackup-inc/logs
@@ -22,5 +26,8 @@ xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG
 chown -R mysql:mysql $MYSQL_DIR/data 
 chmod -R 755 $MYSQL_DIR/data
 systemctl start $MYSQL_NAME
+
+# 解锁
+rm -f $LOCK_FILE_PATH
 
 python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR

@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # 检查锁
-if [ -f /www/server/xtrabackup-inc/inc_task_lock ]; then
+if [ -e $LOCK_FILE_PATH ]; then
+    echo "已有任务在执行，请稍后重试"
     exit
 fi
+
+# 加锁
+echo $(date +%s) > $LOCK_FILE_PATH
 
 timestamp=$(date +%Y%m%d_%H%M%S)
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
@@ -19,5 +23,8 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_INC_PATH/mysql" ];then
 else
     echo "|- $timestamp 增量备份失败" >> /www/server/xtrabackup-inc/xtrabackup.log
 fi
+
+# 解锁
+rm -f $LOCK_FILE_PATH
 
 python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR/

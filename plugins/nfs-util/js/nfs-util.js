@@ -257,7 +257,7 @@ async function getNfsSharePath() {
 function handleMountServerPathChange() {
     let mountServerPath = document.getElementById('mountServerPath').value;
     document.getElementById('mountName').value = mountServerPath.split('/').pop();;
-    document.getElementById('mountPath').value = mountServerPath;
+    document.getElementById('mountPath').value = "/mnt" + mountServerPath;
 }
 
 

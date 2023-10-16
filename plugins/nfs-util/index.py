@@ -240,7 +240,7 @@ def getMountScript():
     cmd = ""
     if not os.path.exists(mountPath):
         cmd += 'echo "正在创建%(mountPath)s文件夹..." \n mkdir -p %(mountPath)s\n echo "创建%(mountPath)s成功✅\n"' % {"mountPath": mountPath}
-    cmd += 'echo "正在挂载%(serverIP)s:%(mountServerPath)s到%(mountPath)s..." \n mount -t nfs %(serverIP)s:%(mountServerPath)s %(mountPath)s\n echo "挂载成功✅"' % ({"serverIP": serverIP, "mountServerPath": mountServerPath, "mountPath": mountPath})
+    cmd += 'echo "正在挂载%(serverIP)s:%(mountServerPath)s到%(mountPath)s..." \n mount -t nfs %(serverIP)s:%(mountServerPath)s %(mountPath)s\nchmod 777 %(mountPath)s\necho "挂载成功✅"' % ({"serverIP": serverIP, "mountServerPath": mountServerPath, "mountPath": mountPath})
     return cmd
 
 def getUnMountScript():

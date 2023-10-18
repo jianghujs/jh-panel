@@ -31,7 +31,6 @@ class fixTools:
 
     def getNoOrderLetsSiteInfo(self):
         siteInfo = systemApi.getSiteInfo()
-        siteInfo = {"site_list":[{"id":3,"name":"fintest.eggjs.tech","path":"/www/wwwroot/fintest.eggjs.tech","ps":"fintest.eggjs.tech","status":"1","addtime":"2023-09-19 14:39:26","http_to_https":True,"ssl_type":"custom","cert_data":{"issuer":"Sectigo RSA Domain Validation Secure Server CA","notAfter":"2024-03-09","notBefore":"2023-03-10","dns":["*.eggjs.tech","eggjs.tech"],"subject":"*.eggjs.tech","endtime":142}},{"id":1,"name":"hr.jianghujs.org","path":"/www/wwwroot/hr.jianghujs.org","ps":"hr.jianghujs.org","status":"1","addtime":"2023-09-19 14:39:26","http_to_https":True,"ssl_type":"lets","cert_data":{"issuer":"R3","notAfter":"2023-12-03","notBefore":"2023-09-04","dns":["hr.jianghujs.org"],"subject":"hr.jianghujs.org","endtime":45}}],"site_count":15,"active_count":15,"ssl_count":14}
         noOrderLetsSiteList = []
         for site in siteInfo.get("site_list", []):
             sslType = site.get("ssl_type", "")
@@ -60,7 +59,7 @@ class fixTools:
         if len(noOrderLetsSiteList) == 0:
             print("暂未发现异常网站订单")
             return
-            
+
         for site in noOrderLetsSiteList:
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")

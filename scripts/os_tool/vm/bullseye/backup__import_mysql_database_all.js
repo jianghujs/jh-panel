@@ -151,24 +151,28 @@ async function importSqlViewList() {
     const view = sqlViewList.shift();
     // 添加重试机制
     view.retryCount = view.retryCount || 0; // 初始化重试计数器
-    // 创建数据库连接
-    const connection = await mysql.createConnection({...connectionConfig, database: view.database});
-    await connection.query(view.sql, async function (error, results, fields) {
-      view.retryCount++;
-      if (error) {
-        console.log(`\x1b[33mView ${view.database}.${view.viewName} creat failed. ==> ${error.message}, will retry again later(${view.retryCount}).\x1b[0m`);
-        if(view.retryCount < MAX_RETRY) {
-          sqlViewList.push(view);
-        } else {
-          console.log(`\x1b[31mView ${view.database}.${view.viewName} retry ${view.retryCount} times failed. ==> ${error.message}\x1b[0m`);
-          process.exit(0);
+    try {
+      // 创建数据库连接
+      const connection = await mysql.createConnection({...connectionConfig, database: view.database});
+      await connection.query(view.sql, async function (error, results, fields) {
+        view.retryCount++;
+        if (error) {
+          console.log(`\x1b[33mView ${view.database}.${view.viewName} creat failed. ==> ${error.message}, will retry again later(${view.retryCount}).\x1b[0m`);
+          if(view.retryCount < MAX_RETRY) {
+            sqlViewList.push(view);
+          } else {
+            console.log(`\x1b[31mView ${view.database}.${view.viewName} retry ${view.retryCount} times failed. ==> ${error.message}\x1b[0m`);
+            process.exit(0);
+          }
+        } else {      
+          console.log(`View ${view.database}.${view.viewName} created successfully.`);
         }
-      } else {      
-        console.log(`View ${view.database}.${view.viewName} created successfully.`);
-      }
-      connection.end();
-      await importSqlViewList();
-    });
+        connection.end();
+        await importSqlViewList();
+      });
+    } catch (e) {
+      console.error(e.message);
+    }
   });
 };
 

@@ -787,7 +787,7 @@ class site_api:
                 data = cert_api.cert_api().renewCert(index)
                 return data
             else:
-                return mw.returnJson(False, '无效操作')
+                return mw.returnJson(False, '指定订单号不存在，无法续签!')
 
         return mw.returnJson(True, '续期成功')
 

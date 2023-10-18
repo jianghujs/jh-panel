@@ -58,7 +58,7 @@ echo "导入站点数据完成✔!"
 # 恢复letsencrypt.json
 cp -r \$(pwd)/letsencrypt.json /www/server/jh-panel/data/letsencrypt.json
 
-# 解压覆盖当前目录下的web_conf.zip到/www/server/web_conf/
+# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/
 unzip -o ./web_conf.zip -d /www/server/web_conf/
 echo "恢复网站配置完成✔!"
 

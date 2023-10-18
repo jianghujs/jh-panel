@@ -518,9 +518,9 @@ class site_api:
         except:
             return mw.returnJson(True, 'OK', [])
 
-    def deleteSslApi(self):
-        site_name = request.form.get('site_name', '')
-        ssl_type = request.form.get('ssl_type', '')
+    
+
+    def deleteSsl(self, site_name, ssl_type):
 
         path = self.sslDir + '/' + site_name
         csr_path = path + '/fullchain.pem'  # 生成证书路径
@@ -552,6 +552,10 @@ class site_api:
                 return mw.returnJson(False, '使用中,先关闭再删除')
             mw.execShell('rm -rf ' + ssl_acme_dir)
 
+    def deleteSslApi(self):
+        site_name = request.form.get('site_name', '')
+        ssl_type = request.form.get('ssl_type', '')
+        self.deleteSsl(site_name, ssl_type)
         # mw.restartWeb()
         return mw.returnJson(True, '删除成功')
 
@@ -673,9 +677,7 @@ class site_api:
         except:
             return mw.returnJson(False, '删除失败!')
 
-    def closeSslConfApi(self):
-        siteName = request.form.get('siteName', '')
-
+    def closeSslConf(self, siteName):
         file = self.getHostConf(siteName)
         conf = mw.readFile(file)
 
@@ -721,12 +723,13 @@ class site_api:
         msg = mw.getInfo('网站[{1}]关闭SSL成功!', (siteName,))
         mw.writeLog('网站管理', msg)
         mw.restartWeb()
+
+    def closeSslConfApi(self):
+        siteName = request.form.get('siteName', '')
+        self.closeSslConf(siteName)
         return mw.returnJson(True, 'SSL已关闭!')
 
-    def deploySslApi(self):
-        site_name = request.form.get('site_name', '')
-        ssl_type = request.form.get('ssl_type', '')
-
+    def deploySsl(self, site_name, ssl_type):
         path = self.sslDir + '/' + site_name
         csr_path = path + '/fullchain.pem'  # 生成证书路径
         key_path = path + '/privkey.pem'  # 生成证书路径
@@ -757,6 +760,13 @@ class site_api:
                 mw.execShell('echo "acme" > "' + path + '/README"')
 
         result = self.setSslConf(site_name)
+        return result
+
+    def deploySslApi(self):
+        site_name = request.form.get('site_name', '')
+        ssl_type = request.form.get('ssl_type', '')
+
+        result = self.deploySsl(site_name, ssl_type)
         if not result['status']:
             return mw.getJson(result)
         return mw.returnJson(True, '部署成功')
@@ -797,12 +807,13 @@ class site_api:
             mw.execShell('touch ' + log_file)
         return mw.returnJson(True, 'OK', log_file)
 
-    def createLetApi(self):
-        siteName = request.form.get('siteName', '')
-        domains = request.form.get('domains', '')
-        force = request.form.get('force', '')
-        renew = request.form.get('renew', '')
-        email_args = request.form.get('email', '')
+    
+    def createLet(self, crete_form):
+        siteName = crete_form.get('siteName', '')
+        domains = crete_form.get('domains', '')
+        force = crete_form.get('force', '')
+        renew = crete_form.get('renew', '')
+        email_args = crete_form.get('email', '')
 
         domains = json.loads(domains)
         email = mw.M('users').getField('email')
@@ -842,6 +853,16 @@ class site_api:
 
         import cert_api
         data = cert_api.cert_api().applyCertApi(to_args)
+        return data
+
+    def createLetApi(self):
+        siteName = request.form.get('siteName', '')
+        domains = request.form.get('domains', '')
+        force = request.form.get('force', '')
+        renew = request.form.get('renew', '')
+        email_args = request.form.get('email', '')
+
+        data = self.createLet(request.form)
 
         if not data['status']:
             msg = data['msg']

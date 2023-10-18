@@ -29,6 +29,7 @@ show_menu() {
     echo "==================vm bullseye os-tools=================="
     echo "请选择修复工具:"
     echo "1. 修复数据库文件（修复可读写但xtrabackup备份报错的数据表）"
+    echo "2. 修复网站异常SSL订单（修复无法续签的SSL证书）"
     echo "========================================================"
 }
 
@@ -43,6 +44,9 @@ choice=${choice:-"1"}
 case $choice in
 1)
     download_and_run repair__check_database.sh
+    ;;
+2)
+    download_and_run repair__fix_no_order_lets_site.sh
     ;;
 esac
 

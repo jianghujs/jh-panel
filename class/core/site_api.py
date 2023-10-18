@@ -729,10 +729,7 @@ class site_api:
         self.closeSslConf(siteName)
         return mw.returnJson(True, 'SSL已关闭!')
 
-    def deploySslApi(self):
-        site_name = request.form.get('site_name', '')
-        ssl_type = request.form.get('ssl_type', '')
-
+    def deploySsl(self, site_name, ssl_type):
         path = self.sslDir + '/' + site_name
         csr_path = path + '/fullchain.pem'  # 生成证书路径
         key_path = path + '/privkey.pem'  # 生成证书路径
@@ -763,6 +760,13 @@ class site_api:
                 mw.execShell('echo "acme" > "' + path + '/README"')
 
         result = self.setSslConf(site_name)
+        return result
+
+    def deploySslApi(self):
+        site_name = request.form.get('site_name', '')
+        ssl_type = request.form.get('ssl_type', '')
+
+        result = self.deploySsl(site_name, ssl_type)
         if not result['status']:
             return mw.getJson(result)
         return mw.returnJson(True, '部署成功')

@@ -81,6 +81,8 @@ class fixTools:
                     }
                     siteApi.createLet(createLetForm)
                     print("|- 创建%sSSL证书成功✅" % siteName)
+                    siteApi.deploySsl(siteName, "lets")
+                    print("|- 部署%sSSL证书成功✅" % siteName)
    
 if __name__ == "__main__":
     fix = fixTools()

@@ -8,9 +8,6 @@ popd > /dev/null
 site_list=$(echo "$no_order_lets_site_info" | jq -r '.noOrderLetsSiteList')
 site_name_str=$(echo "$no_order_lets_site_info" | jq -r '.noOrderLetsSiteNameStr')
 
-echo $site_list
-echo $site_name_str
-
 if [ -z "$site_name_str" ]; then
   echo "暂未发现异常网站订单"
   exit 0

@@ -175,7 +175,7 @@ async function importSqlViewList() {
 (async () => {
   console.log(`---------数据库批量导入工具-----------`);
 
-  const sqlFileDir = await prompt(`请输入数据库文件位置（默认为：${defaultSqlFileDir}）：`, defaultSqlFileDir);
+  sqlFileDir = await prompt(`请输入数据库文件位置（默认为：${defaultSqlFileDir}）：`, defaultSqlFileDir);
   if (!fs.existsSync(sqlFileDir)) {
     console.log("目录不存在");
     process.exit(0);

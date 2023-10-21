@@ -203,7 +203,7 @@ function updateXtrabackupCron() {
 
 // 绑定执行完毕事件
 $(document).on('messageBoxLayerClose', function(e){
-    mysqlBackupHtml();
+    $(".layui-layer-title").text() == 'Xtrabackup【2.4】管理' && mysqlBackupHtml();
 });
 
 function openMysqlBackup() {

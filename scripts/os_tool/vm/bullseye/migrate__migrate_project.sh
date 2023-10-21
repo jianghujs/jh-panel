@@ -58,6 +58,7 @@ for dir in $(ls -d ${project_dir}/*/); do
     for ignore_dir in "${ignore_dirs[@]}"; do
         zip_command+=" -x '${ignore_dir}/*' '*/${ignore_dir}/*'"
     done
+    zip_command+=" &>> ${MIGRATE_DIR}/pack_project_files.log"
     eval $zip_command
     popd > /dev/null
 done

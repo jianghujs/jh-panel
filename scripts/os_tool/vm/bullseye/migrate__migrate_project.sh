@@ -26,6 +26,11 @@ read -p "输入项目所在目录（默认为：${default_project_dir}）: " pro
 project_dir=${project_dir:-${default_project_dir}}
 export PROJECT_DIR=$project_dir
 
+# 提示"请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）:"
+read -p "请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）: " ignore_dirs_input
+ignore_dirs_input=${ignore_dirs_input:-"node_modules,logs,run,.git"}
+IFS=',' read -ra ignore_dirs <<< "$ignore_dirs_input"
+
 # 定义存储迁移信息的json对象（如：migrate_info_project）
 migrate_info_project='{"project_list": []}'
 
@@ -44,12 +49,16 @@ for dir in $(ls -d ${project_dir}/*/); do
     popd > /dev/null
 done
 
-# 将每个项目的整个目录（除了node_modules和logs）按 目录名称.zip 压缩存到 ${MIGRATE_DIR}/project_files/ 目录下
+# 将每个项目的整个目录（除了忽略的目录）按 目录名称.zip 压缩存到 ${MIGRATE_DIR}/project_files/ 目录下
 mkdir -p ${MIGRATE_DIR}/project_files/
 for dir in $(ls -d ${project_dir}/*/); do
     pushd ${dir} > /dev/null
     project_name=$(basename ${dir})
-    zip --symlinks -r ${MIGRATE_DIR}/project_files/${project_name}.zip . -x "node_modules/*" "logs/*" "run/*" "*/node_modules/*" "*/logs/*" "*/run/*"
+    zip_command="zip --symlinks -r ${MIGRATE_DIR}/project_files/${project_name}.zip ."
+    for ignore_dir in "${ignore_dirs[@]}"; do
+        zip_command+=" -x '${ignore_dir}/*' '*/${ignore_dir}/*'"
+    done
+    eval $zip_command
     popd > /dev/null
 done
 
@@ -57,8 +66,13 @@ done
 symbolic_links_file="${MIGRATE_DIR}/project_files/symbolic_links_origin.sh"
 echo "" >  $symbolic_links_file
 
-# 使用find命令搜索所有目录，排除"node_modules"、"logs"、"run"目录
-find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -print | while read dir
+# 使用find命令搜索所有目录，排除忽略的目录
+find_command="find \"$project_dir\" -type d \( "
+for ignore_dir in "${ignore_dirs[@]}"; do
+    find_command+="-name '${ignore_dir}' -o "
+done
+find_command+="-name '.git' \) -prune -o -print"
+eval $find_command | while read dir
 do
     echo "Processing directory: $dir"
 
@@ -157,3 +171,5 @@ chmod +x ${MIGRATE_DIR}/deploy_project.sh
 
 # 把migrate_info_project的内容写入到 ${MIGRATE_DIR}/migrate_info_project.json
 echo ${migrate_info_project} > ${MIGRATE_DIR}/migrate_info_project.json
+
+

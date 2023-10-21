@@ -191,6 +191,16 @@ class site_api:
         mw.writeLog('面板设置', '设置PHP-CLI版本为: %s' % version)
         return mw.returnJson(True, '设置成功!')
 
+    def getHostConfigApi(self):
+        site_list = mw.M('sites').field(
+        "id,name,path,ps,status,addtime").order("id desc").select()
+        ip = mw.getHostAddr()
+        host_content = ''
+        for site in site_list:
+            host_content += "%(ip)s %(site)s\n" % {"ip": ip, "site": site.get('name', '')}
+        return mw.returnJson(True, 'ok',  host_content)
+
+
     def setPsApi(self):
         mid = request.form.get('id', '')
         ps = request.form.get('ps', '')

@@ -944,6 +944,25 @@ function getDefaultSite(){
 	},'json');
 }
 
+function getHostConfig() {
+	var loadT = layer.msg('正在获取中...', { icon: 16, time: 0});
+	$.post('/site/get_host_config','',function(data){
+		let rdata = JSON.parse(data)
+		if(rdata.status) {
+			layer.close(loadT);
+			openEditCode({
+				title: '获取Host配置',
+				content: rdata.data,
+				width: '640px',
+				height: '500px',
+				showBtnPanel: false
+			})
+		} else {
+			layer.msg(rdata.msg, {icon: 2});
+		}
+	})
+}
+
 function setPHPVer(){
 	$.post('/site/get_cli_php_version','',function(rdata){
 		if(typeof(rdata['status'])!='undefined'){

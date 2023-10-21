@@ -687,31 +687,38 @@ function openEditCode(conf) {
 	var { 
 		content, 
 		mode,
+		showBtnPanel = true,
 		submitBtn = lan.public.save,
 		closeBtn = lan.public.close,
 		title = lan.bt.edit_title,
 		onSubmit,
 		onClose,
 	} = conf;
+
+	let openEditCodeLayerContent = '<form class="bt-form pd20">\
+			<div class="line">\
+				<textarea class="mCustomScrollbar bt-input-text" id="textBody" style="width:100%;margin:0 auto;line-height: 1.8;position: relative;top: 10px;" value="" />\
+			</div>'
+	if (showBtnPanel) {
+		openEditCodeLayerContent += '\
+		<div class="bt-form-submit-btn" style="position:absolute; bottom:0; width:100%">\
+			<button id="openEditCodeCloseBtn" type="button" class="btn btn-danger btn-sm btn-editor-close">'+closeBtn+'</button>\
+			<button id="openEditCodeSubmitBtn" type="button" class="btn btn-success btn-sm">'+submitBtn+'</button>\
+		</div>\
+		'
+	}
+	openEditCodeLayerContent += '</form>'
 	var openEditCodeLayer = layer.open({
 		type: 1,
 		shift: 5,
 		closeBtn: 1,
 		area: ["90%", "80%"],
 		title: title,
-		content: '<form class="bt-form pd20 pb70">\
-			<div class="line">\
-				<textarea class="mCustomScrollbar bt-input-text" id="textBody" style="width:100%;margin:0 auto;line-height: 1.8;position: relative;top: 10px;" value="" />\
-			</div>\
-			<div class="bt-form-submit-btn" style="position:absolute; bottom:0; width:100%">\
-			<button id="openEditCodeCloseBtn" type="button" class="btn btn-danger btn-sm btn-editor-close">'+closeBtn+'</button>\
-			<button id="openEditCodeSubmitBtn" type="button" class="btn btn-success btn-sm">'+submitBtn+'</button>\
-			</div>\
-		</form>'
+		content: openEditCodeLayerContent
 	});
 	$("#textBody").text(content);
 	var height = $(window).height() * 0.8;
-	$("#textBody").height(height - 160);
+	$("#textBody").height(height - (showBtnPanel? 160: 10));
 	var codeMirror = CodeMirror.fromTextArea(document.getElementById("textBody"), {
 		extraKeys: {
 			"Ctrl-F": "findPersistent",
@@ -727,7 +734,7 @@ function openEditCode(conf) {
 		autoMatchParens: true
 	});
 	codeMirror.focus();
-	codeMirror.setSize("auto", height - 150);
+	codeMirror.setSize("auto", height - (showBtnPanel? 150: 100));
 	$("#openEditCodeSubmitBtn").click(function() {
 		$("#textBody").text(codeMirror.getValue());
 		onSubmit && onSubmit(codeMirror.getValue());

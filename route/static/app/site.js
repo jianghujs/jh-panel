@@ -2659,6 +2659,14 @@ function editClassType(id,name){
 	});
 }
 
+function openWebsite(){
+	$('table').find('td').find('input').each(function(i,obj){
+			checked = $(this).prop('checked');
+			if (checked) {
+				window.open($(this).prop('title'))
+			}
+	});
+}
 
 function moveClassTYpe(){
 	$.post('/site/get_site_types',function(rdata){

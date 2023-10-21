@@ -9,6 +9,11 @@ fi
 # 加锁
 echo $(date +%s) > $LOCK_FILE_PATH
 
+if [ ! -d "$BACKUP_BASE_PATH" ];then
+    echo "未检测到全量备份目录，请先执行全量备份"
+    exit
+fi
+
 timestamp=$(date +%Y%m%d_%H%M%S)
 LOG_DIR=/www/server/xtrabackup-inc/logs
 systemctl stop $MYSQL_NAME
@@ -18,8 +23,10 @@ mkdir -p /www/server/xtrabackup-inc/logs
 # 复制全量目录
 cp -r $BACKUP_BASE_PATH /www/backup/xtrabackup_data_restore
 # 合并增量内容
-xtrabackup --prepare --apply-log-only --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log
-xtrabackup --prepare --apply-log-only --target-dir=//www/backup/xtrabackup_data_restore --incremental-dir=$BACKUP_INC_PATH &>> $LOG_DIR/recovery_$timestamp.log
+if [ ! -d "$BACKUP_INC_PATH" ];then
+    xtrabackup --prepare --apply-log-only --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log
+    xtrabackup --prepare --apply-log-only --target-dir=//www/backup/xtrabackup_data_restore --incremental-dir=$BACKUP_INC_PATH &>> $LOG_DIR/recovery_$timestamp.log
+fi
 # 执行恢复
 xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log
 xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log

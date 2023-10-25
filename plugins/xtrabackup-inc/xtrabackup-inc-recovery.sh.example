@@ -18,7 +18,6 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 LOG_DIR=/www/server/xtrabackup-inc/logs
 systemctl stop $MYSQL_NAME
 mv $MYSQL_DIR/data $MYSQL_DIR/data_$timestamp
-rm -rf /www/backup/xtrabackup_data_restore
 mkdir -p /www/server/xtrabackup-inc/logs
 # 复制全量目录
 rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/

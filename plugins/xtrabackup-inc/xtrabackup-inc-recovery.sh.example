@@ -21,7 +21,7 @@ mv $MYSQL_DIR/data $MYSQL_DIR/data_$timestamp
 rm -rf /www/backup/xtrabackup_data_restore
 mkdir -p /www/server/xtrabackup-inc/logs
 # 复制全量目录
-cp -r $BACKUP_BASE_PATH /www/backup/xtrabackup_data_restore
+rsync -a $BACKUP_BASE_PATH /www/backup/xtrabackup_data_restore
 # 合并增量内容
 if [ ! -d "$BACKUP_INC_PATH" ];then
     xtrabackup --prepare --apply-log-only --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log

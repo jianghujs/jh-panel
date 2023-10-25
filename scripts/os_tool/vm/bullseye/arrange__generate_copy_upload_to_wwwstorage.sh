@@ -24,7 +24,7 @@ if [ $choice == "y" ]; then
         mkdir -p "$target_dir"
 
         # 生成复制命令
-        cmd="rsync -a \"$dir/\" \"$target_dir\"" 
+        cmd="rsync -a --delete \"$dir/\" \"$target_dir/\"" 
         echo $cmd >> $script_file
 
         echo "|-- 添加 复制${dir} 到 ${target_dir}命令成功✅"

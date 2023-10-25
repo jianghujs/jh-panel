@@ -25,7 +25,7 @@ if [ $choice == "y" ]; then
         echo "mkdir -p \"$target_dir\"" >> $script_file
         
         # 使用 rsync 命令将 upload 目录复制到目标目录
-        echo "rsync -a \"$dir/\" \"$target_dir\"" >> $script_file
+        echo "rsync -a --delete \"$dir/\" \"$target_dir/\"" >> $script_file
 
         # 删除原始 upload 目录
         echo "rm -rf \"$dir\"" >> $script_file

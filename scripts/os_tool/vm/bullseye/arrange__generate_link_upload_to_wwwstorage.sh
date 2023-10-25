@@ -15,14 +15,16 @@ if [ $choice == "y" ]; then
     # 查找project_dir下已存在的upload目录
     echo "|- 正在查找项目目录下已存在的upload目录..."
 	while IFS= read -r -d '' dir; do
-		# 获取相对路径
-        relative_path="${dir#$storage_dir}"
+		if [[ $dir != *"/app/"* ]]; then
+            # 获取相对路径
+            relative_path="${dir#$storage_dir}"
 
-        # 构建目标目录路径
-        target_dir="$project_dir$relative_path"    
-		
-		if [ -d "$target_dir" ]; then
-        	project_dir_exist_upload_dirs+=("$target_dir")
+            # 构建目标目录路径
+            target_dir="$project_dir$relative_path"    
+            
+            if [ -d "$target_dir" ]; then
+                project_dir_exist_upload_dirs+=("$target_dir")
+            fi
         fi
 	done < <(find "$storage_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -name "upload" -type d -print0)
     
@@ -50,16 +52,18 @@ if [ $choice == "y" ]; then
     # 搜索所有目录，排除"node_modules"、"logs"、"run"目录
     find "$storage_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -name "upload" -type d -print | while read dir
     do
-        # 获取相对路径
-        relative_path="${dir#$storage_dir}"
+		if [[ $dir != *"/app/"* ]]; then
+            # 获取相对路径
+            relative_path="${dir#$storage_dir}"
 
-        # 构建目标目录路径
-        target_dir="$project_dir$relative_path"
-  
-        # 创建软链接
-        echo "ln -s \"$dir\" \"$target_dir\"" >> $script_file
+            # 构建目标目录路径
+            target_dir="$project_dir$relative_path"
+    
+            # 创建软链接
+            echo "ln -s \"$dir\" \"$target_dir\"" >> $script_file
 
-        echo "|-- 添加 链接${target_dir} 到 ${dir}命令成功✅"
+            echo "|-- 添加 链接${target_dir} 到 ${dir}命令成功✅"
+        fi
     done
 
     

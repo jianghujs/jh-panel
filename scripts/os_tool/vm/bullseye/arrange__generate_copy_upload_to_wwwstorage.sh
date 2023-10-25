@@ -13,21 +13,22 @@ if [ $choice == "y" ]; then
     # 搜索所有目录，排除"node_modules"、"logs"、"run"目录
     find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -name "upload" -type d -print | while read dir
     do
+		if [[ $dir != *"/app/"* ]]; then
+            # 获取相对路径
+            relative_path="${dir#$project_dir}"
 
-        # 获取相对路径
-        relative_path="${dir#$project_dir}"
+            # 构建目标目录路径
+            target_dir="$storage_dir$relative_path"
 
-        # 构建目标目录路径
-        target_dir="$storage_dir$relative_path"
+            # 创建目标目录及其父目录
+            echo "mkdir -p \"$target_dir\"" >> $script_file
 
-        # 创建目标目录及其父目录
-        echo "mkdir -p \"$target_dir\"" >> $script_file
+            # 生成复制命令
+            cmd="rsync -a --delete \"$dir/\" \"$target_dir/\"" 
+            echo $cmd >> $script_file
 
-        # 生成复制命令
-        cmd="rsync -a --delete \"$dir/\" \"$target_dir/\"" 
-        echo $cmd >> $script_file
-
-        echo "|-- 添加 复制${dir} 到 ${target_dir}命令成功✅"
+            echo "|-- 添加 复制${dir} 到 ${target_dir}命令成功✅"
+        fi
     done
 
     echo ""

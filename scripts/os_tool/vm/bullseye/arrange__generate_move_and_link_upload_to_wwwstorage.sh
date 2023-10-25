@@ -14,30 +14,32 @@ if [ $choice == "y" ]; then
     # 搜索所有目录，排除"node_modules"、"logs"、"run"目录
     find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -name "upload" -type d -print | while read dir
     do
-        # 获取相对路径
-        relative_path="${dir#$project_dir}"
+		if [[ $dir != *"/app/"* ]]; then
+            # 获取相对路径
+            relative_path="${dir#$project_dir}"
 
-        # 构建目标目录路径
-        target_dir="$storage_dir$relative_path"
+            # 构建目标目录路径
+            target_dir="$storage_dir$relative_path"
 
-        # 创建目标目录及其父目录
-        echo "# 移动 ${dir} 到 ${target_dir}" >> $script_file
-        echo "mkdir -p \"$target_dir\"" >> $script_file
-        
-        # 使用 rsync 命令将 upload 目录复制到目标目录
-        echo "rsync -a --delete \"$dir/\" \"$target_dir/\"" >> $script_file
+            # 创建目标目录及其父目录
+            echo "# 移动 ${dir} 到 ${target_dir}" >> $script_file
+            echo "mkdir -p \"$target_dir\"" >> $script_file
+            
+            # 使用 rsync 命令将 upload 目录复制到目标目录
+            echo "rsync -a --delete \"$dir/\" \"$target_dir/\"" >> $script_file
 
-        # 删除原始 upload 目录
-        echo "rm -rf \"$dir\"" >> $script_file
-        
-        echo "|-- 添加 移动${dir} 到 ${target_dir}命令成功✅"
-        
+            # 删除原始 upload 目录
+            echo "rm -rf \"$dir\"" >> $script_file
+            
+            echo "|-- 添加 移动${dir} 到 ${target_dir}命令成功✅"
+            
 
-        # 创建软链接
-        echo "# 链接 ${dir} 到 ${target_dir}" >> $script_file
-        echo "ln -s \"$target_dir\" \"$dir\"" >> $script_file
+            # 创建软链接
+            echo "# 链接 ${dir} 到 ${target_dir}" >> $script_file
+            echo "ln -s \"$target_dir\" \"$dir\"" >> $script_file
 
-        echo "|-- 添加 链接${dir} 到 ${target_dir}命令成功✅"
+            echo "|-- 添加 链接${dir} 到 ${target_dir}命令成功✅"
+        fi
     done
 
     

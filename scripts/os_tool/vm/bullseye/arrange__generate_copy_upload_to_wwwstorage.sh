@@ -21,7 +21,7 @@ if [ $choice == "y" ]; then
         target_dir="$storage_dir$relative_path"
 
         # 创建目标目录及其父目录
-        mkdir -p "$target_dir"
+        echo "mkdir -p \"$target_dir\"" >> $script_file
 
         # 生成复制命令
         cmd="rsync -a --delete \"$dir/\" \"$target_dir/\"" 

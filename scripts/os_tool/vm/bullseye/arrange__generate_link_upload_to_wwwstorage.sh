@@ -40,7 +40,7 @@ if [ $choice == "y" ]; then
           for dir in "${project_dir_exist_upload_dirs[@]}"
           do
 			  
-       		  echo "rm -rf \"$dir/\""  >> $script_file
+       		  echo "rm -rf \"$dir\""  >> $script_file
 			  echo "|-- 添加 删除${dir}命令成功✅"
           done
         fi

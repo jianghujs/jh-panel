@@ -68,7 +68,9 @@ unzip -o ./web_conf.zip -d /www/server/web_conf/
 echo "恢复网站配置完成✔!"
 
 # 重启openresty
+pushd /www/server/jh-panel > /dev/null
 python3 /www/server/jh-panel/plugins/openresty/index.py restart
+popd > /dev/null
 echo "重启openresty完成✔!"
 
 EOF

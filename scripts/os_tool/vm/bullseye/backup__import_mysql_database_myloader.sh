@@ -66,6 +66,7 @@ while true; do
                 myloader -t 4 -u $db_user -p $db_password -h $db_host -P $db_port -B $db_name -d $db_folder --overwrite-tables
                 echo "数据库${db_name}导入完成✅"
             done
+            echo "所有数据库导入完成✅"
             break
         fi
     fi

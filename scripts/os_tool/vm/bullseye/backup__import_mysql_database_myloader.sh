@@ -60,7 +60,7 @@ while true; do
     if [ "$db_index" = "a" ]; then
         read -p "确定要将导入${backup_dir}下的全部数据库吗？（默认n）[y/n] " import_all_choice
         import_all_choice=${import_all_choice:-n}
-        if [[ "$import_choice" == "y" ]]; then
+        if [[ "$import_all_choice" == "y" ]]; then
             for db_folder in "${db_folders[@]}"; do
                 db_name=$(basename "$db_folder")
                 myloader -t 4 -u $db_user -p $db_password -h $db_host -P $db_port -B $db_name -d $db_folder --overwrite-tables

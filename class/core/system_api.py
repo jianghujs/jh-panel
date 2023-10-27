@@ -34,7 +34,6 @@ import requests
 from threading import Thread
 from time import sleep
 import datetime
-import dictdatabase as DDB
 
 crontabApi = crontab_api.crontab_api()
 

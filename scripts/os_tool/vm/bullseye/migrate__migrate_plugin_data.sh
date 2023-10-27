@@ -18,8 +18,12 @@ MIGRATE_DIR=${MIGRATE_DIR:-"/www/migrate/"}
 # 从环境变量中获取PROJECT_DIR值
 project_dir=${PROJECT_DIR:-""}
 if [ -z "$project_dir" ]; then
-    read -p "请输入项目所在目录（默认/www/wwwroot/）: " project_dir
-    project_dir=${project_dir:-"/www/wwwroot/"}
+    default_project_dir="/www/wwwroot/"
+    if [ -d "/appdata/wwwroot/" ]; then
+        default_project_dir="/appdata/wwwroot/"
+    fi
+    read -p "输入项目所在目录（默认为：${default_project_dir}）: " project_dir
+    project_dir=${project_dir:-${default_project_dir}}
 fi
 
 # 定义存储迁移信息的json对象（如：migrate_info_plugin）

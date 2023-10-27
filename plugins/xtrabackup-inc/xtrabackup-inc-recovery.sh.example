@@ -15,6 +15,8 @@ if [ ! -d "$BACKUP_BASE_PATH" ];then
 fi
 
 timestamp=$(date +%Y%m%d_%H%M%S)
+# 临时设置系统的打开文件数量上限
+ulimit -n 65535
 LOG_DIR=/www/server/xtrabackup-inc/logs
 systemctl stop $MYSQL_NAME
 mv $MYSQL_DIR/data $MYSQL_DIR/data_$timestamp

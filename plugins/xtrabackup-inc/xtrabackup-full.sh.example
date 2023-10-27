@@ -10,6 +10,8 @@ fi
 echo $(date +%s) > $LOCK_FILE_PATH
 
 timestamp=$(date +%Y%m%d_%H%M%S)
+# 临时设置系统的打开文件数量上限
+ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
 
 # 备份目录

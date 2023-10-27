@@ -51,10 +51,23 @@ while true; do
         i=$((i+1))
     done
 
-    read -p "请输入要导入的数据库编号（输入 q 退出）：" db_index
+    read -p "请输入要导入的数据库编号（输入 a 导入所有数据库，输入 q 退出）：" db_index
 
     if [ "$db_index" = "q" ]; then
         break
+    fi
+
+    if [ "$db_index" = "a" ]; then
+        read -p "确定要将导入${db_folder}下的全部数据库吗？（默认n）[y/n] " import_all_choice
+        import_all_choice=${import_all_choice:-n}
+        if [[ "$import_choice" == "y" ]]; then
+            for db_folder in "${db_folders[@]}"; do
+                db_name=$(basename "$db_folder")
+                myloader -t 4 -u $db_user -p $db_password -h $db_host -P $db_port -B $db_name -d $db_folder --overwrite-tables
+                echo "数据库${db_name}导入完成✅"
+            done
+            break
+        fi
     fi
 
     # 检查输入的编号是否有效

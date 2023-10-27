@@ -58,7 +58,7 @@ while true; do
     fi
 
     if [ "$db_index" = "a" ]; then
-        read -p "确定要将导入${db_folder}下的全部数据库吗？（默认n）[y/n] " import_all_choice
+        read -p "确定要将导入${backup_dir}下的全部数据库吗？（默认n）[y/n] " import_all_choice
         import_all_choice=${import_all_choice:-n}
         if [[ "$import_choice" == "y" ]]; then
             for db_folder in "${db_folders[@]}"; do

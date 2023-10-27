@@ -64,9 +64,17 @@ selected_databases=${selected_databases:-$default_selected_databases}
 read -p "请选择存放备份的目录（默认为：/www/backup/mydumper/）: " backup_dir
 backup_dir=${backup_dir:-/www/backup/mydumper/}
 
-if [ ! -d "$backup_dir" ]; then
-  mkdir -p "$backup_dir"
-  echo "${backup_dir}目录已创建"
+if [ -d "$backup_dir" ]; then
+    read -p "目录已存在，是否清空目录？（默认n）[y/n] " yn
+    yn=${yn:-n}
+    case $yn in
+        [Yy]* ) rm -rf $backup_dir/*;;
+        [Nn]* ) echo "已跳过清空目录";;
+        * ) echo "请输入y或n";;
+    esac
+else
+    mkdir -p $backup_dir
+    echo "${backup_dir}目录已创建"
 fi
 
 # 循环需要导出的数据库，执行备份导出命令

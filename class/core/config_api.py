@@ -707,6 +707,7 @@ class config_api:
 
         return mw.returnData(True, op_action + '成功')
 
+
     def setPanelTokenApi(self):
         op_type = request.form.get('op_type', '').strip()
 

@@ -53,7 +53,7 @@ case $choice in
 2)
     download_and_run monitor__export_iotop_rank.sh
     ;;
-2)
+3)
     download_and_run monitor__export_io_test.sh
     ;;
 esac

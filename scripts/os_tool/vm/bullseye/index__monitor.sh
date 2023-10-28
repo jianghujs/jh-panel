@@ -34,6 +34,7 @@ show_menu() {
     echo "请选择状态监测工具:"
     echo "1. 进程占用分析（打印进程占用排名到文件）"
     echo "2. 磁盘IO占用分析（打印磁盘IO占用排名到文件）"
+    echo "3. 磁盘IO测试（测试磁盘读写速度）"
     echo "========================================================"
 }
 
@@ -51,6 +52,9 @@ case $choice in
     ;;
 2)
     download_and_run monitor__export_iotop_rank.sh
+    ;;
+2)
+    download_and_run monitor__export_io_test.sh
     ;;
 esac
 

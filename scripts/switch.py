@@ -34,8 +34,9 @@ class switchTools:
     def openCrontab(self, name):
         cronInfo = mw.M('crontab').where(
             'name=?', (name,)).field(crontabApi.field).find()
-        if cronInfo is None:
+        if not cronInfo:
             print("计划任务不存在")
+            return
 
         mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 1)
         crontabApi.syncToCrond(cronInfo)
@@ -44,8 +45,9 @@ class switchTools:
     def closeCrontab(self, name):
         cronInfo = mw.M('crontab').where(
             'name=?', (name,)).field(crontabApi.field).find()
-        if cronInfo is None:
+        if not cronInfo:
             print("计划任务不存在")
+            return
 
         mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 0)
         crontabApi.removeCrond(cronInfo['echo'])

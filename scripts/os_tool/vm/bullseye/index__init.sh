@@ -21,10 +21,12 @@ done
 # 下载并执行脚本的函数
 download_and_run() {
     local script_name=$1
-    wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
-    echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
-    bash /tmp/vm_${script_name} ${@:2}
-    echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
+    if [ "$USE_PANEL_SCRIPT" == "true" ]; then 
+      bash $SCRIPT_BASE/${script_name} ${@:2}
+    else
+      wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+      bash /tmp/vm_${script_name} ${@:2}
+    fi    
 }
 
 echo "初始化环境"

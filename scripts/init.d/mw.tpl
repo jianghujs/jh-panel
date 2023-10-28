@@ -262,6 +262,11 @@ mw_debug(){
     gunicorn -b :$port -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1  app:app $ssl_param --log-level "debug"  --capture-output;
 }
 
+
+mw_os_tool(){
+  bash /www/server/jh-panel/scripts/os_tool/index.sh vm "" "true"
+}
+
 case "$1" in
     'start') mw_start;;
     'stop') mw_stop;;
@@ -285,6 +290,7 @@ case "$1" in
     'close_admin_path') mw_close_admin_path;;
     'unbind_domain') mw_unbind_domain;;
     'debug') mw_debug;;
+    'os_tool') mw_os_tool;;
     'default')
         cd $mw_path
         port=7200

@@ -60,6 +60,7 @@ def mwcli(mw_input=0):
         print("(13) 显示面板错误日志")
         print("(20) 关闭BasicAuth认证")
         print("(21) 解除域名绑定")
+        print("(22) 面板脚本工具")
         print("(0) 取消")
         print(raw_tip)
         try:
@@ -69,7 +70,7 @@ def mwcli(mw_input=0):
         except:
             mw_input = 0
 
-    nums = [1, 2, 3, 4, 5, 10, 11, 12, 13, 20, 21]
+    nums = [1, 2, 3, 4, 5, 10, 11, 12, 13, 20, 21, 22]
     if not mw_input in nums:
         print(raw_tip)
         print("已取消!")
@@ -119,7 +120,8 @@ def mwcli(mw_input=0):
             os.remove(bind_domain)
             os.system(INIT_CMD + " unbind_domain")
             print("|-解除域名绑定成功")
-
+    elif mw_input == 22:
+      os.system('bash /www/server/jh-panel/scripts/os_tool/index.sh vm "" "true"')
 
 def set_panel_pwd(password, ncli=False):
     # 设置面板密码

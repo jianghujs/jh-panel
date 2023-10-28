@@ -1,16 +1,21 @@
 #!/bin/bash
 set -e
-
 # 下载并执行脚本的函数
 download_and_run() {
     local script_name=$1
-    wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
     echo ">>>>>>>>>>>>>>>>>>> Running ${script_name}"
-    bash /tmp/vm_${script_name} ${@:2}
+    if [ "$USE_PANEL_SCRIPT" == "true" ]; then 
+      bash $SCRIPT_BASE/${script_name} ${@:2}
+    else
+      wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+      bash /tmp/vm_${script_name} ${@:2}
+    fi    
     echo -e "<<<<<<<<<<<<<<<<<<< Run ${script_name} success✔!\n"
 }
 
-download_and_run index__switch_apt_sources.sh 4
+if [ !"$USE_PANEL_SCRIPT" == "true" ]; then 
+  download_and_run index__switch_apt_sources.sh 4
+fi
 
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then

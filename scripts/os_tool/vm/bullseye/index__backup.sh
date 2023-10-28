@@ -4,19 +4,30 @@ set -e
 # 下载并执行脚本的函数
 download_and_run_bash() {
     local script_name=$1
-    wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
-    bash /tmp/vm_${script_name} ${@:2}
+    if [ "$USE_PANEL_SCRIPT" == "true" ]; then 
+      bash $SCRIPT_BASE/${script_name} ${@:2}
+    else
+      wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+      bash /tmp/vm_${script_name} ${@:2}
+    fi    
 }
 
 download_and_run_node() {
-    wget -nv -O /tmp/package.json ${URLBase}/package.json
-    pushd /tmp/ > /dev/null
-    npm i
-    popd > /dev/null
-    
     local script_name=$1
-    wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
-    node /tmp/vm_${script_name} ${@:2}
+    if [ "$USE_PANEL_SCRIPT" == "true" ]; then 
+      pushd $SCRIPT_BASE > /dev/null
+      npm i
+      node ${script_name} ${@:2}
+      popd > /dev/null
+    else
+      wget -nv -O /tmp/package.json ${URLBase}/package.json
+      pushd /tmp/ > /dev/null
+      npm i
+      popd > /dev/null
+      
+      wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+      node /tmp/vm_${script_name} ${@:2}
+    fi    
 }
 
 # 检查/usr/bin/dialog是否存在

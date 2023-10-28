@@ -267,6 +267,9 @@ mw_os_tool(){
   bash /www/server/jh-panel/scripts/os_tool/index.sh vm "" "true"
 }
 
+# 获取运行命令的目录
+export RUN_DIR=$(pwd)
+
 case "$1" in
     'start') mw_start;;
     'stop') mw_stop;;

@@ -4,6 +4,10 @@ export PATH
 # LANG=en_US.UTF-8
 is64bit=`getconf LONG_BIT`
 
+if [ -v RUN_DIR ]; then
+  cd $RUN_DIR
+fi
+
 osType="$1"
 netEnvCn="$2"
 usePanelScript="$3"

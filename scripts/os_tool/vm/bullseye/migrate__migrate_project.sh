@@ -75,11 +75,11 @@ done
 find_command+="-name '.git' \) -prune -o -print"
 eval $find_command | while read dir
 do
-    echo "Processing directory: $dir"
+    echo "Processing directory: $dir" >> ${MIGRATE_DIR}/project_link.log
 
     # 如果目录是符号链接，则跳过
     if [ -L "$dir" ]; then
-        echo "$dir is a symbolic link, skipping."
+        echo "$dir is a symbolic link, skipping." >> ${MIGRATE_DIR}/project_link.log
         continue
     fi
 

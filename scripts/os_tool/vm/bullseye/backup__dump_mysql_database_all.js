@@ -91,12 +91,11 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
     //     }
     // }
 
+    // 导出结构
     const res = await mysqldump({
         connection,
         dump: {
-            data: needExportData? {
-                format: false
-            }: false,
+            data: false,
             schema: {
                 table: {
                     dropIfExist: true,
@@ -108,7 +107,24 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
         },
         ignoreTables
     });
-
+  
+    // 导出数据
+    let currentDataRes = null;
+    if (needExportData) {
+      let currentWithDataTables = res.tables.filter(item => withDataTables.includes(item.name)).map(item => item.name);
+      if (currentWithDataTables.length > 0) {
+        currentDataRes = await mysqldump({
+          connection,
+          dump: {
+            tables: currentWithDataTables,
+            data: {
+              format: false
+            }
+          }
+        });
+      }
+    }
+  
     let content = `CREATE DATABASE IF NOT EXISTS \`${database}\` default character set utf8mb4 collate utf8mb4_bin;\nUSE \`${database}\`;\n`;
 
     const allTable = res.tables.filter((item) => !item.isView);
@@ -116,15 +132,18 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
 
     const resTables = [...allTable, ...allView];
 
-    resTables.forEach(tableData => {
+    resTables.forEach(async tableData => {
         if (tables.length !== 0 && !tables.includes(tableData.name)) {
             return;
         }
         if (ignoreTables.includes(tableData.name)) {
             return;
         }
-        if (withDataTables.includes(tableData.name)) {
-            content += tableData.schema + '\n' + (tableData.data || '') + '\n' + (tableData.triggers && tableData.triggers.join('\n') || '') + '\n\n\n';
+        if (withDataTables.includes(tableData.name) && currentDataRes) {
+          let currentData = currentDataRes.tables.find(item => item.name == tableData.name);
+          if (currentData) {
+            content += tableData.schema + '\n' + (currentData.data || '') + '\n' + (tableData.triggers && tableData.triggers.join('\n') || '') + '\n\n\n';
+          }
         } else {
             content += tableData.schema + '\n' + (tableData.triggers && tableData.triggers.join('\n') || '') + '\n\n\n';
         }
@@ -154,7 +173,7 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
     connection.user = await prompt(`请输入数据库用户名（默认为：${connection.user}）：`, connection.user);
     connection.password = await prompt(`请输入数据库密码${connection.password? '默认为：' + connection.password: ''}：`, connection.password);
 
-    let needExportDataInput = await prompt(`需要导出数据吗（默认为n）[y/n]？`, 'n');
+    let needExportDataInput = await prompt(`需要导出数据吗（默认为y）[y/n]？`, 'y');
     needExportData = (needExportDataInput.toLowerCase() == 'y');
 
     const defaultIgnoreDeatabasesInput = "mysql,performance_schema,sys,information_schema";
@@ -165,9 +184,10 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
     const ignoreTablesInput = await prompt(`请输入需要忽略的表，多个用英文逗号隔开（默认为${defaultIgnoreTablesInput || '空'}）：`, defaultIgnoreTablesInput);
     ignoreTables = ignoreTablesInput.split(",").map(table => table.trim());
 
+  	let withDataTablesInput = null;
     if (needExportData) {  
       const defaultWithDataTablesInput = "_page,_resource,_constant,_constant_ui,_group,_role,_user_group_role,_user_group_role_page,_user_group_role_resource";
-      const withDataTablesInput = await prompt(`请输入需要导出数据的表，多个用英文逗号隔开（默认为：${defaultWithDataTablesInput}）：`, defaultWithDataTablesInput);
+      withDataTablesInput = await prompt(`请输入需要导出数据的表，多个用英文逗号隔开（默认为：${defaultWithDataTablesInput}）：`, defaultWithDataTablesInput);
       withDataTables = withDataTablesInput.split(",").map(table => table.trim());
     }
 

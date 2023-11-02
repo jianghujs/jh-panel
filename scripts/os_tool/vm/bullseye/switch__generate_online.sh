@@ -26,11 +26,21 @@ if [ $choice == "y" ]; then
     read -p "输入需要同步的目录（多个用英文逗号隔开，默认为：/www/wwwroot,/www/wwwstorage,/www/backup）: " sync_file_dirs_input
     sync_file_dirs_input=${sync_file_dirs_input:-"/www/wwwroot,/www/wwwstorage,/www/backup"}
     IFS=',' read -ra sync_file_dirs <<< "$sync_file_dirs_input"
+
+    # 提示"请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）:"
+    read -p "请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）: " ignore_dirs_input
+    ignore_dirs_input=${ignore_dirs_input:-"node_modules,logs,run,.git"}
+    IFS=',' read -ra ignore_dirs <<< "$ignore_dirs_input"
     
     for sync_file_dir in "${sync_file_dirs[@]}"; do
       echo "# 从线上服务器同步${sync_file_dir}" >> $script_file
       echo "echo \"|- 开始从线上服务器同步${sync_file_dir}...\"" >> $script_file
-      echo "rsync -avzP --delete -e \"ssh -p $remote_port\" \"root@$remote_ip:${sync_file_dir}/\" \"${sync_file_dir}/\"" >> $script_file
+      rsync_command="rsync -avzP --delete -e \"ssh -p $remote_port\" "
+      for ignore_dir in "${ignore_dirs[@]}"; do
+        rsync_command+="--exclude=${ignore_dir} "
+      done
+      rsync_command+="\"root@$remote_ip:${sync_file_dir}/\" \"${sync_file_dir}/\""
+      echo $rsync_command >> $script_file
       echo "echo \"|- 从线上服务器同步${sync_file_dir}完成✅\"" >> $script_file
       echo "" >> $script_file
     done

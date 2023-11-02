@@ -395,7 +395,7 @@ function createSendTask(name = ''){
                     let testResult = JSON.parse((await rsPost('test_ssh', args)).data)
                     if (!testResult.status) {
                         console.log(testResult)
-                        layer.msg("使用密钥文件连接服务器失败!<br/>请检查对应的公钥内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
+                        layer.msg("使用密钥文件连接服务器失败!<br/>请检查IP、端口信息是否正确，以及对应的公钥内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
                         return 
                     }
                 }

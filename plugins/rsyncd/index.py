@@ -598,46 +598,52 @@ def makeLsyncdConf(data):
                 continue
 
             # print(x, t)
-            content += "sync {\n"
-            content += "\tdefault.rsync,\n"
-            content += "\tsource = \"" + t['path'] + "\",\n"
 
-            if t['conn_type'] == 'ssh':
-                content += "\host = \"" + t['ip'] + "\",\n"
-                content += "\ttarget_dir = \"" + t['target_path'] + "\",\n"
-            else:
-                content += "\ttarget = \"" + remote_addr + "\",\n"
 
-            content += "\tdelete = " + t['delete'] + ",\n"
-            content += "\tdelay = " + t['delay'] + ",\n"
-            content += "\tinit = false,\n"
+            # 生成lsyncd配置
             exclude_str = json.dumps(t['exclude'])
             exclude_str = exclude_str.replace("[", "{")
             exclude_str = exclude_str.replace("]", "}")
-            # print(exclude_str)
-            content += "\texclude = " + exclude_str + ",\n"
-
-            # rsync
-            content += "\trsync = {\n"
-            content += "\t\tbinary = \"" + rsync_bin + "\",\n"
-            content += "\t\tarchive = true,\n"
-            content += "\t\tverbose = true,\n"
-            content += "\t\tcompress = " + t['rsync']['compress'] + ",\n"
-
-            if t['conn_type'] != 'ssh':
-                content += "\t\tpassword_file = \"" + cmd_pass + "\",\n"
-            
-            content += "\t\t_extra = {\"--bwlimit=" + t['rsync'][
-                'bwlimit'] + "\", \"--port=" + str(t['rsync']['port']) + "\"},\n"
-
-            content += "\t}\n"
-
-            # ssh
             if t['conn_type'] == 'ssh':
-                content += "\tssh = {\n"
-                content += "\t\port = \"" + t['ssh_port'] + "\"\n"
-                content += "\t}\n"
-                content += "}\n"
+              content += f"""sync {{
+\tdefault.rsyncssh,
+\tsource = "{t['path']}",
+\thost = "{t['ip']}",
+\ttargetdir = "{t['target_path']}",
+\tdelete = {t['delete']},
+\tdelay = {t['delay']},
+\tinit = false,
+\texclude = {exclude_str},
+\trsync = {{
+\t\tbinary = "{rsync_bin}",
+\t\tarchive = true,
+\t\tverbose = true,
+\t\tcompress = {t['rsync']['compress']},
+\t\t_extra = {{"--bwlimit={t['rsync']['bwlimit']}"}},
+\t}},
+\tssh = {{
+  \t\tport = {t['ssh_port']},
+\t}}
+}}
+              """
+            else:
+              content += f"""sync {{
+\tdefault.rsync,
+\tsource = "{t['path']}",
+\ttarget = "{t['target_path']}",
+\tdelete = {t['delete']},
+\tdelay = {t['delay']},
+\tinit = false,
+\texclude = {exclude_str},
+\trsync = {{
+\t\tbinary = "{rsync_bin}",
+\t\tarchive = true,
+\t\tverbose = true,
+\t\tcompress = {t['rsync']['compress']},
+\t\t_extra = {{"--bwlimit={t['rsync']['bwlimit']}", "--port={str(t['rsync']['port'])}"}},
+\t}}
+}}
+              """
 
     path = getServerDir() + "/lsyncd.conf"
     mw.writeFile(path, content)

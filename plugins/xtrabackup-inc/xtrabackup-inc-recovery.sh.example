@@ -2,8 +2,17 @@
 
 # 检查锁
 if [ -e $LOCK_FILE_PATH ]; then
-    echo "已有任务在执行，请稍后重试"
-    exit
+    # 计算锁时间差
+    LOCK_TIMESTAMP=$(cat $LOCK_FILE_PATH)
+    CURRENT_TIMESTAMP=$(date +%s)
+    TIME_DIFF=$(($CURRENT_TIMESTAMP - $LOCK_TIMESTAMP))
+    # 判断时间差是否超过20分钟（20*60=1200秒）
+    if [ $TIME_DIFF -gt 1200 ]; then
+        echo "锁已失效"
+    else
+        echo "已有任务在执行，请稍后重试"
+        exit
+    fi
 fi
 
 # 加锁

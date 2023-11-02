@@ -194,7 +194,7 @@ class site_api:
     def getHostConfigApi(self):
         site_list = mw.M('sites').field(
         "id,name,path,ps,status,addtime").order("id desc").select()
-        ip = mw.getHostAddr()
+        ip = mw.getServerIp(4)
         host_content = ''
         for site in site_list:
             host_content += "%(ip)s %(site)s\n" % {"ip": ip, "site": site.get('name', '')}

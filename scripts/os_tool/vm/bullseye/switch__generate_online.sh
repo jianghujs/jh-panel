@@ -40,6 +40,7 @@ if [ $choice == "y" ]; then
         rsync_command+="--exclude=${ignore_dir} "
       done
       rsync_command+="\"root@$remote_ip:${sync_file_dir}/\" \"${sync_file_dir}/\""
+      rsync_command+=" &> ./sync_file.log"
       echo $rsync_command >> $script_file
       echo "echo \"|- 从线上服务器同步${sync_file_dir}完成✅\"" >> $script_file
       echo "" >> $script_file

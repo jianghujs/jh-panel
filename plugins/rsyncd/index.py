@@ -604,6 +604,8 @@ def makeLsyncdConf(data):
             exclude_str = json.dumps(t['exclude'])
             exclude_str = exclude_str.replace("[", "{")
             exclude_str = exclude_str.replace("]", "}")
+            # 兼容旧配置，SSH同步的方式统一maxProcesses为1
+            content = re.sub(r"maxProcesses = \d*", "maxProcesses = 1", content)  
             if t['conn_type'] == 'ssh':
               content += f"""sync {{
 \tdefault.rsyncssh,

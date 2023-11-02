@@ -587,7 +587,7 @@ def makeLsyncdConf(data):
             remote_addr = t['name'] + '@' + t['ip'] + "::" + t['name']
             cmd = ''
             if t['conn_type'] == 'ssh':
-                cmd = """%(rsync_bin)s -avu -e 'ssh -p %(ssh_port)s -i %(key_path)s -o UserKnownHostsFile=/root/.ssh/known_hosts  -o StrictHostKeyChecking=no' --bwlimit=%(bwlimit)s --exclude-from=%(cmd_exclude)s %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": t['ssh_port'], "key_path": t['key_path'], "bwlimit": t['rsync']['bwlimit'], "cmd_exclude": cmd_exclude, "path": t["path"], "ip": t['ip'] , "target_path": t['target_path']}
+                cmd = """%(rsync_bin)s -avzP %(delete_ok)s -e 'ssh -p %(ssh_port)s -i %(key_path)s -o UserKnownHostsFile=/root/.ssh/known_hosts  -o StrictHostKeyChecking=no' --bwlimit=%(bwlimit)s --exclude-from=%(cmd_exclude)s %(path)s root@%(ip)s:%(target_path)s""" % { "rsync_bin": rsync_bin, "ssh_port": t['ssh_port'], "key_path": t['key_path'], "bwlimit": t['rsync']['bwlimit'], "cmd_exclude": cmd_exclude, "path": t["path"], "ip": t['ip'] , "target_path": t['target_path'], "delete_ok": delete_ok }
             else:
                 cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr

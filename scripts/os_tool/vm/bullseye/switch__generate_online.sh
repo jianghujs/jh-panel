@@ -30,7 +30,7 @@ if [ $choice == "y" ]; then
     for sync_file_dir in "${sync_file_dirs[@]}"; do
       echo "# 从线上服务器同步${sync_file_dir}" >> $script_file
       echo "echo \"|- 开始从线上服务器同步${sync_file_dir}...\"" >> $script_file
-      echo "rsync -avzP -e --delete \"ssh -p $remote_port\" --progress \"root@$remote_ip:${sync_file_dir}/\" \"${sync_file_dir}/\"" >> $script_file
+      echo "rsync -avzP --delete -e \"ssh -p $remote_port\" --progress \"root@$remote_ip:${sync_file_dir}/\" \"${sync_file_dir}/\"" >> $script_file
       echo "echo \"|- 从线上服务器同步${sync_file_dir}完成✅\"" >> $script_file
       echo "" >> $script_file
     done

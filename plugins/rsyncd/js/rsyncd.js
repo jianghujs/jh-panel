@@ -390,6 +390,7 @@ function createSendTask(name = ''){
                 args['hour'] = $('input[name="hour"]').val();
                 args['minute'] = $('input[name="minute"]').val();
                 args['minute-n'] = $('input[name="minute-n"]').val();
+                args['edit'] = (name!='')
 
                 if(args['conn_type'] == 'ssh') {
                     let testResult = JSON.parse((await rsPost('test_ssh', args)).data)

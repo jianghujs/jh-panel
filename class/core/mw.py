@@ -93,6 +93,9 @@ def getServerDir():
 def getWebConfDir():
     return getServerDir() + '/web_conf'
 
+def getCronDir():
+    return getServerDir() + '/cron'
+
 def getWebConfVhostDir():
     return getWebConfDir() + '/nginx/vhost'
 
@@ -104,7 +107,6 @@ def getWebConfSSLLetsDir():
 
 def getLogsDir():
     return getRootDir() + '/wwwlogs'
-
 
 def getWwwDir():
     file = getRunDir() + '/data/site.pl'

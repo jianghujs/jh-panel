@@ -127,6 +127,11 @@ class crontab_api:
             self.removeCrond(cronInfo['echo'])
         else:
             cronInfo['status'] = 1
+
+            # 清除stopped文件
+            statusPath = mw.getCronDir() + '/' + str(cronInfo['echo']) + '_stopped'
+            mw.execShell('rm ' + statusPath)
+
             self.syncToCrond(cronInfo)
 
         mw.M('crontab').where('id=?', (mid,)).setField('status', status)
@@ -263,7 +268,7 @@ class crontab_api:
     def logsApi(self):
         sid = request.form.get('id', '')
         echo = mw.M('crontab').where("id=?", (sid,)).field('echo').find()
-        logFile = mw.getServerDir() + '/cron/' + echo['echo'] + '.log'
+        logFile = mw.getCronDir() + '/' + echo['echo'] + '.log'
         if not os.path.exists(logFile):
             return mw.returnJson(False, '当前日志为空!')
         log = mw.getLastLine(logFile, 500)
@@ -333,7 +338,7 @@ class crontab_api:
 
         # print params
         cronConfig, get, name = self.getCrondCycle(params)
-        cronPath = mw.getServerDir() + '/cron'
+        cronPath = mw.getCronDir()
         cronName = self.getShell(params)
 
         if type(cronName) == dict:
@@ -341,7 +346,11 @@ class crontab_api:
 
         cronConfig += ' ' + cronPath + '/' + cronName + \
             ' >> ' + cronPath + '/' + cronName + '.log 2>&1'
-
+        
+        # 清除stopped文件
+        statusPath = cronPath + '/' + str(cronName) + '_stopped'
+        mw.execShell('rm ' + statusPath)
+        
         # print(cronConfig)
         if not mw.isAppleSystem():
             wRes = self.writeCrond(cronConfig)
@@ -365,7 +374,7 @@ class crontab_api:
     def startTaskApi(self):
         sid = request.form.get('id', '')
         echo = mw.M('crontab').where('id=?', (sid,)).getField('echo')
-        execstr = mw.getServerDir() + '/cron/' + echo
+        execstr = mw.getCronDir() + '/' + echo
         os.system('chmod +x ' + execstr)
         os.system('nohup ' + execstr + ' >> ' + execstr + '.log 2>&1 &')
         return mw.returnJson(True, '任务已执行!')
@@ -386,7 +395,7 @@ class crontab_api:
         if not self.removeCrond(find['echo']):
             return (False, '无法写入文件，请检查是否开启了系统加固功能!')
 
-        cronPath = mw.getServerDir() + '/cron'
+        cronPath = mw.getCronDir()
         sfile = cronPath + '/' + find['echo']
 
         if os.path.exists(sfile):
@@ -403,7 +412,7 @@ class crontab_api:
         sid = request.form.get('id', '')
         try:
             echo = mw.M('crontab').where("id=?", (sid,)).getField('echo')
-            logFile = mw.getServerDir() + '/cron/' + echo + '.log'
+            logFile = mw.getCronDir() + '/' + echo + '.log'
             os.remove(logFile)
             return mw.returnJson(True, '任务日志已清空!')
         except:
@@ -599,7 +608,7 @@ endDate=`date +"%Y-%m-%d %H:%M:%S"`
 echo "★[$endDate] Successful"
 echo "----------------------------------------------------------------------------"
 '''
-        cronPath = mw.getServerDir() + '/cron'
+        cronPath = mw.getCronDir()
         if not os.path.exists(cronPath):
             mw.execShell('mkdir -p ' + cronPath)
 
@@ -608,6 +617,15 @@ echo "--------------------------------------------------------------------------
         else:
             cronName = param['echo']
         file = cronPath + '/' + cronName
+
+        # 检查stopped文件
+        shell = f"""
+if [ -z "$IGNORE_STOPPED" ] && [ -f {file + '_stopped'} ];then 
+\techo "定时任务已停用"
+\texit 0 
+fi
+        """ + shell 
+
         mw.writeFile(file, self.checkScript(shell))
         mw.execShell('chmod 750 ' + file)
         return cronName
@@ -681,6 +699,10 @@ echo "--------------------------------------------------------------------------
         if not mw.writeFile(file, conf):
             return False
         self.crondReload()
+
+        # 在目录下增加标识文件
+        statusPath = mw.getCronDir() + '/' + str(echo) + '_stopped'
+        mw.execShell('echo "" > ' + statusPath)
         return True
 
     def syncToCrond(self, cronInfo):
@@ -689,7 +711,7 @@ echo "--------------------------------------------------------------------------
             cronInfo['minute'] = cronInfo['where_minute']
             cronInfo['week'] = cronInfo['where1']
         cuonConfig, cronInfo, name = self.getCrondCycle(cronInfo)
-        cronPath = mw.getServerDir() + '/cron'
+        cronPath = mw.getCronDir()
         cronName = self.getShell(cronInfo)
         if type(cronName) == dict:
             return cronName

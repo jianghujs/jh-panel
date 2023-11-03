@@ -736,6 +736,9 @@ def lsyncdDelete():
     data['send']["list"] = slist
     setDefaultConf(data)
     makeLsyncdConf(data)
+
+    # 删除任务目录
+    os.system("rm -rf " + getServerDir() + '/send/' + name  + " &")
     return mw.returnJson(True, "OK")
 
 

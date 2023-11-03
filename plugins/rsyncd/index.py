@@ -818,6 +818,10 @@ def lsyncdAdd():
         info['key_path'] = args['key_path']
         info['target_path'] = args['target_path']
 
+    # 如果系统存在 getServerDir()/send/name 目录，则报错
+    if os.path.exists(getServerDir() + "/send/" + info['name']):
+      return mw.returnJson(False, "任务名已存在!")
+
     rsync = {
         'bwlimit': bwlimit,
         "port": info.get('port', ''),

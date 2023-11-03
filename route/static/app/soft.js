@@ -176,8 +176,6 @@ function getSList(isdisplay) {
         loadImage();
     },'json');
 }
-// 注册到 window
-window.getSList = getSList
 
 function installPreInspection(name, ver, callback){
     var loading = layer.msg('正在检查安装环境...', { icon: 16, time: 0, shade: [0.3, '#000'] });

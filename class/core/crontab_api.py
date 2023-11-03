@@ -376,7 +376,7 @@ class crontab_api:
         echo = mw.M('crontab').where('id=?', (sid,)).getField('echo')
         execstr = mw.getCronDir() + '/' + echo
         os.system('chmod +x ' + execstr)
-        os.system('nohup ' + execstr + ' >> ' + execstr + '.log 2>&1 &')
+        os.system('export IGNORE_STOPPED=1\nnohup ' + execstr + ' >> ' + execstr + '.log 2>&1 &')
         return mw.returnJson(True, '任务已执行!')
 
     def delApi(self):

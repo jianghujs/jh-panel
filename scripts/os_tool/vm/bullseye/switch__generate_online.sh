@@ -54,6 +54,7 @@ if [ $choice == "y" ]; then
   pushd /www/server/jh-panel > /dev/null
   recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_recovery_backup_script | jq -r .data)
   popd > /dev/null
+  echo "LOCK_FILE_PATH=/www/server/xtrabackup-inc/inc_task_lock" >> $script_file
   echo "${recovery_script}" >> $script_file
   echo "echo \"|- xtrabackup增量恢复完成✅\"" >> $script_file
   echo "" >> $script_file

@@ -21,7 +21,7 @@ const connectionConfig = {
 };
 
 // 文件路径列表
-const defaultSqlFileDir = path.join(__dirname, './sql')
+const defaultSqlFileDir = path.join('/www/backup/mysql_dump')
 var sqlFileDir = defaultSqlFileDir;
 
 // 初始化非视图SQL和视图SQL

@@ -93,6 +93,9 @@ def getServerDir():
 def getWebConfDir():
     return getServerDir() + '/web_conf'
 
+def getCronDir():
+    return getServerDir() + '/cron'
+
 def getWebConfVhostDir():
     return getWebConfDir() + '/nginx/vhost'
 
@@ -104,7 +107,6 @@ def getWebConfSSLLetsDir():
 
 def getLogsDir():
     return getRootDir() + '/wwwlogs'
-
 
 def getWwwDir():
     file = getRunDir() + '/data/site.pl'
@@ -1348,6 +1350,10 @@ def getHostAddr():
         return readFile('data/iplist.txt').strip()
     return '127.0.0.1'
 
+def getServerIp(version = 4):
+    ip = execShell(
+        "curl -{} -sS --connect-timeout 5 -m 60 https://api.ipify.org/?format=text".format(version))
+    return ip[0] if ip[2] == 0 else ""
 
 def getLocalIp():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

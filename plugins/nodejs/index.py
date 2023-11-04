@@ -83,8 +83,8 @@ __SR = '''#!/bin/bash
 PATH=%s:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 export HOME=%s
-source %s/.bashrc
-''' % (nodejsFNMDir(), rootDir(), rootDir())
+source /etc/profile
+''' % (nodejsFNMDir(), rootDir())
 __path = getServerDir() + '/list'
 
 

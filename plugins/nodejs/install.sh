@@ -10,7 +10,9 @@ installPath=/www/server/nodejs
 installFnmPath=${installPath}/fnm
 # logPath=${installPath}/nodejs.plugin.log
 install_tmp=${rootPath}/tmp/mw_install.pl
-bashrcFile=/root/.bashrc
+# fnm command not found to ubuntu20.04
+#bashrcFile=/root/.bashrc
+bashrcFile=/etc/profile
 
 
 Install_nodejs()
@@ -49,7 +51,12 @@ Install_nodejs()
 	
 	source $bashrcFile
 	echo "Installing node v16.7: fnm install v16.17 && fnm use v16.17 && fnm default v16.17"
-	fnm install v16.17 && fnm use v16.17 && fnm default v16.17
+	if [ -f "/www/server/jh-panel/data/net_env_cn.pl" ]; then
+		echo "正在使用国内镜像安装..."
+		fnm install v16.17 --node-dist-mirror=https://npmmirror.com/mirrors/node && fnm use v16.17 && fnm default v16.17
+	else
+		fnm install v16.17 && fnm use v16.17 && fnm default v16.17
+	fi
 	echo '1.0' > $installPath/version.pl
 	echo '安装完成' > $install_tmp
 }

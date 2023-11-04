@@ -136,6 +136,9 @@ def getIncRecoveryScriptFile():
     path = getServerDir() + "/xtrabackup-inc-recovery.sh"
     return path
 
+def getLockFile():
+    path = getServerDir() + "/inc_task_lock"
+    return path
 
 def getSetting():
     file = getFullScriptFile()
@@ -270,7 +273,7 @@ def doTaskWithLock():
 
     # 加锁
     execTime = time.time()
-    lockFile = '/www/server/xtrabackup-inc/inc_task_lock'
+    lockFile = getLockFile()
     if os.path.exists(lockFile):
         lock_date = mw.readFile(lockFile)
         # 30 分钟未解锁则失效
@@ -336,15 +339,15 @@ def getIncBackupScript():
 
 def getFullBackupCronScript():
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'scriptFile': getFullScriptFile()}
+    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nset -x\n bash %(scriptFile)s' % {
+        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'lockFilePath': getLockFile(), 'scriptFile': getFullScriptFile()}
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 
 def getIncBackupCronScript():
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nset -x\n bash %(scriptFile)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'scriptFile': getIncScriptFile()}
+    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nset -x\n bash %(scriptFile)s' % {
+        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'lockFilePath': getLockFile(), 'scriptFile': getIncScriptFile()}
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 

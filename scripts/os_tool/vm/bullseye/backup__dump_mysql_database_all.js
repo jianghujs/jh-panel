@@ -9,6 +9,7 @@ const Knex = require('knex');
 const fs = require("fs");
 const path = require("path");
 const readline = require('readline');
+const { exec } = require('child_process');
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -21,6 +22,26 @@ const connection = {
     user: 'root',
     password: ''
 };
+
+
+// 不导出的库
+let ignoreDatabases = [];
+
+// 不导出的表
+let ignoreTables = [];
+
+// 带数据的表
+let withDataTables = [];
+
+// 导出前清理表中的无用字段
+let clearFields = [
+    { table: '_resource', field: 'requestDemo' }
+];
+let replace = [
+    { key: ' COLLATE utf8mb4_bin', value: '' }
+];
+
+let needExportData = false;
 
 async function prompt(question, defaultValue) {
     return new Promise((resolve) => {
@@ -70,12 +91,11 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
     //     }
     // }
 
+    // 导出结构
     const res = await mysqldump({
         connection,
         dump: {
-            data: {
-                format: false
-            },
+            data: false,
             schema: {
                 table: {
                     dropIfExist: true,
@@ -87,7 +107,24 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
         },
         ignoreTables
     });
-
+  
+    // 导出数据
+    let currentDataRes = null;
+    if (needExportData) {
+      let currentWithDataTables = res.tables.filter(item => withDataTables.includes(item.name)).map(item => item.name);
+      if (currentWithDataTables.length > 0) {
+        currentDataRes = await mysqldump({
+          connection,
+          dump: {
+            tables: currentWithDataTables,
+            data: {
+              format: false
+            }
+          }
+        });
+      }
+    }
+  
     let content = `CREATE DATABASE IF NOT EXISTS \`${database}\` default character set utf8mb4 collate utf8mb4_bin;\nUSE \`${database}\`;\n`;
 
     const allTable = res.tables.filter((item) => !item.isView);
@@ -95,15 +132,18 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
 
     const resTables = [...allTable, ...allView];
 
-    resTables.forEach(tableData => {
+    resTables.forEach(async tableData => {
         if (tables.length !== 0 && !tables.includes(tableData.name)) {
             return;
         }
         if (ignoreTables.includes(tableData.name)) {
             return;
         }
-        if (withDataTables.includes(tableData.name)) {
-            content += tableData.schema + '\n' + (tableData.data || '') + '\n' + (tableData.triggers && tableData.triggers.join('\n') || '') + '\n\n\n';
+        if (withDataTables.includes(tableData.name) && currentDataRes) {
+          let currentData = currentDataRes.tables.find(item => item.name == tableData.name);
+          if (currentData) {
+            content += tableData.schema + '\n' + (currentData.data || '') + '\n' + (tableData.triggers && tableData.triggers.join('\n') || '') + '\n\n\n';
+          }
         } else {
             content += tableData.schema + '\n' + (tableData.triggers && tableData.triggers.join('\n') || '') + '\n\n\n';
         }
@@ -123,22 +163,6 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
     await knex.destroy();
 }
 
-// 不导出的库
-let ignoreDatabases = [];
-
-// 不导出的表
-let ignoreTables = [];
-
-// 带数据的表
-let withDataTables = [];
-
-// 导出前清理表中的无用字段
-let clearFields = [
-    { table: '_resource', field: 'requestDemo' }
-];
-let replace = [
-    { key: ' COLLATE utf8mb4_bin', value: '' }
-];
 
 // 项目
 (async () => {
@@ -149,6 +173,9 @@ let replace = [
     connection.user = await prompt(`请输入数据库用户名（默认为：${connection.user}）：`, connection.user);
     connection.password = await prompt(`请输入数据库密码${connection.password? '默认为：' + connection.password: ''}：`, connection.password);
 
+    let needExportDataInput = await prompt(`需要导出数据吗（默认为y）[y/n]？`, 'y');
+    needExportData = (needExportDataInput.toLowerCase() == 'y');
+
     const defaultIgnoreDeatabasesInput = "mysql,performance_schema,sys,information_schema";
     const ignoreDatabasesInput = await prompt(`请输入需要忽略的库，多个用英文逗号隔开（默认为${defaultIgnoreDeatabasesInput || '空'}）：`, defaultIgnoreDeatabasesInput);
     ignoreDatabases = ignoreDatabasesInput.split(",").map(database => database.trim());
@@ -157,24 +184,40 @@ let replace = [
     const ignoreTablesInput = await prompt(`请输入需要忽略的表，多个用英文逗号隔开（默认为${defaultIgnoreTablesInput || '空'}）：`, defaultIgnoreTablesInput);
     ignoreTables = ignoreTablesInput.split(",").map(table => table.trim());
 
-    const defaultWithDataTablesInput = "_page,_resource,_constant,_constant_ui,_group,_role,_user_group_role,_user_group_role_page,_user_group_role_resource";
-    const withDataTablesInput = await prompt(`请输入需要导出数据的表，多个用英文逗号隔开（默认为：${defaultWithDataTablesInput}）：`, defaultWithDataTablesInput);
-    withDataTables = withDataTablesInput.split(",").map(table => table.trim());
-    
+  	let withDataTablesInput = null;
+    if (needExportData) {  
+      const defaultWithDataTablesInput = "_page,_resource,_constant,_constant_ui,_group,_role,_user_group_role,_user_group_role_page,_user_group_role_resource";
+      withDataTablesInput = await prompt(`请输入需要导出数据的表，多个用英文逗号隔开（默认为：${defaultWithDataTablesInput}）：`, defaultWithDataTablesInput);
+      withDataTables = withDataTablesInput.split(",").map(table => table.trim());
+    }
+
     const knex = Knex({
         client: 'mysql',
         connection,
     });
     const databasesRaw = await knex.raw("SHOW DATABASES");
     const databaseList = databasesRaw[0].filter(row => ignoreDatabases.indexOf(row.Database) == -1).map((row) => ({ database: row.Database}));
-    await confirmTip(`数据库列表：\x1b[31m\n${databaseList.map(database => database.database).join('\n')}\x1b[0m\n数据库URL：\n\x1b[31m${connection.host}:${connection.port}\x1b[0m\n确定要导出数据库文件吗？[y/n] `);
+    
+    const confirmExportInput = await prompt(`数据库列表：\x1b[31m\n${databaseList.map(database => database.database).join('\n')}\x1b[0m\n数据库URL：\n\x1b[31m${connection.host}:${connection.port}\x1b[0m\n确定要导出数据库文件吗（默认y）[y/n]？ `, 'y');
+    if (confirmExportInput.toLowerCase() != 'y') {
+      process.exit(0);
+    }
 
-    const defaultSqlFileDir = path.join(__dirname, './sql')
+    const defaultSqlFileDir = path.join('/www/backup/mysql_dump')
     const sqlFileDir = await prompt(`请输入导出数据库的文件位置（默认为：${defaultSqlFileDir}）：`, defaultSqlFileDir);
-    if (!fs.existsSync(sqlFileDir)) {
-        fs.mkdirSync(sqlFileDir);
-        console.log("已自动创建目录" + sqlFileDir)
+    if (fs.existsSync(sqlFileDir)) {
+      const clearSqlFileDirInput = await prompt(`${sqlFileDir}目录已存在，需要清空目录吗（默认n）[y/n]？`, 'n');
+      if (clearSqlFileDirInput.toLowerCase() == 'y') {
+        // fs.rmdirSync(sqlFileDir, { recursive: true });
+        await exec(`rm -rf ${sqlFileDir}/*`)
+        console.log("已清空目录" + sqlFileDir)
+      }
     } 
+    
+    if (!fs.existsSync(sqlFileDir)) {
+      fs.mkdirSync(sqlFileDir);
+      console.log("已自动创建目录" + sqlFileDir)
+    }
 
     for (let i = 0; i < databaseList.length; i++) {
         const database = databaseList[i];
@@ -198,11 +241,15 @@ let replace = [
     console.log(`- 导出数据库：\n${databaseList.map(database => "  " + database.database).join('\n')}`)
     console.log(`- 忽略库：${ignoreDatabasesInput}`)
     console.log(`- 忽略表：${ignoreTablesInput}`)
-    console.log(`- 带数据表：${withDataTablesInput}`)
+    if (needExportData) {
+      console.log(`- 带数据表：${withDataTablesInput}`)
+    }
     console.log(`- 导出目录：${sqlFileDir}`)
     console.log("---------------------------后续操作指引❗❗----------------------------")
     console.log(`请在${sqlFileDir}复制到目标服务器并执行 服务器备份恢复-MySQL数据库批量导入 脚本工具进行批量导入`)
     console.log("=====================================================================")
     rl.close();
-    process.exit(0);
+    setTimeout(() => {
+      process.exit(0);
+    }, 3000)
 })();

@@ -29,9 +29,9 @@ Install_Plugin()
 {
 	echo '正在安装脚本文件...' > $install_tmp
 
-	APP_DIR=${serverPath}/source/frp
+	APP_DIR=${serverPath}/source/frp-new
 
-	mkdir -p $serverPath/frp
+	mkdir -p $serverPath/frp-new
 	mkdir -p $APP_DIR
 
 	rm -rf $serDir/frpc.service
@@ -41,28 +41,28 @@ Install_Plugin()
 	if [ "$OSNAME" == "macos" ];then
 		wget  --no-check-certificate -O $APP_DIR/frp.tar.gz https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_darwin_amd64.tar.gz
 		cd $APP_DIR && tar -zxvf $APP_DIR/frp.tar.gz
-		mv $APP_DIR/frp_${VERSION}_darwin_amd64/* $serverPath/frp
+		mv $APP_DIR/frp_${VERSION}_darwin_amd64/* $serverPath/frp-new
 	else
 		wget  --no-check-certificate -O $APP_DIR/frp.tar.gz https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_linux_amd64.tar.gz
 		cd $APP_DIR && tar -zxvf $APP_DIR/frp.tar.gz
-		mv $APP_DIR/frp_${VERSION}_linux_amd64/* $serverPath/frp
+		mv $APP_DIR/frp_${VERSION}_linux_amd64/* $serverPath/frp-new
 	fi
 
 	# rm -rf $APP_DIR/frp.tar.gz
 	# rm -rf $APP_DIR/frp_${VERSION}_linux_amd64
 
-	echo ${VERSION} > $serverPath/frp/version.pl
+	echo ${VERSION} > $serverPath/frp-new/version.pl
 	echo 'install frpc' > $install_tmp
 
 	#初始化 
-	cd ${rootPath} && python3 ${rootPath}/plugins/frp/index.py start ${type}
-	cd ${rootPath} && python3 ${rootPath}/plugins/frp/index.py initd_install ${type}
+	cd ${rootPath} && python3 ${rootPath}/plugins/frp-new/index.py start ${type}
+	cd ${rootPath} && python3 ${rootPath}/plugins/frp-new/index.py initd_install ${type}
 }
 
 
 Uninstall_Plugin()
 {
-	rm -rf $serverPath/frp
+	rm -rf $serverPath/frp-new
 
 	if [ ! -d $serDir ];then
 		echo "pass"

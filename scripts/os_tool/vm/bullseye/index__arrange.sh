@@ -32,9 +32,9 @@ fi
 show_menu() {
     echo "==================vm bullseye os-tools=================="
     echo "请选择整理工具:"
-    echo "1. 整理项目目录-第①步（生成复制wwwroot下的项目upload、multipartTmp目录到wwwstorage脚本文件）"
-    echo "2. 整理项目目录-第②步（生成链接wwwroot下的项目upload、multipartTmp目录到wwwstorage脚本文件）"
-    echo "3. 整理项目目录（生成移动并链接wwwroot下的项目upload、multipartTmp目录到wwwstorage脚本文件）"
+    echo "1. 整理项目目录-第①步（生成复制wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
+    echo "2. 整理项目目录-第②步（生成链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
+    echo "3. 整理项目目录（生成移动并链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
     echo "========================================================"
 }
 
@@ -66,7 +66,7 @@ case $choice in
     download_and_run arrange__generate_link_dirs_to_wwwstorage.sh
     ;;
 3)
-    download_and_run arrange__generate_move_and_link_upload_to_wwwstorage.sh
+    download_and_run arrange__generate_move_and_link_dirs_to_wwwstorage.sh
     ;;
 esac
 

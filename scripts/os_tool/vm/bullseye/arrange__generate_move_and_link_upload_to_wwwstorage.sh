@@ -2,19 +2,21 @@
 
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
-script_file="move_and_link_upload_to_wwwstorage.sh"
+script_file="move_and_link_dirs_to_wwwstorage.sh"
 
-read -p "确定要生成移动并链接${project_dir}下的upload目录到${storage_dir}的脚本文件吗？（默认y）[y/n]: " choice
-choice=${choice:-"y"}
+read -p "请输入需要移动并链接的目录（多个用英文逗号隔开，默认为 upload,multipartTmp）: " dirs_input
+dirs_input=${dirs_input:-"upload,multipartTmp"}
+
+# 将逗号替换为管道，以便在find命令中使用
+IFS=',' read -ra dirs <<< "$dirs_input"
 
 echo "" > $script_file
 
-if [ $choice == "y" ]; then
-
-    # 搜索所有目录，排除"node_modules"、"logs"、"run"目录
-    find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -name "upload" -type d -print | while read dir
+# 搜索所有目录，排除"node_modules"、"logs"、"run"目录
+for cur_dir in "${dirs[@]}"; do
+    find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -name "$cur_dir" -type d -print | while read dir
     do
-		if [[ $dir != *"/app/"* ]]; then
+        if [[ $dir != *"/app/"* ]]; then
             # 获取相对路径
             relative_path="${dir#$project_dir}"
 
@@ -41,14 +43,13 @@ if [ $choice == "y" ]; then
             echo "|-- 添加 链接${dir} 到 ${target_dir}命令成功✅"
         fi
     done
+done
 
-    
-    echo ""
-    echo "===========================整理完成✅=========================="
-    echo "- 项目所在目录：$project_dir"
-    echo "- 项目数据存放目录：$storage_dir"
-    echo "---------------------------------------------------------------"
-    echo "已生成移动并连接${project_dir}下的upload目录到${storage_dir}的脚本文件： ${script_file}，请手动确认脚本内容并执行该脚本完成操作："
-    echo "bash ${script_file}"
-    echo "==============================================================="
-fi
+echo ""
+echo "===========================整理完成✅=========================="
+echo "- 项目所在目录：$project_dir"
+echo "- 项目数据存放目录：$storage_dir"
+echo "---------------------------------------------------------------"
+echo "已生成移动并连接${project_dir}下的${dirs_input}目录到${storage_dir}的脚本文件： ${script_file}，请手动确认脚本内容并执行该脚本完成操作："
+echo "bash ${script_file}"
+echo "==============================================================="

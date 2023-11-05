@@ -839,8 +839,6 @@ def lsyncdAdd():
             "**/*.log",
             "**/*.tmp",
             "**/*.temp",
-            ".git",
-            ".gitignore",
             ".user.ini",
             "node_modules",
             "logs",

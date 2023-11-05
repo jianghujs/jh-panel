@@ -437,6 +437,24 @@ function lsyncdDelete(name){
     });
 }
 
+function lsyncdStatus(name, status){
+  var confirm = layer.confirm(status == 'disabled'?'暂停后将无法自动运行，您真的要停用吗？':'该任务已停用，是否要启用这个任务', {title:'提示',icon:3,closeBtn:1},function(index) {
+		if (index > 0) {
+			var loadT = layer.msg('正在设置状态，请稍后...',{icon:16,time:0,shade: [0.3, '#000']});
+      var args = {};
+      args['name'] = name;
+      args['status'] = status;
+      rsPost('lsyncd_status', args, function(rdata){
+          var rdata = $.parseJSON(rdata.data);
+					layer.close(loadT);
+					layer.close(confirm);
+          layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});
+          setTimeout(function(){lsyncdSend();},1000);
+      });
+		}
+	});
+  
+}
 
 function lsyncdRun(name){
     var args = {};
@@ -582,6 +600,7 @@ function lsyncdSend(){
         con += '<div class="divtable" style="margin-top:5px;"><table class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0">';
         con += '<thead><tr>';
         con += '<th>名称(标识)</th>';
+        con += '<th>状态</th>';
         con += '<th>源目录</th>';
         con += '<th>同步到</th>';
         con += '<th>模式</th>';
@@ -610,8 +629,13 @@ function lsyncdSend(){
 
             let target_path = list[i]['conn_type'] == 'ssh'? (list[i]['ip']+":"+list[i]['target_path']) : list[i]['ip']+":"+list[i]['name']
 
+            let status = list[i]['status'] != 'disabled' ?
+            '<td><span class="btOpen" onclick="lsyncdStatus(\'' + list[i]['name'] + '\',\'disabled\')" style="color:rgb(92, 184, 92);cursor:pointer" title="停用任务">正常<span class="glyphicon glyphicon-play"></span></span></td>' 
+            :'<td><span onclick="lsyncdStatus(\''+ list[i]['name'] +'\',\'enabled\')" class="btClose" style="color:red;cursor:pointer" title="启用任务">停用<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span></span></td>';
+
             con += '<tr>'+
                 '<td><div class="overflow_hide" style="width: 120px;" title="' + list[i]['name'] + '">' + list[i]['name']+'</div></td>' +
+                status +
                 '<td><a class="btlink overflow_hide" style="width:80px;" onclick="openNewWindowPath(\''+list[i]['path']+'\')" title="' + list[i]['path'] + '">' + list[i]['path']+'</a></td>' +
                 '<td><div class="overflow_hide" style="width: 120px;" title="' + target_path + '">' + target_path+'</div></td>' +
                 '<td>' + mode+'</td>' +

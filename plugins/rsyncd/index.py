@@ -594,20 +594,15 @@ def makeLsyncdConf(data):
             mw.writeFile(name_dir + "/cmd", cmd)
             mw.execShell("cmod +x " + name_dir + "/cmd")
 
-            if t['realtime'] == "false":
-                continue
-
-            # print(x, t)
-
-
-            # 生成lsyncd配置
-            exclude_str = json.dumps(t['exclude'])
-            exclude_str = exclude_str.replace("[", "{")
-            exclude_str = exclude_str.replace("]", "}")
-            # 兼容旧配置，SSH同步的方式统一maxProcesses为1
-            content = re.sub(r"maxProcesses = \d*", "maxProcesses = 1", content)  
-            if t['conn_type'] == 'ssh':
-              content += f"""sync {{
+            if t['status'] != 'disabled' and t['realtime'] == "true":
+              # 生成lsyncd配置
+              exclude_str = json.dumps(t['exclude'])
+              exclude_str = exclude_str.replace("[", "{")
+              exclude_str = exclude_str.replace("]", "}")
+              # 兼容旧配置，SSH同步的方式统一maxProcesses为1
+              content = re.sub(r"maxProcesses = \d*", "maxProcesses = 1", content)  
+              if t['conn_type'] == 'ssh':
+                content += f"""sync {{
 \tdefault.rsyncssh,
 \tsource = "{t['path']}",
 \thost = "{t['ip']}",
@@ -627,9 +622,9 @@ def makeLsyncdConf(data):
   \t\tport = {t['ssh_port']},
 \t}}
 }}
-              """
-            else:
-              content += f"""sync {{
+                """
+              else:
+                content += f"""sync {{
 \tdefault.rsync,
 \tsource = "{t['path']}",
 \ttarget = "{t['target_path']}",
@@ -645,7 +640,7 @@ def makeLsyncdConf(data):
 \t\t_extra = {{"--bwlimit={t['rsync']['bwlimit']}", "--port={str(t['rsync']['port'])}"}},
 \t}}
 }}
-              """
+                """
 
     path = getServerDir() + "/lsyncd.conf"
     mw.writeFile(path, content)
@@ -739,6 +734,28 @@ def lsyncdDelete():
 
     # 删除任务目录
     os.system("rm -rf " + getServerDir() + '/send/' + name  + " &")
+    return mw.returnJson(True, "OK")
+
+def lsyncdStatus():
+    args = getArgs()
+    data = checkArgs(args, ['name', 'status'])
+    if not data[0]:
+        return data[1]
+
+    name = args['name']
+    status = args['status']
+    data = getDefaultConf()
+    slist = data['send']["list"]
+    res = lsyncdListFindName(slist, name)
+    retdata = {}
+    if res[0]:
+        list_index = res[1]
+        slist[list_index]["status"] = status
+
+    data['send']["list"] = slist
+    setDefaultConf(data)
+    makeLsyncdConf(data)
+
     return mw.returnJson(True, "OK")
 
 
@@ -1043,6 +1060,8 @@ if __name__ == "__main__":
         print(lsyncdGet())
     elif func == 'lsyncd_delete':
         print(lsyncdDelete())
+    elif func == 'lsyncd_status':
+        print(lsyncdStatus())
     elif func == 'lsyncd_run':
         print(lsyncdRun())
     elif func == 'lsyncd_log':

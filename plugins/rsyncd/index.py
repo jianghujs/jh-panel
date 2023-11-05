@@ -754,11 +754,6 @@ def lsyncdAdd():
     path = args['path']
     edit = (args['edit'] == 'true')
 
-    if not mw.isAppleSystem():
-        os.system("mkdir -p " + path + " &")
-        # os.system("chown -R  www:www " + path + " &")
-        os.system("chmod -R 755 " + path + " &")
-
     conn_type = args['conn_type']
 
     delete = args['delete']
@@ -771,6 +766,13 @@ def lsyncdAdd():
     hour = args['hour']
     minute = args['minute']
     minute_n = args['minute-n']
+
+    
+    if not mw.isAppleSystem():
+        os.system("mkdir -p " + path + " &")
+        # os.system("chown -R  www:www " + path + " &")
+        if conn_type is not 'ssh':
+            os.system("chmod -R 755 " + path + " &")
 
     info = {
         "ip": ip,

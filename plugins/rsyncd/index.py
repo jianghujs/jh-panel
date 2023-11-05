@@ -771,7 +771,7 @@ def lsyncdAdd():
     if not mw.isAppleSystem():
         os.system("mkdir -p " + path + " &")
         # os.system("chown -R  www:www " + path + " &")
-        if conn_type is not 'ssh':
+        if conn_type != 'ssh':
             os.system("chmod -R 755 " + path + " &")
 
     info = {

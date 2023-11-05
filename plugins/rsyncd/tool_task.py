@@ -51,7 +51,7 @@ def getConfigTpl():
 def createBgTask(data):
     removeBgTask()
     for d in data:
-        # TODO 只有定时且启用的任务才需要创建
+        # 只有定时且启用的任务才需要创建
         if d['status'] != 'disabled' and d['realtime'] == "false":
             createBgTaskByName(d['name'], d)
 

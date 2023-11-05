@@ -10,7 +10,7 @@
 	"checks":"server/rsyncd",
 	"path": "server/rsyncd",
 	"author":"samba",
-	"home":"https://rsync.samba.org/",
+	"home":"https://lsyncd.github.io/lsyncd/",
 	"date":"2019-03-05",
 	"pid":"-1"
 }

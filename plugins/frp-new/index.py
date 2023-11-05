@@ -17,7 +17,7 @@ if mw.isAppleSystem():
 
 
 def getPluginName():
-    return 'frp'
+    return 'frp-new'
 
 
 def getPluginDir():

@@ -18,7 +18,7 @@ PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 app_file={$SERVER_PATH}
 
 app_start(){
-    cd $app_file/frp
+    cd $app_file/frp-new
 	isStart=`ps -ef|grep frps |grep -v grep | grep -v python | awk '{print $2}'`
 	if [ "$isStart" == '' ];then
         echo -e "Starting frps... \c"

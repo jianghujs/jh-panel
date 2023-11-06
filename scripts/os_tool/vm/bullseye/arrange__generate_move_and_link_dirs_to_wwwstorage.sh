@@ -14,8 +14,8 @@ project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
 script_file="move_and_link_dirs_to_wwwstorage.sh"
 
-read -p "请输入需要移动并链接的目录（多个用英文逗号隔开，默认为 upload,multipartTmp）: " dirs_input
-dirs_input=${dirs_input:-"upload,multipartTmp"}
+read -p "请输入需要移动并链接的目录（多个用英文逗号隔开，默认为 upload: " dirs_input
+dirs_input=${dirs_input:-"upload"}
 
 # 将逗号替换为管道，以便在find命令中使用
 IFS=',' read -ra dirs <<< "$dirs_input"
@@ -51,6 +51,19 @@ for cur_dir in "${dirs[@]}"; do
             echo "ln -s \"$target_dir\" \"$dir\"" >> $script_file
 
             echo "|-- 添加 链接${dir} 到 ${target_dir}命令成功✅"
+
+            # 如果是upload，则再增加一个创建multipartTmp目录并软链的命令
+            if [[ $cur_dir == "upload" ]]; then
+                echo "# 创建multipartTmp目录" >> $script_file
+                echo "mkdir -p \"${target_dir/upload/multipartTmp}\"" >> $script_file
+                # 判断是否存在multipartTmp目录
+                if [ -d "${dir/upload/multipartTmp}" ]; then
+                    echo "rsync -a --delete \"${dir/upload/multipartTmp}/\" \"${target_dir/upload/multipartTmp}/\"" >> $script_file
+                fi
+                echo "rm -rf \"${dir/upload/multipartTmp}\"" >> $script_file
+                echo "ln -sf \"${target_dir/upload/multipartTmp}\" \"${dir/upload/multipartTmp}\""  >> $script_file
+                echo "|-- 添加 链接${dir/upload/multipartTmp} 到 ${target_dir/upload/multipartTmp} 命令成功✅"
+            fi
         fi
     done
 done

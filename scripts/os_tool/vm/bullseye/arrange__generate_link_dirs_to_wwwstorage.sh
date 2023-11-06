@@ -73,6 +73,19 @@ if [ $choice == "y" ]; then
             echo "ln -s \"$dir\" \"$target_dir\"" >> $script_file
 
             echo "|-- 添加 链接${target_dir} 到 ${dir}命令成功✅"
+
+            # 如果是upload，则再增加一个创建multipartTmp目录并软链的命令
+            if [[ $dir == *"/upload/"* ]]; then
+                echo "mkdir -p \"${target_dir/upload/multipartTmp}\"" >> $script_file
+                # 判断是否存在multipartTmp目录
+                if [ -d "${dir/upload/multipartTmp}" ]; then
+                    echo "rsync -a --delete \"${dir/upload/multipartTmp}/\" \"${target_dir/upload/multipartTmp}/\"" >> $script_file
+                fi
+                echo "rm -rf \"${dir/upload/multipartTmp}\"" >> $script_file
+                echo "ln -sf \"${target_dir/upload/multipartTmp}\" \"${dir/upload/multipartTmp}\""  >> $script_file
+                echo "|-- 添加 链接${dir/upload/multipartTmp} 到 ${target_dir/upload/multipartTmp} 命令成功✅"
+                echo "|-- 添加 创建multipartTmp目录命令成功✅"
+            fi
         fi
     done
 

@@ -1,4 +1,14 @@
 #!/bin/bash
+default_project_dir="/www/wwwroot/"
+default_storage_dir="/www/wwwstorage/"
+
+read -p "输入项目所在目录（默认为：${default_project_dir}）: " project_dir
+project_dir=${project_dir:-${default_project_dir}}
+export PROJECT_DIR=$project_dir
+
+read -p "输入项目数据存放目录（默认为：${default_storage_dir}）: " storage_dir
+storage_dir=${storage_dir:-${default_storage_dir}}
+export STORAGE_DIR=$storage_dir
 
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}

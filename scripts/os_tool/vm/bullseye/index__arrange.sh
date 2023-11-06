@@ -35,6 +35,7 @@ show_menu() {
     echo "1. 整理目录-第①步（生成复制wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
     echo "2. 整理目录-第②步（生成链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
     echo "3. 整理目录（生成移动并链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
+    echo "4. 查找指定目录（查找并生成指定名称（如.git）目录的路径列表文件，可用于rsync、zip打包）"
     echo "========================================================"
 }
 
@@ -44,18 +45,6 @@ show_menu
 # 读取用户的选择
 read -p "请输入选项数字（默认1）: " choice
 choice=${choice:-"1"}
-
-default_project_dir="/www/wwwroot/"
-default_storage_dir="/www/wwwstorage/"
-
-read -p "输入项目所在目录（默认为：${default_project_dir}）: " project_dir
-project_dir=${project_dir:-${default_project_dir}}
-export PROJECT_DIR=$project_dir
-
-read -p "输入项目数据存放目录（默认为：${default_storage_dir}）: " storage_dir
-storage_dir=${storage_dir:-${default_storage_dir}}
-export STORAGE_DIR=$storage_dir
-
 
 # 根据用户的选择执行对应的操作
 case $choice in
@@ -67,6 +56,9 @@ case $choice in
     ;;
 3)
     download_and_run arrange__generate_move_and_link_dirs_to_wwwstorage.sh
+    ;;
+4)
+    download_and_run arrange__generate_find_dirs_path_file.sh
     ;;
 esac
 

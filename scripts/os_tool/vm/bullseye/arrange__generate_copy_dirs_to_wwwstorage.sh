@@ -14,7 +14,7 @@ echo "" > $script_file
 
 for cur_dir in "${dirs[@]}"; do
   # 搜索所有目录，排除"node_modules"、"logs"、"run"目录
-  find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" -o -name ".git" \) -prune -o -name "$cur_dir" -type d -print | while read dir
+  find "$project_dir" -type d \( -name "node_modules" -o -name "logs" -o -name "run" \) -prune -o -name "$cur_dir" -type d -print | while read dir
   do
     if [[ $dir != *"/app/"* ]]; then
         # 获取相对路径

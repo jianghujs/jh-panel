@@ -26,9 +26,9 @@ read -p "输入项目所在目录（默认为：${default_project_dir}）: " pro
 project_dir=${project_dir:-${default_project_dir}}
 export PROJECT_DIR=$project_dir
 
-# 提示"请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）:"
-read -p "请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）: " ignore_dirs_input
-ignore_dirs_input=${ignore_dirs_input:-"node_modules,logs,run,.git"}
+# 提示"请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run）:"
+read -p "请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run）: " ignore_dirs_input
+ignore_dirs_input=${ignore_dirs_input:-"node_modules,logs,run"}
 IFS=',' read -ra ignore_dirs <<< "$ignore_dirs_input"
 
 # 定义存储迁移信息的json对象（如：migrate_info_project）

@@ -569,6 +569,9 @@ def makeLsyncdConf(data):
             name_dir = send_dir + "/" + t["name"]
             if not os.path.exists(name_dir):
                 mw.execShell("mkdir -p " + name_dir)
+            name_log_dir = name_dir + "/logs"
+            if not os.path.exists(name_log_dir):
+                mw.execShell("mkdir -p " + name_log_dir)
 
             cmd_exclude = name_dir + "/exclude"
             cmd_exclude_txt = ""
@@ -594,10 +597,10 @@ def makeLsyncdConf(data):
             mw.writeFile(name_dir + "/cmd", cmd)
             mw.execShell("cmod +x " + name_dir + "/cmd")
 
-            if t['status'] != 'disabled' and t['realtime'] == "true":
-              log_dir = getServerDir() + '/logs'
-              if not os.path.exists(log_dir):
-                  mw.execShell("mkdir -p " + log_dir)
+            if t.get('status', 'enabled') != 'disabled' and t['realtime'] == "true":
+              realtime_log_dir = getServerDir() + '/logs'
+              if not os.path.exists(realtime_log_dir):
+                  mw.execShell("mkdir -p " + realtime_log_dir)
 
               # 生成lsyncd配置
               exclude_str = json.dumps(t['exclude'])
@@ -747,7 +750,7 @@ def lsyncdStatus():
         return data[1]
 
     name = args['name']
-    status = args['status']
+    status = args.get('status', 'enabled')
     data = getDefaultConf()
     slist = data['send']["list"]
     res = lsyncdListFindName(slist, name)

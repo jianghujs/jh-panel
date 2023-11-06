@@ -465,11 +465,12 @@ function lsyncdRun(name){
     });
 }
 
-function lsyncdLog(name){
+function lsyncdLog(name, realtime){
     // var args = {};
     // args["name"] = name;
     // pluginStandAloneLogs("rsyncd", '', "lsyncd_log", JSON.stringify(args));
-    openNewWindowPath(`/www/server/rsyncd/send/${name}/logs/`)
+    let logDir = realtime == 'true'? `/www/server/rsyncd/logs/` : `/www/server/rsyncd/send/${name}/logs/`;
+    openNewWindowPath(logDir)
 }
 
 
@@ -594,8 +595,7 @@ function lsyncdSend(){
 
         con += '<div style="padding-top:1px;">\
                 <button class="btn btn-success btn-sm" onclick="createSendTask();">创建发送任务</button>\
-                <button class="btn btn-success btn-sm" onclick="lsyncdConfLog();">实时日志</button>\
-                <button class="btn btn-success btn-sm" onclick="lsyncdLogCut();">日志切割</button>\
+                <button class="btn btn-default btn-sm" onclick="lsyncdLogCut();">实时日志切割</button>\
             </div>';
 
         con += '<div class="divtable" style="margin-top:5px;"><table class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0">';
@@ -643,7 +643,7 @@ function lsyncdSend(){
                 '<td>' + period +'</td>' +
                 '<td>\
                     <a class="btlink" onclick="lsyncdRun(\''+list[i]['name']+'\')">同步</a>\
-                    | <a class="btlink" onclick="lsyncdLog(\''+list[i]['name']+'\')">日志</a>\
+                    | <a class="btlink" onclick="lsyncdLog(\''+list[i]['name']+'\', \''+list[i]['realtime']+'\')">日志</a>\
                     | <a class="btlink" onclick="lsyncdExclude(\''+list[i]['name']+'\')">过滤器</a>\
                     | <a class="btlink" onclick="createSendTask(\''+list[i]['name']+'\')">编辑</a>\
                     | <a class="btlink" onclick="lsyncdDelete(\''+list[i]['name']+'\')">删除</a>\
@@ -864,7 +864,7 @@ function lsyncdLogCut() {
   layer.open({
     type: 1,
     area: "560px",
-    title: '日志切割配置',
+    title: '实时日志切割配置',
     closeBtn: 1,
     shift: 5,
     shadeClose: false,

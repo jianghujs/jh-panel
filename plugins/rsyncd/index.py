@@ -595,6 +595,10 @@ def makeLsyncdConf(data):
             mw.execShell("cmod +x " + name_dir + "/cmd")
 
             if t['status'] != 'disabled' and t['realtime'] == "true":
+              log_dir = getServerDir() + '/logs'
+              if not os.path.exists(log_dir):
+                  mw.execShell("mkdir -p " + log_dir)
+
               # 生成lsyncd配置
               exclude_str = json.dumps(t['exclude'])
               exclude_str = exclude_str.replace("[", "{")

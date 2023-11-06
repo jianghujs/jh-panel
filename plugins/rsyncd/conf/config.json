@@ -16,10 +16,10 @@
     },
     "send":{
         "default":{
-            "logfile": "/www/server/rsyncd/lsyncd.log",
+            "logfile": "/www/server/rsyncd/logs/lsyncd.log",
             "inotifyMode": "CloseWrite",
             "maxProcesses": 1,
-            "statusFile": "/www/server/rsyncd/lsyncd.status"
+            "statusFile": "/www/server/rsyncd/logs/lsyncd.status"
         },
         "list":[]
     }

@@ -926,8 +926,8 @@ function getLsyncdLogCutCron() {
       $("#lsyncd-log-cut-cron #lsyncd-log-cut-cron-update").css("display", "none");
       $("#lsyncd-log-cut-cron #lsyncd-log-cut-cron-delete").css("display", "none");
       $("#lsyncd-log-cut-cron input[name='id']").val("");
-      $("#lsyncd-log-cut-cron input[name='hour']").val(1);
-      $("#lsyncd-log-cut-cron input[name='minute']").val(30);
+      $("#lsyncd-log-cut-cron input[name='hour']").val(0);
+      $("#lsyncd-log-cut-cron input[name='minute']").val(0);
       $("#lsyncd-log-cut-cron input[name='saveAllDay']").val(3);
       $("#lsyncd-log-cut-cron input[name='saveOther']").val(1);
       $("#lsyncd-log-cut-cron input[name='saveMaxDay']").val(3);

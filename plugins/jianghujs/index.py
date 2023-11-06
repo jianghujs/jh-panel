@@ -280,6 +280,63 @@ def projectList():
     return mw.returnJson(True, 'ok', data)
 
 
+def projectStartExcute():
+    args = getArgs()
+    data = checkArgs(args, ['id', 'action'])
+    if not data[0]:
+        return data[1]
+    ids = args['id'].split(',')
+    action = args['action']
+    for id in ids:
+        project = getOne('project', id)
+        if not project:
+            return mw.returnJson(False, '项目不存在!')
+        echo = 'jianghujs_' + project.get('echo', '')
+        autostart_script = project['autostart_script']
+        if autostart_script == '':
+            return mw.returnJson(False, '请配置项目「' + project.get('name', '') + '」的自启动脚本!')
+        
+        # 自动添加重试逻辑
+        retry_logic = '''
+    attempt=0
+    until [ $attempt -ge 3 ]
+    do
+        {} && break
+        attempt=$[$attempt+1]
+        sleep 5
+    done
+        '''
+        lines = autostart_script.split('\n')
+        for i, line in enumerate(lines):
+            if (line.strip().startswith("npm start") or line.strip().startswith("npm run start")) and "&& break" not in line:
+                lines[i] = retry_logic.format(line.strip())
+        autostart_script = '\n'.join(lines)
+
+
+        # 创建自启动脚本文件
+        autostartFile = '/etc/init.d/' + echo
+        mw.writeFile(autostartFile, autostart_script)
+        mw.execShell('chmod 755 ' + autostartFile)
+
+        
+        # 判断自启动脚本是否启用
+        autostartStatusFile = '/etc/rc4.d/S01' + echo
+        if action == 'enable':
+            if not os.path.exists(autostartStatusFile):
+                mw.execShell('update-rc.d ' + echo + ' defaults 80 80')
+                # return mw.returnJson(True, '已开启自启动!') 
+        else:
+            if os.path.exists(autostartStatusFile):
+                mw.execShell('update-rc.d -f ' + echo + ' remove')
+                # return mw.returnJson(True, '已关闭自启动!')
+        time.sleep(0.2)
+
+    if action == 'enable':
+        return mw.returnJson(True, '已批量开启自启动!')
+    else:
+        return mw.returnJson(True, '已批量关闭自启动!')
+    
+
 def projectToggleAutostart():
     args = getArgs()
     data = checkArgs(args, ['id'])
@@ -621,6 +678,8 @@ if __name__ == "__main__":
         print(projectUpdate())
     elif func == 'project_list':
         print(projectList())
+    elif func == 'project_start_excute':
+        print(projectStartExcute())
     elif func == 'project_toggle_autostart':
         print(projectToggleAutostart())
     elif func == 'project_add':

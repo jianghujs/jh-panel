@@ -22,6 +22,8 @@ function refreshTable() {
                 <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">导入项目</button>\
                 <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectStartBatch();">批量启动</button>\
                 <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectStopBatch();">批量停止</button>\
+                <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectEnableStartBatch();">批量开启自启</button>\
+                <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectDisableStartBatch();">批量取消自启</button>\
             </div>\
             <div>\
                 <input type="text" id="jianghujsSearchInput" class="search ser-text pull-left" placeholder="请输入关键词" onkeydown="handleSearch()"/>\
@@ -616,7 +618,29 @@ function projectStopBatch() {
     checkedIds = list.toArray().map(o => o.value)
     projectScriptExcute('stop', checkedIds.join(','))
 }
+function projectStartExcute(action, id) {
+    var data = "id="+id+"&action="+action;
 
+    setTimeout(function() {
+        refreshTable()
+    }, 10)
+    requestApi('project_start_excute', data, function(data){
+        var rdata = $.parseJSON(data.data);
+        refreshTable();
+        layer.msg(rdata.msg,{icon:rdata.status?1:2});
+    });
+}
+
+function projectEnableStartBatch() {
+    var list = $('.plugin-table-body input[type="checkbox"].check:checked');
+    checkedIds = list.toArray().map(o => o.value)
+    projectStartExcute('enable', checkedIds.join(','))
+}
+function projectDisableStartBatch() {
+    var list = $('.plugin-table-body input[type="checkbox"].check:checked');
+    checkedIds = list.toArray().map(o => o.value)
+    projectStartExcute('disable', checkedIds.join(','))
+}
 
 // 绑定自动清理日志开关事件
 function bindProjectLogCleanSwitch() {

@@ -21,7 +21,7 @@
 	}
 
 	var sUrl = '/site/list';
-	var pdata = 'limit=10&p=' + page + '&search=' + search + order + type;
+	var pdata = 'limit=1000&p=' + page + '&search=' + search + order + type;
 	var loadT = layer.load();
 	//取回数据
 	$.post(sUrl, pdata, function(data) {
@@ -121,7 +121,7 @@
 			$(this).removeClass("open");
 		});
 		//输出分页
-		$("#webPage").html(data.page);
+		// $("#webPage").html(data.page);
 		// $("#webPage").html('<div class="site_type"><span>站点分类:</span><select class="bt-input-text mr5" style="width:100px"><option value="-1">全部分类</option><option value="0">默认分类</option></select></div>');
 		
 		$(".btlinkbed").click(function(){

@@ -469,8 +469,8 @@ function lsyncdLog(name, realtime){
     // var args = {};
     // args["name"] = name;
     // pluginStandAloneLogs("rsyncd", '', "lsyncd_log", JSON.stringify(args));
-    let logDir = realtime == 'true'? `/www/server/rsyncd/logs/` : `/www/server/rsyncd/send/${name}/logs/`;
-    openNewWindowPath(logDir)
+    // let logDir = realtime == 'true'? `/www/server/rsyncd/logs/` : `/www/server/rsyncd/send/${name}/logs/`;
+    openNewWindowPath(`/www/server/rsyncd/send/${name}/logs/`)
 }
 
 
@@ -579,7 +579,8 @@ function lsyncdExclude(name){
 }
 
 function lsyncdConfLog(){
-    pluginStandAloneLogs("rsyncd","","lsyncd_conf_log");;
+    // pluginStandAloneLogs("rsyncd","","lsyncd_conf_log");;
+    openNewWindowPath(`/www/server/rsyncd/logs/`)
 }
 
 function lsyncdSend(){
@@ -595,6 +596,7 @@ function lsyncdSend(){
 
         con += '<div style="padding-top:1px;">\
                 <button class="btn btn-success btn-sm" onclick="createSendTask();">创建发送任务</button>\
+                <button class="btn btn-default btn-sm" onclick="lsyncdConfLog();">实时日志</button>\
                 <button class="btn btn-default btn-sm" onclick="lsyncdLogCut();">实时日志切割</button>\
             </div>';
 

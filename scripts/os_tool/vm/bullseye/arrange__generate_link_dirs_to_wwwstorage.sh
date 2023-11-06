@@ -85,6 +85,10 @@ if [ $choice == "y" ]; then
               # 如果是upload，则再增加一个创建multipartTmp目录并软链的命令
               if [[ $cur_dir == "upload" ]]; then
                   echo "mkdir -p \"${dir/upload/multipartTmp}\"" >> $script_file
+                  # 判断是否存在multipartTmp目录
+                  if [ -d "${target_dir/upload/multipartTmp}" ]; then
+                      echo "rsync -a --delete \"${target_dir/upload/multipartTmp}/\" \"${dir/upload/multipartTmp}/\"" >> $script_file
+                  fi
                   echo "rm -rf \"${target_dir/upload/multipartTmp}\"" >> $script_file
                   echo "ln -sf \"${dir/upload/multipartTmp}\" \"${target_dir/upload/multipartTmp}\""  >> $script_file
                   echo "|-- 添加 链接${target_dir/upload/multipartTmp} 到 ${dir/upload/multipartTmp} 命令成功✅"

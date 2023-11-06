@@ -51,8 +51,8 @@ Install_rsyncd()
 	mkdir -p $serverPath/rsyncd/send
 	mkdir -p $serverPath/rsyncd/logs
 
-  echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
-  sudo sysctl -p
+  echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf
+  sysctl -p
 	
 	echo '2.0' > $serverPath/rsyncd/version.pl
 	echo '安装完成' > $install_tmp

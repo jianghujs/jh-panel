@@ -535,7 +535,7 @@ def lsyncdReload():
     data = mw.execShell(
         "ps -ef|grep lsyncd |grep -v grep | grep -v python | awk '{print $2}'")
     if data[0] == '':
-        mw.execShell('systemctl start lsyncd')
+        mw.execShell(' start lsyncd')
     else:
         mw.execShell('systemctl restart lsyncd')
 
@@ -653,9 +653,9 @@ def makeLsyncdConf(data):
     mw.writeFile(path, content)
 
     lsyncdReload()
-
-    import tool_task
-    tool_task.createBgTask(lsyncd_list)
+    if t['realtime'] == "false":
+      import tool_task
+      tool_task.createBgTask(lsyncd_list)
 
 
 def lsyncdListFindIp(slist, ip):

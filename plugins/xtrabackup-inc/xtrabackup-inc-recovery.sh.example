@@ -33,7 +33,7 @@ mkdir -p /www/server/xtrabackup-inc/logs
 # 复制全量目录
 rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/
 # 合并增量内容
-if [ ! -d "$BACKUP_INC_PATH" ];then
+if [ -d "$BACKUP_INC_PATH" ];then
     xtrabackup --prepare --apply-log-only --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log
     xtrabackup --prepare --apply-log-only --target-dir=//www/backup/xtrabackup_data_restore --incremental-dir=$BACKUP_INC_PATH &>> $LOG_DIR/recovery_$timestamp.log
 fi

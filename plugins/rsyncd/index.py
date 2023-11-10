@@ -535,7 +535,7 @@ def lsyncdReload():
     data = mw.execShell(
         "ps -ef|grep lsyncd |grep -v grep | grep -v python | awk '{print $2}'")
     if data[0] == '':
-        mw.execShell('systemctl start lsyncd')
+        mw.execShell(' start lsyncd')
     else:
         mw.execShell('systemctl restart lsyncd')
 
@@ -569,6 +569,9 @@ def makeLsyncdConf(data):
             name_dir = send_dir + "/" + t["name"]
             if not os.path.exists(name_dir):
                 mw.execShell("mkdir -p " + name_dir)
+            name_log_dir = name_dir + "/logs"
+            if not os.path.exists(name_log_dir):
+                mw.execShell("mkdir -p " + name_log_dir)
 
             cmd_exclude = name_dir + "/exclude"
             cmd_exclude_txt = ""
@@ -594,7 +597,11 @@ def makeLsyncdConf(data):
             mw.writeFile(name_dir + "/cmd", cmd)
             mw.execShell("cmod +x " + name_dir + "/cmd")
 
-            if t['status'] != 'disabled' and t['realtime'] == "true":
+            if t.get('status', 'enabled') != 'disabled' and t['realtime'] == "true":
+              realtime_log_dir = getServerDir() + '/logs'
+              if not os.path.exists(realtime_log_dir):
+                  mw.execShell("mkdir -p " + realtime_log_dir)
+
               # 生成lsyncd配置
               exclude_str = json.dumps(t['exclude'])
               exclude_str = exclude_str.replace("[", "{")
@@ -646,9 +653,9 @@ def makeLsyncdConf(data):
     mw.writeFile(path, content)
 
     lsyncdReload()
-
-    import tool_task
-    tool_task.createBgTask(lsyncd_list)
+    if t['realtime'] == "false":
+      import tool_task
+      tool_task.createBgTask(lsyncd_list)
 
 
 def lsyncdListFindIp(slist, ip):
@@ -743,7 +750,7 @@ def lsyncdStatus():
         return data[1]
 
     name = args['name']
-    status = args['status']
+    status = args.get('status', 'enabled')
     data = getDefaultConf()
     slist = data['send']["list"]
     res = lsyncdListFindName(slist, name)

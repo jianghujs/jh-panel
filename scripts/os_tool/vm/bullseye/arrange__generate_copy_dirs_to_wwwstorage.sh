@@ -1,11 +1,21 @@
 #!/bin/bash
+default_project_dir="/www/wwwroot/"
+default_storage_dir="/www/wwwstorage/"
+
+read -p "输入项目所在目录（默认为：${default_project_dir}）: " project_dir
+project_dir=${project_dir:-${default_project_dir}}
+export PROJECT_DIR=$project_dir
+
+read -p "输入项目数据存放目录（默认为：${default_storage_dir}）: " storage_dir
+storage_dir=${storage_dir:-${default_storage_dir}}
+export STORAGE_DIR=$storage_dir
 
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
 script_file="copy_dirs_to_wwwstorage.sh"
 
-read -p "请输入需要迁移的目录（多个用英文逗号隔开，默认为 upload,multipartTmp）: " dirs_input
-dirs_input=${dirs_input:-"upload,multipartTmp"}
+read -p "请输入需要迁移的目录（多个用英文逗号隔开，默认为 upload）: " dirs_input
+dirs_input=${dirs_input:-"upload"}
 
 # 将逗号替换为管道，以便在find命令中使用
 IFS=',' read -ra dirs <<< "$dirs_input"

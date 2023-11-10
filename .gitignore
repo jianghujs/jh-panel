@@ -180,3 +180,4 @@ mdioks.session-journal
 *.session
 
 node_modules
+package-lock.json

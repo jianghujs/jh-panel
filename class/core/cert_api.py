@@ -1533,9 +1533,9 @@ fullchain.pem       粘贴到证书输入框
                                 # 域名更改类型？
                                 ssl_lets_path = mw.getWebConfSSLLetsDir() + '/' + domain
                                 ssl_acme_path = mw.getAcmeDir() + '/' + domain
-                                if not os.path.exists(ssl_lets_path) or not os.path.exists(ssl_acme_path):
-                                  auth_to = None
-                                  writeLog(
+                                if not os.path.exists(ssl_lets_path) and not os.path.exists(ssl_acme_path):
+                                    auth_to = None
+                                    writeLog(
                                         "|-跳过更改证书的域名: {}".format(self.__config['orders'][i]['domains']))
                                 
                             if not auth_to:

@@ -1517,6 +1517,9 @@ fullchain.pem       粘贴到证书输入框
                             if not auth_to:
                                 continue
 
+
+                            
+
                             for domain in self.__config['orders'][i]['domains']:
                                 if domain.find('*') != -1:
                                     break
@@ -1531,8 +1534,10 @@ fullchain.pem       粘贴到证书输入框
                                 ssl_lets_path = mw.getWebConfSSLLetsDir() + '/' + domain
                                 ssl_acme_path = mw.getAcmeDir() + '/' + domain
                                 if not os.path.exists(ssl_lets_path) and not os.path.exists(ssl_acme_path):
-                                  continue
-
+                                  auth_to = None
+                                  writeLog(
+                                        "|-跳过更改证书的域名: {}".format(self.__config['orders'][i]['domains']))
+                                
                             if not auth_to:
                                 continue
 

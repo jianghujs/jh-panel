@@ -66,7 +66,7 @@ async function getDatabaseChecksum(connection) {
             currentDatabaseChecksum += checksum;
         }
         checksumTotal += currentDatabaseChecksum;
-        Logger.info('|- ' + database + ' Total Checksum: ' + currentDatabaseChecksum, true);
+        Logger.info('|- ' + database + ': ' + currentDatabaseChecksum, true);
         Logger.info('|----------------------------------------------------------');
     }
     Logger.info("|- Total：" + checksumTotal, true);  

@@ -66,10 +66,9 @@ async function getDatabaseChecksum(connection) {
             currentDatabaseChecksum += checksum;
         }
         checksumTotal += currentDatabaseChecksum;
-        Logger.info('|- ' + database + ': ' + currentDatabaseChecksum, true);
-        Logger.info('|----------------------------------------------------------');
+        Logger.info('|- ' + database + ': ' + currentDatabaseChecksum, true);   
     }
-    Logger.info("|- Total：" + checksumTotal, true);  
+    Logger.info("|- All Database Total：" + checksumTotal, true);  
 
     await knex.destroy();
 

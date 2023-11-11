@@ -70,7 +70,7 @@ async function getDatabaseChecksum(connection) {
         Logger.info('|----------------------------------------------------------');
         console.log('|- ' + database + ': ' + currentDatabaseChecksum);
     }
-    console.log("|-- Checksum Total：" + checksumTotal);
+    console.log("|- Total：" + checksumTotal);
 
     await knex.destroy();
 

@@ -2647,8 +2647,14 @@ def getChecksumReport(version):
         checksum_total += current_database_checksum
         mw.writeFile(checksumReportFile, f'|- Total: {current_database_checksum}\n', 'a+')
         # mw.writeFile(checksumReportFile, f'|----------------------------------------------------------\n', 'a+')
-        checksumLogger.info(f'|- {database}: {current_database_checksum}')
-    mw.writeFile(checksumReportFile, f'|- All Database Total：{checksum_total}\n', 'a+')
+        checksumLogger.info(f'|- {database}: {current_database_checksum}') 
+    
+    title = mw.getConfig('title')
+    mw.writeFile(checksumReportFile, f'\n----------------------------------------------------------\n', 'a+')    
+    mw.writeFile(checksumReportFile, f'- Name：{title}\n', 'a+')
+    mw.writeFile(checksumReportFile, f'- All Database Total：{checksum_total}\n', 'a+')
+    mw.writeFile(checksumReportFile, f'----------------------------------------------------------\n', 'a+')    
+    
     checksumLogger.info(f'|- All Database Total：{checksum_total}')
     return mw.returnJson(True, 'ok',  '')
 

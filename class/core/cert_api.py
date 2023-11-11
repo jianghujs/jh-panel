@@ -1536,7 +1536,7 @@ fullchain.pem       粘贴到证书输入框
                                 if not os.path.exists(ssl_lets_path) and not os.path.exists(ssl_acme_path):
                                     auth_to = None
                                     writeLog(
-                                        "|-跳过更改证书的域名: {}".format(self.__config['orders'][i]['domains']))
+                                        "|-跳过已更换证书的域名: {}".format(self.__config['orders'][i]['domains']))
                                 
                             if not auth_to:
                                 continue

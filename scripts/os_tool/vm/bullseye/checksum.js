@@ -66,11 +66,10 @@ async function getDatabaseChecksum(connection) {
             currentDatabaseChecksum += checksum;
         }
         checksumTotal += currentDatabaseChecksum;
-        Logger.info('|-- ' + database + ' Total Checksum: ' + currentDatabaseChecksum);
+        Logger.info('|- ' + database + ' Total Checksum: ' + currentDatabaseChecksum, true);
         Logger.info('|----------------------------------------------------------');
-        console.log('|- ' + database + ': ' + currentDatabaseChecksum);
     }
-    console.log("|- Total：" + checksumTotal);
+    Logger.info("|- Total：" + checksumTotal, true);  
 
     await knex.destroy();
 
@@ -82,7 +81,7 @@ const Logger = {
   clear: () => {
     fs.writeFileSync(logFile, '');
   },
-  info: (content) => {
+  info: (content, echo = false) => {
     if (!writeLog) {
       return; 
     }
@@ -91,6 +90,9 @@ const Logger = {
     }
     const log = fs.readFileSync(logFile, 'utf8');
     fs.writeFileSync(logFile, log + '\n' + content);
+    if (echo) {
+      console.log(content);
+    }
   }
 };
 
@@ -121,7 +123,7 @@ const Logger = {
     console.log("===========================Checksum计算完毕✅==========================")
     console.log(`- Total：${checksum}`)
     console.log("---------------------------后续操作指引❗❗----------------------------")
-    console.log(`如果你要保证两个服务器的数据库是一致的，请先确保两个服务器执行此脚本得到的Total是一致的，如果不一致，请查看${logFile}检查对比每个数据库的checksum值`)
+    console.log(`如果你要保证两个服务器的数据库是一致的，请先确保两个服务器执行此脚本得到的Total是一致的，如果不一致，请对比两边的${logFile}中每个表的checksum值`)
     console.log("=====================================================================")
     rl.close();
     setTimeout(() => {

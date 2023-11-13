@@ -613,15 +613,6 @@ class system_api:
             mw.execShell("rm -rf " + control_notify_pl)
         elif stype == '5':
             mw.execShell("echo 'True' > " + control_notify_pl)
-        elif stype == '6':
-            # 删除服务器报告
-            mw.execShell("rm -rf " + control_report_notify_pl)
-            crontabApi.removeCrond('system_report.sh')
-        elif stype == '7':
-            # 添加服务器报告
-            mw.execShell("echo 'True' > " + control_report_notify_pl)
-            crontabApi.writeCrond('0 0 * * 0 /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
-            
         elif stype == 'del':
             if not mw.isRestart():
                 return mw.returnJson(False, '请等待所有安装任务完成再执行')
@@ -909,7 +900,7 @@ class system_api:
         return mw.returnData(True, 'ok', config_data)
     
 
-    def setReportCycleApi(self):
+    def setReportCycleFileApi(self):
         field_type = request.form.get('type', '')
         week = request.form.get('week', '')
         where1 = request.form.get('where1', '')
@@ -923,15 +914,8 @@ class system_api:
             'hour': hour,
             'minute': minute
         }
-
-        cronConfig, get, name = crontabApi.getCrondCycle(params)
-
         
         control_report_cycle_file = 'data/control_report_cycle.conf'
-        
-        crontabApi.removeCrond('system_report.sh')
-        crontabApi.writeCrond(cronConfig + ' /www/server/jh-panel/scripts/system_report.sh >> /www/wwwlogs/system_report.log')
-        crontabApi.crondReload()
 
         mw.writeFile(control_report_cycle_file, json.dumps(params))
 

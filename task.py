@@ -318,7 +318,7 @@ def systemTask():
 
             # 报告
             mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo)
-
+            
             # print diskInfo
             if count >= 12:
                 try:
@@ -352,15 +352,19 @@ def systemTask():
                     sql.table('load_average').add('pro,one,five,fifteen,addtime', (lpro, load_average[
                         'one'], load_average['five'], load_average['fifteen'], addtime))
 
+
                     # Database
-                    mysqlInfo = sm.getMysqlInfo()
-                    database_list = mysqlInfo.get('database_list', [])
-                    sql.table('database').add('total_size,total_bytes,list,addtime', (
-                        mysqlInfo.get('total_size', 0),
-                        mysqlInfo.get('total_tytes', 0),
-                        json.dumps(mysqlInfo.get('database_list', [])),
-                        addtime
-                    ))
+                    mysql_write_lock_data_key = 'MySQL信息写入面板数据库任务'
+                    if not mw.checkLockValid(mysql_write_lock_data_key, 'day_start'):
+                        mysqlInfo = sm.getMysqlInfo()
+                        database_list = mysqlInfo.get('database_list', [])
+                        sql.table('database').add('total_size,total_bytes,list,addtime', (
+                            mysqlInfo.get('total_size', 0),
+                            mysqlInfo.get('total_tytes', 0),
+                            json.dumps(mysqlInfo.get('database_list', [])),
+                            addtime
+                        ))
+                        mw.updateLockData(mysql_write_lock_data_key)
 
                     lpro = None
                     load_average = None

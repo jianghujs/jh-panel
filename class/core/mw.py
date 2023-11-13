@@ -1870,24 +1870,41 @@ def emailNotifyTest(data):
     data['content'] = data['mail_test']
     return emailNotifyMessage(data)
 
-def getNoticeLockData(stype):
-    lock_file = getPanelTmp() + '/notify_lock.json'
+def getLockData(lock_type):
+    lock_file = getPanelTmp() + '/lock.json'
     if not os.path.exists(lock_file):
         writeFile(lock_file, '{}')
 
     lock_data = json.loads(readFile(lock_file))
-    if stype in lock_data:
-        return lock_data[stype]
+    if lock_type in lock_data:
+        return lock_data[lock_type]
     return {}
 
-def updateNoticeLockData(stype, data):
-    lock_file = getPanelTmp() + '/notify_lock.json'
+def updateLockData(lock_type):
+    lock_file = getPanelTmp() + '/lock.json'
     if not os.path.exists(lock_file):
         writeFile(lock_file, '{}')
 
     lock_data = json.loads(readFile(lock_file))
-    lock_data[stype] = data
+    lock_data[lock_type] = {'do_time': time.time()}
     writeFile(lock_file, json.dumps(lock_data))
+
+def checkLockValid(lock_type, cycle_type = 'day'):
+    lock_data = getLockData(lock_type)
+    if lock_data.get('do_time', None) is None:
+        return False
+
+    now = datetime.now()
+    diff_time = time.time() - lock_data['do_time']
+    if cycle == 'day' and diff_time >= (24 * 60 * 60):
+        return False
+    elif cycle == 'day_start' and diff_time >= (23 * 60 * 60) and now.hour >= 0 and now.hour <= 1:
+        return False
+    elif cycle == 'minute' and diff_time >= (1 * 60):
+        return False
+    else: 
+        return True
+
 
 def notifyMessageTry(msg, msgtype='text', title='江湖面板通知', stype='common', trigger_time=300, is_write_log=True):
 
@@ -2023,7 +2040,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         site_list = siteInfo['site_list']
         
         site_ssl_lock_data_key = '网站SSL证书'
-        site_ssl_lock_data = getNoticeLockData(site_ssl_lock_data_key)
+        site_ssl_lock_data = getLockData(site_ssl_lock_data_key)
         
         error_msg_arr = []
         # CPU
@@ -2061,12 +2078,9 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
                     
                     if site_error_msg != '':
                         error_msg_arr.append(site_error_msg)
-                        site_ssl_lock_data[site_notify_lock_key] = {'do_time': time.time()}
         
         # 发送异常报告
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
             notifyMessage(msg=notify_msg, stype='面板监控', trigger_time=600)
-        
-            # 更新lock文件
-            updateNoticeLockData(site_ssl_lock_data_key, site_ssl_lock_data)
+            updateLockData(site_ssl_lock_data_key)

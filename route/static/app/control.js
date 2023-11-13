@@ -1092,9 +1092,15 @@ function getSystemReportCron() {
 
 
 async function addOrUpdateSystemReportCron(cronSelectorData) {
-    systemReportCron.sBody = systemReportCron.sbody = "bash /www/server/jh-panel/scripts/system_report.sh"
-    $.post(systemReportCron.id? '/crontab/modify_crond': '/crontab/add', {...systemReportCron, ...cronSelectorData},function(rdata){
-        $.post("/system/set_report_cycle_file", cronSelectorData, function(rdata) {},'json');
+    systemReportCron.sBody = systemReportCron.sbody = `
+#!/bin/sh
+pushd /www/server/jh-panel > /dev/null
+bash /www/server/jh-panel/scripts/system_report.sh
+popd > /dev/null
+`
+    data = {...systemReportCron, ...cronSelectorData}
+    $.post(systemReportCron.id? '/crontab/modify_crond': '/crontab/add', data,function(rdata){
+        $.post("/system/set_report_cycle_file", data, function(rdata) {},'json');
         getSystemReportCron();
         layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
     },'json');

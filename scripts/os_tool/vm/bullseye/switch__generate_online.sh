@@ -69,6 +69,10 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-inc增量备份" >> $script_file
   echo "echo \"|- 开启 xtrabackup-inc增量备份 定时任务完成✅\"" >> $script_file
   echo "" >> $script_file
+  echo "# 启用openresty" >> $script_file
+  echo "python3 /www/server/jh-panel/plugins/openresty/index.py start" >> $script_file
+  echo "echo \"|- 启动 OpenResty’ 完成✅\"" >> $script_file
+  echo "" >> $script_file
   echo "# 开启邮件通知" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openEmailNotify" >> $script_file
   echo "echo \"|- 开启 邮件通知 完成✅\"" >> $script_file

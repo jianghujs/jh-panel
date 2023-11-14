@@ -139,12 +139,6 @@ function getStatus(){
 			$("#openNotify").html("<input class='btswitch btswitch-ios' id='notify_switch' type='checkbox'><label class='btswitch-btn' for='notify_switch' onclick='setControl(\"opennotify\",false)'></label>");
 		}
 
-		if(rdata.report_notify_status) {
-			$("#openReport").html("<input class='btswitch btswitch-ios' id='report_notify_switch' type='checkbox' checked><label class='btswitch-btn' for='report_notify_switch' onclick='setControl(\"openReportNotify\", true)'></label>");
-		} else {
-			$("#openReport").html("<input class='btswitch btswitch-ios' id='report_notify_switch' type='checkbox'><label class='btswitch-btn' for='report_notify_switch' onclick='setControl(\"openReportNotify\",false)'></label>");
-		}
-
 		if(rdata.stat_all_status){
 			$("#statAll").html("<input class='btswitch btswitch-ios' id='stat_witch' type='checkbox' checked><label class='btswitch-btn' for='stat_witch' onclick='setControl(\"stat\",true)'></label>");
 		} else{
@@ -152,7 +146,12 @@ function getStatus(){
 		}
 
 		$("#save_day").val(rdata.day);
+        
+        getSystemReportCron()
 
+        $("#systemReportCronDetail .open-cron-selecter-layer").click(() => {
+            openCronSelectorLayer(systemReportCron, {yes: addOrUpdateSystemReportCron});
+        });
 	},'json');
 }
 getStatus();
@@ -1050,273 +1049,68 @@ function openSetNotifyValue() {
 
 
 
-//下拉菜单名称
-function getselectname(){
-	$(".dropdown ul li a").click(function(){
-		var txt = $(this).text();
-		var type = $(this).attr("value");
-		$(this).parents(".dropdown").find("button b").text(txt).attr("val",type);
-	});
+
+
+
+
+// NEW 配置服务器报告
+
+var defaultSystemReportCron = {      
+    name: '[勿删]服务器报告',
+    type: 'day',
+    where1: '',
+    hour: 0,
+    minute: 0,
+    week: '',
+    sType: 'toShell',
+    stype: 'toShell',
+    sName: '',
+    backupTo: 'localhost' };
+var systemReportCron = {...defaultSystemReportCron};
+
+
+function getSystemReportCron() {
+    $.post('/crontab/get', { name: systemReportCron.name },function(rdata){
+        const { status: openSystemReportCron } = rdata;
+        if (openSystemReportCron) {
+            systemReportCron = rdata.data;
+        } else {
+            systemReportCron = {...defaultSystemReportCron};
+        }
+        visibleDom('#systemReportCronDetail', openSystemReportCron);
+        $("#openSystemReportCronSwitch").createRadioSwitch(openSystemReportCron, (checked) => {
+            visibleDom('#systemReportCronDetail', checked);
+            if(checked) {
+                addOrUpdateSystemReportCron();
+            } else {
+                deleteCron(systemReportCron.id);
+            }
+        });
+    },'json');
 }
 
-var cycleArray = { 'day': '每天', 'day-n': 'N天', 'hour': '每小时', 'hour-n': 'N小时', 'minute-n': 'N分钟', 'week': '每星期', 'month': '每月' }
-var weekArray = { 1: '周一', 2: '周二', 3: '周三', 4: '周四', 5: '周五', 6: '周六', 0: '周日' }
-var reportCycleValue = {} 
 
-//清理
-function closeOpt(){
-	$("#ptime").html('');
+
+async function addOrUpdateSystemReportCron(cronSelectorData) {
+    systemReportCron.sBody = systemReportCron.sbody = `
+#!/bin/sh
+pushd /www/server/jh-panel > /dev/null
+bash /www/server/jh-panel/scripts/system_report.sh
+popd > /dev/null
+`
+    data = {...systemReportCron, ...cronSelectorData}
+    $.post(systemReportCron.id? '/crontab/modify_crond': '/crontab/add', data,function(rdata){
+        $.post("/system/set_report_cycle_file", data, function(rdata) {},'json');
+        getSystemReportCron();
+        layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+    },'json');
 }
 
-//星期
-function toWeek(){
-	var mBody = '<div class="dropdown planweek pull-left mr20">\
-				  <button class="btn btn-default dropdown-toggle" type="button" id="excode_week" data-toggle="dropdown">\
-					<b val="0">' + weekArray[parseInt(reportCycleValue.week || '0')] + '</b> <span class="caret"></span>\
-				  </button>\
-				  <ul class="dropdown-menu" role="menu" aria-labelledby="excode_week">\
-					<li><a role="menuitem" tabindex="-1" href="javascript:;" value="1">周一</a></li>\
-					<li><a role="menuitem" tabindex="-1" href="javascript:;" value="2">周二</a></li>\
-					<li><a role="menuitem" tabindex="-1" href="javascript:;" value="3">周三</a></li>\
-					<li><a role="menuitem" tabindex="-1" href="javascript:;" value="4">周四</a></li>\
-					<li><a role="menuitem" tabindex="-1" href="javascript:;" value="5">周五</a></li>\
-					<li><a role="menuitem" tabindex="-1" href="javascript:;" value="6">周六</a></li>\
-					<li><a role="menuitem" tabindex="-1" href="javascript:;" value="0">周日</a></li>\
-				  </ul>\
-				</div>';
-	$("#ptime").html(mBody);
-	getselectname();
-}
-//指定1
-function toWhere1(ix){
-	var mBody ='<div class="plan_hms pull-left mr20 bt-input-text">\
-					<span><input type="number" name="where1" value="' + (reportCycleValue.where1 || 3) + '" maxlength="2" max="31" min="0"></span>\
-					<span class="name">'+ix+'</span>\
-				</div>';
-	$("#ptime").append(mBody);
-}
-//小时
-function toHour(){
-	var mBody = '<div class="plan_hms pull-left mr20 bt-input-text">\
-					<span><input type="number" name="hour" value="' + (reportCycleValue.hour || 0) + '" maxlength="2" max="23" min="0"></span>\
-					<span class="name">小时</span>\
-					</div>';
-	$("#ptime").append(mBody);
-}
-
-//分钟
-function toMinute(){
-	var mBody = '<div class="plan_hms pull-left mr20 bt-input-text">\
-					<span><input type="number" name="minute" value="' + (reportCycleValue.minute || 0) + '" maxlength="2" max="59" min="0"></span>\
-					<span class="name">分钟</span>\
-					</div>';
-	$("#ptime").append(mBody);	
-}
-
-function handleStypeChange(type){
-	switch(type){
-		case 'day':
-			closeOpt();
-			toHour();
-			toMinute();
-			break;
-		case 'day-n':
-			closeOpt();
-			toWhere1('天');
-			toHour();
-			toMinute();
-			break;
-		case 'hour':
-			closeOpt();
-			toMinute();
-			break;
-		case 'hour-n':
-			closeOpt();
-			toWhere1('小时');
-			toMinute();
-			break;
-		case 'minute-n':
-			closeOpt();
-			toWhere1('分钟');
-			break;
-		case 'week':
-			closeOpt();
-			toWeek();
-			toHour();
-			toMinute();
-			break;
-		case 'month':
-			closeOpt();
-			toWhere1('日');
-			toHour();
-			toMinute();
-			break;
-	}
-}
-
-function openSetReportCycle() {
-	var loadT = layer.msg('正在获取中...', { icon: 16, time: 0});
-	$.post("/system/get_report_cycle", '', function(rdata) {
-		if(rdata.status) {
-			layer.close(loadT);
-			reportCycleValue = rdata.data
-
-			layer.open({
-				type: 1,
-				skin: "report-cycle-layer",
-				area: "550px",
-				title: '配置报告频率',
-				closeBtn: 1,
-				shift: 5,
-				btn: ['保存', '取消'],
-				shadeClose: false,
-				content: "<div id='reportCycleMain' class='report-cycle-main pd20 pb70'>\
-					<div class='clearfix plan'>\
-						<div class='dropdown plancycle pull-left mr20'>\
-							<button class='btn btn-default dropdown-toggle' type='button' id='cycle' data-toggle='dropdown' style='width:94px'>\
-																<b val='" + (reportCycleValue.type || 'week') + "'>" + cycleArray[reportCycleValue.type || 'week'] + "</b>\
-																<span class='caret'></span>\
-														</button>\
-							<ul class='dropdown-menu' role='menu' aria-labelledby='cycle'>\
-								<li><a role='menuitem' tabindex='-1' href='javascript:;' value='day'>每天</a></li>\
-								<li><a role='menuitem' tabindex='-1' href='javascript:;' value='day-n'>N天</a></li>\
-								<li><a role='menuitem' tabindex='-1' href='javascript:;' value='hour'>每小时</a></li>\
-								<li><a role='menuitem' tabindex='-1' href='javascript:;' value='hour-n'>N小时</a></li>\
-								<li><a role='menuitem' tabindex='-1' href='javascript:;' value='minute-n'>N分钟</a></li>\
-								<li><a role='menuitem' tabindex='-1' href='javascript:;' value='week'>每星期</a></li>\
-								<li><a role='menuitem' tabindex='-1' href='javascript:;' value='month'>每月</a></li>\
-							</ul>\
-						</div>\
-						<div id='ptime' class='pull-left'>\
-							<div class='dropdown planweek pull-left mr20'>\
-								<button class='btn btn-default dropdown-toggle' type='button' id='excode' data-toggle='dropdown'>\
-									<b val='0'>" + weekArray[parseInt(reportCycleValue.week || '0')] + "</b>\
-									<span class='caret'></span>\
-								</button>\
-								<ul class='dropdown-menu' role='menu' aria-labelledby='excode'>\
-									<li><a role='menuitem' tabindex='-1' href='javascript:;' value='1'>周一</a></li>\
-									<li><a role='menuitem' tabindex='-1' href='javascript:;' value='2'>周二</a></li>\
-									<li><a role='menuitem' tabindex='-1' href='javascript:;' value='3'>周三</a></li>\
-									<li><a role='menuitem' tabindex='-1' href='javascript:;' value='4'>周四</a></li>\
-									<li><a role='menuitem' tabindex='-1' href='javascript:;' value='5'>周五</a></li>\
-									<li><a role='menuitem' tabindex='-1' href='javascript:;' value='6'>周六</a></li>\
-									<li><a role='menuitem' tabindex='-1' href='javascript:;' value='0'>周日</a></li>\
-								</ul>\
-							</div>\
-							<div class='plan_hms pull-left mr20 bt-input-text'>\
-								<span><input type='number' name='hour' value='" + (reportCycleValue.hour || 0) + "' maxlength='2' max='23' min='0'></span>\
-								<span class='name'>小时</span>\
-							</div>\
-							<div class='plan_hms pull-left mr20 bt-input-text'>\
-								<span><input type='number' name='minute' value='" + (reportCycleValue.minute || 0) + "' maxlength='2' max='59' min='0'></span>\
-								<span class='name'>分钟</span>\
-							</div>\
-						</div>\
-					</div>\
-					<form id='set-Config' action='/crontab/add' enctype='multipart/form-data' method='post' style='display: none;'>\
-						<input type='text' name='type' value='' />\
-						<input type='number' name='where1' value='' />\
-						<input type='number' name='hour' value='' />\
-						<input type='number' name='minute' value='' />\
-						<input type='text' name='week' value='' />\
-						<input type='submit' />\
-					</form>\
-				</div>",
-				success: function(index, layers) {
-					$(".dropdown ul li a").click(function() {
-						var txt = $(this).text();
-						var type = $(this).attr("value");
-						$(this).parents(".dropdown").find("button b").text(txt).attr("val",type);
-						handleStypeChange(type);
-					});
-					if(reportCycleValue.type) {
-						handleStypeChange(reportCycleValue.type);
-					}
-				},
-				yes: function(layero, layer_id) {
-					submitReportCycleForm();
-				}
-			})
-		} else {
-			layer.msg(b.msg, {icon: 2});
-		}
-	},'json');
-}
-
-function submitReportCycleForm() {
-	var type = $(".plancycle").find("b").attr("val");
-	$("#set-Config input[name='type']").val(type);
-
-	var is1;
-	var is2 = 1;
-	switch(type){
-		case 'day-n':
-			is1=31;
-			break;
-		case 'hour-n':
-			is1=23;
-			break;
-		case 'minute-n':
-			is1=59;
-			break;
-		case 'month':
-			is1=31;
-			break;
-	}
-	
-	var where1 = $('#excode_week b').attr('val');
-	$("#set-Config input[name='where1']").val(where1);
-
-	// if(where1 > is1 || where1 < is2){
-	// 	$("#ptime input[name='where1']").focus();
-	// 	layer.msg('表单不合法,请重新输入!',{icon:2});
-	// 	return;
-	// }
-	
-	var hour = $("#ptime input[name='hour']").val();
-	if(hour > 23 || hour < 0){
-		$("#ptime input[name='hour']").focus();
-		layer.msg('小时值不合法!',{icon:2});
-		return;
-	}
-	$("#set-Config input[name='hour']").val(hour);
-	var minute = $("#ptime input[name='minute']").val();
-	if(minute > 59 || minute < 0){
-		$("#ptime input[name='minute']").focus();
-		layer.msg('分钟值不合法!',{icon:2});
-		return;
-	}
-	$("#set-Config input[name='minute']").val(minute);
-	
-	if (type == 'minute-n'){
-		var where1 = $("#ptime input[name='where1']").val();
-		$("#set-Config input[name='where1']").val(where1);
-	}
-
-	if (type == 'day-n'){
-		var where1 = $("#ptime input[name='where1']").val();
-		$("#set-Config input[name='where1']").val(where1);
-	}
-
-	if (type == 'hour-n'){
-		var where1 = $("#ptime input[name='where1']").val();
-		$("#set-Config input[name='where1']").val(where1);
-	}
-
-	if (type == 'week'){
-		// TODO 星期暂时写死0，待完善逻辑
-		// var where1 = $("#ptime input[name='where1']").val();
-		var where1 = 0;
-		$("#set-Config input[name='where1']").val(where1);
-	}
-	let data = $("#set-Config").serialize()
-	console.log("data", data)
-	$.post("/system/set_report_cycle", data, function(rdata) {
-		if(rdata.status) {
-			layer.closeAll();
-			layer.msg(rdata.msg, {icon: 1});
-		} else {
-			layer.msg(rdata.msg, {icon: 2});
-		}
-	},'json');
+function deleteCron(id) {
+    if (id) {
+        $.post('/crontab/del', { id },function(rdata){
+            getSystemReportCron();
+            layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+        },'json');
+    }
 }

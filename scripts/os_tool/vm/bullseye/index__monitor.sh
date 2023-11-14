@@ -35,6 +35,7 @@ show_menu() {
     echo "1. 进程占用分析（打印进程占用排名到文件）"
     echo "2. 磁盘IO占用分析（打印磁盘IO占用排名到文件）"
     echo "3. 磁盘IO测试（测试磁盘读写速度）"
+    echo "4. MySQL数据库Checksum分析（打印MySQL数据库所有表的cheksum值）"
     echo "========================================================"
 }
 
@@ -55,6 +56,9 @@ case $choice in
     ;;
 3)
     download_and_run monitor__export_io_test.sh
+    ;;
+4)
+    download_and_run monitor__export_mysql_checksum.sh
     ;;
 esac
 

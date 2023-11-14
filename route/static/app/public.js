@@ -530,6 +530,7 @@ async function openTimoutLayer(tip, onTimeout, extParams) {
 }
 
 function onlineEditFile(k, f) {
+    debugger
 	if(k != 0) {
 		var l = $("#PathPlace input").val();
 		var h = encodeURIComponent($("#textBody").val());
@@ -680,6 +681,21 @@ function onlineEditFile(k, f) {
 		$(".btn-editor-close").click(function() {
 			layer.close(r);
 		});
+	},'json');
+}
+
+function openEditCodeFile(conf) {
+	var e = layer.msg(lan.bt.read_file, {
+		icon: 16,
+		time: 0
+	});
+    $.post("/files/get_body", "path=" + encodeURIComponent(conf.path), function(s) {
+		if(s.status === false){
+			layer.msg(s.msg,{icon:5});
+			return;
+		}
+		layer.close(e);
+        openEditCode({...conf, content: s.data.data});
 	},'json');
 }
 

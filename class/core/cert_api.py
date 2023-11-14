@@ -1514,21 +1514,40 @@ fullchain.pem       粘贴到证书输入框
                         if not os.path.exists(self.__config['orders'][i]['auth_to']):
                             auth_to = self.getSslUsedSite(
                                 self.__config['orders'][i]['save_path'])
+                                
                             if not auth_to:
                                 continue
 
-                            # 域名不存在？
                             for domain in self.__config['orders'][i]['domains']:
                                 if domain.find('*') != -1:
                                     break
+                                
+                                # 域名不存在？
                                 if not mw.M('domain').where("name=?", (domain,)).count() and not mw.M('binding').where("domain=?", domain).count():
                                     auth_to = None
                                     writeLog(
                                         "|-跳过被删除的域名: {}".format(self.__config['orders'][i]['domains']))
+                               
                             if not auth_to:
                                 continue
 
                             self.__config['orders'][i]['auth_to'] = auth_to
+
+
+                    
+                    # 已更换证书的网站跳过续签
+                    cent_valid = True
+                    for domain in self.__config['orders'][i]['domains']:
+                        # 域名更改类型？
+                        ssl_lets_path = mw.getWebConfSSLLetsDir() + '/' + domain
+                        ssl_acme_path = mw.getAcmeDir() + '/' + domain
+                        if not os.path.exists(ssl_lets_path) and not os.path.exists(ssl_acme_path):
+                            cent_valid = False
+                            writeLog(
+                                "|-跳过已更换证书的域名: {}".format(self.__config['orders'][i]['domains']))
+                    if not cent_valid:
+                        continue                        
+
 
                     # 是否到了允许重试的时间
                     if 'next_retry_time' in self.__config['orders'][i]:

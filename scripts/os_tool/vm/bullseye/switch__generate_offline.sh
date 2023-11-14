@@ -19,6 +19,10 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]xtrabackup-inc增量备份" >> $script_file
   echo "echo \"|- 关闭 xtrabackup-inc增量备份 定时任务完成✅\"" >> $script_file
   echo "" >> $script_file
+  echo "# 关闭openresty" >> $script_file
+  echo "python3 /www/server/jh-panel/plugins/openresty/index.py stop" >> $script_file
+  echo "echo \"|- 关闭 OpenResty’ 完成✅\"" >> $script_file
+  echo "" >> $script_file
   echo "# 关闭邮件通知" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py closeEmailNotify" >> $script_file
   echo "echo \"|- 关闭 邮件通知 完成✅\"" >> $script_file

@@ -2591,6 +2591,73 @@ def installPreInspection(version):
         return 'Ubuntu Apt MySQL[' + version + '] 仅支持18.04,20.04,22.04'
     return 'ok'
 
+class checksum_logger:
+    def __init__(self):
+        self._log_file = 'logs/mysql_checksum_opt.log'
+
+    def clear(self):
+        if os.path.exists(self._log_file):
+            os.remove(self._log_file)
+        return True
+
+    def info(self, log_str, mode="ab+"):
+        f = open(self._log_file, mode)
+        log_str += "\n"
+        f.write(log_str.encode('utf-8'))
+        f.close()
+        return True
+
+def getChecksumReport(version):
+    pdb = pMysqlDb()
+    databasesData = pdb.query('show databases')
+    isError = isSqlError(databasesData)
+    if isError != None:
+        return isError
+
+    pdb.setDbName("information_schema")
+
+    checksums = {}
+    checksum_total = 0
+    checksumLogger = checksum_logger()
+    checksumLogger.clear()
+    checksumReportFile = 'tmp/mysql_checksum_report.txt'
+    
+    ignoreDatabases = ['information_schema', 'performance_schema', 'mysql', 'sys']
+    n = 0
+    checksumLogger.info('正在计算checksum...')
+    mw.writeFile(checksumReportFile, '', 'w')    
+    for databaaseValue in databasesData:
+        database = databaaseValue["Database"]
+        current_database_checksum = 0
+
+        if database in ignoreDatabases:
+            continue
+
+        mw.writeFile(checksumReportFile, '|------------------ ' + database + ' ---------------\n', 'a+')
+        
+        tablesData = pdb.query(f"SELECT * FROM TABLES WHERE TABLE_SCHEMA='{database}' AND TABLE_COMMENT!='VIEW'")
+        for tableValue in tablesData:
+            table = tableValue["TABLE_NAME"]
+            checksumData = pdb.query(f"CHECKSUM TABLE `{database}`.`{table}`")
+            checksum = checksumData[0]['Checksum']
+            mw.writeFile(checksumReportFile, f"|- {database}.{table}: {checksum}\n", 'a+')
+            checksums[database] = {table: checksum}
+            current_database_checksum += (int(checksum) if checksum!= None else 0)
+
+        checksum_total += current_database_checksum
+        mw.writeFile(checksumReportFile, f'|- Total: {current_database_checksum}\n', 'a+')
+        # mw.writeFile(checksumReportFile, f'|----------------------------------------------------------\n', 'a+')
+        checksumLogger.info(f'|- {database}: {current_database_checksum}') 
+    
+    title = mw.getConfig('title')
+    mw.writeFile(checksumReportFile, f'\n----------------------------------------------------------\n', 'a+')    
+    mw.writeFile(checksumReportFile, f'- Name：{title}\n', 'a+')
+    mw.writeFile(checksumReportFile, f'- All Database Total：{checksum_total}\n', 'a+')
+    mw.writeFile(checksumReportFile, f'----------------------------------------------------------\n', 'a+')    
+    
+    checksumLogger.info(f'|- All Database Total：{checksum_total}')
+    return mw.returnJson(True, 'ok',  '')
+
 
 def uninstallPreInspection(version):
     stop(version)
@@ -2762,5 +2829,7 @@ if __name__ == "__main__":
         print(doFullSync(version))
     elif func == 'dump_mysql_data':
         print(dumpMysqlData(version))
+    elif func == 'get_checksum_report':
+        print(getChecksumReport(version))
     else:
         print('error')

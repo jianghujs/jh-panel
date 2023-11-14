@@ -657,6 +657,27 @@ function setDbAccess(username){
     });
 }
 
+async function getChecksumReport() {
+    showLogWindow('正在计算checksum...', { logPath: '/logs/mysql_checksum_opt.log', autoClearLog: false }, function({layerIndex}){
+		myPost('get_checksum_report', '', function(rdata){
+            var rdata = $.parseJSON(rdata.data);
+            showMsg(rdata.msg,function(){
+                layer.close(layerIndex);
+                
+                openEditCodeFile({
+                    title: 'MySQL Checksum报告',
+                    path: '/www/server/jh-panel/tmp/mysql_checksum_report.txt',
+                    width: '640px',
+                    height: '500px',
+                    showBtnPanel: false
+                })
+                
+            },{icon: rdata.status ? 1 : 2}); 
+        });
+	});	
+  
+}
+
 function fixDbAccess(username){
     myPost('fix_db_access', '', function(rdata){
         var rdata = $.parseJSON(rdata.data);
@@ -1198,6 +1219,7 @@ function dbList(page, search){
             <button onclick="setRootPwd(0,\''+rdata.info['root_pwd']+'\')" title="设置MySQL管理员密码" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">root密码</button>\
             <button onclick="fixRootPwd(0)" title="更新真实ROOT密码到江湖面板" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">修复ROOT密码</button>\
             <button onclick="setDbAccess(\'root\')" title="ROOT权限" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">ROOT权限</button>\
+            <button onclick="getChecksumReport()" title="获取Checksum报告" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">获取Checksum报告</button>\
             <span style="float:right">              \
                 <button batch="true" style="float: right;display: none;margin-left:10px;" onclick="delDbBatch();" title="删除选中项" class="btn btn-default btn-sm">删除选中</button>\
             </span>\

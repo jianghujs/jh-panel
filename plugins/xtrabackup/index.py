@@ -312,6 +312,25 @@ def getBackupCronScript():
     backupCronScript = 'echo "正在备份..." \nexport BACKUP_PATH=%(backupPath)s\nset -x\nbash %(conf)s' % {'backupPath':getBackupPath(), 'conf': getConf() } 
     return mw.returnJson(True, 'ok',  backupCronScript)
 
+def backupCallback():
+    args = getArgs()
+    data = checkArgs(args, ['filepath'])
+    if not data[0]:
+        return data[1]
+    filepath = args['filepath']
+    if os.path.exists(filepath):
+        # 获取文件大小、时间
+        backup = {}
+        file_size = os.path.getsize(filepath)
+        file_create_time = os.path.getctime(filepath)
+        backup['size_bytes'] = float(file_size)
+        backup['size'] = mw.toSize(file_size)
+        backup['add_timestamp'] = file_create_time
+        backup['add_time'] = mw.toTime(file_create_time)
+        ddb.saveOne('xtrabackup_data_history', time.time(), backup)
+    return 'ok'
+
+
 if __name__ == "__main__":
     ddb = mw.getDDB(getServerDir() + '/data/')
     func = sys.argv[1]
@@ -349,5 +368,7 @@ if __name__ == "__main__":
         print(doRecoveryBackup())
     elif func == 'do_delete_backup':
         print(doDeleteBackup())
+    elif func == 'backup_callback':
+        print(backupCallback())
     else:
         print('error')

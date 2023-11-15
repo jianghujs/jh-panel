@@ -1513,7 +1513,7 @@ def getPathSize(path):
             size_total += os.path.getsize(filename)
     return size_total
 
-
+# 字节数转大小文本
 def toSize(size):
     # 字节单位转换
     d = ('b', 'KB', 'MB', 'GB', 'TB')
@@ -1525,6 +1525,11 @@ def toSize(size):
         s = b
     return str(round(size, 2)) + ' ' + b
 
+# 时间戳转时间文本
+def toTime(timestamp, format='%Y-%m-%d %H:%M:%S'):
+    t = time.localtime(timestamp)
+    t = time.strftime(format, t)
+    return t
 
 def getMacAddress():
     # 获取mac

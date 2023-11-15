@@ -17,6 +17,8 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_PATH/mysql" ];then
     cd $BACKUP_PATH && zip -q -r $BACKUP_FILE ./*
     echo "backup file output====>  $BACKUP_FILE"
     echo "备份成功 $timestamp"
+    # 备份成功记录
+    python3 /www/server/jh-panel/plugins/xtrabackup/index.py backup_callback {filepath:$BACKUP_FILE}
 else
     echo "备份失败 $timestamp"
 fi

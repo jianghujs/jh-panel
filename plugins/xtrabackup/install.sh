@@ -62,6 +62,8 @@ Uninstall_xtrabackup()
 action=$1
 if [ "${1}" == 'install' ];then
 	Install_xtrabackup
+elif [ "${1}" == 'update' ];then
+    Update_xtrabackup
 else
 	Uninstall_xtrabackup
 fi

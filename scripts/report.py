@@ -213,15 +213,8 @@ class reportTools:
                     })
 
             # 备份相关
-            # xtrabackup
-            xtrabackup_tips = []
-            xtrabackup_info = systemApi.getXtrabackupInfo()
-            if(xtrabackup_info['status'] =='start'):
-                xtrabackup_ddb = mw.getDDB('/www/server/xtrabackup/data/')
-                xtrabackup_history = xtrabackup_ddb.getAll('backup_history')
-                print(xtrabackup_history)
-
-
+            xtrabackup_info, xtrabackup_inc_info, backup_tips = self.getBackupReport()
+            
             # 生成概要信息
             summary_tips = []
             # 系统资源概要信息
@@ -323,6 +316,12 @@ table tr td:nth-child(2) {
 <table border>
 %(mysqlinfo_tips)s
 </table>
+
+<h3>备份：</h3>
+
+<table border>
+%(backup_tips)s
+</table>
             """ % {
                 "title": mw.getConfig('title'),
                 "ip": mw.getHostAddr(),
@@ -333,6 +332,7 @@ table tr td:nth-child(2) {
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
                 "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
                 "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', ''))),
+                "backup_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(backup_tips, key=lambda x: x.get('name', ''))),
                 "summary_content": ''.join(f"<li>{item}</li>\n" for item in summary_tips)
 
             }
@@ -348,7 +348,7 @@ table tr td:nth-child(2) {
     def getBackupReport(self):
         # xtrabackup
         xtrabackup_info = None
-        xtrabackup_tips = []
+        backup_tips = []
         if os.path.exists('/www/server/xtrabackup/'):
             xtrabackup_ddb = mw.getDDB('/www/server/xtrabackup/data/')
             xtrabackup_history = xtrabackup_ddb.getAll('backup_history')
@@ -375,9 +375,25 @@ table tr td:nth-child(2) {
                 'average_size_bytes': average_size_bytes,
                 'average_size': mw.toSize(average_size_bytes)
             }
+            backup_tips.append({
+                "name": 'Xtrabackup',
+                "desc": """
+最后同步时间：%s<br/>
+区间备份数量：%s<br/>
+区间平均备份大小：%s<br/>
+总备份数量：%s<br/>
+总平均备份大小：%s
+                """ % (
+                    last_backup_time,
+                    count_in_timeframe,
+                    mw.toSize(average_size_bytes_in_timeframe),
+                    total_count,
+                    mw.toSize(average_size_bytes)
+                )
+            })
+
         # xtrabackup-inc
         xtrabackup_inc_info = None
-        xtrabackup_inc_tips = []
         if os.path.exists('/www/server/xtrabackup-inc/'):
             xtrabackup_inc_ddb = mw.getDDB('/www/server/xtrabackup-inc/data/')
             xtrabackup_inc_history = xtrabackup_inc_ddb.getAll('backup_history')
@@ -416,13 +432,38 @@ table tr td:nth-child(2) {
                 'inc_average_size_bytes': inc_average_size_bytes,
                 'inc_average_size': mw.toSize(inc_average_size_bytes)
             }
-        return xtrabackup_info, xtrabackup_inc_info
+            backup_tips.append({
+                "name": 'Xtrabackup增量版',
+                "desc": """
+最后一次全量时间：%s<br/>
+区间全量备份次数：%s<br/>
+区间平均全量备份大小：%s<br/>
+总全量备份次数：%s<br/>
+总平均全量备份大小：%s<br/>
+区间增量备份次数：%s<br/>
+区间平均增量备份大小：%s<br/>
+总增量备份次数：%s<br/>
+总平均增量备份大小：%s<br/>
+                """ % (
+                    full_last_backup_time,
+                    full_count_in_timeframe,
+                    mw.toSize(full_average_size_bytes_in_timeframe),
+                    full_total_count,
+                    mw.toSize(full_average_size_bytes),
+                    inc_count_in_timeframe,
+                    mw.toSize(inc_average_size_bytes_in_timeframe),
+                    inc_total_count,
+                    mw.toSize(inc_average_size_bytes)
+                )
+            })
+
+
+        return xtrabackup_info, xtrabackup_inc_info, backup_tips
         
         
 
 if __name__ == "__main__":
     report = reportTools()
-    print(report.getBackupReport())
 
     type = sys.argv[1]
 

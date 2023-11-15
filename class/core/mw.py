@@ -1891,16 +1891,16 @@ def updateLockData(lock_type):
 
 def checkLockValid(lock_type, cycle_type = 'day'):
     lock_data = getLockData(lock_type)
-    if lock_data.get('do_time', None) is None:
+    if lock_data is None:
         return False
 
-    now = datetime.now()
+    now = datetime.datetime.now()
     diff_time = time.time() - lock_data['do_time']
-    if cycle == 'day' and diff_time >= (24 * 60 * 60):
+    if cycle_type == 'day' and diff_time >= (24 * 60 * 60):
         return False
-    elif cycle == 'day_start' and diff_time >= (23 * 60 * 60) and now.hour >= 0 and now.hour <= 1:
+    elif cycle_type == 'day_start' and diff_time >= (23 * 60 * 60) and now.hour >= 0 and now.hour <= 1:
         return False
-    elif cycle == 'minute' and diff_time >= (1 * 60):
+    elif cycle_type == 'minute' and diff_time >= (1 * 60):
         return False
     else: 
         return True

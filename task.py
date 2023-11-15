@@ -342,7 +342,7 @@ def systemTask():
                         'read_count,write_count,read_bytes,write_bytes,read_time,write_time,addtime', data)
                     sql.table('diskio').where(
                         "addtime<?", (deltime,)).delete()
-
+                   
                     # LoadAverage
                     load_average = sm.getLoadAverage()
                     lpro = round(

@@ -1752,6 +1752,16 @@ def getMyORMDb():
     o = ormDb.ORM()
     return o
 
+def getDDB(db_dir):
+    '''
+    获取dictdatabase资源
+    '''
+    sys.path.append(os.getcwd() + "/class/plugin")
+    import ddb
+    o = ddb.DDB()
+    o.setDbDir(db_dir)
+    return o
+
 def getAllVms():
     result = subprocess.run(['VBoxManage', 'list', 'vms'], stdout=subprocess.PIPE)
     return result.stdout.decode('utf-8')

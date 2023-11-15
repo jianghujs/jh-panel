@@ -10,6 +10,8 @@ from urllib.parse import unquote
 sys.path.append(os.getcwd() + "/class/core")
 import mw
 
+ddb = None
+
 app_debug = False
 if mw.isAppleSystem():
     app_debug = True
@@ -311,6 +313,7 @@ def getBackupCronScript():
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 if __name__ == "__main__":
+    ddb = mw.getDDB(getServerDir() + '/data/')
     func = sys.argv[1]
     if func == 'status':
         print(status())

@@ -38,8 +38,6 @@ def initdInstall():
     return 'ok'
 
 # 更新脚本中的配置
-
-
 def updateScriptConfig(config):
     port = config.get('port', None)
     user = config.get('user', None)

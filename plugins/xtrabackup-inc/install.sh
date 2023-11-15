@@ -45,6 +45,17 @@ Install_xtrabackup_inc()
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' >> $install_tmp
 }
 
+Update_xtrabackup_inc() 
+{
+    echo '正在更新...' > $install_tmp
+    cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-full.sh.example $serverPath/xtrabackup-inc/xtrabackup-full.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc-recovery.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc-recovery.sh
+	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup-inc/index.py initd_install
+	echo $(date "+%Y-%m-%d %H:%M:%S") '更新完成' >> $install_tmp
+}
+
+
 Uninstall_xtrabackup_inc()
 {
 	echo $(date "+%Y-%m-%d %H:%M:%S") '卸载开始' >> $install_tmp
@@ -57,6 +68,8 @@ Uninstall_xtrabackup_inc()
 action=$1
 if [ "${1}" == 'install' ];then
 	Install_xtrabackup_inc
+elif [ "${1}" == 'update' ];then
+    Update_xtrabackup_inc
 else
 	Uninstall_xtrabackup_inc
 fi

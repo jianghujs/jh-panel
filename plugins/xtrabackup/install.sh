@@ -42,6 +42,14 @@ Install_xtrabackup()
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' >> $install_tmp
 }
 
+Update_xtrabackup() 
+{
+    echo '正在更新...' > $install_tmp
+    cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh
+	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup/index.py initd_install
+	echo $(date "+%Y-%m-%d %H:%M:%S") '更新完成' >> $install_tmp
+}
+
 Uninstall_xtrabackup()
 {
 	echo $(date "+%Y-%m-%d %H:%M:%S") '卸载开始' >> $install_tmp

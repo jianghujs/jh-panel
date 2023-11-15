@@ -1,5 +1,6 @@
 # coding: utf-8
 
+# https://github.com/mkrd/DictDataBase
 import re
 import os
 import sys
@@ -11,6 +12,10 @@ class DDB:
     __DB_DIR = '/www/server/ddb/'
     __DB_CONN = None
     __DB_ERR = None
+
+    def __init__(self, db_dir):
+        if db_dir is not None:
+            self.__DB_DIR = db_dir
 
     def __Conn(self):
         try:

@@ -194,11 +194,6 @@ def getLocalIp():
     print(local_ip) 
 
 
-def generateSystemReport():
-    sm = system_api.system_api()
-    sm.generateSystemReport()
-
-
 if __name__ == "__main__":
     method = sys.argv[1]
     if method == 'panel':
@@ -214,8 +209,6 @@ if __name__ == "__main__":
         getServerIp()
     elif method == 'getLocalIp':
         getLocalIp()
-    elif method == 'generateSystemReport':
-        generateSystemReport()
     elif method == "cli":
         clinum = 0
         try:

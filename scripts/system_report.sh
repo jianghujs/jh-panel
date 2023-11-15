@@ -9,7 +9,7 @@ if [ -f $MW_PATH ];then
 fi
 
 pushd /www/server/jh-panel/ > /dev/null 
-python3 /www/server/jh-panel/tools.py generateSystemReport
+python3 /www/server/jh-panel/scripts/report.py send
 popd > /dev/null
 echo "----------------------------------------------------------------------------"
 endDate=`date +"%Y-%m-%d %H:%M:%S"`

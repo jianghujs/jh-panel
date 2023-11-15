@@ -352,7 +352,6 @@ def systemTask():
                     sql.table('load_average').add('pro,one,five,fifteen,addtime', (lpro, load_average[
                         'one'], load_average['five'], load_average['fifteen'], addtime))
 
-
                     # Database
                     mysql_write_lock_data_key = 'MySQL信息写入面板数据库任务'
                     if not mw.checkLockValid(mysql_write_lock_data_key, 'day_start'):

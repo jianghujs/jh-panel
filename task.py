@@ -264,6 +264,7 @@ def systemTask():
                 tmp['mem'] = sm.getMemUsed()
                 cpuInfo = tmp
 
+            # TODO 不太理解，这里如果出现cpuInfo未清理的情况下会导致cpu信息一直停留在高位
             if cpuInfo['used'] < tmp['used']:
                 tmp['mem'] = sm.getMemUsed()
                 cpuInfo = tmp

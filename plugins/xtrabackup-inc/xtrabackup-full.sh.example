@@ -47,7 +47,9 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
     rm -rf $BACKUP_INC_PATH
     echo "|- $timestamp 全量备份成功" >> /www/server/xtrabackup-inc/xtrabackup.log
     # 备份成功记录
+    pushd /www/server/jh-panel > /dev/null  
     python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py backup_callback {backup_type:full}
+    popd > /dev/null
 else
     echo "|- $timestamp 全量备份失败" >> /www/server/xtrabackup-inc/xtrabackup.log
     # 恢复目录

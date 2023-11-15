@@ -42,7 +42,9 @@ xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BA
 if [ $? -eq 0 ] && [ -d "$BACKUP_INC_PATH/mysql" ];then
     echo "|- $timestamp 增量备份成功" >> /www/server/xtrabackup-inc/xtrabackup.log
     # 备份成功记录
+    pushd /www/server/jh-panel > /dev/null  
     python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py backup_callback {backup_type:inc}
+    popd > /dev/null
 else
     echo "|- $timestamp 增量备份失败" >> /www/server/xtrabackup-inc/xtrabackup.log
     # 恢复目录

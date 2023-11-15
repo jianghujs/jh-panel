@@ -378,6 +378,11 @@ def systemTask():
                                      "reload num:" + str(reloadNum))
                         restartMw()
                 except Exception as ex:
+                    lpro = None
+                    load_average = None
+                    cpuInfo = None
+                    networkInfo = None
+                    diskInfo = None
                     print(str(ex))
                     mw.writeFile('logs/sys_interrupt.pl', str(ex))
 

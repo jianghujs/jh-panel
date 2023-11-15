@@ -1773,9 +1773,7 @@ def getDDB(db_dir):
     '''
     sys.path.append(os.getcwd() + "/class/plugin")
     import ddb
-    o = ddb.DDB()
-    o.setDbDir(db_dir)
-    return o
+    return ddb.DDB(db_dir)
 
 def getAllVms():
     result = subprocess.run(['VBoxManage', 'list', 'vms'], stdout=subprocess.PIPE)

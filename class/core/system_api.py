@@ -859,6 +859,18 @@ class system_api:
                 if mysql_info_result.get('status', False):
                     mysql_info = mysql_info_result.get('data', {})
         return mysql_info
+    
+    def getXtrabackupInfo(self):
+        xtrabackup_info = {
+            "status": "stop"
+        }
+        if os.path.exists('/www/server/xtrabackup/'):
+            xtrabackup_info_result = mw.execShell('python3 /www/server/jh-panel/plugins/xtrabackup/index.py get_xtrabackup_info')[0]
+            if xtrabackup_info_result:
+                xtrabackup_info_result = json.loads(xtrabackup_info_result)
+                if xtrabackup_info_result.get('status', False):
+                    xtrabackup_info = xtrabackup_info_result.get('data', {})
+        return xtrabackup_info
 
     def getNotifyValueApi(self):
         control_notify_value_file = 'data/control_notify_value.conf'

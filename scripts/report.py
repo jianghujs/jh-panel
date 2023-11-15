@@ -29,6 +29,22 @@ crontabApi = crontab_api.crontab_api()
 
 class reportTools:
 
+    __START_TIME = None
+    __END_TIME = None
+    __START_TIMESTAMP = None
+    __END_TIMESTAMP = None
+    __START_DATE = None
+    __END_DATE = None
+
+    def __init__(self):
+        now = datetime.datetime.now()
+        self.__START_TIME = mw.getReportCycleStartTime(now)
+        self.__END_TIME = now
+        self.__START_TIMESTAMP = self.__START_TIME.timestamp()
+        self.__END_TIMESTAMP = self.__END_TIME.timestamp()
+        self.__START_DATE = datetime.datetime.fromtimestamp(self.__START_TIMESTAMP).date()
+        self.__END_DATE = datetime.datetime.fromtimestamp(self.__END_TIMESTAMP).date()
+
     def analyzeMonitorData(self, data, key, over):
         """ 
         分析监控数据，统计异常次数(5分钟内的算1次)
@@ -61,24 +77,7 @@ class reportTools:
         for index in range(len(csql_list)):
             sql.execute(csql_list[index], ())
 
-        # filename = 'data/control_report_notify.pl'
-        # if not os.path.exists(filename):
-        #     time.sleep(10)
-        #     continue
-        
-        now = datetime.datetime.now()
-        # end_datetime = datetime.datetime(now.year, now.month, now.day)
-        # start_datetime = end_datetime - datetime.timedelta(days=7)
-        end_datetime = now
-        start_datetime = mw.getReportCycleStartTime(end_datetime)
-
-        end = int(time.mktime(end_datetime.timetuple()))
-        start = int(time.mktime(start_datetime.timetuple()))
-        start_date = datetime.datetime.fromtimestamp(start)
-        end_date = datetime.datetime.fromtimestamp(end)
-        start_timestamp =  start_datetime.timestamp()
-        end_timestamp = end_datetime.timestamp()
-        print("报表：%s-%s" % (start_date, end_date))
+        print("报表：%s-%s" % (self.__START_TIME, self.__END_TIME))
 
         control_notify_config = mw.getControlNotifyConfig()
         if control_notify_config['notifyStatus'] == 'open':
@@ -91,7 +90,7 @@ class reportTools:
 
             # cpu(pro)、内存(mem)
             sysinfo_tips = []
-            cpuIoData = mw.M('cpuio').dbfile('system') .where("addtime>=? AND addtime<=?", (start, end)).field('id,pro,mem,addtime').order('id asc') .select()
+            cpuIoData = mw.M('cpuio').dbfile('system') .where("addtime>=? AND addtime<=?", (self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,mem,addtime').order('id asc') .select()
             cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
             memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
             sysinfo_tips.append({
@@ -110,7 +109,7 @@ class reportTools:
             })
 
             # 负载：资源使用率(pro)
-            loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( start, end)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
+            loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
             loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
             sysinfo_tips.append({
                 "name": "资源使用率",
@@ -194,7 +193,7 @@ class reportTools:
             mysqlinfo_tips = []
             mysql_info = systemApi.getMysqlInfo()
             # 开始的数据库情况
-            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (start_timestamp, end_timestamp)).field('id,total_size,total_bytes,list,addtime').order('id asc').limit('0,1').select()
+            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,total_size,total_bytes,list,addtime').order('id asc').limit('0,1').select()
             start_database_list = '[]'
             if len(start_mysql_info) > 0:
                 start_database_list = start_mysql_info[0].get('list', '[]')
@@ -212,6 +211,15 @@ class reportTools:
                             database['size']
                         )
                     })
+
+            # 备份相关
+            # xtrabackup
+            xtrabackup_tips = []
+            xtrabackup_info = systemApi.getXtrabackupInfo()
+            if(xtrabackup_info['status'] =='start'):
+                xtrabackup_ddb = mw.getDDB('/www/server/xtrabackup/data/')
+                xtrabackup_history = xtrabackup_ddb.getAll('backup_history')
+                print(xtrabackup_history)
 
 
             # 生成概要信息
@@ -318,8 +326,8 @@ table tr td:nth-child(2) {
             """ % {
                 "title": mw.getConfig('title'),
                 "ip": mw.getHostAddr(),
-                "start_date": start_date.date(),
-                "end_date": end_date.date(),
+                "start_date": self.__START_DATE,
+                "end_date": self.__END_DATE,
                 "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
                 "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
@@ -331,14 +339,91 @@ table tr td:nth-child(2) {
             mw.notifyMessage(
                 msg=report_content, 
                 msgtype="html", 
-                title="%(title)s(%(ip)s)服务器报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": start_date.date(), "end_date": end_date.date()}, 
+                title="%(title)s(%(ip)s)服务器报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": self.__START_DATE, "end_date": self.__END_DATE}, 
                 stype='服务器报告', 
                 trigger_time=0
             )
         return mw.returnJson(True, '设置成功!')
+    
+    def getBackupReport(self):
+        # xtrabackup
+        xtrabackup_info = None
+        xtrabackup_tips = []
+        if os.path.exists('/www/server/xtrabackup/'):
+            xtrabackup_ddb = mw.getDDB('/www/server/xtrabackup/data/')
+            xtrabackup_history = xtrabackup_ddb.getAll('backup_history')
+            # 初始化统计数据
+            total_count = len(xtrabackup_history)
+            total_size = sum(item['size_bytes'] for item in xtrabackup_history)
+            average_size_bytes = total_size / total_count if total_count != 0 else 0
+            
+            # 获取最后备份时间
+            last_backup_time = max(item['add_time'] for item in xtrabackup_history) if total_count > 0 else None
+            # 获取在指定时间段内的备份
+            backups_in_timeframe = [item for item in xtrabackup_history if self.__START_TIMESTAMP <= item['add_timestamp'] <= self.__END_TIMESTAMP]
+            count_in_timeframe = len(backups_in_timeframe)
+            average_size_bytes_in_timeframe = sum(item['size_bytes'] for item in backups_in_timeframe) / count_in_timeframe if count_in_timeframe != 0 else 0
+
+            xtrabackup_info = {
+                'last_backup_time': last_backup_time,
+                # 'backups_in_timeframe': backups_in_timeframe,
+                'count_in_timeframe': count_in_timeframe,
+                'average_size_bytes_in_timeframe': average_size_bytes_in_timeframe,
+                'average_size_in_timeframe': mw.toSize(average_size_bytes_in_timeframe),
+                # 'backups': xtrabackup_history,
+                'total_count': total_count,
+                'average_size_bytes': average_size_bytes,
+                'average_size': mw.toSize(average_size_bytes)
+            }
+        # xtrabackup-inc
+        xtrabackup_inc_info = None
+        xtrabackup_inc_tips = []
+        if os.path.exists('/www/server/xtrabackup-inc/'):
+            xtrabackup_inc_ddb = mw.getDDB('/www/server/xtrabackup-inc/data/')
+            xtrabackup_inc_history = xtrabackup_inc_ddb.getAll('backup_history')
+            # 全量备份相关
+            full_history = [item for item in xtrabackup_inc_history if item['backup_type'] == 'full']
+            full_total_count = len(full_history)
+            full_total_size = sum(item['size_bytes'] for item in full_history)
+            full_average_size_bytes = full_total_size / full_total_count if full_total_count != 0 else 0
+            full_last_backup_time = max(item['add_time'] for item in full_history) if full_total_count > 0 else None
+            full_backups_in_timeframe = [item for item in full_history if self.__START_TIMESTAMP <= item['add_timestamp'] <= self.__END_TIMESTAMP]
+            full_count_in_timeframe = len(full_backups_in_timeframe)
+            full_average_size_bytes_in_timeframe = sum(item['size_bytes'] for item in full_backups_in_timeframe) / full_count_in_timeframe if full_count_in_timeframe != 0 else 0
+            # 增量备份相关
+            inc_history = [item for item in xtrabackup_inc_history if item['backup_type'] == 'inc']
+            inc_total_count = len(inc_history)
+            inc_total_size = sum(item['size_bytes'] for item in inc_history)
+            inc_average_size_bytes = inc_total_size / inc_total_count if inc_total_count != 0 else 0
+            inc_last_backup_time = max(item['add_time'] for item in inc_history) if inc_total_count > 0 else None
+            inc_backups_in_timeframe = [item for item in inc_history if self.__START_TIMESTAMP <= item['add_timestamp'] <= self.__END_TIMESTAMP]
+            inc_count_in_timeframe = len(inc_backups_in_timeframe)
+            inc_average_size_bytes_in_timeframe = sum(item['size_bytes'] for item in inc_backups_in_timeframe) / inc_count_in_timeframe if inc_count_in_timeframe != 0 else 0
+
+            xtrabackup_inc_info = {
+                'full_last_backup_time': full_last_backup_time,
+                'full_count_in_timeframe': full_count_in_timeframe,
+                'full_average_size_bytes_in_timeframe': full_average_size_bytes_in_timeframe,
+                'full_average_size_in_timeframe': mw.toSize(full_average_size_bytes_in_timeframe),
+                'full_total_count': full_total_count,
+                'full_average_size_bytes': full_average_size_bytes,
+                'full_average_size': mw.toSize(full_average_size_bytes),
+                'inc_last_backup_time': inc_last_backup_time,
+                'inc_count_in_timeframe': inc_count_in_timeframe,
+                'inc_average_size_bytes_in_timeframe': inc_average_size_bytes_in_timeframe,
+                'inc_average_size_in_timeframe': mw.toSize(inc_average_size_bytes_in_timeframe),
+                'inc_total_count': inc_total_count,
+                'inc_average_size_bytes': inc_average_size_bytes,
+                'inc_average_size': mw.toSize(inc_average_size_bytes)
+            }
+        return xtrabackup_info, xtrabackup_inc_info
         
+        
+
 if __name__ == "__main__":
     report = reportTools()
+    print(report.getBackupReport())
+
     type = sys.argv[1]
 
     if type == 'send':

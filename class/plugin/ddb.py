@@ -13,7 +13,7 @@ class DDB:
     __DB_CONN = None
     __DB_ERR = None
 
-    def __init__(self, db_dir):
+    def __init__(self, db_dir = None):
         if db_dir is not None:
             self.__DB_DIR = db_dir
 

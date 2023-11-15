@@ -330,6 +330,12 @@ def backupCallback():
         ddb.saveOne('backup_history', time.time(), backup)
     return 'ok'
 
+def getXtrabackupInfo():
+    xtrabackup_info = {
+        "status": status()
+    }
+    return mw.returnJson(True, 'ok', xtrabackup_info)
+
 
 if __name__ == "__main__":
     ddb = mw.getDDB(getServerDir() + '/data/')
@@ -370,5 +376,7 @@ if __name__ == "__main__":
         print(doDeleteBackup())
     elif func == 'backup_callback':
         print(backupCallback())
+    elif func == 'get_xtrabackup_info':
+        print(getXtrabackupInfo())
     else:
         print('error')

@@ -10,6 +10,8 @@ from urllib.parse import unquote
 sys.path.append(os.getcwd() + "/class/core")
 import mw
 
+ddb = None
+
 app_debug = False
 if mw.isAppleSystem():
     app_debug = True
@@ -351,7 +353,30 @@ def getIncBackupCronScript():
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 
+def backupCallback():
+    args = getArgs()
+    data = checkArgs(args, ['backup_type'])
+    if not data[0]:
+        return data[1]
+    backup_type = args['backup_type']
+    backup_path = getBaseBackupPath() if backup_type == 'full' else getIncBackupPath()
+    if os.path.exists(backup_path):
+        # 获取文件大小、时间
+        backup = {}
+        file_size = mw.getDirSize(backup_path)
+        file_create_time = os.path.getctime(backup_path)
+        backup['size_bytes'] = float(file_size)
+        backup['size'] = mw.toSize(file_size)
+        backup['add_timestamp'] = file_create_time
+        backup['add_time'] = mw.toTime(file_create_time)
+        backup['backup_type'] = backup_type
+        print('backup', backup)
+        ddb.saveOne('backup_history', time.time(), backup)
+    return 'ok'
+
+
 if __name__ == "__main__":
+    ddb = mw.getDDB(getServerDir() + '/data/')
     func = sys.argv[1]
     if func == 'status':
         print(status())
@@ -391,5 +416,7 @@ if __name__ == "__main__":
         print(doDeleteBackup())
     elif func == 'do_task_with_lock':
         print(doTaskWithLock())
+    elif func == 'backup_callback':
+        print(backupCallback())
     else:
         print('error')

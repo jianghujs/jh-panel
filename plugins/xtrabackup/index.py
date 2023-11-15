@@ -327,7 +327,7 @@ def backupCallback():
         backup['size'] = mw.toSize(file_size)
         backup['add_timestamp'] = file_create_time
         backup['add_time'] = mw.toTime(file_create_time)
-        ddb.saveOne('xtrabackup_data_history', time.time(), backup)
+        ddb.saveOne('backup_history', time.time(), backup)
     return 'ok'
 
 

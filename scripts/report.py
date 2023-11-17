@@ -7,6 +7,7 @@ import sys
 import os
 import json
 import datetime
+import re
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -215,7 +216,7 @@ class reportTools:
                     })
 
             # 备份相关
-            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, backup_tips = self.getBackupReport()
+            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
             
             # 生成概要信息
             summary_tips = []
@@ -506,11 +507,74 @@ table tr td:nth-child(2) {
                 )
             })
 
+        # rsyncd
+        rsyncd_info = None
+        if os.path.exists('/www/server/rsyncd/'):
+            rsyncd_config_content = mw.readFile("/www/server/rsyncd/config.json")
+            rsyncd_config = json.loads(rsyncd_config_content)
+            send_list = rsyncd_config.get('send', {}).get('list', [])
+            send_count = len(send_list)
+            send_open_list = []
+            send_open_count = len(send_open_list)
+            send_close_list = []
+            send_close_count = len(send_close_list)
+            last_realtime_sync_date = None
+            last_realtime_sync_timestamp = None
 
-        return xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, backup_tips
+            # 循环send_list
+            for send_item in send_list:
+                if send_item.get('status', 'enabled') == 'enabled':
+                    sync_task_logs_dir = f'/www/server/rsyncd/send/{send_item.get("name", "")}/logs/'
+                    sync_task_logs_files = [(f, os.path.getmtime(os.path.join(sync_task_logs_dir, f))) for f in os.listdir(sync_task_logs_dir) if os.path.isfile(os.path.join(sync_task_logs_dir, f))]
+                    sync_task_logs_files.sort(key=lambda x: x[1], reverse=True)
+                    latest_file, latest_time = sync_task_logs_files[0]
+                    send_item['last_sync_at'] = mw.toTime(latest_time)
+                    send_open_list.append(send_item)
+                else:
+                    send_close_list.append(send_item)
+
+            # 获取最后的实时同步时间
+            if os.path.exists('/www/server/rsyncd/logs/lsyncd.status'):
+                real_time_status_file = mw.readFile("/www/server/rsyncd/logs/lsyncd.status")
+                last_sync_match = re.search(r"Lsyncd status report at ([\w\s:]+).*Sync", real_time_status_file)
+                if last_sync_match:
+                    last_realtime_sync_date_str = last_sync_match.group(1).replace('\n', '')
+                    last_realtime_sync_date = datetime.datetime.strptime(last_realtime_sync_date_str, "%a %b %d %H:%M:%S %Y")
+                    last_realtime_sync_timestamp = datetime.datetime.timestamp(last_realtime_sync_date)
+            
+            rsyncd_info = {
+                "last_realtime_sync_date": last_realtime_sync_date,
+                "last_realtime_sync_timestamp": last_realtime_sync_timestamp,
+                # "send_list": send_list,
+                "send_count": send_count,
+                "send_open_list": send_open_list,
+                "send_open_count": send_open_count,
+                # "send_close_list": send_close_list,
+                "send_close_count": send_close_count
+            }
+
+            backup_tips.append({
+                "name": 'Rsyncd',
+                "desc": """
+最后一次实时同步时间：%s<br/>
+最后一次定时同步时间：<br/>%s<br/>
+                """ % (
+                    last_realtime_sync_date,
+                    ''.join(f"- {item.get('name', '')}：{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}<br/>\n" for item in send_list)
+                )
+            })
+
+
+        return xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips
+
+    def test(self):
+        
+        return 'a'
+
 
 if __name__ == "__main__":
     report = reportTools()
+    print(report.test())
 
     type = sys.argv[1]
 

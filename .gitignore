@@ -127,6 +127,7 @@ data/control_notify_value.conf
 data/control_notify.pl
 data/control_report_cycle.conf
 data/control_report_notify.pl
+data/net_env_cn.pl
 
 ssl/input.pl
 

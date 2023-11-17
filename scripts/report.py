@@ -38,10 +38,12 @@ class reportTools:
 
     def __init__(self):
         now = datetime.datetime.now()
-        self.__START_TIME = mw.getReportCycleStartTime(now)
-        self.__END_TIME = now
-        self.__START_TIMESTAMP = self.__START_TIME.timestamp()
-        self.__END_TIMESTAMP = self.__END_TIME.timestamp()
+        start = mw.getReportCycleStartTime(now)
+        end = now
+        self.__START_TIMESTAMP = int(start.timestamp())
+        self.__END_TIMESTAMP = int(end.timestamp())
+        self.__START_TIME = datetime.datetime.fromtimestamp(self.__START_TIMESTAMP)
+        self.__END_TIME = datetime.datetime.fromtimestamp(self.__END_TIMESTAMP)
         self.__START_DATE = datetime.datetime.fromtimestamp(self.__START_TIMESTAMP).date()
         self.__END_DATE = datetime.datetime.fromtimestamp(self.__END_TIMESTAMP).date()
 
@@ -213,7 +215,7 @@ class reportTools:
                     })
 
             # 备份相关
-            xtrabackup_info, xtrabackup_inc_info, backup_tips = self.getBackupReport()
+            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, backup_tips = self.getBackupReport()
             
             # 生成概要信息
             summary_tips = []
@@ -456,11 +458,56 @@ table tr td:nth-child(2) {
                     mw.toSize(inc_average_size_bytes)
                 )
             })
+        
+        # mysql-dump
+        mysql_dump_info = None
+        if os.path.exists('/www/server/mysql-apt/'):
+            start_time = str(self.__START_TIME).replace("-", '/')
+            end_time = str(self.__END_TIME).replace("-", '/')
+            start_timestamp = self.__START_TIMESTAMP
+            end_timestamp = self.__END_TIMESTAMP
+            # backups = mw.M('backup').where("type=? AND addtime >= ? AND addtime <= ?", ('1', start, end)).field("""id,name,filename,size,addtime""").order('addtime desc').select()
+            backups = mw.M('backup').where("type=?", ('1')).field("""id,name,filename,size,addtime""").order('addtime desc').select()
+            # 初始化统计数据
+            total_count = len(backups)
+            total_abnormal_files = sum(1 for item in backups if item['size'] < 200)
+
+            # 获取在指定时间段内的备份
+            backups_in_timeframe = mw.M('backup').where("type=? AND addtime BETWEEN ? AND ?", ('1', start_time, end_time)).field("""id,name,filename,size,addtime""").order('addtime desc').select()
+            count_in_timeframe = len(backups_in_timeframe)
+            abnormal_files_in_timeframe = sum(1 for item in backups_in_timeframe if item['size'] < 200)
+
+            # 获取最后备份时间
+            last_backup_time = mw.M('backup').where("type=?", ('1')).getField("MAX(addtime)")
+            last_backup_time = last_backup_time if last_backup_time else None
+
+            mysql_dump_info = {
+                'last_backup_time': last_backup_time,
+                # 'backups_in_timeframe': backups_in_timeframe,
+                'count_in_timeframe': count_in_timeframe,
+                'abnormal_files_in_timeframe': abnormal_files_in_timeframe,
+                # 'total_backups': backups,
+                'total_count': total_count,
+                'total_abnormal_files': total_abnormal_files
+            }
+
+            backup_tips.append({
+                "name": 'MySQL Dump',
+                "desc": """
+最后一次备份时间：%s<br/>
+区间备份次数：%s<br/>
+区间异常备份数量：%s<br/>
+总备份次数：%s<br/>
+                """ % (
+                    last_backup_time,
+                    count_in_timeframe,
+                    abnormal_files_in_timeframe,
+                    total_count
+                )
+            })
 
 
-        return xtrabackup_info, xtrabackup_inc_info, backup_tips
-        
-        
+        return xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, backup_tips
 
 if __name__ == "__main__":
     report = reportTools()

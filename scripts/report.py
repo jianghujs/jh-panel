@@ -521,7 +521,6 @@ table tr td:nth-child(2) {
             last_realtime_sync_date = None
             last_realtime_sync_timestamp = None
 
-            # 循环send_list
             for send_item in send_list:
                 if send_item.get('status', 'enabled') == 'enabled':
                     sync_task_logs_dir = f'/www/server/rsyncd/send/{send_item.get("name", "")}/logs/'

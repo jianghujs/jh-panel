@@ -558,8 +558,8 @@ table tr td:nth-child(2) {
 最后一次实时同步时间：%s<br/>
 最后一次定时同步时间：<br/>%s<br/>
                 """ % (
-                    last_realtime_sync_date,
-                    ''.join(f"- {item.get('name', '')}：{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}<br/>\n" for item in send_list)
+                    f'<span style="color:{"red" if last_realtime_sync_date.timestamp() < self.__START_TIMESTAMP else "auto"}">{last_realtime_sync_date}</span>',
+                    ''.join(f"- {item.get('name', '')}：<span style='color: {'red' if item.get('status', 'enabled') == 'disabled' or item.get('last_sync_at', '无') == '无' or item.get('last_sync_at', '无') < mw.toTime(self.__START_TIMESTAMP) else 'auto'}'>{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}</span><br/>\n" for item in send_list)
                 )
             })
 

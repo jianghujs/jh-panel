@@ -11,8 +11,8 @@ installFnmPath=${installPath}/fnm
 # logPath=${installPath}/nodejs.plugin.log
 install_tmp=${rootPath}/tmp/mw_install.pl
 # fnm command not found to ubuntu20.04
-#bashrcFile=/root/.bashrc
-bashrcFile=/etc/profile
+bashrcFile=/root/.bashrc
+profileFile=/etc/profile
 
 
 Install_nodejs()
@@ -45,9 +45,14 @@ Install_nodejs()
     echo ""
     echo '  export PATH="'"$installFnmPath"':$PATH"  #fnm env'
     echo '  eval "`fnm env`"  #fnm env'
+	# source 写一份
 	echo '' >>$bashrcFile
     echo 'export PATH="'"$installFnmPath"':$PATH"  #fnm env' >>$bashrcFile
     echo 'eval "`fnm env`"  #fnm env' >>$bashrcFile
+	# profile 写一份
+	echo '' >>$profileFile
+    echo 'export PATH="'"$installFnmPath"':$PATH"  #fnm env' >>$profileFile
+    echo 'eval "`fnm env`"  #fnm env' >>$profileFile
 	
 	source $bashrcFile
 	echo "Installing node v16.7: fnm install v16.17 && fnm use v16.17 && fnm default v16.17"
@@ -63,7 +68,8 @@ Install_nodejs()
 
 Uninstall_nodejs()
 {	
-	sed -i '/#fnm env/d' /root/.bashrc
+	sed -i '/#fnm env/d' $bashrcFile
+	sed -i '/#fnm env/d' $profileFile
 	rm -rf $installPath
 	source $bashrcFile
 	echo "卸载完成" > $install_tmp

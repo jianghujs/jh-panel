@@ -26,9 +26,10 @@ import socket
 import re
 import db
 from random import Random
+import tempfile
 
 
-def execShell(cmdstring, cwd=None, timeout=None, shell=True):
+def execShell(cmdstring, cwd=None, timeout=None, shell=True, useTmpFile=True):
 
     if shell:
         cmdstring_list = cmdstring
@@ -36,31 +37,47 @@ def execShell(cmdstring, cwd=None, timeout=None, shell=True):
         cmdstring_list = shlex.split(cmdstring)
     if timeout:
         end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
+    
+    if useTmpFile:
+        with tempfile.TemporaryFile() as tempf:
+            sub = subprocess.Popen(cmdstring_list, cwd=cwd, stdin=subprocess.PIPE,
+                                shell=shell, bufsize=4096, stdout=tempf, stderr=subprocess.PIPE, preexec_fn=os.setsid)
 
-    sub = subprocess.Popen(cmdstring_list, cwd=cwd, stdin=subprocess.PIPE,
+            sub.wait()
+            tempf.seek(0)
+            data = tempf.read()
+        # python3 fix 返回byte数据
+        
+        if isinstance(data, bytes):
+            t = str(data, encoding='utf-8')
+        
+
+        return (t, '', sub.returncode)
+    else:
+        sub = subprocess.Popen(cmdstring_list, cwd=cwd, stdin=subprocess.PIPE,
                            shell=shell, bufsize=4096, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
 
-    while sub.poll() is None:
-        time.sleep(0.1)
-        if timeout:
-            if end_time <= datetime.datetime.now():
-                raise Exception("Timeout：%s" % cmdstring)
+        while sub.poll() is None:
+            time.sleep(0.1)
+            if timeout:
+                if end_time <= datetime.datetime.now():
+                    raise Exception("Timeout：%s" % cmdstring)
 
-    if sys.version_info[0] == 2:
-        return sub.communicate()
+        if sys.version_info[0] == 2:
+            return sub.communicate()
 
-    data = sub.communicate()
-    # python3 fix 返回byte数据
-    if isinstance(data[0], bytes):
-        t1 = str(data[0], encoding='utf-8')
+        data = sub.communicate()
+        # python3 fix 返回byte数据
+        if isinstance(data[0], bytes):
+            t1 = str(data[0], encoding='utf-8')
 
-    if isinstance(data[1], bytes):
-        t2 = str(data[1], encoding='utf-8')
-    
-    if sub.returncode != 0:
-        t1 = t1 if t1 else t2
+        if isinstance(data[1], bytes):
+            t2 = str(data[1], encoding='utf-8')
+        
+        if sub.returncode != 0:
+            t1 = t1 if t1 else t2
 
-    return (t1, t2, sub.returncode)
+        return (t1, t2, sub.returncode)
 
 
 def getTracebackInfo():

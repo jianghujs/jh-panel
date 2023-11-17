@@ -988,7 +988,7 @@ class plugins_api:
 
         if not os.path.exists(path):
             return ('', '')
-        data = mw.execShell(py_cmd)
+        data = mw.execShell(cmdstring=py_cmd, useTmpFile=True)
 
         if mw.isDebugMode():
             print('run', py_cmd)

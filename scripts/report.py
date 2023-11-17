@@ -387,11 +387,11 @@ table tr td:nth-child(2) {
 总备份数量：%s<br/>
 总平均备份大小：%s
                 """ % (
-                    last_backup_time,
-                    count_in_timeframe,
-                    mw.toSize(average_size_bytes_in_timeframe),
-                    total_count,
-                    mw.toSize(average_size_bytes)
+                    f'<span style="color:{"red" if last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{last_backup_time}</span>',
+                    f'<span style="color:{"red" if count_in_timeframe == 0 else "auto"}">{count_in_timeframe}</span>',
+                    f'<span style="color:{"red" if average_size_bytes_in_timeframe == 0 else "auto"}">{mw.toSize(average_size_bytes_in_timeframe)}</span>',
+                    f'<span style="color:{"red" if total_count == 0 else "auto"}">{total_count}</span>',
+                    f'<span style="color:{"red" if average_size_bytes == 0 else "auto"}">{mw.toSize(average_size_bytes)}</span>'
                 )
             })
 
@@ -448,15 +448,15 @@ table tr td:nth-child(2) {
 总增量备份次数：%s<br/>
 总平均增量备份大小：%s<br/>
                 """ % (
-                    full_last_backup_time,
-                    full_count_in_timeframe,
-                    mw.toSize(full_average_size_bytes_in_timeframe),
-                    full_total_count,
-                    mw.toSize(full_average_size_bytes),
-                    inc_count_in_timeframe,
-                    mw.toSize(inc_average_size_bytes_in_timeframe),
-                    inc_total_count,
-                    mw.toSize(inc_average_size_bytes)
+                    f'<span style="color:{"red" if full_last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{full_last_backup_time}</span>',
+                    f'<span style="color:{"red" if full_count_in_timeframe == 0 else "auto"}">{full_count_in_timeframe}</span>',
+                    f'<span style="color:{"red" if full_average_size_bytes_in_timeframe == 0 else "auto"}">{mw.toSize(full_average_size_bytes_in_timeframe)}</span>',
+                    f'<span style="color:{"red" if full_total_count == 0 else "auto"}">{full_total_count}</span>',
+                    f'<span style="color:{"red" if full_average_size_bytes == 0 else "auto"}">{mw.toSize(full_average_size_bytes)}</span>',
+                    f'<span style="color:{"red" if inc_count_in_timeframe == 0 else "auto"}">{inc_count_in_timeframe}</span>',
+                    f'<span style="color:{"red" if inc_average_size_bytes_in_timeframe == 0 else "auto"}">{mw.toSize(inc_average_size_bytes_in_timeframe)}</span>',
+                    f'<span style="color:{"red" if inc_total_count == 0 else "auto"}">{inc_total_count}</span>',
+                    f'<span style="color:{"red" if inc_average_size_bytes == 0 else "auto"}">{mw.toSize(inc_average_size_bytes)}</span>'
                 )
             })
         
@@ -500,10 +500,10 @@ table tr td:nth-child(2) {
 区间异常备份数量：%s<br/>
 总备份次数：%s<br/>
                 """ % (
-                    last_backup_time,
-                    count_in_timeframe,
-                    abnormal_files_in_timeframe,
-                    total_count
+                    f'<span style="color:{"red" if last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{last_backup_time}</span>',
+                    f'<span style="color:{"red" if count_in_timeframe == 0 else "auto"}">{count_in_timeframe}</span>',
+                    f'<span style="color:{"red" if abnormal_files_in_timeframe == 0 else "auto"}">{abnormal_files_in_timeframe}</span>',
+                    f'<span style="color:{"red" if total_count == 0 else "auto"}">{total_count}</span>'
                 )
             })
 

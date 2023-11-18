@@ -530,7 +530,6 @@ async function openTimoutLayer(tip, onTimeout, extParams) {
 }
 
 function onlineEditFile(k, f) {
-    debugger
 	if(k != 0) {
 		var l = $("#PathPlace input").val();
 		var h = encodeURIComponent($("#textBody").val());

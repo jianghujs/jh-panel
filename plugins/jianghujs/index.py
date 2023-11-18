@@ -255,7 +255,7 @@ def projectList():
     autostartStatusMap = {echo: ('start' if echo in autostartStatusExec[0] else 'stop') for echo in echos}
 
     # status
-    statusCmd = """ps -ef | grep -v grep | grep -v python | grep 'jianghujs' | awk -F'baseDir":"' '{print $2}' | awk -F'","' '{print $1}'"""
+    statusCmd = """ps -ef | grep -v grep | grep -v python | grep 'jianghujs' | awk -F'baseDir":"' '{print $2}' | awk -F'","' '{print $1}' | uniq"""
     statusExec = mw.execShell(statusCmd)
     # 将字符串拆分为行精准匹配路径
     statusExecLines = statusExec[0].splitlines()

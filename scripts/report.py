@@ -488,7 +488,7 @@ table tr td:nth-child(2) {
 
             # 获取最后备份时间
             last_backup_time = mw.M('backup').where("type=?", ('1')).getField("MAX(addtime)")
-            last_backup_time = last_backup_time if last_backup_time else None
+            last_backup_time = last_backup_time.replace('/', '-') if last_backup_time else None
 
             mysql_dump_info = {
                 'last_backup_time': last_backup_time,

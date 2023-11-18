@@ -39,7 +39,8 @@ class reportTools:
 
     def __init__(self):
         now = datetime.datetime.now()
-        start = mw.getReportCycleStartTime(now)
+        # start = mw.getReportCycleStartTime(now)
+        start = datetime.datetime.fromtimestamp(1700314320)
         end = now
         self.__START_TIMESTAMP = int(start.timestamp())
         self.__END_TIMESTAMP = int(end.timestamp())
@@ -189,7 +190,8 @@ class reportTools:
             mysqlinfo_tips = []
             mysql_info = systemApi.getMysqlInfo()
             # 开始的数据库情况
-            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,total_size,total_bytes,list,addtime').order('id asc').limit('0,1').select()
+            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (0, self.__START_TIMESTAMP)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
+            print(start_mysql_info)
             start_database_list = '[]'
             if len(start_mysql_info) > 0:
                 start_database_list = start_mysql_info[0].get('list', '[]')

@@ -457,7 +457,7 @@ table tr td:nth-child(2) {
 总增量备份次数：%s<br/>
 总平均增量备份大小：%s<br/>
                 """ % (
-                    f'<span style="color:{"red" if full_last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{full_last_backup_time}</span>',
+                    f'<span style="color:{"red" if full_last_backup_time is None or full_last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{full_last_backup_time}</span>',
                     f'<span style="color:{"red" if full_count_in_timeframe == 0 else "auto"}">{full_count_in_timeframe}</span>',
                     f'<span style="color:{"red" if full_average_size_bytes_in_timeframe == 0 else "auto"}">{mw.toSize(full_average_size_bytes_in_timeframe)}</span>',
                     f'<span style="color:{"red" if full_total_count == 0 else "auto"}">{full_total_count}</span>',

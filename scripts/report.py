@@ -165,7 +165,7 @@ class reportTools:
                     jianghujsinfo_tips.append({
                         "name": project['name'],
                         "desc": "%s" % (
-                            '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
+                            '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: orange">已停止</span>'
                         )
                     })
 
@@ -223,8 +223,8 @@ class reportTools:
                 if disk_size_percent > disk_notify_value:
                     sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
             if len(sysinfo_summary_tips) > 0:
-                summary_tips.append("、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险')
-           # 网站概要信息
+                summary_tips.append("<span style='color: red;'>、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
+            # 网站概要信息
             siteinfo_summary_tips = []
             for site in siteInfo['site_list']:
                 site_name = site['name']
@@ -237,10 +237,29 @@ class reportTools:
                     if not (ssl_type == 'lets' or ssl_type == 'acme') and cert_endtime < ssl_cert_notify_value:
                         siteinfo_summary_tips.append(site_name)
             if len(siteinfo_summary_tips) > 0:
-                summary_tips.append("域名（" + "、".join(siteinfo_summary_tips) + '）证书需要及时更新')
+                summary_tips.append( "<span style='color: red;'>、".join(siteinfo_summary_tips) + '域名证书需要及时更新</span>')
+            # 备份信息
+            backup_summary_tips = []
+            if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
+                backup_summary_tips.append("Xtrabackup")
+            if xtrabackup_inc_info is not None and (xtrabackup_inc_info.get('full_last_backup_time', '') is None or xtrabackup_inc_info.get('inc_last_backup_time', '') is None or xtrabackup_inc_info.get('full_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or xtrabackup_inc_info.get('inc_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
+                backup_summary_tips.append("Xtrabackup增量")
+            if mysql_dump_info is not None and (mysql_dump_info.get('last_backup_time', '') is None or mysql_dump_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
+                backup_summary_tips.append("MySQL Dump")
+            if rsyncd_info is not None:
+                if len(rsyncd_info.get('send_open_realtime_list', [])) > 0:
+                    if rsyncd_info.get('last_realtime_sync_date', None) is None or rsyncd_info.get('last_realtime_sync_date', None).timestamp() < self.__START_TIMESTAMP:
+                        backup_summary_tips.append("实时备份")
+                if len(rsyncd_info.get('send_open_fixtime_list', [])) > 0:
+                    for send_open_fixtime_item in rsyncd_info.get('send_open_fixtime_list', []):
+                        if send_open_fixtime_item.get('last_sync_at', None) == None or send_open_fixtime_item.get('last_sync_at', None) < mw.toTime(self.__START_TIMESTAMP):
+                            backup_summary_tips.append(send_open_fixtime_item.get('name'))
+            if len(backup_summary_tips) > 0:
+                summary_tips.append("<span style='color: orange;'>" + "、".join(backup_summary_tips) + '备份状态异常</span>')
+
             # 无异常默认信息
             if len(summary_tips) == 0:
-                summary_tips.append("服务运行正常，继续保持！")
+                summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
 
 
             report_content = """
@@ -505,6 +524,8 @@ table tr td:nth-child(2) {
             send_list = rsyncd_config.get('send', {}).get('list', [])
             send_count = len(send_list)
             send_open_list = []
+            send_open_realtime_list = []
+            send_open_fixtime_list = []
             send_open_count = len(send_open_list)
             send_close_list = []
             send_close_count = len(send_close_list)
@@ -515,10 +536,15 @@ table tr td:nth-child(2) {
                 if send_item.get('status', 'enabled') == 'enabled':
                     sync_task_logs_dir = f'/www/server/rsyncd/send/{send_item.get("name", "")}/logs/'
                     sync_task_logs_files = [(f, os.path.getmtime(os.path.join(sync_task_logs_dir, f))) for f in os.listdir(sync_task_logs_dir) if os.path.isfile(os.path.join(sync_task_logs_dir, f))]
-                    sync_task_logs_files.sort(key=lambda x: x[1], reverse=True)
-                    latest_file, latest_time = sync_task_logs_files[0]
-                    send_item['last_sync_at'] = mw.toTime(latest_time)
+                    if len(sync_task_logs_files) > 0:
+                        sync_task_logs_files.sort(key=lambda x: x[1], reverse=True)
+                        latest_file, latest_time = sync_task_logs_files[0]
+                        send_item['last_sync_at'] = mw.toTime(latest_time)
                     send_open_list.append(send_item)
+                    if send_item.get('readtime', 'false') == 'true':
+                        send_open_realtime_list.append(send_item)
+                    else:
+                        send_open_fixtime_list.append(send_item)
                 else:
                     send_close_list.append(send_item)
 
@@ -537,6 +563,8 @@ table tr td:nth-child(2) {
                 # "send_list": send_list,
                 "send_count": send_count,
                 "send_open_list": send_open_list,
+                "send_open_realtime_list": send_open_realtime_list,
+                "send_open_fixtime_list": send_open_fixtime_list,
                 "send_open_count": send_open_count,
                 # "send_close_list": send_close_list,
                 "send_close_count": send_close_count

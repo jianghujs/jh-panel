@@ -331,7 +331,7 @@ table tr td:nth-child(2) {
 </table>
 
 <h3>数据库：</h3>
-
+<p style="color: #efefef; font-size: 14px;">提示：由于数据库存储的单位是页，MySQL的InnoDB引擎默认页大小是16KB。如果你添加的数据小于这个数值，可能不会立即反映在数据库大小上。</p>
 <table border>
 %(mysqlinfo_tips)s
 </table>

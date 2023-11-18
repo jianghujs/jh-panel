@@ -98,17 +98,13 @@ class reportTools:
             memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
             sysinfo_tips.append({
                 "name": "CPU",
-                "desc": "平均使用率%.2f%%%s" % (
-                    cpuAnalyzeResult.get('average', 0), 
-                    ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(cpuAnalyzeResult.get('overCount', 0)))) if cpuAnalyzeResult.get('overCount', 0) > 0 else ''
-                )
+                "desc": f"平均使用率<span style='color: {'red' if cpuAnalyzeResult.get('average', 0) > cpu_notify_value else ('orange' if cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(cpuAnalyzeResult.get("overCount", 0))}次</span>') if cpuAnalyzeResult.get('overCount', 0) > 0 else '')
             })
             sysinfo_tips.append({
                 "name": "内存",
-                "desc": "平均使用率%.2f%%%s" % (
-                    memAnalyzeResult.get('average', 0), 
-                    ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(mem_notify_value), str(memAnalyzeResult.get('overCount', 0)))) if memAnalyzeResult.get('overCount', 0) > 0 else ''
-                )
+                "desc": f"平均使用率<span style='color: {'red' if memAnalyzeResult.get('average', 0) > mem_notify_value else ('orange' if memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                    ((f'，<span style="color: red">异常（使用率超过{str(mem_notify_value)}%）{str(memAnalyzeResult.get("overCount", 0))}次</span>') if memAnalyzeResult.get('overCount', 0) > 0 else '')
             })
 
             # 负载：资源使用率(pro)
@@ -116,10 +112,8 @@ class reportTools:
             loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
             sysinfo_tips.append({
                 "name": "资源使用率",
-                "desc": "平均使用率%.2f%%%s" % (
-                    loadAverageAnalyzeResult.get('average', 0), 
-                    ('，<span style="color: red">异常（使用率超过%s%%）%s次</span>' % (str(cpu_notify_value), str(loadAverageAnalyzeResult.get('overCount', 0)))) if loadAverageAnalyzeResult.get('overCount', 0) > 0 else ''
-                )
+                "desc": f"平均使用率<span style='color: {'red' if loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value else ('orange' if loadAverageAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8) else 'auto')}'>{round(loadAverageAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(loadAverageAnalyzeResult.get("overCount", 0))}次</span>') if loadAverageAnalyzeResult.get('overCount', 0) > 0 else '')
             })
 
             # 磁盘
@@ -128,11 +122,7 @@ class reportTools:
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
                 sysinfo_tips.append({
                     "name": "磁盘（%s）" % disk['path'],
-                    "desc": "已使用%s（%s/%s）" % (
-                        disk['size'][3],
-                        disk['size'][1],
-                        disk['size'][0]
-                    )
+                    "desc": f"已使用<span style='color: {'red' if disk_size_percent > disk_notify_value else ('orange' if disk_size_percent > (disk_notify_value*0.8) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
                 })
 
             # 网站

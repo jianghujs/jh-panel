@@ -39,8 +39,8 @@ class reportTools:
 
     def __init__(self):
         now = datetime.datetime.now()
-        # start = mw.getReportCycleStartTime(now)
-        start = datetime.datetime.fromtimestamp(1700314320)
+        start = mw.getReportCycleStartTime(now)
+        # start = datetime.datetime.fromtimestamp(1700314320)
         end = now
         self.__START_TIMESTAMP = int(start.timestamp())
         self.__END_TIMESTAMP = int(end.timestamp())

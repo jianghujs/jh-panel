@@ -257,7 +257,9 @@ def projectList():
     # status
     statusCmd = """ps -ef | grep -v grep | grep -v python | grep 'jianghujs' | awk -F'baseDir":"' '{print $2}' | awk -F'","' '{print $1}'"""
     statusExec = mw.execShell(statusCmd)
-    statusMap = {path: ('start' if path in statusExec[0] else 'stop') for path in paths}
+    # 将字符串拆分为行精准匹配路径
+    statusExecLines = statusExec[0].splitlines()
+    statusMap = {path: ('start' if path in statusExecLines else 'stop') for path in paths}
 
     # loadingStatus
     server_dir = getServerDir()

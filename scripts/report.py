@@ -191,7 +191,6 @@ class reportTools:
             mysql_info = systemApi.getMysqlInfo()
             # 开始的数据库情况
             start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (0, self.__START_TIMESTAMP)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
-            print(start_mysql_info)
             start_database_list = '[]'
             if len(start_mysql_info) > 0:
                 start_database_list = start_mysql_info[0].get('list', '[]')
@@ -585,14 +584,9 @@ table tr td:nth-child(2) {
 
         return xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips
 
-    def test(self):
-        
-        return 'test'
-
 
 if __name__ == "__main__":
     report = reportTools()
-    print(report.test())
 
     type = sys.argv[1]
 

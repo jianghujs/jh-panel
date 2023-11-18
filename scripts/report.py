@@ -125,6 +125,9 @@ class reportTools:
                     "desc": f"已使用<span style='color: {'red' if disk_size_percent > disk_notify_value else ('orange' if disk_size_percent > (disk_notify_value*0.8) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
                 })
 
+            # 备份相关
+            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
+
             # 网站
             siteinfo_tips = []
             siteInfo = systemApi.getSiteInfo()
@@ -155,9 +158,6 @@ class reportTools:
                         cert_status
                     )
                 })
-
-            # 备份相关
-            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
 
             # JianghuJS管理器
             jianghujsinfo_tips = []
@@ -304,16 +304,16 @@ table tr td:nth-child(2) {
 %(sysinfo_tips)s
 </table>
 
-<h3>网站：</h3>
-
-<table border>
-%(siteinfo_tips)s
-</table>
-
 <h3>备份：</h3>
 
 <table border>
 %(backup_tips)s
+</table>
+
+<h3>网站：</h3>
+
+<table border>
+%(siteinfo_tips)s
 </table>
 
 <h3>JianghuJS项目：</h3>
@@ -339,8 +339,8 @@ table tr td:nth-child(2) {
                 "start_date": self.__START_DATE,
                 "end_date": self.__END_DATE,
                 "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
-                "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
                 "backup_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in backup_tips),
+                "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
                 "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
                 "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', ''))),

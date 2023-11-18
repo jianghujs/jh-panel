@@ -156,6 +156,9 @@ class reportTools:
                     )
                 })
 
+            # 备份相关
+            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
+
             # JianghuJS管理器
             jianghujsinfo_tips = []
             jianghujs_Info = systemApi.getJianghujsInfo()
@@ -205,9 +208,6 @@ class reportTools:
                         )
                     })
 
-            # 备份相关
-            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
-            
             # 生成概要信息
             summary_tips = []
             # 系统资源概要信息
@@ -310,6 +310,11 @@ table tr td:nth-child(2) {
 %(siteinfo_tips)s
 </table>
 
+<h3>备份：</h3>
+
+<table border>
+%(backup_tips)s
+</table>
 
 <h3>JianghuJS项目：</h3>
 
@@ -328,12 +333,6 @@ table tr td:nth-child(2) {
 <table border>
 %(mysqlinfo_tips)s
 </table>
-
-<h3>备份：</h3>
-
-<table border>
-%(backup_tips)s
-</table>
             """ % {
                 "title": mw.getConfig('title'),
                 "ip": mw.getHostAddr(),
@@ -341,10 +340,10 @@ table tr td:nth-child(2) {
                 "end_date": self.__END_DATE,
                 "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
                 "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
+                "backup_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in backup_tips),
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
                 "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
                 "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', ''))),
-                "backup_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in backup_tips),
                 "summary_content": ''.join(f"<li>{item}</li>\n" for item in summary_tips)
 
             }

@@ -140,7 +140,7 @@ class reportTools:
             siteInfo = systemApi.getSiteInfo()
             for site in siteInfo['site_list']:
                 site_name = site['name']
-                status = '<span>运行中</span>' if site['status'] == '1' else '<span style="color: red">已停止</span>'
+                status = '<span>运行中</span>' if site['status'] == '1' else '<span style="color: orange">已停止</span>'
                 cert_status = '未配置'
 
                 # 证书
@@ -155,7 +155,7 @@ class reportTools:
                     else:
                         cert_status = '将于%s到期，还有%s天%s到期' % (
                             cert_not_after,
-                            ("<span style='color: red'>%s</span>" if cert_endtime < ssl_cert_notify_value else "<span>%s</span>") % str(cert_endtime), 
+                            (f"<span style='color: {'red' if cert_endtime < 3 else ('orange' if cert_endtime < ssl_cert_notify_value  else 'auto')}'>{cert_endtime}</span>"), 
                             ('，到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
                         )
                 siteinfo_tips.append({

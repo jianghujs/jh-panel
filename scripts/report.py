@@ -586,7 +586,7 @@ table tr td:nth-child(2) {
 
     def test(self):
         
-        return 'a'
+        return 'test'
 
 
 if __name__ == "__main__":

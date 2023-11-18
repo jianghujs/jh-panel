@@ -69,6 +69,18 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-inc增量备份" >> $script_file
   echo "echo \"|- 开启 xtrabackup-inc增量备份 定时任务完成✅\"" >> $script_file
   echo "" >> $script_file
+  echo "# 启用rsyncd任务" >> $script_file
+  pushd /www/server/jh-panel > /dev/null
+  lsyncd_list=$(python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_list | jq -r .data | jq -r .list)
+  for item in $(echo "${lsyncd_list}" | jq -r '.[] | @base64'); do
+    _jq() {
+      echo ${item} | base64 --decode | jq -r ${1}
+    }
+    name=$(_jq '.name')
+    echo "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status {name:$name,status:enabled}" >> $script_file
+  done
+  popd > /dev/null
+  echo "" >> $script_file
   echo "# 启用openresty" >> $script_file
   echo "python3 /www/server/jh-panel/plugins/openresty/index.py start" >> $script_file
   echo "echo \"|- 启动 OpenResty’ 完成✅\"" >> $script_file

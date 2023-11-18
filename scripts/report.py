@@ -244,7 +244,7 @@ class reportTools:
                 backup_summary_tips.append("Xtrabackup")
             if xtrabackup_inc_info is not None and (xtrabackup_inc_info.get('full_last_backup_time', '') is None or xtrabackup_inc_info.get('inc_last_backup_time', '') is None or xtrabackup_inc_info.get('full_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or xtrabackup_inc_info.get('inc_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
                 backup_summary_tips.append("Xtrabackup增量")
-            if mysql_dump_info is not None and (mysql_dump_info.get('last_backup_time', '') is None or mysql_dump_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
+            if mysql_dump_info is not None and (mysql_dump_info.get('last_backup_time', '') is None or mysql_dump_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or mysql_dump_info.get('count_in_timeframe', 0) == 0):
                 backup_summary_tips.append("MySQL Dump")
             if rsyncd_info is not None:
                 if len(rsyncd_info.get('send_open_realtime_list', [])) > 0:

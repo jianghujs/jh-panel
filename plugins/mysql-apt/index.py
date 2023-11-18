@@ -383,12 +383,15 @@ def my8cmd(version, method):
             isInited = initMysql8Data()
 
         if not isInited:
-            mw.execShell('systemctl start ' + getPluginName())
+            subprocess.run(["systemctl", "start", getPluginName()])
             initMysql8Pwd()
-            mw.execShell('systemctl stop ' + getPluginName())
+            subprocess.run(["systemctl", "stop", getPluginName()])
 
-        mw.execShell('systemctl ' + method + ' ' + getPluginName())
-        return 'ok'
+        result = subprocess.run(["systemctl", method, getPluginName()])
+        if result.returncode == 0:
+            return 'ok'
+        else:
+            return result.stderr if result.stderr else '启动失败'
     except Exception as e:
         return str(e)
 
@@ -398,6 +401,7 @@ def appCMD(version, action):
 
 
 def start(version=''):
+    res = appCMD(version, 'start')
     return appCMD(version, 'start')
 
 

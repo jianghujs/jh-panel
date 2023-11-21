@@ -12,7 +12,7 @@ export STORAGE_DIR=$storage_dir
 
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
-script_file="copy_dirs_to_wwwstorage.sh"
+script_file="/tmp/copy_dirs_to_wwwstorage.sh"
 
 read -p "请输入需要迁移的目录（多个用英文逗号隔开，默认为 upload）: " dirs_input
 dirs_input=${dirs_input:-"upload"}

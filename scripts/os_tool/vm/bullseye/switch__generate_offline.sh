@@ -1,5 +1,5 @@
 #!/bin/bash
-script_file="offline.sh"
+script_file="/tmp/offline.sh"
 
 read -p "确定生成服务器下线（包括停止xtrabackup增量备份、xtrabackup、mysqldump定时任务、停止邮件通知）的脚本文件${script_file}吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}

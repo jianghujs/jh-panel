@@ -4,7 +4,7 @@ default_find_dir="/www/wwwroot/"
 read -p "输入查找的根目录（默认为：${default_find_dir}）: " find_dir
 find_dir=${find_dir:-${default_find_dir}}
 
-path_file="find_dirs_path.txt"
+path_file="/tmp/find_dirs_path.txt"
 
 read -p "请输入需要查找目录（多个用英文逗号隔开，默认为 .git）: " dirs_input
 dirs_input=${dirs_input:-".git"}

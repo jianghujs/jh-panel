@@ -1,5 +1,5 @@
 #!/bin/bash
-script_file="online.sh"
+script_file="/tmp/online.sh"
 
 read -p "确定生成服务器上线（包括执行xtrabackup增量恢复、更新wwwroot目录、启动xtrabackup增量备份、xtrabackup、mysqldump定时任务、开启邮件通知）的脚本文件${script_file}吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}

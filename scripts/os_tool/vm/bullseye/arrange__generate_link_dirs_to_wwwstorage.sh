@@ -13,7 +13,7 @@ export STORAGE_DIR=$storage_dir
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
 project_dir_exist_dirs=()
-script_file="link_dirs_to_wwwstorage.sh"
+script_file="/tmp/link_dirs_to_wwwstorage.sh"
 
 read -p "确定要生成链接${project_dir}下的目录到${storage_dir}的脚本文件吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}

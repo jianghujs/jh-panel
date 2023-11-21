@@ -1,6 +1,6 @@
 #!/bin/bash
 
-log_file=top_rank_output.txt
+log_file=/tmp/top_rank_output.txt
 
 read -p "是否需要将结果打印到日志文件${log_file}？（默认n）[y/n]" yn
 yn=${yn:-n}

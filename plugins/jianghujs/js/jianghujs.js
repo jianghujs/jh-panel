@@ -741,7 +741,7 @@ popd > /dev/null`;
             defaultDeployScript += `
 # 建立upload软链
 if [ -d "${path}/upload/" ]; then
-    rmdir ${path}/upload/
+    rm -rf ${path}/upload/
     echo "|- 已删除${path}/upload/"
 fi
 if [ ! -d "/www/wwwstorage/${name}/upload/" ]; then

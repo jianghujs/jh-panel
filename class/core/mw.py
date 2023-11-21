@@ -29,7 +29,7 @@ from random import Random
 import tempfile
 
 
-def execShell(cmdstring, cwd=None, timeout=None, shell=True, useTmpFile=True):
+def execShell(cmdstring, cwd=None, timeout=None, shell=True, useTmpFile=False):
 
     if shell:
         cmdstring_list = cmdstring

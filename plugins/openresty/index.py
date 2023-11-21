@@ -234,7 +234,7 @@ def restyOp(method):
 
     # 启动时,先检查一下配置文件
     check = getServerDir() + "/bin/openresty -t"
-    check_data = mw.execShell(check)
+    check_data = mw.execShell(check, useTmpFile = False)
     if not check_data[1].find('test is successful') > -1:
         return check_data[1]
 
@@ -263,7 +263,7 @@ def restyOp_restart():
 
     # 启动时,先检查一下配置文件
     check = getServerDir() + "/bin/openresty -t"
-    check_data = mw.execShell(check)
+    check_data = mw.execShell(check, useTmpFile = False)
     if not check_data[1].find('test is successful') > -1:
         return 'ERROR: 配置出错<br><a style="color:red;">' + check_data[1].replace("\n", '<br>') + '</a>'
 

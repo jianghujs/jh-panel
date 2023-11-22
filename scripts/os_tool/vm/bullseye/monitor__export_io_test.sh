@@ -24,7 +24,7 @@ case $test_type in
     * ) rw="readwrite";;  # 默认为读写测试
 esac
 
-log_file=fio_test_output.txt
+log_file=/tmp/fio_test_output.txt
 
 read -p "是否需要将结果打印到日志文件${log_file}？（默认n）[y/n]" yn
 yn=${yn:-n}

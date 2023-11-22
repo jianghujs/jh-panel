@@ -12,7 +12,7 @@ export STORAGE_DIR=$storage_dir
 
 project_dir=${PROJECT_DIR:-"/www/wwwroot/"}
 storage_dir=${STORAGE_DIR:-"/www/wwwstorage/"}
-script_file="move_and_link_dirs_to_wwwstorage.sh"
+script_file="/tmp/move_and_link_dirs_to_wwwstorage.sh"
 
 read -p "请输入需要移动并链接的目录（多个用英文逗号隔开，默认为 upload: " dirs_input
 dirs_input=${dirs_input:-"upload"}
@@ -74,5 +74,6 @@ echo "- 项目所在目录：$project_dir"
 echo "- 项目数据存放目录：$storage_dir"
 echo "---------------------------------------------------------------"
 echo "已生成移动并连接${project_dir}下的${dirs_input}目录到${storage_dir}的脚本文件： ${script_file}，请手动确认脚本内容并执行该脚本完成操作："
+echo "vi ${script_file}"
 echo "bash ${script_file}"
 echo "==============================================================="

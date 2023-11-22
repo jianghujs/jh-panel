@@ -12,6 +12,26 @@ download_and_run() {
     fi    
 }
 
+
+download_and_run_node() {
+    local script_name=$1
+    if [ "$USE_PANEL_SCRIPT" == "true" ]; then 
+      pushd $SCRIPT_BASE > /dev/null
+      npm i
+      node ${script_name} ${@:2}
+      popd > /dev/null
+    else
+      wget -nv -O /tmp/package.json ${URLBase}/package.json
+      pushd /tmp/ > /dev/null
+      npm i
+      popd > /dev/null
+      
+      wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+      node /tmp/vm_${script_name} ${@:2}
+    fi    
+}
+
+
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."
@@ -58,7 +78,7 @@ case $choice in
     download_and_run monitor__export_io_test.sh
     ;;
 4)
-    download_and_run monitor__export_mysql_checksum.sh
+    download_and_run_node monitor__export_mysql_checksum.js
     ;;
 esac
 

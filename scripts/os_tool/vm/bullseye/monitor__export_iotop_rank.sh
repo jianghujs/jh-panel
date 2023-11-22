@@ -11,7 +11,7 @@ if ! command -v iotop &> /dev/null; then
     fi
 fi
 
-log_file=iotop_rank_output.txt
+log_file=/tmp/iotop_rank_output.txt
 
 read -p "是否需要将结果打印到日志文件${log_file}？（默认n）[y/n]" yn
 yn=${yn:-n}

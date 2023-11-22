@@ -1,5 +1,5 @@
 #!/bin/bash
-script_file="online.sh"
+script_file="/tmp/online.sh"
 
 read -p "确定生成服务器上线（包括执行xtrabackup增量恢复、更新wwwroot目录、启动xtrabackup增量备份、xtrabackup、mysqldump定时任务、开启邮件通知）的脚本文件${script_file}吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}
@@ -103,6 +103,7 @@ if [ $choice == "y" ]; then
   echo "- 脚本路径：$(pwd)/$script_file"
   echo "---------------------------------------------------------------"
   echo "请手动确认脚本内容并执行该脚本完成服务器上线操作："
+  echo "vi ${script_file}"
   echo "bash ${script_file}"
   echo "上线完成后，可以在两台服务器执行 8.服务器状态检查-4.MySQL数据库Checksum分析 脚本，对比结果确保数据库的一致性"
   echo "==============================================================="

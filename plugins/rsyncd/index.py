@@ -703,6 +703,7 @@ def lsyncdGet():
         "ip": '',
         "path": mw.getWwwDir() + '/',
         "target_path": mw.getWwwDir() + '/',
+        "key_path": "/root/.ssh/standby_sync" if os.path.exists('/root/.ssh/standby_sync') else "/root/.ssh/id_rsa",
         'rsync': rsync,
         'realtime': "false",
         'delete': "false",

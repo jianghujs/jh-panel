@@ -1,5 +1,6 @@
 # coding:utf-8
 
+import subprocess
 import sys
 import io
 import os
@@ -147,10 +148,11 @@ def dockerOp(method):
     file = initDreplace()
 
     if not mw.isAppleSystem():
-        data = mw.execShell('systemctl ' + method + ' docker')
-        if data[1] == '':
+        result = subprocess.run(["sudo", "systemctl", method, 'docker'])
+        if result.returncode == 0:
             return 'ok'
-        return data[1]
+        else:
+            return result.stderr if result.stderr else '执行失败'
     return 'fail'
 
 
@@ -174,6 +176,8 @@ def restart():
 def reload():
     return dockerOp('reload')
 
+def runLog():
+    return getServerDir() + '/data/docker.log'
 
 def initdStatus():
     if mw.isAppleSystem():

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
@@ -41,8 +42,17 @@ Install_Docker()
 		echo "Docker-compose had been installed"
 	else
 		echo "Installing docker-compose..."
-		cp -r ./docker-compose /usr/local/bin/
-		chmod +x /usr/local/bin/docker-compose
+
+    # 根据系统架构下载对应的docker-compose，目前只支持x86_64和aarch64，后续可以根据需求添加 现有版本 v2.23.1
+		ARCH=$(uname -m)
+		if [ "$ARCH" = "x86_64" ]; then
+		    ARCH="x86_64"
+		elif [ "$ARCH" = "aarch64" ]; then
+		    ARCH="aarch64"
+		fi
+		# sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$ARCH" -o /usr/local/bin/docker-compose
+		cp -r ./docker-compose-$(uname -s | tr '[:upper:]' '[:lower:]')-$ARCH /usr/local/bin/docker-compose
+		sudo chmod +x /usr/local/bin/docker-compose
 		docker-compose -v
 	fi
 

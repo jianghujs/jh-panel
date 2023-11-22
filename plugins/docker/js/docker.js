@@ -190,7 +190,11 @@ function checkSelect() {
 function checkSelectAll() {
     setTimeout(function () {
         var num = $('#con_list thead input[type="checkbox"].check:checked').length;
-        if (num > 0) {
+        const listCount = $('#con_list tbody tr').length
+        if (listCount == 0) {
+            return
+        }
+        if (num > 0 ) {
             // 全选
             $('#con_list tbody input[type="checkbox"].check').prop('checked', true);;
         } else {

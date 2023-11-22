@@ -72,7 +72,7 @@ if [ $choice == "y" ]; then
   STANDBY_SYNC_PUB_PATH="/root/.ssh/standby_sync.pub"
   AUTHORIZED_KEYS_PATH="/root/.ssh/authorized_keys"
   echo "if [ -f \"$STANDBY_SYNC_PUB_PATH\" ] && grep -Fxq \"\$(cat $STANDBY_SYNC_PUB_PATH)\" $AUTHORIZED_KEYS_PATH; then" >> $script_file
-  echo "  sed -i \"/\$(cat $STANDBY_SYNC_PUB_PATH)/d\" $AUTHORIZED_KEYS_PATH" >> $script_file
+  echo "   grep -Fxv \"\$(cat $STANDBY_SYNC_PUB_PATH)\" $AUTHORIZED_KEYS_PATH > /root/.ssh/temp && mv /root/.ssh/temp $AUTHORIZED_KEYS_PATH" >> $script_file
   echo "fi" >> $script_file
   echo "" >> $script_file
   echo "# 启用rsyncd任务" >> $script_file

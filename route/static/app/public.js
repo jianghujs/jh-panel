@@ -2157,7 +2157,9 @@ function pluginLogs(_name, version, func, line){
         		layer.msg(jdata.msg,{icon:0,time:2000,shade: [0.3, '#000']});
                 return;
         	}
-		}catch(err){/*console.log(err);*/}
+		    }catch(err){
+          // console.log(err);
+        }
 
 
         var loadT2 = layer.msg('文件内容获取中...',{icon:16,time:0,shade: [0.3, '#000']});
@@ -2166,6 +2168,9 @@ function pluginLogs(_name, version, func, line){
             layer.close(loadT2);
             if (!rdata.status){
                 layer.msg(rdata.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+                $(".soft-man-con").html('<div class="soft-man-con">\
+                <textarea readonly="" style="margin: 0px;width: 100%;height: 520px;background-color: #333;color:#fff; padding:0 5px" id="info_log"></textarea>\
+                </div>');
                 return;
             }
             

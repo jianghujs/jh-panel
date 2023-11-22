@@ -8,6 +8,9 @@ rootPath=$(dirname "$curPath")
 rootPath=$(dirname "$rootPath")
 serverPath=$(dirname "$rootPath")
 
+# This is the trap command. It will execute `rm -rf $serverPath/docker` when the script exits due to an error.
+trap 'rm -rf $serverPath/docker' ERR
+
 # cd /www/server/mdserver-web/plugins/docker && /bin/bash install.sh uninstall 1.0
 # cd /www/server/mdserver-web/plugins/docker && /bin/bash install.sh install 1.0
 

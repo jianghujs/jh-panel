@@ -478,7 +478,7 @@ class plugins_api:
             task_len = len(task_sign)
 
             task_name = task_sign[0].lower()
-            task_ver = task_sign[1]
+            task_ver = task_sign[1 if task_len >= 2 else 0]
             if task_len > 2:
                 nameArr = task_sign[0:task_len - 1]
                 task_name = '-'.join(nameArr).lower()
@@ -674,11 +674,11 @@ class plugins_api:
 
     def makeCoexist(self, data):
         plugins_info = []
-        for index in range(len(data['versions'])):
+        for item in data['versions']:
             tmp = data.copy()
             tmp['title'] = tmp['title'] + \
-                '-' + data['versions'][index]
-            tmp['versions'] = data['versions'][index]
+                '-' + item
+            tmp['versions'] = item
             pg = self.getPluginInfo(tmp)
             plugins_info.append(pg)
 
@@ -691,8 +691,8 @@ class plugins_api:
             if type(data['versions']) == list and 'coexist' in data and data['coexist']:
                 tmp_data = self.makeCoexist(data)
                 
-                for index in range(len(tmp_data)):
-                    plugins_info.append(tmp_data[index])
+                for item in tmp_data:
+                    plugins_info.append(item)
             else:
                 pg = self.getPluginInfo(data)
                 plugins_info.append(pg)
@@ -701,8 +701,8 @@ class plugins_api:
         if sType == '0':
             if type(data['versions']) == list and 'coexist' in data and data['coexist']:
                 tmp_data = self.makeCoexist(data)
-                for index in range(len(tmp_data)):
-                    plugins_info.append(tmp_data[index])
+                for item in tmp_data:
+                    plugins_info.append(item)
             else:
                 pg = self.getPluginInfo(data)
                 plugins_info.append(pg)
@@ -721,8 +721,8 @@ class plugins_api:
                 try:
                     data = json.loads(mw.readFile(json_file))
                     tmp_data = self.makeList(data, sType)
-                    for index in range(len(tmp_data)):
-                        plugins_info.append(tmp_data[index])
+                    for item in tmp_data:
+                        plugins_info.append(item)
                 except Exception as e:
                     print(e)
         return plugins_info
@@ -929,13 +929,13 @@ class plugins_api:
                 try:
                     data = json.loads(content)
                     data = self.makeList(data)
-                    for index in range(len(data)):
-                        if data[index]['versions'] == plugin_ver or plugin_ver in data[index]['versions']:
-                            data[index]['display'] = True
-                            plist.append(data[index])
+                    for item in data:
+                        if item['versions'] == plugin_ver or plugin_ver in item['versions']:
+                            item['display'] = True
+                            plist.append(item)
                             continue
                 except Exception as e:
-                    print('getIndexList:', e)
+                    print('getIndexListError:', e)
 
         # 使用gevent模式时,无法使用多进程
         # plist = self.checkStatusMProcess(plist)

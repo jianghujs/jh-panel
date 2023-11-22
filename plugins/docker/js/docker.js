@@ -156,6 +156,51 @@ async function execCon(Hostname) {
     });
 }
 
+// 选中的 id
+let checkedIds = []
+// 点击选中
+function checkSelect() {
+    setTimeout(function () {
+        var selectList = $('#con_list tbody input[type="checkbox"].check:checked');
+        
+        const listCount = $('#con_list tbody tr').length
+        checkedIds = selectList.toArray().map(o => o.value)
+        var num = selectList.length
+        // console.log(num);
+        if (num == 1) {
+            $('button[batch="true"]').hide();
+            $('button[batch="false"]').show();
+        }else if (num>1){
+            $('button[batch="true"]').show();
+            $('button[batch="false"]').show();
+        }else{
+            $('button[batch="true"]').hide();
+            $('button[batch="false"]').hide();
+        }
+        if (num >= listCount) {
+            // 全选
+            $('#con_list thead input[type="checkbox"].check').prop('checked', true);
+        } else {
+            // 取消全选
+            $('#con_list thead input[type="checkbox"].check').prop('checked', false);
+        }
+    },5)
+}
+// 点击全选
+function checkSelectAll() {
+    setTimeout(function () {
+        var num = $('#con_list thead input[type="checkbox"].check:checked').length;
+        if (num > 0) {
+            // 全选
+            $('#con_list tbody input[type="checkbox"].check').prop('checked', true);;
+        } else {
+            // 取消全选
+            $('#con_list tbody input[type="checkbox"].check').prop('checked', false);;
+        }
+        checkSelect()
+    },5)
+}
+
 function dockerConListRender() {
     dPost('con_list', '', {}, function(rdata) {
         var rdata = $.parseJSON(rdata.data);
@@ -663,6 +708,12 @@ function dockerImageList() {
     dockerImageListRender();
 }
 
+function projectBatchOperation(method) {
+  var list = $('#con_list tbody input[type="checkbox"].check:checked');
+  checkedIds = list.toArray().map(o => o.value)
+  projectScriptExcute(method, checkedIds)
+}
+
 //获取文件数据
 function dockerGetFileBytes(fileName) {
     window.open('/files/download?filename=' + encodeURIComponent(fileName));
@@ -1100,10 +1151,14 @@ function projectList() {
     var con = '<div class="safe bgw">\
             <button title="" class="btn btn-success btn-sm" type="button" style="margin-right: 5px;" onclick="openCreateProject();">新建项目</button>\
             <button title="" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;" onclick="openImportProject();">导入项目</button>\
+            <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectBatchOperation(\'start\');">批量启动</button>\
+            <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectBatchOperation(\'stop\');">批量停止</button>\
+            <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectBatchOperation(\'reload\');">批量重启</button>\
             <div class="divtable mtb10">\
                 <div class="tablescroll">\
                     <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
                     <thead><tr>\
+                    <th width="30"><input class="check" onclick="checkSelectAll();" type="checkbox"></th>\
                     <th>目录</th>\
                     <th>名称</th>' +
                     '<th>状态</th>\
@@ -1139,10 +1194,10 @@ function projectListRender() {
             var opt = '';
             if(!rlist[i].loadingStatus) {
                 if(rlist[i].status != 'start'){
-                    opt += '<a href="javascript:projectScriptExcute(\'start\', \''+rlist[i].id+'\')" class="btlink">启动</a> | ';
+                    opt += '<a href="javascript:projectScriptExcute(\'start\', [\'' + rlist[i].id + '\'])" class="btlink">启动</a> | ';
                 }else{
-                    opt += '<a href="javascript:projectScriptExcute(\'stop\', \''+rlist[i].id+'\')" class="btlink">停止</a> | ';
-                    opt += '<a href="javascript:projectScriptExcute(\'reload\', \''+rlist[i].id+'\')" class="btlink">重启</a> | ';
+                    opt += '<a href="javascript:projectScriptExcute(\'stop\', [\'' + rlist[i].id + '\'])" class="btlink">停止</a> | ';
+                    opt += '<a href="javascript:projectScriptExcute(\'reload\', [\'' + rlist[i].id + '\'])" class="btlink">重启</a> | ';
                 }
             }
 
@@ -1161,7 +1216,13 @@ function projectListRender() {
                 }
             }
 
+            var checked = ''
+            if (checkedIds.includes(rlist[i]['id'])) {
+                checked = 'checked'
+            }
+
             list += '<tr>';
+            list += '<td><input value="' + rlist[i]['id'] + '" class="check" onclick="checkSelect();" ' + checked +' type="checkbox"></td>';
             list += '<td><a class="jhlink" href="javascript:openNewWindowPath(\'' + rlist[i].path + '\')">' + rlist[i]['path'] + '</a></td>'
             list += '<td>' + rlist[i]['name'] + '</td>'
             list += '<td>' + status + '</td>';
@@ -1613,11 +1674,12 @@ async function submitImportItem() {
     
 }
 
-function projectScriptExcute(opt, id) {
-    editItem = composeFileListData.find(item => item.id == id) || {};
-    script = editItem[opt + '_script']
+function projectScriptExcute(opt, ids) {
+    editItemList = composeFileListData.filter(item => ids.includes(item.id)) || [];
     layer.msg('执行成功',{icon:1});
-    excuteScriptTask(`docker插件[${editItem.name}:${opt}]`, script)
+    editItemList.forEach(editItem => 
+      excuteScriptTask(`docker插件[${editItem.name}:${opt}]`, editItem[opt + '_script'])
+      )
 }
 
 // 绑定执行完毕事件

@@ -825,7 +825,7 @@ class system_api:
             "status": "stop"
         }
         if os.path.exists('/www/server/jianghujs/'):
-            project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/jianghujs/index.py project_list')[0]
+            project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/jianghujs/index.py project_list', useTmpFile=True)[0]
             if project_list_result:
                 project_list_result = json.loads(project_list_result)
                 if project_list_result.get('status', False):

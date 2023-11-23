@@ -250,8 +250,8 @@ function doMysqlBackup(content) {
 
 
 function openRecoveryBackup(filename) {
-    myPost('get_recovery_backup_script',{filename}, function(data) {
-		let rdata = $.parseJSON(data.data);
+  myPost('get_recovery_backup_script',{filename}, function(data) {
+    let rdata = $.parseJSON(data.data);
         openEditCode({
             title: '执行恢复',
             content: rdata.data,
@@ -259,7 +259,9 @@ function openRecoveryBackup(filename) {
             height: '400px',
             submitBtn: '执行',
             onSubmit: (content) => {
+              safeMessage('【' + document.title + '】恢复确认警告！ ', '恢复备份将会覆盖数据库内容、不可撤销, 确定执行吗?', function() {
                 doRecoveryBackup(content)
+              });
             }
         })
     });

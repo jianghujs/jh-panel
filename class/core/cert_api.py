@@ -1441,7 +1441,7 @@ fullchain.pem       粘贴到证书输入框
 
             # 发送通知
             notify_msg = mw.generateCommonNotifyMessage("|-域名[{}]SSL证书续签完成！".format(str(domains)))
-            mw.notifyMessage(msg=notify_msg, stype='续签完成', trigger_time=0)
+            mw.notifyMessage(msg=notify_msg, title="续签成功提醒", stype='续签完成', trigger_time=0)
         except Exception as e:
             if str(e).find('429') > -1:
                 msg = '至少超过7天，才能续期!'
@@ -1464,7 +1464,7 @@ fullchain.pem       粘贴到证书输入框
             
             # 发送通知
             notify_msg = mw.generateCommonNotifyMessage("|-续签[{}]SSL证书异常: {}".format(str(domains), msg) + '\n请注意!')
-            mw.notifyMessage(msg=notify_msg, stype='续签失败', trigger_time=0)
+            mw.notifyMessage(msg=notify_msg, title="续签失败提醒", stype='续签失败', trigger_time=0)
 
             return mw.returnJson(False, msg)
         finally:

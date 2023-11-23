@@ -261,7 +261,7 @@ def getRecoveryBackupScript():
         mysqlName = 'mysql'
     else:
         return mw.returnJson(False, '未检测到安装的mysql插件!')
-    recoveryScript = 'echo "开始全量恢复..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nMYSQL_NAME=%(mysqlName)s\nMYSQL_DIR=%(mysqlDir)s\nset -x\n%(script)s' % {
+    recoveryScript = 'echo "开始增量恢复..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nMYSQL_NAME=%(mysqlName)s\nMYSQL_DIR=%(mysqlDir)s\nset -x\n%(script)s' % {
         'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'mysqlName': mysqlName, 'mysqlDir': mysqlDir, 'script': mw.readFile(getIncRecoveryScriptFile())}
     return mw.returnJson(True, 'ok', recoveryScript)
 
@@ -350,6 +350,23 @@ def getIncBackupCronScript():
         'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'lockFilePath': getLockFile(), 'scriptFile': getIncScriptFile()}
     return mw.returnJson(True, 'ok',  backupCronScript)
 
+def getIncRecoveryCronScript():
+    # 获取的mysql目录
+    mysqlDir = ''
+    mysqlName = ''
+    if os.path.exists('/www/server/mysql-apt'):
+        mysqlDir = '/www/server/mysql-apt'
+        mysqlName = 'mysql-apt'
+    elif os.path.exists('/www/server/mysql'):
+        mysqlDir = '/www/server/mysql'
+        mysqlName = 'mysql'
+    else:
+        return mw.returnJson(False, '未检测到安装的mysql插件!')
+    # cron中直接执行脚本文件
+    recoveryCronScript = 'echo "开始增量恢复..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport MYSQL_NAME=%(mysqlName)s\nexport MYSQL_DIR=%(mysqlDir)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nbash %(scriptFile)s' % {
+        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'mysqlName': mysqlName, 'mysqlDir': mysqlDir, 'lockFilePath': getLockFile(), 'scriptFile': getIncRecoveryScriptFile()}
+    return mw.returnJson(True, 'ok',  recoveryCronScript)
+
 
 def backupCallback():
     args = getArgs()
@@ -410,6 +427,8 @@ if __name__ == "__main__":
         print(backupList())
     elif func == 'get_recovery_backup_script':
         print(getRecoveryBackupScript())
+    elif func == 'get_inc_recovery_cron_script':
+        print(getIncRecoveryCronScript())
     elif func == 'do_delete_backup':
         print(doDeleteBackup())
     elif func == 'do_task_with_lock':

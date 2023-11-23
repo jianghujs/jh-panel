@@ -19,6 +19,13 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]xtrabackup-inc增量备份" >> $script_file
   echo "echo \"|- 关闭 xtrabackup-inc增量备份 定时任务完成✅\"" >> $script_file
   echo "" >> $script_file
+  echo "# 配置同步公钥到authorized_keys" >> $script_file
+  STANDBY_SYNC_PUB_PATH="/root/.ssh/standby_sync.pub"
+  AUTHORIZED_KEYS_PATH="/root/.ssh/authorized_keys"
+  echo "if [ -f \"$STANDBY_SYNC_PUB_PATH\" ] && ! grep -Fxq \"\$(cat $STANDBY_SYNC_PUB_PATH)\" $AUTHORIZED_KEYS_PATH; then" >> $script_file
+  echo "  cat \"$STANDBY_SYNC_PUB_PATH\" >> $AUTHORIZED_KEYS_PATH" >> $script_file
+  echo "fi" >> $script_file
+  echo "" >> $script_file
   echo "# 关闭rsyncd任务" >> $script_file
   pushd /www/server/jh-panel > /dev/null
   lsyncd_list=$(python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_list | jq -r .data | jq -r .list)

@@ -930,7 +930,7 @@ function getLsyncdLogCutCron() {
       $("#lsyncd-log-cut-cron input[name='minute']").val(0);
       $("#lsyncd-log-cut-cron input[name='saveAllDay']").val(3);
       $("#lsyncd-log-cut-cron input[name='saveOther']").val(1);
-      $("#lsyncd-log-cut-cron input[name='saveMaxDay']").val(3);
+      $("#lsyncd-log-cut-cron input[name='saveMaxDay']").val(30);
       // lsyncdLogCutCron = {...defaultLsyncdLogCutCron};
     }
   },'json');

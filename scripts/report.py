@@ -541,13 +541,12 @@ table tr td:nth-child(2) {
                         latest_file, latest_time = sync_task_logs_files[0]
                         send_item['last_sync_at'] = mw.toTime(latest_time)
                     send_open_list.append(send_item)
-                    if send_item.get('readtime', 'false') == 'true':
+                    if send_item.get('realtime', 'false') == 'true':
                         send_open_realtime_list.append(send_item)
                     else:
                         send_open_fixtime_list.append(send_item)
                 else:
                     send_close_list.append(send_item)
-
             # 获取最后的实时同步时间
             if os.path.exists('/www/server/rsyncd/logs/lsyncd.status'):
                 real_time_status_file = mw.readFile("/www/server/rsyncd/logs/lsyncd.status")

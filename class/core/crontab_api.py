@@ -127,11 +127,6 @@ class crontab_api:
             self.removeCrond(cronInfo['echo'])
         else:
             cronInfo['status'] = 1
-
-            # 清除stopped文件
-            statusPath = mw.getCronDir() + '/' + str(cronInfo['echo']) + '_stopped'
-            mw.execShell('rm ' + statusPath)
-
             self.syncToCrond(cronInfo)
 
         mw.M('crontab').where('id=?', (mid,)).setField('status', status)
@@ -346,10 +341,6 @@ class crontab_api:
 
         cronConfig += ' ' + cronPath + '/' + cronName + \
             ' >> ' + cronPath + '/' + cronName + '.log 2>&1'
-        
-        # 清除stopped文件
-        statusPath = cronPath + '/' + str(cronName) + '_stopped'
-        mw.execShell('rm ' + statusPath)
         
         # print(cronConfig)
         if not mw.isAppleSystem():
@@ -699,7 +690,6 @@ fi
         if not mw.writeFile(file, conf):
             return False
         self.crondReload()
-
         # 在目录下增加标识文件
         statusPath = mw.getCronDir() + '/' + str(echo) + '_stopped'
         mw.execShell('echo "" > ' + statusPath)
@@ -720,7 +710,13 @@ fi
         wRes = self.writeCrond(cuonConfig)
         if type(wRes) != bool:
             return False
-        if 'status' in cronInfo:
-            if cronInfo['status'] == 0:
-                return False
+        if cronInfo.get('status', 1) == 0:
+            # 在目录下增加标识文件
+            statusPath = mw.getCronDir() + '/' + str(echo) + '_stopped'
+            mw.execShell('echo "" > ' + statusPath)
+            return False
+        else:
+            # 清除stopped文件
+            statusPath = cronPath + '/' + str(cronName) + '_stopped'
+            mw.execShell('rm ' + statusPath)
         self.crondReload()

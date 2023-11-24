@@ -390,7 +390,7 @@ table tr td:nth-child(2) {
             backup_tips.append({
                 "name": 'Xtrabackup',
                 "desc": """
-最后同步时间：%s<br/>
+最后备份时间：%s<br/>
 区间备份数量：%s<br/>
 区间平均备份大小：%s<br/>
 总备份数量：%s<br/>

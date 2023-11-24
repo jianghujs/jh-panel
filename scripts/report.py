@@ -448,6 +448,7 @@ table tr td:nth-child(2) {
                 "name": 'Xtrabackup增量版',
                 "desc": """
 最后一次全量时间：%s<br/>
+最后一次增量时间：%s<br/>
 区间全量备份次数：%s<br/>
 区间平均全量备份大小：%s<br/>
 总全量备份次数：%s<br/>
@@ -458,6 +459,7 @@ table tr td:nth-child(2) {
 总平均增量备份大小：%s<br/>
                 """ % (
                     f'<span style="color:{"red" if full_last_backup_time is None or full_last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{full_last_backup_time}</span>',
+                    f'<span style="color:{"red" if inc_last_backup_time is None or inc_last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{inc_last_backup_time}</span>',
                     f'<span style="color:{"red" if full_count_in_timeframe == 0 else "auto"}">{full_count_in_timeframe}</span>',
                     f'<span style="color:{"red" if full_average_size_bytes_in_timeframe == 0 else "auto"}">{mw.toSize(full_average_size_bytes_in_timeframe)}</span>',
                     f'<span style="color:{"red" if full_total_count == 0 else "auto"}">{full_total_count}</span>',

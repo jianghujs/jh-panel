@@ -390,22 +390,22 @@ function getFiles(Path) {
 			var fmp = rdata.DIR[i].split(";");
 			var cnametext =fmp[0] + fmp[5];
 			fmp[0] = fmp[0].replace(/'/, "\\'");
-			if(cnametext.length>20){
-				cnametext = cnametext.substring(0,20) + '...';
-			}
-			if(isChineseChar(cnametext)){
-				if(cnametext.length>10){
-					cnametext = cnametext.substring(0,10) + '...';
-				}
-			}
+			// if(cnametext.length>20){
+			// 	cnametext = cnametext.substring(0,20) + '...';
+			// }
+			// if(isChineseChar(cnametext)){
+			// 	if(cnametext.length>10){
+			// 		cnametext = cnametext.substring(0,10) + '...';
+			// 	}
+			// }
 			var timetext ='--';
 			if(getCookie('rank') == 'a'){
 					$("#set_list").addClass("active");
 					$("#set_icon").removeClass("active");
 					body += "<tr class='folderBoxTr' data-path='" + rdata.PATH + "/" + fmp[0] + "' filetype='dir'>\
 						<td><input type='checkbox' name='id' value='"+fmp[0]+"'></td>\
-						<td class='column-name'><span class='cursor' onclick=\"getFiles('" + rdata.PATH + "/" + fmp[0] + "')\">\
-						<span class='ico ico-folder'></span><a class='text' title='" + fmp[0] + fmp[5] + "'>" + cnametext + "</a></span></td>\
+						<td class='column-name'>\
+						  <a class='cursor' title='" + fmp[0] + fmp[5] + "' onclick=\"getFiles('" + rdata.PATH + "/" + fmp[0] + "')\"><span class='ico ico-folder'></span>" + cnametext + "</a></td>\
 						<td>"+toSize(fmp[1])+"</td>\
 						<td>"+getLocalTime(fmp[2])+"</td>\
 						<td>"+fmp[3]+"</td>\
@@ -437,14 +437,14 @@ function getFiles(Path) {
 			var download = '';
 			var cnametext =fmp[0] + fmp[5];
 			fmp[0] = fmp[0].replace(/'/,"\\'");
-			if(cnametext.length>48){
-				cnametext = cnametext.substring(0,48) + '...';
-			}
-			if(isChineseChar(cnametext)){
-				if(cnametext.length>16){
-					cnametext = cnametext.substring(0,16) + '...';
-				}
-			}
+			// if(cnametext.length>48){
+			// 	cnametext = cnametext.substring(0,48) + '...';
+			// }
+			// if(isChineseChar(cnametext)){
+			// 	if(cnametext.length>16){
+			// 		cnametext = cnametext.substring(0,16) + '...';
+			// 	}
+			// }
 			if(displayZip != -1){
 				bodyZip = "<a class='btlink' href='javascript:;' onclick=\"unZip('" + rdata.PATH +"/" +fmp[0] + "'," + displayZip + ")\">解压</a> | ";
 			}
@@ -458,12 +458,12 @@ function getFiles(Path) {
 			} else {
 				download = "<a class='btlink' href='javascript:;' onclick=\"getFileBytes('" + rdata.PATH +"/"+ fmp[0] + "',"+fmp[1]+")\">下载</a> | ";
 			}
-			
+
 			totalSize +=  parseInt(fmp[1]);
 			if(getCookie("rank")=="a"){
 				body += "<tr style='cursor:pointer;' class='folderBoxTr' data-path='" + rdata.PATH +"/"+ fmp[0] + "' filetype='" + fmp[0] + "' ondblclick='openFilename(this)'>\
 					<td><input type='checkbox' name='id' value='"+fmp[0]+"'></td>\
-					<td class='column-name'><span class='ico ico-"+(getExtName(fmp[0]))+"'></span><a class='text' title='" + fmp[0] + fmp[5] + "'>" + cnametext + "</a></td>\
+					<td class='column-name'><span class='ico ico-"+(getExtName(fmp[0]))+"'></span>" + cnametext + "</td>\
 					<td>" + (toSize(fmp[1])) + "</td>\
 					<td>" + ((fmp[2].length > 11)?fmp[2]:getLocalTime(fmp[2])) + "</td>\
 					<td>"+fmp[3]+"</td>\

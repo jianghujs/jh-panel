@@ -511,11 +511,11 @@ function dockerConList() {
                 <div class="tablescroll">\
                     <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
                     <thead><tr>\
-                    <th>名称</th>\
-                    <th>镜像</th>\
-                    <th>创建时间</th>\
-                    <th>状态</th>\
-                    <th style="text-align:right;">操作</th></tr></thead>\
+                    <th style="max-width: 110px">名称</th>\
+                    <th style="max-width: 260px">镜像</th>\
+                    <th style="min-width: 130px">创建时间</th>\
+                    <th style="min-width: 50px" class="text-center">状态</th>\
+                    <th style="text-align:right; min-width: 110px">操作</th></tr></thead>\
                     <tbody></tbody></table>\
                 </div>\
             </div>\

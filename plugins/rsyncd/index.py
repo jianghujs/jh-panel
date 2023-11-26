@@ -8,6 +8,7 @@ import re
 import sys
 import paramiko
 from paramiko import RSAKey
+from urllib.parse import unquote
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -894,17 +895,17 @@ def lsyncdRun():
     if not data[0]:
         return data[1]
 
-    send_dir = getServerDir() + "/send"
     name = args['name']
-    app_dir = send_dir + "/" + name
-    cmd = 'timestamp=$(date +%Y%m%d_%H%M%S)\n'
-    cmd += 'LOG_DIR=' + app_dir + '/logs\n'
-    # 如果不存在日志目录则创建
-    cmd += ('mkdir -p $LOG_DIR\n')
-    cmd += "bash " + app_dir + "/cmd >> $LOG_DIR/run_$timestamp.log" + " 2>&1 &\n"
-    cmd += ('python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR\n')
-    mw.execShell(cmd)
-    return mw.returnJson(True, "执行成功!")
+    send_dir = getServerDir() + "/send/" + name
+    timestamp = '$(date +%Y%m%d_%H%M%S)'
+
+    mw.addAndTriggerTask(
+        name = '执行江湖管理器命令[' + name + ']',
+        execstr = "bash %(send_dir)s/cmd | tee -a %(send_dir)s/logs/run_%(timestamp)s.log" % {
+              'send_dir': send_dir, 'timestamp': timestamp
+            }
+    )
+    return mw.returnJson(True, '添加执行任务成功!')
 
 
 def lsyncdConfLog():

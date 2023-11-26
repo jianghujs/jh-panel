@@ -952,6 +952,9 @@ def projectEdit():
         'reload_script': reloadScript,
         'stop_script': stopScript
     })
+    # 同步修改 path/composeFileName 内容 composeFileContent
+    mw.writeFile(path + '/' + composeFileName, composeFileContent)
+
     statusFile = '%s/script/%s_status' % (getServerDir(), echo)
     makeScriptFile(echo + '_start.sh', 'echo "正在启动项目，请稍侯..."\ntouch %s\necho "启动中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, startScript, statusFile))
     makeScriptFile(echo + '_reload.sh', 'echo "正在重启项目，请稍侯..."\ntouch %s\necho "重启中..." >> %s\n%s\nrm -f %s' % (statusFile, statusFile, reloadScript, statusFile))

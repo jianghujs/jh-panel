@@ -232,17 +232,17 @@ function dockerConListRender() {
             op += '<a href="javascript:;" onclick="deleteCon(\'' + rlist[i]['Config']['Hostname'] + '\')" class="btlink">删除</a>';
 
             list += '<tr>';
-            list += '<td>' + rlist[i]['Name'].substring(1) + '</td>';
-            list += '<td>' + rlist[i]['Config']['Image'] + '</td>';
-            list += '<td>' + getFormatTime(rlist[i]['Created']) + '</td>';
+            list += '<td style="max-width: 110px;overflow-wrap: break-word;">' + rlist[i]['Name'].substring(1) + '</td>';
+            list += '<td style="max-width: 260px;overflow-wrap: break-word;">' + rlist[i]['Config']['Image'] + '</td>';
+            list += '<td style="max-width: 130px">' + getFormatTime(rlist[i]['Created']) + '</td>';
 
 
             if (docker_status == 'start') {
-                list += '<td style="cursor:pointer;" align="center" onclick="stopCon(\'' + rlist[i]['Config']['Hostname'] + '\')">' + status + '</td>';
+                list += '<td style="cursor:pointer;min-width: 50px" align="center" onclick="stopCon(\'' + rlist[i]['Config']['Hostname'] + '\')">' + status + '</td>';
             } else {
-                list += '<td style="cursor:pointer;" align="center" onclick="startCon(\'' + rlist[i]['Config']['Hostname'] + '\')">' + status + '</td>';
+                list += '<td style="cursor:pointer;min-width: 50px" align="center" onclick="startCon(\'' + rlist[i]['Config']['Hostname'] + '\')">' + status + '</td>';
             }
-            list += '<td class="text-right">' + op + '</td>';
+            list += '<td class="text-right" style="min-width: 110px">' + op + '</td>';
             list += '</tr>';
         }
 
@@ -511,11 +511,11 @@ function dockerConList() {
                 <div class="tablescroll">\
                     <table id="con_list" class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0" style="border: 0 none;">\
                     <thead><tr>\
-                    <th style="max-width: 110px">名称</th>\
-                    <th style="max-width: 260px">镜像</th>\
-                    <th style="min-width: 130px">创建时间</th>\
-                    <th style="min-width: 50px" class="text-center">状态</th>\
-                    <th style="text-align:right; min-width: 110px">操作</th></tr></thead>\
+                    <th>名称</th>\
+                    <th>镜像</th>\
+                    <th>创建时间</th>\
+                    <th class="text-center">状态</th>\
+                    <th style="text-align:right;">操作</th></tr></thead>\
                     <tbody></tbody></table>\
                 </div>\
             </div>\

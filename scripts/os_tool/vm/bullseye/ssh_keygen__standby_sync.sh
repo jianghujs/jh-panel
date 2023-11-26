@@ -59,6 +59,6 @@ echo "- 已将证书文件同步到以下服务器："
 echo "  - 服务器IP：${RSYNC_MIGRATE_PACKAGE_REMOTE_IP}"
 echo "  - 目标服务器SSH端口：${RSYNC_MIGRATE_PACKAGE_REMOTE_PORT}"
 else
-echo "请将/root/.ssh目录下的$filename、$filename.pub文件传输到备用服务器 
+echo "请将/root/.ssh目录下的$filename、$filename.pub文件传输到备用服务器 "
 fi
 echo "========================================="

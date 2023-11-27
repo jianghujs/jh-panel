@@ -1,4 +1,17 @@
 #!/bin/bash
+
+# 检查/usr/bin/jq是否存在
+if ! [ -x "/usr/bin/jq" ]; then
+    echo "/usr/bin/jq不存在，正在尝试自动安装..."
+    apt-get update
+    apt-get install jq -y
+    hash -r
+    if ! [ -x "/usr/bin/jq" ]; then
+        echo "安装jq失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
 timestamp=$(date +%Y%m%d_%H%M%S)
 # 临时设置系统的打开文件数量上限
 ulimit -n 65535
@@ -11,6 +24,11 @@ BACKUP_FILE="$HISTORY_DIR/xtrabackup_data_$timestamp.zip"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
 fi
+
+pushd /www/server/jh-panel > /dev/null  
+backup_config=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py get_conf)
+popd > /dev/null
+BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.mysql.backup_compress')
 
 if [ $BACKUP_COMPRESS -eq 1 ];then
     xtrabackup --backup --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> $LOG_DIR/backup_$timestamp.log

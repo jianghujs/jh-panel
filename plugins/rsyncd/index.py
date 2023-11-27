@@ -210,6 +210,8 @@ def initDSend():
     systemDir = mw.systemdCfgDir()
     systemService = systemDir + '/lsyncd.service'
     systemServiceTpl = getPluginDir() + '/init.d/lsyncd.service.tpl'
+    systemBootService = systemDir + '/lsyncd-after-nfs.service'
+    systemBootServiceTpl = getPluginDir() + '/init.d/lsyncd-after-nfs.service.tpl'
     if not os.path.exists(lock_file):
         lsyncd_bin = mw.execShell('which lsyncd')[0].strip()
         if lsyncd_bin == '':
@@ -220,6 +222,8 @@ def initDSend():
         content = content.replace('{$SERVER_PATH}', service_path)
         content = content.replace('{$LSYNCD_BIN}', lsyncd_bin)
         mw.writeFile(systemService, content)
+        contentBoot = mw.readFile(systemBootServiceTpl)
+        mw.writeFile(systemBootService, contentBoot)
         mw.execShell('systemctl daemon-reload')
 
         mw.writeFile(lock_file, "ok")
@@ -315,7 +319,7 @@ def initdInstall():
     if mw.isAppleSystem():
         return "Apple Computer does not support"
 
-    mw.execShell('systemctl enable lsyncd')
+    mw.execShell('systemctl enable lsyncd-after-nfs')
     mw.execShell('systemctl enable rsyncd')
     return 'ok'
 

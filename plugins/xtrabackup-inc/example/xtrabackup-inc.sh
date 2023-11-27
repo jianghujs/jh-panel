@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# 检查/usr/bin/jq是否存在
+if ! [ -x "/usr/bin/jq" ]; then
+    echo "/usr/bin/jq不存在，正在尝试自动安装..."
+    apt-get update
+    apt-get install jq -y
+    hash -r
+    if ! [ -x "/usr/bin/jq" ]; then
+        echo "安装jq失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
 # 检查锁
 if [ -e $LOCK_FILE_PATH ]; then
     # 计算锁时间差
@@ -34,10 +46,16 @@ if [ -d "$BACKUP_INC_PATH" ];then
 fi
 
 mkdir -p $BACKUP_INC_PATH
-LOG_DIR="/www/server/xtrabackup/logs"
+LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
 fi
+
+pushd /www/server/jh-panel > /dev/null  
+backup_config=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py conf)
+popd > /dev/null
+BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.backup_inc.backup_compress')
+BACKUP_ZIP=$(echo "$backup_config" | jq -r '.backup_inc.backup_zip')
 
 if [ $BACKUP_COMPRESS -eq 1 ];then
     xtrabackup --backup --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_INC_PATH --incremental-basedir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_inc_$timestamp.log

@@ -8,7 +8,6 @@ import time
 import shutil
 from urllib.parse import unquote, urlparse
 import dictdatabase as DDB
-import concurrent.futures
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -291,7 +290,7 @@ def projectStartExcute():
     ids = args['id'].split(',')
     action = args['action']
     
-    shell_commands = []
+    shell_commands = {}
     
     for id in ids:
         project = getOne('project', id)
@@ -302,6 +301,7 @@ def projectStartExcute():
         if autostart_script == '':
             return mw.returnJson(False, '请配置项目「' + project.get('name', '') + '」的自启动脚本!')
         
+        projectName = project.get('name', '')
         # 自动添加重试逻辑
         retry_logic = '''
     attempt=0
@@ -322,24 +322,27 @@ def projectStartExcute():
         # 创建自启动脚本文件
         autostartFile = '/etc/init.d/' + echo
         mw.writeFile(autostartFile, autostart_script)
-        shell_commands.append('chmod 755 ' + autostartFile)
+        shell_commands[projectName] = ['chmod 755 ' + autostartFile]
 
         
         # 判断自启动脚本是否启用
         autostartStatusFile = '/etc/rc4.d/S01' + echo
         if action == 'enable':
             if not os.path.exists(autostartStatusFile):
-                shell_commands.append('update-rc.d ' + echo + ' defaults 80 80')
+                shell_commands[projectName].append('update-rc.d ' + echo + ' defaults 80 80')
         else:
             if os.path.exists(autostartStatusFile):
-                shell_commands.append('update-rc.d -f ' + echo + ' remove')
+                shell_commands[projectName].append('update-rc.d -f ' + echo + ' remove')
 
         time.sleep(0.2)
 
-    # 创建一个 ThreadPoolExecutor
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        # 使用 executor.map 来并行地执行多个命令
-        executor.map(mw.execShell, shell_commands)
+    for key, commands in shell_commands.items():
+        mw.addAndTriggerTask(
+            name = '执行江湖管理器命令['+ ('开启自启：' if action == 'enable' else '取消自启：' ) + key +']',
+            # 换行拼接命令
+            execstr = ' && '.join(commands)
+        )
+        
 
     if action == 'enable':
         return mw.returnJson(True, '已批量开启自启动!')

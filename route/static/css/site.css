@@ -2902,19 +2902,26 @@ html .menu .menu_exit:hover {
     z-index: 1
 }
 
-.list-list .column-name .text {
-    color: #595c5f;
-    display: inline-block;
-    max-width: 85%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 30px
+.list-list .column-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+  width: 300px;
+  line-height: 30px;
+  color: #595c5f;
 }
 
 .list-list .column-name .cursor {
     display: inline-block;
     cursor: pointer;
-    width: 200px\9
+    display: inline-block;
+    max-width: 290px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 30px;
+    white-space: nowrap;
+    color: #595c5f;
 }
 
 .table>tbody>tr>td {

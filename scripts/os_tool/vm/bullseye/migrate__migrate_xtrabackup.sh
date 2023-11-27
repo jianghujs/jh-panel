@@ -124,6 +124,23 @@ else
     echo "更新xtrabackup mysql密码失败，错误信息为：\$xtrabackup_change_pwd_msg"
 fi
 
+# 检查 /www/server/jh-panel/plugins/xtrabackup-inc/index.py 是否存在
+# xtrabackup_inc_files=\$(jq -r '.[]' /www/server/jh-panel/data/json/index.json | grep "xtrabackup-inc-")
+xtrabackup_inc_files=\$(ls /www/server/jh-panel/plugins/xtrabackup-inc/index.py)
+if [ "\$xtrabackup_inc_files" != "" ]
+then
+    echo "检测到有xtrabackup增量备份文件，正在更新mysql密码..."
+    xtrabackup_inc_change_pwd_result=\$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py change_setting "{password:${mysql_pwd}}")
+    xtrabackup_inc_change_pwd_status=\$(echo \$xtrabackup_inc_change_pwd_result | jq -r '.status')
+    xtrabackup_inc_change_pwd_msg=\$(echo \$xtrabackup_inc_change_pwd_result | jq -r '.msg')
+    if [ \$xtrabackup_inc_change_pwd_status == "true" ]
+    then
+        echo "更新xtrabackup增量备份mysql密码成功✔"
+    else
+        echo "更新xtrabackup增量备份mysql密码失败，错误信息为：\$xtrabackup_inc_change_pwd_msg"
+    fi
+fi
+
 popd > /dev/null
 
 EOF

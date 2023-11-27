@@ -321,8 +321,9 @@ def projectStartExcute():
 
         # 创建自启动脚本文件
         autostartFile = '/etc/init.d/' + echo
-        mw.writeFile(autostartFile, autostart_script)
-        shell_commands[projectName] = ['chmod 755 ' + autostartFile]
+        # mw.writeFile(autostartFile, autostart_script)
+        shell_commands[projectName] = [ 'echo "' + autostart_script.replace('"', '\\"') + '" > ' + autostartFile ]
+        shell_commands[projectName].append('chmod 755 ' + autostartFile)
 
         
         # 判断自启动脚本是否启用

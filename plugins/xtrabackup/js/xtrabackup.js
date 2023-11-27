@@ -315,10 +315,27 @@ function doDeleteBackup(filename) {
     // });
 }
 
+
+function getXtrabackupConfig() {
+  myPost('get_conf','',function(data){
+      const config = JSON.parse(data.data);
+      $("#openXtrabackupCompressSwitch").createRadioSwitch(config.mysql.backup_compress == 1, (checked) => {
+          setXtrabackupConfig('mysql', 'backup_compress', checked ? 1 : 0);
+      });
+  });
+}
+
+function setXtrabackupConfig(section, key, value) {
+    myPost('set_conf', {section, key, value},function(data){
+        const rdata = JSON.parse(data.data);
+        layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+    });
+}
+
 function mysqlBackupHtml(){
     var con = `\
     <div id="xtrabackup-cron">\
-        <div>\
+        <div class="flex align-center">\
             <span>每天</span>\
             <span>\
                 <input type="hidden" name="id" value="">\
@@ -326,7 +343,11 @@ function mysqlBackupHtml(){
                 <span class="name">:</span>\
                 <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
             </span>\
-            <span>定时执行备份</span>\
+            <span class="mr20">定时执行备份</span>\
+            <div class="mr20 ss-text pull-left">\
+                <em>Compress 压缩</em>\
+                <div class='ssh-item' id="openXtrabackupCompressSwitch"></div>\
+            </div>\
         </div>\
         <div class="flex align-center mtb10">\
             <div class="mr5">保留规则</div>\
@@ -390,5 +411,6 @@ function mysqlBackupHtml(){
                     </tr>';
         }
         $(".plugin-table-body").html(tbody);
+        getXtrabackupConfig();
 	});
 }

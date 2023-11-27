@@ -43,7 +43,8 @@ Install_xtrabackup()
 	mkdir -p $serverPath/xtrabackup
 	echo "2.4" > $serverPath/xtrabackup/version.pl
 	echo $(date "+%Y-%m-%d %H:%M:%S") 'xtrabackup 安装成功' >> $serverPath/xtrabackup/xtrabackup.log
-	cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh
+	cp -r $rootPath/plugins/xtrabackup/example/xtrabackup.sh $serverPath/xtrabackup/xtrabackup.sh
+	cp -r $rootPath/plugins/xtrabackup/conf/backup.ini $serverPath/xtrabackup/backup.ini
 	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup/index.py initd_install
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' >> $install_tmp
 }
@@ -51,9 +52,10 @@ Install_xtrabackup()
 Update_xtrabackup() 
 {
     echo '正在更新...' > $install_tmp
-    cp -r $rootPath/plugins/xtrabackup/xtrabackup.sh.example $serverPath/xtrabackup/xtrabackup.sh
-	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup/index.py initd_install
-	echo $(date "+%Y-%m-%d %H:%M:%S") '更新完成' >> $install_tmp
+    cp -r $rootPath/plugins/xtrabackup/example/xtrabackup.sh $serverPath/xtrabackup/xtrabackup.sh
+    cp -r $rootPath/plugins/xtrabackup/conf/backup.ini $serverPath/xtrabackup/backup.ini
+    cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup/index.py initd_install
+    echo $(date "+%Y-%m-%d %H:%M:%S") '更新完成' >> $install_tmp
 }
 
 Uninstall_xtrabackup()

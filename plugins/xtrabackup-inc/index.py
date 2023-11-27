@@ -410,7 +410,7 @@ def getFullBackupCronScript():
     backupCompress = config['backup_full']['backup_compress']
 
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nBACKUP_COMPRESS=%(backupCompress)s\nset -x\n bash %(scriptFile)s' % {
+    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nexport BACKUP_COMPRESS=%(backupCompress)s\nset -x\n bash %(scriptFile)s' % {
         'baseBackupPath': getBaseBackupPath(), 
         'incBackupPath': getIncBackupPath(), 
         'lockFilePath': getLockFile(), 
@@ -426,7 +426,7 @@ def getIncBackupCronScript():
     backupCompress = config['backup_inc']['backup_compress']
 
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nBACKUP_COMPRESS=%(backupCompress)s\nBACKUP_ZIP=%(backupZip)s\nset -x\n bash %(scriptFile)s' % {
+    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nexport BACKUP_COMPRESS=%(backupCompress)s\nexport BACKUP_ZIP=%(backupZip)s\nset -x\n bash %(scriptFile)s' % {
         'baseBackupPath': getBaseBackupPath(), 
         'incBackupPath': getIncBackupPath(), 
         'lockFilePath': getLockFile(), 

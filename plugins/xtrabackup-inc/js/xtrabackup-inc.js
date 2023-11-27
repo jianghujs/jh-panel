@@ -123,6 +123,8 @@ var defaultXtrabackupFullCron = {
     sType: 'toShell',
     stype: 'toShell',
     sName: '',
+    backupCompress: false,
+    backupZip: false,
     backupTo: 'localhost' };
 var xtrabackupFullCron = {...defaultXtrabackupFullCron};
 
@@ -136,6 +138,8 @@ var defaultXtrabackupIncCron = {
     sType: 'toShell',
     stype: 'toShell',
     sName: '',
+    backupCompress: false,
+    backupZip: false,
     backupTo: 'localhost' };
 var xtrabackupIncCron = {...defaultXtrabackupIncCron};
 
@@ -191,6 +195,7 @@ function backupIncHtml(){
     $(".soft-man-con").html(con);
     getXtrabackupFullCron();
     getXtrabackupIncCron();
+    getXtrabackupConfig();
     
     $("#xtrabackupFullCronDetail .open-cron-selecter-layer").click(() => {
         openCronSelectorLayer(xtrabackupFullCron, {yes: addOrUpdateXtrabackupFullCron});
@@ -202,7 +207,6 @@ function backupIncHtml(){
 }
 
 function getXtrabackupFullCron() {
-    $("#openXtrabackupFullCompressSwitch").createRadioSwitch(false);
     $.post('/crontab/get', { name: xtrabackupFullCron.name },function(rdata){
         const { status: openXtrabackupFullCron } = rdata;
         if (openXtrabackupFullCron) {
@@ -222,9 +226,30 @@ function getXtrabackupFullCron() {
     },'json');
 }
 
+function getXtrabackupConfig() {
+  myPost('conf','',function(data){
+      const config = JSON.parse(data.data);
+      $("#openXtrabackupFullCompressSwitch").createRadioSwitch(config.backup_full.backup_compress == 1, (checked) => {
+          setXtrabackupConfig('backup_full', 'backup_compress', checked ? 1 : 0);
+      });
+
+      $("#openXtrabackupIncZipSwitch").createRadioSwitch(config.backup_inc.backup_zip == 1, (checked) => {
+          setXtrabackupConfig('backup_inc', 'backup_zip', checked ? 1 : 0);
+      });
+      $("#openXtrabackupIncCompressSwitch").createRadioSwitch(config.backup_inc.backup_compress == 1, (checked) => {
+          setXtrabackupConfig('backup_inc', 'backup_compress', checked ? 1 : 0);
+      });
+  });
+}
+
+function setXtrabackupConfig(section, key, value) {
+    myPost('set_conf', {section, key, value},function(data){
+        const rdata = JSON.parse(data.data);
+        layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+    });
+}
+
 function getXtrabackupIncCron() {
-    $("#openXtrabackupIncZipSwitch").createRadioSwitch(false);
-    $("#openXtrabackupIncCompressSwitch").createRadioSwitch(false);
     $.post('/crontab/get', { name: xtrabackupIncCron.name },function(rdata){
         const { status: openXtrabackupIncCron } = rdata;
         if (openXtrabackupIncCron) {

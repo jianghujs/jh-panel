@@ -156,6 +156,10 @@ function backupIncHtml(){
                 <div></div>
                 <button class="open-cron-selecter-layer btn btn-default btn-sm mr20" type="button">配置频率</button>
             </div>
+            <div class="mr20 ss-text pull-left">
+                <em>Compress 压缩</em>
+                <div class='ssh-item' id="openXtrabackupFullCompressSwitch"></div>
+            </div>
         </div>
     </div>
     <div class="safe container-fluid mt10" style="overflow: hidden;">
@@ -171,6 +175,14 @@ function backupIncHtml(){
             <div id="xtrabackupIncCronDetail">
                 <div></div>
                 <button class="open-cron-selecter-layer btn btn-default btn-sm mr20" type="button">配置频率</button>
+            </div>
+            <div class="mr20 ss-text pull-left">
+                <em>Compress 压缩</em>
+                <div class='ssh-item' id="openXtrabackupIncCompressSwitch"></div>
+            </div>
+            <div class="mr20 ss-text pull-left">
+                <em>Zip 压缩</em>
+                <div class='ssh-item' id="openXtrabackupIncZipSwitch"></div>
             </div>
         </div>
     </div>
@@ -190,6 +202,7 @@ function backupIncHtml(){
 }
 
 function getXtrabackupFullCron() {
+    $("#openXtrabackupFullCompressSwitch").createRadioSwitch(false);
     $.post('/crontab/get', { name: xtrabackupFullCron.name },function(rdata){
         const { status: openXtrabackupFullCron } = rdata;
         if (openXtrabackupFullCron) {
@@ -210,6 +223,8 @@ function getXtrabackupFullCron() {
 }
 
 function getXtrabackupIncCron() {
+    $("#openXtrabackupIncZipSwitch").createRadioSwitch(false);
+    $("#openXtrabackupIncCompressSwitch").createRadioSwitch(false);
     $.post('/crontab/get', { name: xtrabackupIncCron.name },function(rdata){
         const { status: openXtrabackupIncCron } = rdata;
         if (openXtrabackupIncCron) {
@@ -265,7 +280,8 @@ function deleteCron(id) {
 }
 
 function openXtrabackupFull() {
-    myPost('full_backup_script','', function(data) {
+    const backupCompress = $("#openXtrabackupFullCompressSwitch").getRadioSwitchValue();
+    myPost('full_backup_script', { backupCompress }, function(data) {
 		let rdata = $.parseJSON(data.data);
         openEditCode({
             title: '执行全量备份',
@@ -281,7 +297,9 @@ function openXtrabackupFull() {
 }
 
 function openXtrabackupInc() {
-    myPost('inc_backup_script','', function(data) {
+    const backupZip = $("#openXtrabackupIncZipSwitch").getRadioSwitchValue();
+    const backupCompress = $("#openXtrabackupIncCompressSwitch").getRadioSwitchValue();
+    myPost('inc_backup_script',{ backupZip, backupCompress }, function(data) {
 		let rdata = $.parseJSON(data.data);
         openEditCode({
             title: '执行增量备份',

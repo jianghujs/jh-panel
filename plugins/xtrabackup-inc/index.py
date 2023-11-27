@@ -326,14 +326,38 @@ def setBackupPath():
 
 
 def getFullBackupScript():
-    backupScript = 'echo "开始全量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'script': mw.readFile(getFullScriptFile())}
+    # 获取参数，提取 backupZip backupCompress
+    args = getArgs()
+    data = checkArgs(args, ['backupCompress'])
+    if not data[0]:
+        return data[1]
+    backupCompress = 1 if args['backupCompress'] == 'true' else 0
+
+    backupScript = 'echo "开始全量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nset -x\n %(script)s' % {
+        'baseBackupPath': getBaseBackupPath(), 
+        'incBackupPath': getIncBackupPath(), 
+        'script': mw.readFile(getFullScriptFile()),
+        'backupCompress': backupCompress
+        }
     return mw.returnJson(True, 'ok',  backupScript)
 
 
 def getIncBackupScript():
-    backupScript = 'echo "开始增量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'script': mw.readFile(getIncScriptFile())}
+    # 获取参数，提取 backupZip backupCompress
+    args = getArgs()
+    data = checkArgs(args, ['backupZip', 'backupCompress'])
+    if not data[0]:
+        return data[1]
+    backupZip = 1 if args['backupZip'] == 'true' else 0
+    backupCompress = 1 if args['backupCompress'] == 'true' else 0
+    
+    backupScript = 'echo "开始增量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nBACKUP_ZIP=%(backupZip)s\nset -x\n %(script)s' % {
+        'baseBackupPath': getBaseBackupPath(), 
+        'incBackupPath': getIncBackupPath(), 
+        'script': mw.readFile(getIncScriptFile()),
+        'backupCompress': backupCompress,
+        'backupZip': backupZip
+        }
     return mw.returnJson(True, 'ok',  backupScript)
 
 

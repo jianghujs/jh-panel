@@ -60,6 +60,22 @@ default_filename=$(generate_key_filename $domain)
 read -p "请输入密钥文件名（默认：$default_filename）: " filename
 filename=${filename:-$default_filename}
 
+# 检查是否存在密钥文件
+if [ -f "/root/.ssh/$filename" ] || [ -f "/root/.ssh/$filename.pub" ]; then
+    # 提示用户是否删除旧的密钥文件
+    read -p "文件已经存在，要删除已有文件吗？（默认y）[y/n]: " choice
+    choice=${choice:-"y"}
+
+    # 如果用户选择删除旧的密钥文件
+    if [ "$choice" == "y" ] || [ "$choice" == "Y" ]; then
+        rm -f "/root/.ssh/$filename"
+        rm -f "/root/.ssh/$filename.pub"
+    else
+        echo "密钥文件已存在，不会生成新的密钥。"
+        exit 1
+    fi
+fi
+
 # 生成密钥
 echo -e "\n" | ssh-keygen -t rsa -C "$email" -f "/root/.ssh/$filename" -N "" > /dev/null
 

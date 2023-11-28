@@ -459,9 +459,11 @@ function lsyncdStatus(name, status){
 function lsyncdRun(name){
     var args = {};
     args["name"] = name;
-    rsPost('lsyncd_run', args, function(rdata){
-        var rdata = $.parseJSON(rdata.data);
-        layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});
+    rsPost('lsyncd_run', args, function(data) {
+      let rdata = $.parseJSON(data.data);
+      layer.msg(rdata.msg,{icon:rdata.status?1:2});
+      messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
+      // doTaskWithLock('rsyncd 同步', rdata.data)
     });
 }
 

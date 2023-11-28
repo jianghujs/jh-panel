@@ -322,7 +322,7 @@ function openRecoveryBackup() {
             height: '400px',
             submitBtn: '执行',
             onSubmit: (content) => {
-              safeMessage('【' + document.title + '】增量恢复警告！ ', '确定恢复当前系统数据库吗？确认后将清空当前数据库，请谨慎操作!', function() {
+              safeMessage('<b style="color: red">【' + document.title + '】增量恢复警告！ </b>', '确定恢复当前系统数据库吗？确认后将清空当前数据库，请谨慎操作!', function() {
                 doTaskWithLock('增量恢复', content)
               })
             }

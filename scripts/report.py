@@ -370,7 +370,10 @@ table tr td:nth-child(2) {
             average_size_bytes = total_size / total_count if total_count != 0 else 0
             
             # 获取最后备份时间
-            last_backup_time = max(item['add_time'] for item in xtrabackup_history) if total_count > 0 else None
+            last_backup_obj = max(xtrabackup_history, key=lambda x: x['add_time']) if xtrabackup_history else None
+            last_backup_time = last_backup_obj['add_time'] if last_backup_obj else None
+            last_backup_size = last_backup_obj['size'] if last_backup_obj else '无'
+
             # 获取在指定时间段内的备份
             backups_in_timeframe = [item for item in xtrabackup_history if self.__START_TIMESTAMP <= item['add_timestamp'] <= self.__END_TIMESTAMP]
             count_in_timeframe = len(backups_in_timeframe)
@@ -378,6 +381,7 @@ table tr td:nth-child(2) {
 
             xtrabackup_info = {
                 'last_backup_time': last_backup_time,
+                'last_backup_size': last_backup_size,
                 # 'backups_in_timeframe': backups_in_timeframe,
                 'count_in_timeframe': count_in_timeframe,
                 'average_size_bytes_in_timeframe': average_size_bytes_in_timeframe,
@@ -391,12 +395,14 @@ table tr td:nth-child(2) {
                 "name": 'Xtrabackup',
                 "desc": """
 最后备份时间：%s<br/>
+最后备份大小：%s<br/>
 区间备份数量：%s<br/>
 区间平均备份大小：%s<br/>
 总备份数量：%s<br/>
 总平均备份大小：%s
                 """ % (
                     f'<span style="color:{"red" if last_backup_time is None or last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{last_backup_time if last_backup_time else "无"}</span>',
+                    f'<span style="color:{"red" if last_backup_size is None else "auto"}">{last_backup_size}</span>',
                     f'<span style="color:{"red" if count_in_timeframe == 0 else "auto"}">{count_in_timeframe}</span>',
                     f'<span style="color:{"red" if average_size_bytes_in_timeframe == 0 else "auto"}">{mw.toSize(average_size_bytes_in_timeframe)}</span>',
                     f'<span style="color:{"red" if total_count == 0 else "auto"}">{total_count}</span>',
@@ -414,7 +420,9 @@ table tr td:nth-child(2) {
             full_total_count = len(full_history)
             full_total_size = sum(item['size_bytes'] for item in full_history)
             full_average_size_bytes = full_total_size / full_total_count if full_total_count != 0 else 0
-            full_last_backup_time = max(item['add_time'] for item in full_history) if full_total_count > 0 else None
+            full_last_backup_obj = max(full_history, key=lambda x: x['add_time']) if full_history else None
+            full_last_backup_time = full_last_backup_obj['add_time'] if full_last_backup_obj else None
+            full_last_backup_size = full_last_backup_obj['size'] if full_last_backup_obj else '无'
             full_backups_in_timeframe = [item for item in full_history if self.__START_TIMESTAMP <= item['add_timestamp'] <= self.__END_TIMESTAMP]
             full_count_in_timeframe = len(full_backups_in_timeframe)
             full_average_size_bytes_in_timeframe = sum(item['size_bytes'] for item in full_backups_in_timeframe) / full_count_in_timeframe if full_count_in_timeframe != 0 else 0
@@ -423,13 +431,16 @@ table tr td:nth-child(2) {
             inc_total_count = len(inc_history)
             inc_total_size = sum(item['size_bytes'] for item in inc_history)
             inc_average_size_bytes = inc_total_size / inc_total_count if inc_total_count != 0 else 0
-            inc_last_backup_time = max(item['add_time'] for item in inc_history) if inc_total_count > 0 else None
+            inc_last_backup_obj = max(inc_history, key=lambda x: x['add_time']) if inc_history else None
+            inc_last_backup_time = inc_last_backup_obj['add_time'] if inc_last_backup_obj else None
+            inc_last_backup_size = inc_last_backup_obj['size'] if inc_last_backup_obj else '无'
             inc_backups_in_timeframe = [item for item in inc_history if self.__START_TIMESTAMP <= item['add_timestamp'] <= self.__END_TIMESTAMP]
             inc_count_in_timeframe = len(inc_backups_in_timeframe)
             inc_average_size_bytes_in_timeframe = sum(item['size_bytes'] for item in inc_backups_in_timeframe) / inc_count_in_timeframe if inc_count_in_timeframe != 0 else 0
 
             xtrabackup_inc_info = {
                 'full_last_backup_time': full_last_backup_time,
+                'full_last_backup_size': full_last_backup_size,
                 'full_count_in_timeframe': full_count_in_timeframe,
                 'full_average_size_bytes_in_timeframe': full_average_size_bytes_in_timeframe,
                 'full_average_size_in_timeframe': mw.toSize(full_average_size_bytes_in_timeframe),
@@ -437,6 +448,7 @@ table tr td:nth-child(2) {
                 'full_average_size_bytes': full_average_size_bytes,
                 'full_average_size': mw.toSize(full_average_size_bytes),
                 'inc_last_backup_time': inc_last_backup_time,
+                'inc_last_backup_size': inc_last_backup_size,
                 'inc_count_in_timeframe': inc_count_in_timeframe,
                 'inc_average_size_bytes_in_timeframe': inc_average_size_bytes_in_timeframe,
                 'inc_average_size_in_timeframe': mw.toSize(inc_average_size_bytes_in_timeframe),
@@ -448,7 +460,9 @@ table tr td:nth-child(2) {
                 "name": 'Xtrabackup增量版',
                 "desc": """
 最后一次全量时间：%s<br/>
+最后一次全量大小：%s<br/>
 最后一次增量时间：%s<br/>
+最后一次增量大小：%s<br/>
 区间全量备份次数：%s<br/>
 区间平均全量备份大小：%s<br/>
 总全量备份次数：%s<br/>
@@ -459,7 +473,9 @@ table tr td:nth-child(2) {
 总平均增量备份大小：%s<br/>
                 """ % (
                     f'<span style="color:{"red" if full_last_backup_time is None or full_last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{full_last_backup_time}</span>',
+                    f'<span style="color:{"red" if full_last_backup_size is None else "auto"}">{full_last_backup_size}</span>',
                     f'<span style="color:{"red" if inc_last_backup_time is None or inc_last_backup_time < mw.toTime(self.__START_TIMESTAMP) else "auto"}">{inc_last_backup_time}</span>',
+                    f'<span style="color:{"red" if inc_last_backup_size is None else "auto"}">{inc_last_backup_size}</span>',
                     f'<span style="color:{"red" if full_count_in_timeframe == 0 else "auto"}">{full_count_in_timeframe}</span>',
                     f'<span style="color:{"red" if full_average_size_bytes_in_timeframe == 0 else "auto"}">{mw.toSize(full_average_size_bytes_in_timeframe)}</span>',
                     f'<span style="color:{"red" if full_total_count == 0 else "auto"}">{full_total_count}</span>',
@@ -490,8 +506,7 @@ table tr td:nth-child(2) {
             abnormal_files_in_timeframe = sum(1 for item in backups_in_timeframe if item['size'] < 200)
 
             # 获取最后备份时间
-            last_backup_time = mw.M('backup').where("type=?", ('1')).getField("MAX(addtime)")
-            last_backup_time = last_backup_time.replace('/', '-') if last_backup_time else None
+            last_backup_time = backups[0]['addtime'].replace('/', '-') if len(backups) > 0 else None
 
             mysql_dump_info = {
                 'last_backup_time': last_backup_time,
@@ -577,7 +592,7 @@ table tr td:nth-child(2) {
 最后一次实时同步时间：%s<br/>
 最后一次定时同步时间：<br/>%s<br/>
                 """ % (
-                    f'<span style="color:{"red" if last_realtime_sync_date is None or last_realtime_sync_date.timestamp() < self.__START_TIMESTAMP else "auto"}">{last_realtime_sync_date}</span>',
+                    f'<span style="color:{"red" if last_realtime_sync_date is None or last_realtime_sync_date.timestamp() < self.__START_TIMESTAMP else "auto"}">{last_realtime_sync_date if last_realtime_sync_date else "无"}</span>',
                     ''.join(f"- {item.get('name', '')}：<span style='color: {'red' if item.get('status', 'enabled') == 'disabled' or item.get('last_sync_at', '无') == '无' or item.get('last_sync_at', '无') < mw.toTime(self.__START_TIMESTAMP) else 'auto'}'>{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}</span><br/>\n" for item in send_list if item.get('realtime') == 'false')
                 )
             })

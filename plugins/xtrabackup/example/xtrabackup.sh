@@ -26,7 +26,7 @@ if [ ! -d "$LOG_DIR" ];then
 fi
 
 pushd /www/server/jh-panel > /dev/null  
-backup_config=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py conf)
+backup_config=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py get_conf)
 popd > /dev/null
 BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.mysql.backup_compress')
 

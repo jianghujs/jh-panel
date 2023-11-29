@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# 检查/usr/bin/jq是否存在
+if ! [ -x "/usr/bin/jq" ]; then
+    echo "/usr/bin/jq不存在，正在尝试自动安装..."
+    apt-get update
+    apt-get install jq -y
+    hash -r
+    if ! [ -x "/usr/bin/jq" ]; then
+        echo "安装jq失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
 # 检查锁
 # 最大等待次数
 MAX_WAIT_COUNT=10

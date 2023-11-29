@@ -1,4 +1,17 @@
 #!/bin/bash
+
+# 检查/usr/bin/jq是否存在
+if ! [ -x "/usr/bin/jq" ]; then
+    echo "/usr/bin/jq不存在，正在尝试自动安装..."
+    apt-get update
+    apt-get install jq -y
+    hash -r
+    if ! [ -x "/usr/bin/jq" ]; then
+        echo "安装jq失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
 timestamp=$(date +%Y%m%d_%H%M%S)
 # 临时设置系统的打开文件数量上限
 ulimit -n 65535

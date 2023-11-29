@@ -34,7 +34,7 @@ if [ -d "$BACKUP_INC_PATH" ];then
 fi
 
 mkdir -p $BACKUP_INC_PATH
-LOG_DIR="/www/server/xtrabackup/logs"
+LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
 fi

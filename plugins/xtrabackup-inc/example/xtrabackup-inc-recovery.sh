@@ -45,50 +45,25 @@ if [ $BACKUP_BASE_COMPRESSED -eq 1 ];then
 fi
 
 xtrabackup --prepare --apply-log-only --target-dir=$BACKUP_RESTORE_PATH &>> $LOG_DIR/recovery_$timestamp.log
+
 # 合并增量内容
 if [ -d "$BACKUP_INC_PATH" ];then
-    ZIP_CREATED=0
+    TEMP_INC_PATH=/www/backup/xtrabackup_data_restore_inc
+    rm -rf $TEMP_INC_PATH
+    mkdir -p $TEMP_INC_PATH
+
     # 判断本身是否是zip压缩的、如果是那么要创建单独的zip解压缓存目录解压后执行
     if ls $BACKUP_INC_PATH/*.zip 1> /dev/null 2>&1; then
-        TEMP_ZIP_PATH=/www/backup/xtrabackup_data_inc_recovery_zip
-        # 先删除缓存目录
-        rm -rf $TEMP_ZIP_PATH
-        mkdir -p $TEMP_ZIP_PATH
-        unzip -q $BACKUP_INC_PATH/*.zip -d $TEMP_ZIP_PATH
-        ZIP_CREATED=1
+        unzip -q $BACKUP_INC_PATH/*.zip -d $TEMP_INC_PATH
     else
-        TEMP_ZIP_PATH=$BACKUP_INC_PATH
+        rsync -a --delete $BACKUP_INC_PATH/ $TEMP_INC_PATH/
     fi
 
     # 如果增量备份是压缩的，创建缓存目录解压后执行
-    if ls $TEMP_ZIP_PATH/*.qp 1> /dev/null 2>&1; then
-        if [ $ZIP_CREATED -eq 1 ];then
-            TEMP_INC_PATH=$TEMP_ZIP_PATH
-        else
-            TEMP_INC_PATH=/www/backup/xtrabackup_data_inc_recovery
-            cp -r $TEMP_ZIP_PATH $TEMP_INC_PATH
-        fi
-
+    if ls $TEMP_INC_PATH/*.qp 1> /dev/null 2>&1; then
         xtrabackup --decompress --target-dir=$TEMP_INC_PATH &>> $LOG_DIR/recovery_$timestamp.log
-        xtrabackup --prepare --apply-log-only --target-dir=$BACKUP_RESTORE_PATH --incremental-dir=$TEMP_INC_PATH &>> $LOG_DIR/recovery_$timestamp.log
-
-        # TEMP_INC_PATH 是临时解压缩的目录，如果是临时创建的，需要删除
-        if [ $ZIP_CREATED -eq 0 ];then
-            rm -rf $TEMP_INC_PATH
-        fi
-
-    else
-        xtrabackup --prepare --apply-log-only --target-dir=$BACKUP_RESTORE_PATH --incremental-dir=$TEMP_ZIP_PATH &>> $LOG_DIR/recovery_$timestamp.log
     fi
-
-    if [ $ZIP_CREATED -eq 1 ];then
-        rm -rf $TEMP_ZIP_PATH
-    fi
-
-    if [ $BACKUP_BASE_COMPRESSED -eq 1 ];then
-        # 删除 BACKUP_BASE_PATH 所有不是压缩的文件
-        find $BACKUP_RESTORE_PATH -type f ! -name "*.qp" -delete
-    fi
+    xtrabackup --prepare --apply-log-only --target-dir=$BACKUP_RESTORE_PATH --incremental-dir=$TEMP_INC_PATH &>> $LOG_DIR/recovery_$timestamp.log
 fi
 
 # 执行恢复

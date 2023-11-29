@@ -56,6 +56,12 @@ if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
 fi
 
+pushd /www/server/jh-panel > /dev/null  
+backup_config=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py conf)
+popd > /dev/null
+BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.backup_full.backup_compress')
+BACKUP_ZIP=$(echo "$backup_config" | jq -r '.backup_full.backup_zip')
+
 if [ $BACKUP_COMPRESS -eq 1 ];then
     xtrabackup --backup --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_full_$timestamp.log
 else

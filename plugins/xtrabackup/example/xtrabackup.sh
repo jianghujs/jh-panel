@@ -11,7 +11,13 @@ BACKUP_FILE="$HISTORY_DIR/xtrabackup_data_$timestamp.zip"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
 fi
-xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> $LOG_DIR/backup_$timestamp.log
+
+if [ $BACKUP_COMPRESS -eq 1 ];then
+    xtrabackup --backup --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> $LOG_DIR/backup_$timestamp.log
+else
+    xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> $LOG_DIR/backup_$timestamp.log
+fi
+
 if [ $? -eq 0 ] && [ -d "$BACKUP_PATH/mysql" ];then
     mkdir -p $HISTORY_DIR
     cd $BACKUP_PATH && zip -q -r $BACKUP_FILE ./*

@@ -1,11 +1,13 @@
 # coding:utf-8
 
+import json
 import sys
 import io
 import os
 import time
 import re
 from urllib.parse import unquote
+import configparser
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -37,6 +39,56 @@ def initdInstall():
     updateCurrentMysqlPswInScript()
     return 'ok'
 
+def getConf():
+    initConf()
+    config = configparser.ConfigParser()
+    file = getServerDir() + '/backup.ini'
+    config.read(file)
+    return config
+
+def setConf(section, key, value):
+    file = getServerDir() + '/backup.ini'
+    config = getConf()
+    
+    if not config.has_section(section):
+        config.add_section(section)
+    
+    config.set(section, key, value)
+    
+    with open(file, 'w') as configfile:
+        config.write(configfile)
+
+def initConf():
+    # 验证 backup.ini 是否存在
+    if not os.path.exists(getServerDir() + '/backup.ini'):
+        file = getPluginDir() + '/conf/backup.ini'
+        mw.writeFile(getServerDir() + '/backup.ini', mw.readFile(file))
+        return
+
+def getBackupConf():
+    # 验证 backup.ini 是否存在
+    if not os.path.exists(getServerDir() + '/backup.ini'):
+        initConf()
+    config = getConf()
+
+    # 将 configparser 对象转换为字典
+    config_dict = {s:dict(config.items(s)) for s in config.sections()}
+    
+    # 将字典转换为 JSON
+    config_json = json.dumps(config_dict)
+    return config_json
+
+def setBackupConf():
+    args = getArgs()
+    data = checkArgs(args, ['section', 'key', 'value'])
+    if not data[0]:
+        return data[1]
+    section = args['section']
+    key = args['key']
+    value = args['value']
+    setConf(section, key, value)
+    return mw.returnJson(True, '修改成功!')
+    
 # 更新脚本中的配置
 def updateScriptConfig(config):
     port = config.get('port', None)
@@ -117,7 +169,7 @@ def checkArgs(data, ck=[]):
     return (True, mw.returnJson(True, 'ok'))
 
 
-def getConf():
+def getShConf():
     path = getServerDir() + "/xtrabackup.sh"
     return path
 
@@ -214,7 +266,7 @@ def getIncBackupPath():
 
 def doMysqlBackup():
     args = getArgs()
-    content = mw.readFile(getConf())
+    content = mw.readFile(getShConf())
 
     if args['content'] is not None:
         content = unquote(str(args['content']), 'utf-8').replace("\\n", "\n")
@@ -326,28 +378,62 @@ def setBackupPath():
 
 
 def getFullBackupScript():
-    backupScript = 'echo "开始全量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'script': mw.readFile(getFullScriptFile())}
+    config = getConf()
+    backupCompress = config['backup_full']['backup_compress']
+
+    backupScript = 'echo "开始全量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nset -x\n %(script)s' % {
+        'baseBackupPath': getBaseBackupPath(), 
+        'incBackupPath': getIncBackupPath(), 
+        'script': mw.readFile(getFullScriptFile()),
+        'backupCompress': backupCompress
+        }
     return mw.returnJson(True, 'ok',  backupScript)
 
 
 def getIncBackupScript():
-    backupScript = 'echo "开始增量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nset -x\n %(script)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'script': mw.readFile(getIncScriptFile())}
+    config = getConf()
+    backupZip = config['backup_inc']['backup_zip']
+    backupCompress = config['backup_inc']['backup_compress']
+    
+    backupScript = 'echo "开始增量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nBACKUP_ZIP=%(backupZip)s\nset -x\n %(script)s' % {
+        'baseBackupPath': getBaseBackupPath(), 
+        'incBackupPath': getIncBackupPath(), 
+        'script': mw.readFile(getIncScriptFile()),
+        'backupCompress': backupCompress,
+        'backupZip': backupZip
+        }
     return mw.returnJson(True, 'ok',  backupScript)
 
 
 def getFullBackupCronScript():
+    config = getConf()
+    backupCompress = config['backup_full']['backup_compress']
+
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nset -x\n bash %(scriptFile)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'lockFilePath': getLockFile(), 'scriptFile': getFullScriptFile()}
+    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nBACKUP_COMPRESS=%(backupCompress)s\nset -x\n bash %(scriptFile)s' % {
+        'baseBackupPath': getBaseBackupPath(), 
+        'incBackupPath': getIncBackupPath(), 
+        'lockFilePath': getLockFile(), 
+        'scriptFile': getFullScriptFile(), 
+        'backupCompress': backupCompress
+        }
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 
 def getIncBackupCronScript():
+    config = getConf()
+    backupZip = config['backup_inc']['backup_zip']
+    backupCompress = config['backup_inc']['backup_compress']
+
     # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nset -x\n bash %(scriptFile)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'lockFilePath': getLockFile(), 'scriptFile': getIncScriptFile()}
+    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nBACKUP_COMPRESS=%(backupCompress)s\nBACKUP_ZIP=%(backupZip)s\nset -x\n bash %(scriptFile)s' % {
+        'baseBackupPath': getBaseBackupPath(), 
+        'incBackupPath': getIncBackupPath(), 
+        'lockFilePath': getLockFile(), 
+        'scriptFile': getIncScriptFile(),
+        'backupCompress': backupCompress,
+        'backupZip': backupZip
+        }
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 def getIncRecoveryCronScript():
@@ -400,7 +486,9 @@ if __name__ == "__main__":
     elif func == 'initd_install':
         print(initdInstall())
     elif func == 'conf':
-        print(getConf())
+        print(getBackupConf())
+    elif func == 'set_conf':
+        print(setBackupConf())
     elif func == 'get_backup_path':
         print(getBackupPath())
     elif func == 'set_backup_path':

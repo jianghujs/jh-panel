@@ -123,6 +123,8 @@ var defaultXtrabackupFullCron = {
     sType: 'toShell',
     stype: 'toShell',
     sName: '',
+    backupCompress: false,
+    backupZip: false,
     backupTo: 'localhost' };
 var xtrabackupFullCron = {...defaultXtrabackupFullCron};
 
@@ -136,6 +138,8 @@ var defaultXtrabackupIncCron = {
     sType: 'toShell',
     stype: 'toShell',
     sName: '',
+    backupCompress: false,
+    backupZip: false,
     backupTo: 'localhost' };
 var xtrabackupIncCron = {...defaultXtrabackupIncCron};
 
@@ -156,6 +160,10 @@ function backupIncHtml(){
                 <div></div>
                 <button class="open-cron-selecter-layer btn btn-default btn-sm mr20" type="button">配置频率</button>
             </div>
+            <div class="mr20 ss-text pull-left">
+                <em>Compress 压缩</em>
+                <div class='ssh-item' id="openXtrabackupFullCompressSwitch"></div>
+            </div>
         </div>
     </div>
     <div class="safe container-fluid mt10" style="overflow: hidden;">
@@ -172,6 +180,14 @@ function backupIncHtml(){
                 <div></div>
                 <button class="open-cron-selecter-layer btn btn-default btn-sm mr20" type="button">配置频率</button>
             </div>
+            <div class="mr20 ss-text pull-left">
+                <em>Compress 压缩</em>
+                <div class='ssh-item' id="openXtrabackupIncCompressSwitch"></div>
+            </div>
+            <div class="mr20 ss-text pull-left">
+                <em>Zip 压缩</em>
+                <div class='ssh-item' id="openXtrabackupIncZipSwitch"></div>
+            </div>
         </div>
     </div>
     `;
@@ -179,6 +195,7 @@ function backupIncHtml(){
     $(".soft-man-con").html(con);
     getXtrabackupFullCron();
     getXtrabackupIncCron();
+    getXtrabackupConfig();
     
     $("#xtrabackupFullCronDetail .open-cron-selecter-layer").click(() => {
         openCronSelectorLayer(xtrabackupFullCron, {yes: addOrUpdateXtrabackupFullCron});
@@ -207,6 +224,29 @@ function getXtrabackupFullCron() {
             }
         });
     },'json');
+}
+
+function getXtrabackupConfig() {
+  myPost('conf','',function(data){
+      const config = JSON.parse(data.data);
+      $("#openXtrabackupFullCompressSwitch").createRadioSwitch(config.backup_full.backup_compress == 1, (checked) => {
+          setXtrabackupConfig('backup_full', 'backup_compress', checked ? 1 : 0);
+      });
+
+      $("#openXtrabackupIncZipSwitch").createRadioSwitch(config.backup_inc.backup_zip == 1, (checked) => {
+          setXtrabackupConfig('backup_inc', 'backup_zip', checked ? 1 : 0);
+      });
+      $("#openXtrabackupIncCompressSwitch").createRadioSwitch(config.backup_inc.backup_compress == 1, (checked) => {
+          setXtrabackupConfig('backup_inc', 'backup_compress', checked ? 1 : 0);
+      });
+  });
+}
+
+function setXtrabackupConfig(section, key, value) {
+    myPost('set_conf', {section, key, value},function(data){
+        const rdata = JSON.parse(data.data);
+        layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+    });
 }
 
 function getXtrabackupIncCron() {
@@ -265,7 +305,8 @@ function deleteCron(id) {
 }
 
 function openXtrabackupFull() {
-    myPost('full_backup_script','', function(data) {
+    const backupCompress = $("#openXtrabackupFullCompressSwitch").getRadioSwitchValue();
+    myPost('full_backup_script', { backupCompress }, function(data) {
 		let rdata = $.parseJSON(data.data);
         openEditCode({
             title: '执行全量备份',
@@ -281,7 +322,9 @@ function openXtrabackupFull() {
 }
 
 function openXtrabackupInc() {
-    myPost('inc_backup_script','', function(data) {
+    const backupZip = $("#openXtrabackupIncZipSwitch").getRadioSwitchValue();
+    const backupCompress = $("#openXtrabackupIncCompressSwitch").getRadioSwitchValue();
+    myPost('inc_backup_script',{ backupZip, backupCompress }, function(data) {
 		let rdata = $.parseJSON(data.data);
         openEditCode({
             title: '执行增量备份',

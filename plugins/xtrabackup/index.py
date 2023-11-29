@@ -6,6 +6,8 @@ import os
 import time
 import re
 from urllib.parse import unquote
+import json
+import configparser
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -33,12 +35,62 @@ def initdInstall():
     return 'ok'
 
 
+def getConf():
+    initConf()
+    config = configparser.ConfigParser()
+    file = getServerDir() + '/backup.ini'
+    config.read(file)
+    return config
+
+def setConf(section, key, value):
+    file = getServerDir() + '/backup.ini'
+    config = getConf()
+    
+    if not config.has_section(section):
+        config.add_section(section)
+    
+    config.set(section, key, value)
+    
+    with open(file, 'w') as configfile:
+        config.write(configfile)
+
+def initConf():
+    # 验证 backup.ini 是否存在
+    if not os.path.exists(getServerDir() + '/backup.ini'):
+        file = getPluginDir() + '/conf/backup.ini'
+        mw.writeFile(getServerDir() + '/backup.ini', mw.readFile(file))
+        return
+
+def getBackupConf():
+    # 验证 backup.ini 是否存在
+    if not os.path.exists(getServerDir() + '/backup.ini'):
+        initConf()
+    config = getConf()
+
+    # 将 configparser 对象转换为字典
+    config_dict = {s:dict(config.items(s)) for s in config.sections()}
+    
+    # 将字典转换为 JSON
+    config_json = json.dumps(config_dict)
+    return config_json
+
+def setBackupConf():
+    args = getArgs()
+    data = checkArgs(args, ['section', 'key', 'value'])
+    if not data[0]:
+        return data[1]
+    section = args['section']
+    key = args['key']
+    value = args['value']
+    setConf(section, key, value)
+    return mw.returnJson(True, '修改成功!')
+
 def updateCurrentMysqlPswInConf():
     try:
         mysqlConn = mw.M('config').dbPos(mw.getServerDir() + '/mysql-apt', 'mysql')
         password = mysqlConn.where(
             'id=?', (1,)).getField('mysql_root')
-        file = getConf()
+        file = getShConf()
         content = mw.readFile(file)
         password_rep = '--password\s*=\s*(.*?) '
         content = re.sub(password_rep, '--password=' + password + ' ', content)
@@ -93,7 +145,7 @@ def getXtrabackupCron():
     return mw.returnJson(False, xtrabackupCronName + ' 不存在')    
 
 def getSetting():
-    file = getConf()
+    file = getShConf()
     content = mw.readFile(file)
     port_rep = '--port\s*=\s*(.*?) '
     port_tmp = re.search(port_rep, content).groups()[0].strip()
@@ -117,7 +169,7 @@ def changeSetting():
     user = args.get('user', None)
     password = args.get('password', None)
     
-    file = getConf()
+    file = getShConf()
     content = mw.readFile(file)
     if port is not None:
         port_rep = '--port\s*=\s*(.*?) '
@@ -164,7 +216,7 @@ def getBackupPath():
 
 def doMysqlBackup():
     args = getArgs()
-    content = mw.readFile(getConf())
+    content = mw.readFile(getShConf())
 
     if args['content'] is not None:
         content = unquote(str(args['content']), 'utf-8').replace("\\n", "\n")
@@ -239,6 +291,9 @@ def getRecoveryBackupScript():
     recoveryScript += ('rm -rf /www/backup/xtrabackup_data_restore\n')
     recoveryScript += ('mkdir -p /www/server/xtrabackup/logs\n')
     recoveryScript += ('unzip -d /www/backup/xtrabackup_data_restore /www/backup/xtrabackup_data_history/%s\n' % (filename))
+    recoveryScript += ('if ls /www/backup/xtrabackup_data_restore/*.qp 1> /dev/null 2>&1; then\n')
+    recoveryScript += ('    xtrabackup --decompress --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
+    recoveryScript += ('fi\n')
     recoveryScript += ('xtrabackup --prepare --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
     recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
     recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
@@ -252,7 +307,7 @@ def getRecoveryBackupScript():
 
 def doRecoveryBackup():
     args = getArgs()
-    content = mw.readFile(getConf())
+    content = mw.readFile(getShConf())
 
     if args['content'] is not None:
         content = unquote(str(args['content']), 'utf-8').replace("\\n", "\n")
@@ -287,7 +342,7 @@ def doDeleteBackup():
     mw.execShell('rm -f /www/backup/xtrabackup_data_history/' + filename)
     return mw.returnJson(True, '删除成功!')
 
-def getConf():
+def getShConf():
     path = getServerDir() + "/xtrabackup.sh"
     return path
 
@@ -305,11 +360,17 @@ def setBackupPath():
     return mw.returnJson(True, '修改成功!')
 
 def getBackupScript():
-    backupScript = 'echo "正在备份..." \nBACKUP_PATH=%(backupPath)s\nset -x\n%(conf)s' % {'backupPath':getBackupPath(), 'conf': mw.readFile(getConf()) } 
+    config = getConf()
+    backupCompress = config['mysql']['backup_compress']
+
+    backupScript = 'echo "正在备份..." \nBACKUP_PATH=%(backupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nset -x\n%(conf)s' % {'backupPath':getBackupPath(), 'conf': mw.readFile(getShConf()), 'backupCompress': backupCompress } 
     return mw.returnJson(True, 'ok',  backupScript)
 
 def getBackupCronScript():
-    backupCronScript = 'echo "正在备份..." \nexport BACKUP_PATH=%(backupPath)s\nset -x\nbash %(conf)s' % {'backupPath':getBackupPath(), 'conf': getConf() } 
+    config = getConf()
+    backupCompress = config['mysql']['backup_compress']
+
+    backupCronScript = 'echo "正在备份..." \nexport BACKUP_PATH=%(backupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nset -x\nbash %(conf)s' % {'backupPath':getBackupPath(), 'conf': getShConf(), 'backupCompress': backupCompress } 
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 def backupCallback():
@@ -347,7 +408,11 @@ if __name__ == "__main__":
     elif func == 'initd_install':
         print(initdInstall())
     elif func == 'conf':
-        print(getConf()) 
+        print(getShConf()) 
+    elif func == 'get_conf':
+        print(getBackupConf())
+    elif func == 'set_conf':
+        print(setBackupConf())
     elif func == 'get_backup_path':
         print(returnBackupPath())
     elif func == 'set_backup_path':

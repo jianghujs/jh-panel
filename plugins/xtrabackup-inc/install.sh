@@ -26,11 +26,17 @@ Install_xtrabackup_inc()
 		dpkg -i percona-xtrabackup.amd.deb
 		apt-get update
 		apt-get install percona-xtrabackup-24 -y
+	  apt-get install qpress -y
 	elif [[ `arch` =~ "aarch64" ]];then
 		echo $(date "+%Y-%m-%d %H:%M:%S") 'this is arm64' >> $install_tmp
 		dpkg -i percona-xtrabackup.arm.deb
 		apt-get update
 		apt-get install percona-xtrabackup -y
+    wget https://ca.us.mirror.archlinuxarm.org/aarch64/extra/qpress-1.1-4-aarch64.pkg.tar.xz
+    tar -xvf qpress-1.1-4-aarch64.pkg.tar.xz
+    cp -r usr/bin/qpress /usr/bin/
+    rm qpress-1.1-4-aarch64.pkg.tar.xz
+    rm -r usr
 	else
 		echo $(date "+%Y-%m-%d %H:%M:%S") '不支持的设备类型 $(arch)' >> $install_tmp
 	fi
@@ -38,9 +44,10 @@ Install_xtrabackup_inc()
 	mkdir -p $serverPath/xtrabackup-inc
 	echo "2.4" > $serverPath/xtrabackup-inc/version.pl
 	echo $(date "+%Y-%m-%d %H:%M:%S") 'xtrabackup-inc 安装成功' >> $serverPath/xtrabackup-inc/xtrabackup.log
-	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-full.sh.example $serverPath/xtrabackup-inc/xtrabackup-full.sh
-	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc.sh
-	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc-recovery.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc-recovery.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/example/xtrabackup-full.sh $serverPath/xtrabackup-inc/xtrabackup-full.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/example/xtrabackup-inc.sh $serverPath/xtrabackup-inc/xtrabackup-inc.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/example/xtrabackup-inc-recovery.sh $serverPath/xtrabackup-inc/xtrabackup-inc-recovery.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/conf/backup.ini $serverPath/xtrabackup-inc/backup.ini
 	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup-inc/index.py initd_install
 	echo $(date "+%Y-%m-%d %H:%M:%S") '安装完成' >> $install_tmp
 }
@@ -48,9 +55,10 @@ Install_xtrabackup_inc()
 Update_xtrabackup_inc() 
 {
     echo '正在更新...' > $install_tmp
-    cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-full.sh.example $serverPath/xtrabackup-inc/xtrabackup-full.sh
-	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc.sh
-	cp -r $rootPath/plugins/xtrabackup-inc/xtrabackup-inc-recovery.sh.example $serverPath/xtrabackup-inc/xtrabackup-inc-recovery.sh
+    cp -r $rootPath/plugins/xtrabackup-inc/example/xtrabackup-full.sh $serverPath/xtrabackup-inc/xtrabackup-full.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/example/xtrabackup-inc.sh $serverPath/xtrabackup-inc/xtrabackup-inc.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/example/xtrabackup-inc-recovery.sh $serverPath/xtrabackup-inc/xtrabackup-inc-recovery.sh
+	cp -r $rootPath/plugins/xtrabackup-inc/conf/backup.ini $serverPath/xtrabackup-inc/backup.ini
 	cd ${rootPath} && python3 ${rootPath}/plugins/xtrabackup-inc/index.py initd_install
 	echo $(date "+%Y-%m-%d %H:%M:%S") '更新完成' >> $install_tmp
 }
@@ -61,6 +69,11 @@ Uninstall_xtrabackup_inc()
 	echo $(date "+%Y-%m-%d %H:%M:%S") '卸载开始' >> $install_tmp
 	echo $(apt-get remove percona-xtrabackup -y) >> $install_tmp
 	echo $(apt-get remove percona-xtrabackup-24 -y) >> $install_tmp
+  if [[ `arch` =~ "x86_64" ]];then
+    echo $(apt-get remove qpress -y) >> $install_tmp
+  elif [[ `arch` =~ "aarch64" ]];then
+    rm -r /usr/bin/qpress
+  fi
 	rm -rf $serverPath/xtrabackup-inc
 	echo $(date "+%Y-%m-%d %H:%M:%S") '卸载完成' >> $install_tmp	
 }

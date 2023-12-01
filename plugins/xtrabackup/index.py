@@ -298,6 +298,23 @@ def getRecoveryBackupScript():
     recoveryScript += ('xtrabackup --copy-back --target-dir=/www/backup/xtrabackup_data_restore &>> $LOG_DIR/recovery_$timestamp.log\n')
     recoveryScript += ('chown -R mysql:mysql %s \n' % (mysqlDir))
     recoveryScript += ('chmod -R 755 ' + mysqlDir + '\n')
+    recoveryScript += (
+        '# 设定保留的数据目录数量\n'
+        'MAX_DIRS=3\n'
+        '# 获取数据目录中的目录数量\n'
+        'NUM_DIRS=$(ls -1d ' + mysqlDir + '_* | wc -l)\n'
+        '# 计算需要删除的目录数量\n'
+        'NUM_TO_DELETE=$((NUM_DIRS - MAX_DIRS))\n'
+        '# 如果需要删除的目录数量大于0，删除最旧的目录\n'
+        'if [ $NUM_TO_DELETE -gt 0 ]; then\n'
+        '    for i in $(seq 1 $NUM_TO_DELETE)\n'
+        '    do\n'
+        '        # 找到最旧的目录并删除\n'
+        '        OLDEST_DIR=$(ls -rtd ' + mysqlDir + '_* | head -1)\n'
+        '        rm -rf $OLDEST_DIR\n'
+        '    done\n'
+        'fi\n'
+    )
     if os.path.exists('/www/server/mysql-apt'):
         recoveryScript += ('systemctl start mysql-apt\n')
     elif os.path.exists('/www/server/mysql'):

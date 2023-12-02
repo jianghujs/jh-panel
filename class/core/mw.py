@@ -28,6 +28,9 @@ import db
 from random import Random
 import tempfile
 
+sys.path.append(os.getcwd() + "/class/plugin")
+from retry_tool import retry
+
 
 def execShell(cmdstring, cwd=None, timeout=None, shell=True, useTmpFile=False):
 
@@ -1889,19 +1892,15 @@ def emailNotifyMessage(data):
     '''
     sys.path.append(os.getcwd() + "/class/plugin")
     import memail
-    try:
-        if data['smtp_ssl'] == 'ssl':
-            memail.sendSSL(data['smtp_host'], data['smtp_port'],
-                           data['username'], data['password'],
-                           data['to_mail_addr'], data['subject'], data['content'], data.get('contentType', 'text'))
-        else:
-            memail.send(data['smtp_host'], data['smtp_port'],
+    if data['smtp_ssl'] == 'ssl':
+        memail.sendSSL(data['smtp_host'], data['smtp_port'],
                         data['username'], data['password'],
                         data['to_mail_addr'], data['subject'], data['content'], data.get('contentType', 'text'))
-        return True
-    except Exception as e:
-        print(getTracebackInfo())
-    return False
+    else:
+        memail.send(data['smtp_host'], data['smtp_port'],
+                    data['username'], data['password'],
+                    data['to_mail_addr'], data['subject'], data['content'], data.get('contentType', 'text'))
+    return True
 
 
 def emailNotifyTest(data):
@@ -1945,9 +1944,8 @@ def checkLockValid(lock_type, cycle_type = 'day'):
     else: 
         return True
 
-
+@retry(max_retry=3, delay=3)
 def notifyMessageTry(msg, msgtype='text', title='江湖面板通知', stype='common', trigger_time=300, is_write_log=True):
-
     lock_file = getPanelTmp() + '/notify_lock.json'
     if not os.path.exists(lock_file):
         writeFile(lock_file, '{}')

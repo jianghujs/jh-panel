@@ -2122,5 +2122,5 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         # 发送异常报告
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
-            notifyMessage(msg=notify_msg, stype='面板监控', trigger_time=600)
+            notifyMessage(title='服务器异常通知', msg=notify_msg, stype='面板监控', trigger_time=600)
             updateLockData(site_ssl_lock_data_key)

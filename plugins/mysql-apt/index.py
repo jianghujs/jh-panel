@@ -784,6 +784,7 @@ def isSqlError(mysqlMsg):
 
 
 def __createUser(dbname, username, password, address):
+    print(dbname, username, password, address)
     pdb = pMysqlDb()
 
     if username == 'root':
@@ -2672,6 +2673,35 @@ def uninstallPreInspection(version):
 
     return "请手动删除MySQL[{}]<br/> rm -rf {}".format(version, getServerDir())
 
+
+def fixAllDbUser(version):
+    pdb = pMysqlDb()
+    psdb = pSqliteDb('databases')
+    databases = psdb.field('id,pid,name,username,password,accept,rw,ps,addtime').select()
+    defaultAccess = '127.0.0.1'
+    addTime = time.strftime('%Y-%m-%d %X', time.localtime())
+    for databaseIndex in range(0, len(databases)):
+        db = databases[databaseIndex]
+        dbname = db['name']
+        dbpsw = db['password']
+        print(f'|- 开始检查：{dbname}...')
+        # 密码为空
+        if dbpsw is None or dbpsw == '':
+            for us in db_users:
+                pdb.execute("drop user '" + dbname + "'@'" + us["Host"] + "'")
+
+        db_users = pdb.query("select Host from mysql.user where User='" + dbname + "'")
+        # 不存在用户
+        if len(db_users) == 0:
+            print(f"|- 开始重建用户：{dbname}...")
+            password = mw.getRandomString(16)
+            __createUser(dbname, dbname, password, defaultAccess)
+            psdb.where('username=?', (dbname,)).save('password,accept,rw', (password,defaultAccess, 'rw',))
+            print(f"|- 重建用户{dbname}成功✅，当前密码为{password}")
+
+    return mw.returnJson(True, '修复成功!')
+
+
 if __name__ == "__main__":
     func = sys.argv[1]
 
@@ -2837,5 +2867,7 @@ if __name__ == "__main__":
         print(dumpMysqlData(version))
     elif func == 'get_checksum_report':
         print(getChecksumReport(version))
+    elif func == 'fix_all_db_user':
+        print(fixAllDbUser(version))
     else:
         print('error')

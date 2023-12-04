@@ -848,7 +848,7 @@ function rsRead(){
 
 
 var defaultLsyncdLogCutCron = {      
-  name: '[勿删]lsyncd日志切割',
+  name: '[勿删]lsyncd实时日志切割',
   type: 'day',
   where1: '',
   week: '',
@@ -859,7 +859,6 @@ var defaultLsyncdLogCutCron = {
 #!/bin/bash
 timestamp=$(date +%Y%m%d_%H%M%S)
 mv /www/server/rsyncd/logs/lsyncd.log /www/server/rsyncd/logs/lsyncd_\${timestamp}.log
-mv /www/server/rsyncd/logs/lsyncd.status /www/server/rsyncd/logs/lsyncd_\${timestamp}.status
   `,
   backupTo: 'localhost' };
 var lsyncdLogCutCron = {...defaultLsyncdLogCutCron}

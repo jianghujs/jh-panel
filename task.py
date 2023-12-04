@@ -576,11 +576,19 @@ def openrestyAutoRestart():
 
 
 # --------------------------------------Panel Restart Start   --------------------------------------------- #
-def restartPanelService():
+def restartService():
     restartTip = 'data/restart.pl'
     while True:
         if os.path.exists(restartTip):
             os.remove(restartTip)
+            service_cmd('restart')
+        time.sleep(1)
+
+def restartPanelService():
+    restartPanelTip = 'data/restart_panel.pl'
+    while True:
+        if os.path.exists(restartPanelTip):
+            os.remove(restartPanelTip)
             service_cmd('restart_panel')
         time.sleep(1)
 # --------------------------------------Panel Restart End   --------------------------------------------- #
@@ -614,5 +622,10 @@ if __name__ == "__main__":
     rps = threading.Thread(target=restartPanelService)
     rps = setDaemon(rps)
     rps.start()
+
+    # Restart Start
+    rs = threading.Thread(target=restartService)
+    rs = setDaemon(rs)
+    rs.start()
 
     startTask()

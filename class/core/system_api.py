@@ -113,7 +113,7 @@ class system_api:
 
     # 重启面板
     def restartApi(self):
-        self.restartMw()
+        self.restartMw(True)
         return mw.returnJson(True, '面板已重启!')
 
     def restartStatusApi(self):
@@ -133,8 +133,9 @@ class system_api:
             os.system(initd + ' ' + 'restart_task')
         return True
 
-    def restartMw(self):
-        mw.writeFile('data/restart.pl', 'True')
+    def restartMw(self, restartAll=False):
+        pl = 'restart.pl' if restartAll else 'restart_panel.pl'
+        mw.writeFile('data/' + pl, 'True')
         return True
 
     @mw_async
@@ -753,7 +754,7 @@ class system_api:
                 mw.execShell('rm -rf ' + toPath + '/jh-panel-' + version)
                 mw.execShell('rm -rf ' + toPath + '/mw.zip')
 
-                self.restartMw()
+                self.restartMw(True)
                 return mw.returnJson(True, '安装更新成功!')
 
             return mw.returnJson(False, '已经是最新,无需更新!')

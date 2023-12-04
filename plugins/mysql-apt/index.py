@@ -1276,6 +1276,8 @@ def setUserPwd(version=''):
         
         accept = pdb.query(
             "select Host from mysql.user where User='" + name + "' AND Host!='localhost'")
+        if len(accept) == 0:
+            return mw.returnJson(False, "用户不存在，请点击数据库的“权限”按钮重新分配用户")
         t1 = pdb.execute(
             "update mysql.user set authentication_string='' where User='" + username + "'")
         # print(t1)

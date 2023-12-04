@@ -904,7 +904,7 @@ def lsyncdRun():
     timestamp = '$(date +%Y%m%d_%H%M%S)'
 
     mw.addAndTriggerTask(
-        name = '执行江湖管理器命令[' + name + ']',
+        name = '执行rsyncd同步任务[' + name + ']',
         execstr = "bash %(send_dir)s/cmd | tee -a %(send_dir)s/logs/run_%(timestamp)s.log" % {
               'send_dir': send_dir, 'timestamp': timestamp
             }

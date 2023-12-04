@@ -34,6 +34,7 @@ show_menu() {
     echo "请选择修复工具:"
     echo "1. 修复数据库文件（修复可读写但xtrabackup备份报错的数据表）"
     echo "2. 修复网站异常SSL订单（修复无法续签的SSL证书）"
+    echo "3. 修复MySQL数据库用户（重建数据库用户和密码）"
     echo "========================================================"
 }
 
@@ -51,6 +52,9 @@ case $choice in
     ;;
 2)
     download_and_run repair__fix_no_order_lets_site.sh
+    ;;
+3)
+    download_and_run repair__fix_mysql_apt_db_user.sh
     ;;
 esac
 

@@ -771,6 +771,27 @@ def lsyncdStatus():
 
     return mw.returnJson(True, "OK")
 
+def lsyncdStatusBatch():
+    args = getArgs()
+    data = checkArgs(args, ['names', 'status'])
+    if not data[0]:
+        return data[1]
+
+    names = args['names']
+    status = args.get('status', 'enabled')
+    data = getDefaultConf()
+    slist = data['send']["list"]
+    for name in names.split("|"):
+        res = lsyncdListFindName(slist, name)
+        retdata = {}
+        if res[0]:
+            list_index = res[1]
+            slist[list_index]["status"] = status
+
+        data['send']["list"] = slist
+    setDefaultConf(data)
+    makeLsyncdConf(data)
+    return mw.returnJson(True, "OK")
 
 def lsyncdAdd():
     import base64
@@ -1075,6 +1096,8 @@ if __name__ == "__main__":
         print(lsyncdDelete())
     elif func == 'lsyncd_status':
         print(lsyncdStatus())
+    elif func == 'lsyncd_status_batch':
+        print(lsyncdStatusBatch())
     elif func == 'lsyncd_run':
         print(lsyncdRun())
     elif func == 'lsyncd_log':

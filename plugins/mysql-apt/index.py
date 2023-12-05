@@ -2685,15 +2685,17 @@ def fixAllDbUser(version):
         dbname = db['name']
         dbpsw = db['password']
         print(f'|- 开始检查：{dbname}...')
+        db_users = pdb.query("select Host from mysql.user where User='" + dbname + "'")
         # 密码为空
         if dbpsw is None or dbpsw == '':
+            # 删除旧用户
             for us in db_users:
                 pdb.execute("drop user '" + dbname + "'@'" + us["Host"] + "'")
-
+        # 查询用户
         db_users = pdb.query("select Host from mysql.user where User='" + dbname + "'")
-        # 不存在用户
         if len(db_users) == 0:
             fixDatabases.append(db)
+
     if len(fixDatabases) == 0:
         print('暂无需要修复的数据库用户!')
         return 

@@ -50,13 +50,18 @@ if [ $choice == "y" ]; then
 
   echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
   echo "" >> $script_file
-  echo "# 执行xtrabackup增量恢复" >> $script_file
-  pushd /www/server/jh-panel > /dev/null
-  recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | jq -r .data)
-  popd > /dev/null
-  echo "${recovery_script}" >> $script_file
-  echo "echo \"|- xtrabackup增量恢复完成✅\"" >> $script_file
-  echo "" >> $script_file
+  read -p "需要执行增量恢复吗？（默认y）[y/n]: " xtrabackup_inc_restore_choice
+  xtrabackup_inc_restore_choice=${xtrabackup_inc_restore_choice:-"y"}
+
+  if [ $xtrabackup_inc_restore_choice == "y" ]; then
+    echo "# 执行xtrabackup增量恢复" >> $script_file
+    pushd /www/server/jh-panel > /dev/null
+    recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | jq -r .data)
+    popd > /dev/null
+    echo "${recovery_script}" >> $script_file
+    echo "echo \"|- xtrabackup增量恢复完成✅\"" >> $script_file
+    echo "" >> $script_file
+  fi
 
   echo "# 开启定时任务" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份数据库[backupAll]" >> $script_file
@@ -111,6 +116,6 @@ if [ $choice == "y" ]; then
   echo "请手动确认脚本内容并执行该脚本完成服务器上线操作："
   echo "vi ${script_file}"
   echo "bash ${script_file}"
-  echo "上线完成后，可以在两台服务器执行 8.服务器状态检查-4.MySQL数据库Checksum分析 脚本，对比结果确保数据库的一致性"
+  echo "上线完成后，可以在两台服务器使用mysql插件的获取Checksum功能，对比结果确保数据库的一致性"
   echo "==============================================================="
 fi

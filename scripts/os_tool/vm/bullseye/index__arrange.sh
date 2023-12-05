@@ -36,6 +36,7 @@ show_menu() {
     echo "2. 整理目录-第②步（生成链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
     echo "3. 整理目录（生成移动并链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
     echo "4. 查找指定目录（查找并生成指定名称（如.git）目录的路径列表文件，可用于rsync、zip打包）"
+    echo "5. 整理项目配置文件数据库连接信息，统一使用数据库自己的用户"
     echo "========================================================"
 }
 
@@ -59,6 +60,9 @@ case $choice in
     ;;
 4)
     download_and_run arrange__generate_find_dirs_path_file.sh
+    ;;
+5)
+    download_and_run arrange__fix_project_config_use_database_root_user.sh
     ;;
 esac
 

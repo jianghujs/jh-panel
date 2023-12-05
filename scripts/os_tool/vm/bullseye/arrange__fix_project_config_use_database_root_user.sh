@@ -5,7 +5,6 @@
 
 # if [ $choice == "y" ]; then
     pushd /www/server/jh-panel > /dev/null
-    python3 /www/server/jh-panel/plugins/mysql-apt/index.py sync_get_databases
-    python3 /www/server/jh-panel/plugins/mysql-apt/index.py fix_all_db_user
+    python3 /www/server/jh-panel/scripts/arrange.py fixProjectConfigUseDatabaseRootUser
     popd > /dev/null
 # fi

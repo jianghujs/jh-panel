@@ -28,17 +28,15 @@ import site_api
 systemApi = system_api.system_api()
 siteApi = site_api.site_api()
 
-root_dir = '/www/wwwroot'
 mysql_dir = '/www/server/mysql-apt'
 mysql_cnf = os.path.join(mysql_dir, 'etc/my.cnf')
-
 
 sys.path.append(chdir + '/plugins/mysql-apt')
 from index import getDbPort, pMysqlDb, pSqliteDb
 
 class arrangeTools:
 
-    def findProjectUseDatabaseRootUser(self):
+    def fixProjectConfigUseDatabaseRootUser(self):
         if not os.path.exists(mysql_dir):
             print("未检测到mysql-apt插件目录")
             return
@@ -47,10 +45,12 @@ class arrangeTools:
         psdb = pSqliteDb('databases')
         databases = psdb.field('id,pid,name,username,password,accept,rw,ps,addtime').select()
         databases_dict = {db['name']: {'user': db['username'], 'password': db['password']} for db in databases}
-
-        host = '127.0.0.1'
-        port = getDbPort()
         
+        root_dir_input = input(f"请输入项目所在目录（默认为：/www/wwwroot）：")
+        root_dir = root_dir_input if root_dir_input else '/www/wwwroot'
+        fixConfigs = []
+        
+        print(f'-----------开始检测{root_dir}目录下的使用root账号的项目配置文件-------------')
         for dirpath, dirnames, filenames in os.walk(root_dir):
             for filename in filenames:
                 if filename != 'config.prod.js':
@@ -63,86 +63,66 @@ class arrangeTools:
                         # 解析数据库名
                         db_name_match = re.search(r'[\'"]?database[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
                         if not db_name_match:
-                            print(f"当前文件{full_path}无法解析数据库名称。请手动处理。")
+                            print(f"|--当前文件{full_path}无法解析数据库名称。请手动处理。")
                             continue
                         db_name = db_name_match.group(1)
                         if db_name not in databases_dict:
-                            print(f"在databases中不存在对应数据库名: {db_name}。请手动处理。")
+                            print(f"|--在databases中不存在对应数据库名: {db_name}。请手动处理。")
                             continue
                         
                         # 解析用户名
                         user_match = re.search(r'[\'"]?user[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
                         if not user_match:
-                            print(f"当前文件{full_path}无法解析用户名。请手动处理。")
+                            print(f"|-- 当前文件{full_path}无法解析用户名。请手动处理。")
                             continue
                             
                         user = user_match.group(1)
                         if user == 'root':
-                            print(f"检测到配置文件{full_path}用户名为文件，正在修改配置文件信息为： host: {host}, port: {port}, user: {databases_dict[db_name]['user']}, password: {databases_dict[db_name]['password']}")
-                            content = re.sub(r'([\'"]?host[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + host + '"', content)    
-                            content = re.sub(r'([\'"]?port[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + port + '"', content)    
-                            content = re.sub(r'([\'"]?user[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + databases_dict[db_name]['user'] + '"', content)
-                            content = re.sub(r'([\'"]?password[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + databases_dict[db_name]['password'] + '"', content)
-                            f.seek(0)
-                            f.write(content)
-                            print(f"|- 更新配置文件{full_path}完成✅")
+                            print(f"|-- 检测到配置文件{full_path}用户名为root")
+                            fixConfigs.append({
+                                "path": full_path,
+                                "db_name": db_name,
+                                "user": user
+                            })
                         else:
-                            print(f"当前配置文件用户名为{user}，已跳过")
+                            print(f"|-- 当前配置文件用户名为{user}，已跳过")
                             
                 except Exception as e:
+                    print(e)
                     print(f"解析配置文件{full_path}异常！")
-
-
-
-
-
-
-    def fixNoOrderLetsSite(self, params):
-        email = params.get('email', None)
-        siteInfo = systemApi.getSiteInfo()
-        # 获取异常域名
-        noOrderLetsSiteList = []
-        for site in siteInfo.get("site_list", []):
-            sslType = site.get("ssl_type", "")
-            siteName = site.get("name", "")
-            if sslType == 'lets':
-                letsIndex = siteApi.getLetsIndex(siteName)
-                if letsIndex == False:
-                    noOrderLetsSiteList.append(site)
-        if len(noOrderLetsSiteList) == 0:
-            print("暂未发现异常网站订单")
-            return
-
-        for site in noOrderLetsSiteList:
-            sslType = site.get("ssl_type", "")
-            siteName = site.get("name", "")
-            if sslType == 'lets':
-                letsIndex = siteApi.getLetsIndex(siteName)
-                if letsIndex == False:
-                    print("|- 开始修复：%s" % siteName)
-                    siteApi.closeSslConf(siteName)
-                    print("|- 关闭%sSSL成功✅" % siteName)
-                    siteApi.deleteSsl(siteName, "now")
-                    print("|- 删除%sSSL配置成功✅" % siteName)
-                    siteApi.deleteSsl(siteName, "lets")
-                    print("|- 删除%sSSL证书成功✅" % siteName)
-                    createLetForm = {
-                        "siteName": siteName,
-                        "domains": "[\"%s\"]" % siteName,
-                        "force": True,
-                        "email": email
-                    }
-                    siteApi.createLet(createLetForm)
-                    print("|- 创建%sSSL证书成功✅" % siteName)
-                    siteApi.deploySsl(siteName, "lets")
-                    print("|- 部署%sSSL证书成功✅" % siteName)
+        
+        print(f'------------------------------------------------------------------------------')
+        # 修改配置文件
+        if len(fixConfigs) == 0:
+            print('暂未检测到使用root账号的项目配置文件!')
+            return 
+        confirm = input(f"检测到使用root账号的项目配置文件：{','.join(c.get('path', '') for c in fixConfigs)}，要更新这些配置文件，改为使用数据库本身的用户吗？（默认y）[y/n] ")
+        confirm = confirm if confirm else 'y'
+        if confirm.lower() == 'y':
+            host = '127.0.0.1'
+            port = getDbPort()
+            for fixConfig in fixConfigs:
+                config_path = fixConfig.get('path', '')
+                db_name = fixConfig.get('db_name', '')
+                with open(config_path, 'r+') as f:
+                    print(f"|- 正在更新配置文件{full_path}... 数据库连接信息为： host: {host}, port: {port}, user: {databases_dict[db_name]['user']}, password: {databases_dict[db_name]['password']}")
+                    content = f.read()
+                    content = re.sub(r'([\'"]?host[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + host + '"', content)    
+                    content = re.sub(r'([\'"]?port[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + port + '"', content)    
+                    content = re.sub(r'([\'"]?user[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + databases_dict[db_name]['user'] + '"', content)
+                    content = re.sub(r'([\'"]?password[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + databases_dict[db_name]['password'] + '"', content)
+                    f.seek(0)
+                    f.write(content)
+                    print(f"|- 更新配置文件{full_path}完成✅")
+            print("全部配置文件更新完成!✅")
+        else:
+            print("已取消")
    
 if __name__ == "__main__":
     arrange = arrangeTools()
     type = sys.argv[1]
 
-    if type == 'findProjectUseDatabaseRootUser':
-        arrange.findProjectUseDatabaseRootUser()
-    elif type == 'fixNoOrderLetsSite':
-        params = json.loads(sys.argv[2])
-        arrange.fixNoOrderLetsSite(params)
+    if type == 'fixProjectConfigUseDatabaseRootUser':
+        arrange.fixProjectConfigUseDatabaseRootUser()
+    else:
+        print("无效参数")

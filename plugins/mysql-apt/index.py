@@ -2706,9 +2706,9 @@ def fixAllDbUser(version):
         for databaseIndex in range(0, len(fixDatabases)):
             db = fixDatabases[databaseIndex]
             dbname = db['name']
-            dbpsw = db['password']
+            dbpsw = db['password'] 
             print(f"|- 开始重建用户：{dbname}...")
-            password = mw.getRandomString(16)
+            password = dbpsw if dbpsw else mw.getRandomString(16)
             __createUser(dbname, dbname, password, defaultAccess)
             psdb.where('username=?', (dbname,)).save('password,accept,rw', (password,defaultAccess, 'rw',))
             print(f"|- 重建用户{dbname}成功✅，当前密码为{password}")

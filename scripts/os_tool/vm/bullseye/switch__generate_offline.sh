@@ -29,14 +29,10 @@ if [ $choice == "y" ]; then
   echo "# 关闭rsyncd任务" >> $script_file
   pushd /www/server/jh-panel > /dev/null
   lsyncd_list=$(python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_list | jq -r .data | jq -r .list)
-  for item in $(echo "${lsyncd_list}" | jq -r '.[] | @base64'); do
-    _jq() {
-      echo ${item} | base64 --decode | jq -r ${1}
-    }
-    name=$(_jq '.name')
-    echo "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status {name:$name,status:disabled}" >> $script_file
-  done
+  names=$(echo "${lsyncd_list}" | jq -r '.[] | .name' | tr '\n' '|' | sed 's/|$//')
+  echo "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch {names:\"$names\",status:disabled}" >> $script_file
   popd > /dev/null
+  echo "echo \"|- 关闭 rsyncd任务 完成✅\"" >> $script_file
   echo "" >> $script_file
   echo "# 关闭openresty" >> $script_file
   echo "python3 /www/server/jh-panel/plugins/openresty/index.py stop" >> $script_file

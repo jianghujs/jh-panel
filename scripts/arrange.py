@@ -63,17 +63,18 @@ class arrangeTools:
                         # 解析数据库名
                         db_name_match = re.search(r'[\'"]?database[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
                         if not db_name_match:
-                            print(f"|--当前文件{full_path}无法解析数据库名称。请手动处理。")
+                            print(f"|--\033[31m当前文件{full_path}无法解析数据库名称。请手动处理。\033[0m")
+
                             continue
                         db_name = db_name_match.group(1)
                         if db_name not in databases_dict:
-                            print(f"|--在databases中不存在对应数据库名: {db_name}。请手动处理。")
+                            print(f"|--\033[31m在databases中不存在对应数据库名: {db_name}。请手动处理。\033[0m")
                             continue
                         
                         # 解析用户名
                         user_match = re.search(r'[\'"]?user[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
                         if not user_match:
-                            print(f"|-- 当前文件{full_path}无法解析用户名。请手动处理。")
+                            print(f"|-- \033[31m当前文件{full_path}无法解析用户名。请手动处理。\033[0m")
                             continue
                             
                         user = user_match.group(1)

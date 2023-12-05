@@ -712,7 +712,7 @@ fi
             return False
         if cronInfo.get('status', 1) == 0:
             # 在目录下增加标识文件
-            statusPath = mw.getCronDir() + '/' + str(echo) + '_stopped'
+            statusPath = cronPath + '/' + str(cronName) + '_stopped'
             mw.execShell('echo "" > ' + statusPath)
             return False
         else:

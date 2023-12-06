@@ -61,7 +61,7 @@ class arrangeTools:
                     with open(full_path, 'r+') as f:
                         content = f.read()
                         # 解析数据库名
-                        db_name_match = re.search(r'[\'"]?database[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
+                        db_name_match = re.search(r'[\'"]?database[\'"]?:\s*[\'"]?([\w.]+)[\'"]?', content)
                         if not db_name_match:
                             print(f"|--\033[31m当前文件{full_path}无法解析数据库名称。请手动处理。\033[0m")
                             continue
@@ -82,18 +82,18 @@ class arrangeTools:
                             continue
                         host = host_match.group(1)
                         if host != '127.0.0.1' and host != 'localhost' and host != 'process.env.DB_HOST':
-                            print(f"|-- \033[31m当前文件地址不是使用本地地址，实际地址为{host}。请手动处理。\033[0m")
+                            print(f"|-- \033[31m当前文件地址地址为{host}。已跳过。\033[0m")
                             continue
                         
                         # 解析用户名
-                        user_match = re.search(r'[\'"]?user[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
+                        user_match = re.search(r'[\'"]?user[\'"]?:\s*[\'"]?([\w.]+)[\'"]?', content)
                         if not user_match:
                             print(f"|-- \033[31m当前文件{full_path}无法解析用户名。请手动处理。\033[0m")
                             continue
                         user = user_match.group(1)
 
-                        if user == 'root':
-                            print(f"|-- 检测到配置文件{full_path}用户名为root")
+                        if user == 'root' or user == 'process.env.DB_USER':
+                            print(f"|-- 检测到配置文件{full_path}用户名为{user}")
                             fixConfigs.append({
                                 "path": full_path,
                                 "db_name": db_name,
@@ -109,9 +109,9 @@ class arrangeTools:
         print(f'------------------------------------------------------------------------------')
         # 修改配置文件
         if len(fixConfigs) == 0:
-            print('暂未检测到使用root账号的项目配置文件!')
+            print('暂未检测到使用非本数据库账号的项目配置文件!')
             return 
-        confirm = input(f"检测到使用root账号的项目配置文件：{','.join(c.get('path', '') for c in fixConfigs)}，要更新这些配置文件，改为使用数据库本身的用户吗？（默认y）[y/n] ")
+        confirm = input(f"检测到使用非本数据库账号的项目配置文件：{','.join(c.get('path', '') for c in fixConfigs)}，要更新这些配置文件，改为使用数据库本身的用户吗？（默认y）[y/n] ")
         confirm = confirm if confirm else 'y'
         if confirm.lower() == 'y':
             host = '127.0.0.1'

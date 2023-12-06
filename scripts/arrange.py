@@ -94,7 +94,7 @@ class arrangeTools:
                             continue
                         user = user_match.group(1)
 
-                        print(f"|-- \033[42m检测到配置文件{full_path}用户名为{user}\033[0m")
+                        print(f"|-- \033[36m检测到配置文件{full_path}用户名为{user}\033[0m")
                         fixConfigs.append({
                             "path": full_path,
                             "db_name": db_name,

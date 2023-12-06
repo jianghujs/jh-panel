@@ -2682,7 +2682,7 @@ def fixAllDbUser(version):
     fixDatabases = []
     for databaseIndex in range(0, len(databases)):
         db = databases[databaseIndex]
-        dbname = db['name']
+        dbname = db['username']
         dbpsw = db['password']
         print(f'|- 开始检查：{dbname}...')
         db_users = pdb.query("select Host from mysql.user where User='" + dbname + "'")

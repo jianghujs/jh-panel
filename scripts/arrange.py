@@ -74,7 +74,7 @@ class arrangeTools:
                             continue
 
                         if 'data_repository' in db_name:
-                            print(f"|--\033[31m数据库名: {db_name}包含data_repository。已跳过。\033[0m")
+                            print(f"|--数据库名: {db_name}包含data_repository。已跳过。")
                             continue
                             
                         # 解析地址
@@ -84,7 +84,7 @@ class arrangeTools:
                             continue
                         host = host_match.group(1)
                         if host != '127.0.0.1' and host != 'localhost' and host != 'process.env.DB_HOST':
-                            print(f"|-- \033[31m当前文件地址地址为{host}。已跳过。\033[0m")
+                            print(f"|-- 当前文件地址地址为{host}。已跳过。")
                             continue
                         
                         # 解析用户名
@@ -105,8 +105,8 @@ class arrangeTools:
                             print(f"|-- 当前配置文件用户名为{user}，已跳过")
                             
                 except Exception as e:
+                    print(f"\033[31m解析配置文件{full_path}异常！\033[0m")
                     print(e)
-                    print(f"解析配置文件{full_path}异常！")
         
         print(f'------------------------------------------------------------------------------')
         # 修改配置文件

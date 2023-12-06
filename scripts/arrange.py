@@ -94,15 +94,12 @@ class arrangeTools:
                             continue
                         user = user_match.group(1)
 
-                        if user == 'root' or user == 'process.env.DB_USER':
-                            print(f"|-- 检测到配置文件{full_path}用户名为{user}")
-                            fixConfigs.append({
-                                "path": full_path,
-                                "db_name": db_name,
-                                "user": user
-                            })
-                        else:
-                            print(f"|-- 当前配置文件用户名为{user}，已跳过")
+                        print(f"|-- \033[42m检测到配置文件{full_path}用户名为{user}\033[0m")
+                        fixConfigs.append({
+                            "path": full_path,
+                            "db_name": db_name,
+                            "user": user
+                        })
                             
                 except Exception as e:
                     print(f"\033[31m解析配置文件{full_path}异常！\033[0m")

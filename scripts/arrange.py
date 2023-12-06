@@ -52,6 +52,8 @@ class arrangeTools:
         
         print(f'-----------开始检测{root_dir}目录下的使用root账号的项目配置文件-------------')
         for dirpath, dirnames, filenames in os.walk(root_dir):
+            if 'node_modules' in dirpath:
+                continue
             for filename in filenames:
                 if filename != 'config.prod.js':
                     continue
@@ -122,10 +124,10 @@ class arrangeTools:
                 with open(config_path, 'r+') as f:
                     print(f"|- 正在更新配置文件{full_path}... 数据库连接信息为： host: {host}, port: {port}, user: {databases_dict[db_name]['user']}, password: {databases_dict[db_name]['password']}")
                     content = f.read()
-                    content = re.sub(r'([\'"]?host[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + host + '"', content)    
-                    content = re.sub(r'([\'"]?port[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + port + '"', content)    
-                    content = re.sub(r'([\'"]?user[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + databases_dict[db_name]['user'] + '"', content)
-                    content = re.sub(r'([\'"]?password[\'"]?\s*:\s*)[\'"]\w+[\'"]', r'\1"' + databases_dict[db_name]['password'] + '"', content)
+                    content = re.sub(r'([\'"]?host[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + host + '"', content)    
+                    content = re.sub(r'([\'"]?port[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + port + '"', content)    
+                    content = re.sub(r'([\'"]?user[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + databases_dict[db_name]['user'] + '"', content)
+                    content = re.sub(r'([\'"]?password[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + databases_dict[db_name]['password'] + '"', content)
                     f.seek(0)
                     f.write(content)
                     print(f"|- 更新配置文件{full_path}完成✅")

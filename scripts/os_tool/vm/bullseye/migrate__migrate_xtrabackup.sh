@@ -58,6 +58,9 @@ popd > /dev/null
 mysql_pwd=$(echo ${mysql_info} | jq -r '.info.root_pwd')
 migrate_info_xtrabackup=$(echo ${migrate_info_xtrabackup} | jq --arg mysql_pwd ${mysql_pwd} '. + {mysql_root_psw: $mysql_pwd}')
 
+# 复制mysql.db
+cp -r /www/server/mysql-apt/mysql.db ${MIGRATE_DIR}/mysql.db
+
 # 把migrate_info_xtrabackup的内容写入到 MIGRATE_DIR/migrate_info_xtrabackup
 echo ${migrate_info_xtrabackup} > ${MIGRATE_DIR}/migrate_info_xtrabackup.json
 
@@ -123,6 +126,9 @@ then
 else
     echo "更新xtrabackup mysql密码失败，错误信息为：\$xtrabackup_change_pwd_msg"
 fi
+
+# 复制mysql.db
+cp -r mysql.db /www/server/mysql-apt/mysql.db 
 
 # 检查 /www/server/jh-panel/plugins/xtrabackup-inc/index.py 是否存在
 # xtrabackup_inc_files=\$(jq -r '.[]' /www/server/jh-panel/data/json/index.json | grep "xtrabackup-inc-")

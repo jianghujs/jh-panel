@@ -46,7 +46,7 @@ if [ $sync == "y" ]; then
     read -p "请输入备用服务器SSH端口(默认: 10022): " remote_port
     remote_port=${remote_port:-10022}
 
-    rsync -avu -e "ssh -p ${remote_port}" --progress /root/.ssh/$filename /root/.ssh/$filename.pub root@${remote_ip}:/root/.ssh/
+    rsync -av -e "ssh -p ${remote_port}" --progress /root/.ssh/$filename /root/.ssh/$filename.pub root@${remote_ip}:/root/.ssh/
 fi
 
 

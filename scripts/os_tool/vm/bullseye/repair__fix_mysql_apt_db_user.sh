@@ -43,7 +43,7 @@
         read -p "确定要同步${filename}到${remote_ip}:${filename}吗?(默认n)[y/n]" confirm
         confirm=${confirm:-n}
         if [ $confirm == "y" ]; then
-            rsync -avu -e "ssh -p ${remote_port}" --progress --delete "${filename}" "root@${remote_ip}:${filename}"
+            rsync -av -e "ssh -p ${remote_port}" --progress --delete "${filename}" "root@${remote_ip}:${filename}"
         fi
     fi
 # fi

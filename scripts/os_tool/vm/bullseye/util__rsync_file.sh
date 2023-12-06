@@ -36,5 +36,5 @@ echo "RSYNC_REMOTE_PART=$RSYNC_REMOTE_PART" >> /tmp/rsync_file_config
 
 # 执行同步
 echo "正在执行同步..."
-rsync -avu -e "ssh -p $remote_port" --progress --delete "$RSYNC_FILE" "root@$remote_ip:$remote_path"
+rsync -av -e "ssh -p $remote_port" --progress --delete "$RSYNC_FILE" "root@$remote_ip:$remote_path"
 echo "同步完成"

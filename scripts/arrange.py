@@ -64,11 +64,21 @@ class arrangeTools:
                         db_name_match = re.search(r'[\'"]?database[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
                         if not db_name_match:
                             print(f"|--\033[31m当前文件{full_path}无法解析数据库名称。请手动处理。\033[0m")
-
                             continue
+
                         db_name = db_name_match.group(1)
                         if db_name not in databases_dict:
                             print(f"|--\033[31m在databases中不存在对应数据库名: {db_name}。请手动处理。\033[0m")
+                            continue
+                            
+                        # 解析地址
+                        host_match = re.search(r'[\'"]?host[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
+                        if not host_match:
+                            print(f"|-- \033[31m当前文件{full_path}无法解析地址。请手动处理。\033[0m")
+                            continue
+                        host = host_match.group(1)
+                        if host != '127.0.0.1' and host != 'localhost':
+                            print(f"|-- \033[31m当前文件地址不是使用本地地址，实际地址为{host}。请手动处理。\033[0m")
                             continue
                         
                         # 解析用户名
@@ -76,8 +86,8 @@ class arrangeTools:
                         if not user_match:
                             print(f"|-- \033[31m当前文件{full_path}无法解析用户名。请手动处理。\033[0m")
                             continue
-                            
                         user = user_match.group(1)
+
                         if user == 'root':
                             print(f"|-- 检测到配置文件{full_path}用户名为root")
                             fixConfigs.append({

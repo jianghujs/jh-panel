@@ -63,7 +63,7 @@ class arrangeTools:
                     with open(full_path, 'r+') as f:
                         content = f.read()
                         # 解析数据库名
-                        db_name_match = re.search(r'[\'"]?database[\'"]?:\s*[\'"]?([\w.]+)[\'"]?', content)
+                        db_name_match = re.search(r'[\'"]?database[\'"]?:\s*[\'"]?([\w.-]+)[\'"]?', content)
                         if not db_name_match:
                             print(f"|--\033[31m当前文件{full_path}无法解析数据库名称。请手动处理。\033[0m")
                             continue
@@ -78,7 +78,7 @@ class arrangeTools:
                             continue
                             
                         # 解析地址
-                        host_match = re.search(r'[\'"]?host[\'"]?:\s*[\'"]?([\w.]+)[\'"]?', content)
+                        host_match = re.search(r'[\'"]?host[\'"]?:\s*[\'"]?([\w.-]+)[\'"]?', content)
                         if not host_match:
                             print(f"|-- \033[31m当前文件{full_path}无法解析地址。请手动处理。\033[0m")
                             continue
@@ -88,7 +88,7 @@ class arrangeTools:
                             continue
                         
                         # 解析用户名
-                        user_match = re.search(r'[\'"]?user[\'"]?:\s*[\'"]?([\w.]+)[\'"]?', content)
+                        user_match = re.search(r'[\'"]?user[\'"]?:\s*[\'"]?([\w.-]+)[\'"]?', content)
                         if not user_match:
                             print(f"|-- \033[31m当前文件{full_path}无法解析用户名。请手动处理。\033[0m")
                             continue
@@ -124,10 +124,10 @@ class arrangeTools:
                 with open(config_path, 'r+') as f:
                     print(f"|- 正在更新配置文件{full_path}... 数据库连接信息为： host: {host}, port: {port}, user: {databases_dict[db_name]['user']}, password: {databases_dict[db_name]['password']}")
                     content = f.read()
-                    content = re.sub(r'([\'"]?host[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + host + '"', content)    
-                    content = re.sub(r'([\'"]?port[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + port + '"', content)    
-                    content = re.sub(r'([\'"]?user[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + databases_dict[db_name]['user'] + '"', content)
-                    content = re.sub(r'([\'"]?password[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + databases_dict[db_name]['password'] + '"', content)
+                    content = re.sub(r'([\'"]?host[\'"]?\s*:\s*)[\'"]?[\w.-]+[\'"]?', r'\1"' + host + '"', content)    
+                    content = re.sub(r'([\'"]?port[\'"]?\s*:\s*)[\'"]?[\w.-]+[\'"]?', r'\1"' + port + '"', content)    
+                    content = re.sub(r'([\'"]?user[\'"]?\s*:\s*)[\'"]?[\w.-]+[\'"]?', r'\1"' + databases_dict[db_name]['user'] + '"', content)
+                    content = re.sub(r'([\'"]?password[\'"]?\s*:\s*)[\'"]?[\w.-]+[\'"]?', r'\1"' + databases_dict[db_name]['password'] + '"', content)
                     f.seek(0)
                     mw.writeFile(config_path, content)
                     print(f"|- 更新配置文件{full_path}完成✅")

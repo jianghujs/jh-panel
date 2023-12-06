@@ -29,7 +29,6 @@
 
 
     if [ $sync == "y" ]; then
-        sync_file=""
         # 输入目标服务器IP
         read -p "请输入备用服务器IP: " remote_ip
         if [ -z "$remote_ip" ]; then

@@ -81,7 +81,7 @@ class arrangeTools:
                             print(f"|-- \033[31m当前文件{full_path}无法解析地址。请手动处理。\033[0m")
                             continue
                         host = host_match.group(1)
-                        if host != '127.0.0.1' and host != 'localhost':
+                        if host != '127.0.0.1' and host != 'localhost' and host != 'process.env.DB_HOST':
                             print(f"|-- \033[31m当前文件地址不是使用本地地址，实际地址为{host}。请手动处理。\033[0m")
                             continue
                         

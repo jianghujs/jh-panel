@@ -129,7 +129,7 @@ class arrangeTools:
                     content = re.sub(r'([\'"]?user[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + databases_dict[db_name]['user'] + '"', content)
                     content = re.sub(r'([\'"]?password[\'"]?\s*:\s*)[\'"]?[\w.]+[\'"]?', r'\1"' + databases_dict[db_name]['password'] + '"', content)
                     f.seek(0)
-                    f.write(content)
+                    mw.writeFile(config_path, content)
                     print(f"|- 更新配置文件{full_path}完成✅")
             print("全部配置文件更新完成!✅")
         else:

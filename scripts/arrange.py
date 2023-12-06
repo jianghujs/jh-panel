@@ -70,6 +70,10 @@ class arrangeTools:
                         if db_name not in databases_dict:
                             print(f"|--\033[31m在databases中不存在对应数据库名: {db_name}。请手动处理。\033[0m")
                             continue
+
+                        if 'data_repository' in db_name:
+                            print(f"|--\033[31m数据库名: {db_name}包含data_repository。已跳过。\033[0m")
+                            continue
                             
                         # 解析地址
                         host_match = re.search(r'[\'"]?host[\'"]?:\s*[\'"]?([\w.]+)[\'"]?', content)

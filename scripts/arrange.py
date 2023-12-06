@@ -72,7 +72,7 @@ class arrangeTools:
                             continue
                             
                         # 解析地址
-                        host_match = re.search(r'[\'"]?host[\'"]?:\s*[\'"]?(\w+)[\'"]?', content)
+                        host_match = re.search(r'[\'"]?host[\'"]?:\s*[\'"]?([\w.]+)[\'"]?', content)
                         if not host_match:
                             print(f"|-- \033[31m当前文件{full_path}无法解析地址。请手动处理。\033[0m")
                             continue

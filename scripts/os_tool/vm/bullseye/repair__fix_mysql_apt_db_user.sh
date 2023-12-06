@@ -44,7 +44,7 @@
         read -p "确定要同步${filename}到${remote_ip}:${filename}吗?(默认n)[y/n]" confirm
         confirm=${confirm:-n}
         if [ $confirm == "y" ]; then
-            rsync -avu -e "ssh -p ${remote_port}" --progress /www/server/mysql-apt/mysql.db root@${remote_ip}:/www/server/mysql-apt/mysql.db
+            rsync -avu -e "ssh -p ${remote_port}" --progress --delete "/www/server/mysql-apt/mysql.db" "root@${remote_ip}:/www/server/mysql-apt/mysql.db“
         fi
     fi
 # fi

@@ -808,7 +808,7 @@ class system_api:
                 if cert_issuer == 'R3':
                     ssl_type = 'lets' 
                 else:
-                    ssl_type- = 'custom'
+                    ssl_type = 'custom'
 
             site['ssl_type'] = ssl_type
             site['cert_data'] = cert_data

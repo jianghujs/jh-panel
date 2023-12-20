@@ -796,22 +796,20 @@ class system_api:
             ssl_acme_path = mw.getAcmeDir() + '/' + site_name
 
             ssl_type = csr_path = key_path = cert_data = None
-            if os.path.exists(ssl_lets_path):
-                ssl_type = 'lets'
-                csr_path = ssl_lets_path + '/fullchain.pem'  # 生成证书路径
-                key_path = ssl_lets_path + '/privkey.pem'    # 密钥文件路径
-            elif os.path.exists(ssl_acme_path):
-                ssl_type = 'acme'
-                csr_path = ssl_acme_path + '/fullchain.cer'
-                key_path = ssl_acme_path + site_name + '.key'
-            elif os.path.exists(ssl_path):
-                ssl_type = 'custom'
+            if os.path.exists(ssl_path):
                 csr_path = ssl_path + '/fullchain.pem'  # 生成证书路径
                 key_path = ssl_path + '/privkey.pem'    # 密钥文件路径
+
             if csr_path and key_path:
                 key = mw.readFile(key_path)
                 csr = mw.readFile(csr_path)
                 cert_data = mw.getCertName(csr_path)
+                cert_issuer = cert_data.get('issuer', '')
+                if cert_issuer == 'R3':
+                    ssl_type = 'lets' 
+                else:
+                    ssl_type- = 'custom'
+
             site['ssl_type'] = ssl_type
             site['cert_data'] = cert_data
 

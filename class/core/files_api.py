@@ -393,7 +393,10 @@ class files_api:
             path = rPath + name
             mw.writeSpeed(name, i, l)
             if os.path.isdir(path):
-                shutil.rmtree(path)
+                if os.path.islink(path):
+                    os.remove(path)
+                else:
+                    shutil.rmtree(path)
             else:
                 os.remove(path)
         mw.writeSpeed(None, 0, 0)

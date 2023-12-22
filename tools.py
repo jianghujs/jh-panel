@@ -44,6 +44,14 @@ def mw_input_cmd(msg):
         in_val = input(msg)
     return in_val
 
+def mw_input_default_cmd(msg, default):
+    if sys.version_info[0] == 2:
+        in_val = raw_input(msg)
+    else:
+        in_val = input(msg)
+    in_val = in_val if in_val else default
+    return in_val
+
 
 def mwcli(mw_input=0):
     raw_tip = "======================================================"
@@ -77,9 +85,17 @@ def mwcli(mw_input=0):
         exit()
 
     if mw_input == 1:
-        os.system(INIT_CMD + " restart")
+        confirm = mw_input_default_cmd("确定要重启面板吗？（默认y，在面板终端执行此操作可能会失败）[y/n]：", 'y')
+        if confirm == 'y':
+            os.system(INIT_CMD + " restart")
+        else:
+            print("已取消")
     elif mw_input == 2:
-        os.system(INIT_CMD + " stop")
+        confirm = mw_input_default_cmd("确定要停止面板吗？（默认y，在面板终端执行此操作可能会失败）[y/n]：", 'y')
+        if confirm == 'y':
+            os.system(INIT_CMD + " stop")
+        else:
+            print("已取消")
     elif mw_input == 3:
         os.system(INIT_CMD + " start")
     elif mw_input == 4:

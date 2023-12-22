@@ -72,6 +72,10 @@ class site_api:
             mw.execShell("mkdir -p " + self.sslLetsDir +
                          " && chmod -R 755 " + self.sslLetsDir)
 
+    def openrestyReload(self):
+        data = mw.execShell("/www/server/openresty/bin/openresty -s reload")
+        return ("重启openresty失败，请检查配置！\n" + data[0]) if data[0] else ''
+
     ##### ----- start ----- ###
     def listApi(self):
         limit = request.form.get('limit', '10')
@@ -212,6 +216,10 @@ class site_api:
     def stopApi(self):
         mid = request.form.get('id', '')
         name = request.form.get('name', '')
+        
+        restart_result = self.openrestyReload()
+        if restart_result:
+            return mw.returnJson(False, restart_result)
 
         return self.stop(mid, name)
 
@@ -263,7 +271,10 @@ class site_api:
         mw.restartWeb()
         msg = mw.getInfo('网站[{1}]已被启用!', (name,))
         mw.writeLog('网站管理', msg)
-        return mw.returnJson(True, '站点已启用!')
+        restart_result = self.openrestyReload()
+        if restart_result:
+            return mw.returnJson(False, restart_result)
+        return mw.returnJson(True, '站点已启用!' + str(restart_result))
 
     def getBackupApi(self):
         limit = request.form.get('limit', '')

@@ -85,13 +85,13 @@ def mwcli(mw_input=0):
         exit()
 
     if mw_input == 1:
-        confirm = mw_input_default_cmd("确定要重启面板吗？（默认y，在面板终端执行此操作可能会失败）[y/n]：", 'y')
+        confirm = mw_input_default_cmd("提示：在面板终端执行此操作可能会失败，请勿在面板终端执行此操作\n确定要重启面板吗？（默认y）[y/n]：", 'y')
         if confirm == 'y':
             os.system(INIT_CMD + " restart")
         else:
             print("已取消")
     elif mw_input == 2:
-        confirm = mw_input_default_cmd("确定要停止面板吗？（默认y，在面板终端执行此操作可能会失败）[y/n]：", 'n')
+        confirm = mw_input_default_cmd("提示：在面板终端执行此操作可能会失败，请勿在面板终端执行此操作\n确定要停止面板吗？（默认y）[y/n]：", 'n')
         if confirm == 'y':
             os.system(INIT_CMD + " stop")
         else:

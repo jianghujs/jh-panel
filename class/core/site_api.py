@@ -217,11 +217,17 @@ class site_api:
         mid = request.form.get('id', '')
         name = request.form.get('name', '')
         
-        restart_result = self.openrestyReload()
-        if restart_result:
-            return mw.returnJson(False, restart_result)
+        reload_result = self.openrestyReload()
+        if reload_result:
+            return mw.returnJson(False, reload_result)
 
         return self.stop(mid, name)
+
+    def reloadApi(self):
+        reload_result = self.openrestyReload()
+        if reload_result:
+            return mw.returnJson(False, reload_result)
+        return mw.returnJson(True, '重载openresty成功!')
 
     def stop(self, mid, name):
         path = self.setupPath + '/stop'
@@ -271,10 +277,10 @@ class site_api:
         mw.restartWeb()
         msg = mw.getInfo('网站[{1}]已被启用!', (name,))
         mw.writeLog('网站管理', msg)
-        restart_result = self.openrestyReload()
-        if restart_result:
-            return mw.returnJson(False, restart_result)
-        return mw.returnJson(True, '站点已启用!' + str(restart_result))
+        reload_result = self.openrestyReload()
+        if reload_result:
+            return mw.returnJson(False, reload_result)
+        return mw.returnJson(True, '站点已启用!')
 
     def getBackupApi(self):
         limit = request.form.get('limit', '')

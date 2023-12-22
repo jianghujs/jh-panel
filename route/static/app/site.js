@@ -2403,14 +2403,29 @@ function configFile(webSite){
 function saveConfigFile(webSite,encoding,path){
 	var data = 'encoding='+encoding+'&data='+encodeURIComponent($("#configBody").val())+'&path='+path;
 	var loadT = layer.msg('保存中...',{icon:16,time:0,shade: [0.3, '#000']});
-	$.post('/files/save_body',data,function(rdata){
+	$.post('/files/save_body',data, function(rdata){
 		layer.close(loadT);
 		if(rdata.status){
-			layer.msg(rdata.msg,{icon:1});
+            reloadOpenresty()
+            layer.msg(rdata.msg,{icon:1});
 		}else{
 			layer.msg(rdata.msg,{icon:2,time:0,shade:0.3,shadeClose:true});
 		}
 	},'json');
+}
+
+// openresty重载配置
+async function reloadOpenresty(){
+    return new Promise((resolve, reject) => {
+        var loadT = layer.msg('正在应用配置...',{icon:16,time:0,shade: [0.3, '#000']});
+        $.post('/site/reload','',function(rdata){
+            layer.close(loadT);
+            if(!rdata.status){
+                layer.msg(rdata.msg,{icon:2,time:0,shade:0.3,shadeClose:true});
+            }
+            resolve();
+        },'json');
+    })
 }
 
 //伪静态

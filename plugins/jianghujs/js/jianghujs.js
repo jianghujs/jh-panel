@@ -757,6 +757,7 @@ echo "|- 建立upload软链完成✅"`
         $('#projectDeployScript').val(deployScript);
     })
     handlePathChange()
+    $("#projectName").val(name);
 
     $("#deployForm .step1, #deployForm .step1-btn").hide();
     $("#deployForm .step2, #deployForm .step2-btn").show();

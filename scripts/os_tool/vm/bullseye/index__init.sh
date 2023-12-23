@@ -34,13 +34,14 @@ echo "初始化环境"
 # 定义一个关联数组来存储你的脚本
 declare -A scripts
 scripts=(
+["安装中文包"]="init__install_cn_language.sh"
 ["分配固定IP"]="init__set_static_ip.sh"
 ["配置SSH权限"]="init__ssh_root_login.sh"
 ["安装江湖面板"]="init__install_jhpanel.sh"
 )
 
 # 定义一个数组来存储脚本的顺序
-script_order=("分配固定IP" "配置SSH权限" "安装江湖面板")
+script_order=("安装中文包" "分配固定IP" "配置SSH权限" "安装江湖面板")
 
 # 创建一个数组，用于dialog的checklist选项
 script_options=()
@@ -60,4 +61,3 @@ for key in "${script_order[@]}"; do
         fi
     done
 done
-;;

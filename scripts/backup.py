@@ -96,8 +96,12 @@ class backupTools:
         mysql_root = mw.M('config').dbPos(db_path, db_name).where(
             "id=?", (1,)).getField('mysql_root')
 
-        cmd = db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
-            name + " -uroot -p" + mysql_root + " | gzip > " + filename
+        # 优化cpu占用
+        # cmd = db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
+        #     name + " -uroot -p" + mysql_root + " | gzip > " + filename
+        cmd = db_path + "nice -n 19 ionice -c2 -n7 /bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
+            name + " -uroot -p" + mysql_root + " | pigz > " + filename
+
 
         mw.execShell(cmd)
 

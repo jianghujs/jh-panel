@@ -34,16 +34,21 @@ def send(smtp_host, smtp_port, username, password, to_mails, subject, content, c
     return True
 
 
-def sendSSL(smtp_host, smtp_port, username, password, to_mail, subject, content, contentType):
+def sendSSL(smtp_host, smtp_port, username, password, to_mails, subject, content, contentType):
 
     smtp = smtplib.SMTP_SSL(smtp_host, port=smtp_port)
     smtp.login(user=username, password=password)
 
-    msg = MIMEText(content, 'plain', 'utf-8')
+    msg = None
+    if contentType == 'html':
+        msg = MIMEMultipart('alternative')
+        msg.attach(MIMEText(content, 'html'))
+    else: 
+        msg = MIMEText(content, 'plain', 'utf-8')
     msg['From'] = _format_addr(username)
-    msg['To'] = _format_addr(to_mail)
+    msg['To'] = to_mails
     msg['Subject'] = Header(subject, 'utf-8').encode()
 
-    smtp.sendmail(from_addr=username, to_addrs=to_mail, msg=msg.as_string())
+    smtp.sendmail(from_addr=username, to_addrs=to_mails.split(","), msg=msg.as_string())
     smtp.quit()
     return True

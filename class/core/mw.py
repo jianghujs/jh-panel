@@ -2077,9 +2077,6 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         disk_list = diskInfo['disk_list']
         site_list = siteInfo['site_list']
         
-        site_ssl_lock_data_key = '网站SSL证书'
-        site_ssl_lock_data = getLockData(site_ssl_lock_data_key)
-        
         error_msg_arr = []
         # CPU
         if (cpu_percent > control_notify_config['cpu']):
@@ -2094,8 +2091,10 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
 
                 if disk_size_percent > control_notify_config['disk']:
                     error_msg_arr.append('磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']')
+        
         # 网站SSL证书
-        if len(site_list) > 0:
+        site_ssl_lock_data_key = '网站SSL证书异常通知'
+        if not checkLockValid(site_ssl_lock_data_key, 'day_start') and len(site_list) > 0:
             for site in site_list:
                 site_name = site['name']
                 cert_data = site['cert_data']

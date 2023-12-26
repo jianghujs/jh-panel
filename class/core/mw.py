@@ -1932,7 +1932,8 @@ def checkLockValid(lock_type, cycle_type = 'day'):
     lock_data = getLockData(lock_type)
     if lock_data is None:
         return False
-
+    if lock_data.get('do_time', None) is None:
+        return False
     now = datetime.datetime.now()
     diff_time = time.time() - lock_data['do_time']
     if cycle_type == 'day' and diff_time >= (24 * 60 * 60):

@@ -2101,8 +2101,8 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
                 cert_data = site['cert_data']
                 ssl_type = site['ssl_type']
                 # 网站名称 + 当前日期
-                site_notify_lock_key = str(site_name) + '_' + str(now_day) 
-                if site['status'] == '1' and cert_data is not None and site_notify_lock_key not in site_ssl_lock_data:
+                # site_notify_lock_key = str(site_name) + '_' + str(now_day) 
+                if site['status'] == '1' and cert_data is not None:
                     cert_endtime = int(cert_data['endtime'])
                     site_error_msg = ''
                     if ssl_type == 'custom':

@@ -784,13 +784,18 @@ def isSqlError(mysqlMsg):
 
 
 def __createUser(dbname, username, password, address):
-    pdb = pMysqlDb()
+    errmsg = ""
 
+    pdb = pMysqlDb()
     if username == 'root':
         dbname = '*'
 
-    pdb.execute(
+    t = pdb.execute(
         "CREATE USER `%s`@`localhost` IDENTIFIED BY '%s'" % (username, password))
+    
+    if t != 0:
+        errmsg = str(t)
+
     pdb.execute(
         "grant all privileges on %s.* to `%s`@`localhost`" % (dbname, username))
     for a in address.split(','):
@@ -799,6 +804,7 @@ def __createUser(dbname, username, password, address):
         pdb.execute(
             "grant all privileges on %s.* to `%s`@`%s`" % (dbname, username, a))
     pdb.execute("flush privileges")
+    return errmsg
 
 
 def getDbBackupListFunc(dbname=''):
@@ -2711,7 +2717,10 @@ def fixAllDbUser(version):
             dbpsw = db['password'] 
             print(f"|- 开始重建用户：{dbname}...")
             password = dbpsw if dbpsw else mw.getRandomString(16)
-            __createUser(dbname, dbname, password, defaultAccess)
+            createResult = __createUser(dbname, dbname, password, defaultAccess)
+            if createResult:
+                print(f"|- 重建用户{dbname}失败❌：{createResult}")
+                continue
             psdb.where('username=?', (dbname,)).save('password,accept,rw', (password,defaultAccess, 'rw',))
             print(f"|- 重建用户{dbname}成功✅，当前密码为{password}")
         print("全部数据库用户修复完成!✅")
@@ -2721,6 +2730,9 @@ def fixAllDbUser(version):
 
 
 if __name__ == "__main__":
+    
+
+
     func = sys.argv[1]
 
     version = "5.6"

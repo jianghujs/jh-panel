@@ -100,7 +100,7 @@ class backupTools:
         # cmd = db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
         #     name + " -uroot -p" + mysql_root + " | gzip > " + filename
         cmd = "nice -n 19 ionice -c2 -n7 " + db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
-            name + " -uroot -p" + mysql_root + " | pigz > " + filename
+            name + " -uroot -p" + mysql_root + " | gzip > " + filename
 
 
         mw.execShell(cmd)

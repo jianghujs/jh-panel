@@ -804,11 +804,12 @@ class system_api:
                 key = mw.readFile(key_path)
                 csr = mw.readFile(csr_path)
                 cert_data = mw.getCertName(csr_path)
-                cert_issuer = cert_data.get('issuer', '')
-                if cert_issuer == 'R3':
-                    ssl_type = 'lets' 
-                else:
-                    ssl_type = 'custom'
+                if cert_data:
+                    cert_issuer = cert_data.get('issuer', '')
+                    if cert_issuer == 'R3':
+                        ssl_type = 'lets' 
+                    else:
+                        ssl_type = 'custom'
 
             site['ssl_type'] = ssl_type
             site['cert_data'] = cert_data

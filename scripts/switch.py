@@ -39,6 +39,7 @@ class switchTools:
             return
 
         mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 1)
+        cronInfo['status'] = 1
         crontabApi.syncToCrond(cronInfo)
         print("启用定时任务" + name + "成功!")
             

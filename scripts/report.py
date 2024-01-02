@@ -224,7 +224,7 @@ class reportTools:
                 if disk_size_percent > disk_notify_value:
                     sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
             if len(sysinfo_summary_tips) > 0:
-                summary_tips.append("<span style='color: red;'>、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
+                summary_tips.append("<span style='color: red;'>" + "、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
             # 网站概要信息
             siteinfo_summary_tips = []
             for site in siteInfo['site_list']:
@@ -238,7 +238,7 @@ class reportTools:
                     if not (ssl_type == 'lets' or ssl_type == 'acme') and cert_endtime < ssl_cert_notify_value:
                         siteinfo_summary_tips.append(site_name)
             if len(siteinfo_summary_tips) > 0:
-                summary_tips.append( "<span style='color: red;'>、".join(siteinfo_summary_tips) + '域名证书需要及时更新</span>')
+                summary_tips.append( "<span style='color: red;'>" + "、".join(siteinfo_summary_tips) + '域名证书需要及时更新</span>')
             # 备份信息
             backup_summary_tips = []
             if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):

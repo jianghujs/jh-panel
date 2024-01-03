@@ -512,7 +512,7 @@ class config_api:
                         return mw.returnJson(False, '证书错误: <br><a style="color:red;">' + isError.replace("\n", '<br>') + '</a>')
             except Exception as ex:
                 return mw.returnJson(False, '开启失败:' + str(ex))
-            mw.restartMw()
+            mw.restartMw(True)
             return mw.returnJson(True, '开启SSL成功，即将跳转https协议访问面板!')
 
     # 更新面板SSL证书

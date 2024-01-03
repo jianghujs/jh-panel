@@ -362,9 +362,9 @@ def opLuaMakeAll():
 # ------------------------------ openresty end -----------------------------
 
 
-def restartMw():
+def restartMw(restartAll=False):
     import system_api
-    system_api.system_api().restartMw()
+    system_api.system_api().restartMw(restartAll)
 
 
 def checkWebConfig():

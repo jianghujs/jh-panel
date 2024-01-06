@@ -4,7 +4,7 @@ ConditionPathExists={$SERVER_PATH}/rsyncd/lsyncd.conf
 
 [Service]
 Type=simple
-ExecStart={$LSYNCD_BIN} -nodaemon -syslog {$SERVER_PATH}/rsyncd/lsyncd.conf
+ExecStart={$LSYNCD_BIN} -nodaemon -logfile {$SERVER_PATH}/rsyncd/logs/lsyncd.log {$SERVER_PATH}/rsyncd/lsyncd.conf
 
 [Install]
 WantedBy=multi-user.target

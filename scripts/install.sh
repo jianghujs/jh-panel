@@ -20,6 +20,13 @@ if [ "$EUID" -ne 0 ]
   exit
 fi
 
+# 解除系统限制打开文件数
+sed -i '/^root soft nofile/d' /etc/security/limits.conf
+echo "root soft nofile 500000" >> /etc/security/limits.conf
+sed -i '/^root hard nofile/d' /etc/security/limits.conf
+echo "root hard nofile 500000" >> /etc/security/limits.conf
+ulimit -n 500000
+
 if grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release; then
 	OSNAME='debian'
 elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then

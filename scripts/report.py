@@ -126,6 +126,14 @@ class reportTools:
                     "desc": f"已使用<span style='color: {'red' if disk_size_percent > disk_notify_value else ('orange' if disk_size_percent > (disk_notify_value*0.8) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
                 })
 
+            # 最后监控时间
+            lastMonitorRecord = mw.M('cpuio').dbfile('system').field('id,pro,mem,addtime').order('id desc').limit("0,1").select()
+            lastMonitorTimestamp = lastMonitorRecord[0]['addtime'] if len(lastMonitorRecord) > 0 else None
+            sysinfo_tips.append({
+                "name": "最后监控时间",
+                "desc": f"<span style='color: {'red' if lastMonitorTimestamp < self.__START_TIMESTAMP else 'auto'}'>{mw.toTime(lastMonitorTimestamp)}</span>"
+            })
+
             # 备份相关
             xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
 
@@ -225,6 +233,9 @@ class reportTools:
                     sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
             if len(sysinfo_summary_tips) > 0:
                 summary_tips.append("<span style='color: red;'>" + "、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
+            if lastMonitorTimestamp < self.__START_TIMESTAMP:
+                summary_tips.append("<span style='color: red;'>系统异常监控状态异常，异常情况通知可能不及时</span>")
+            
             # 网站概要信息
             siteinfo_summary_tips = []
             for site in siteInfo['site_list']:
@@ -288,6 +299,12 @@ table tr td:nth-child(2) {
 .project-table tr td:nth-child(2) {
     width: 30%%;
 }
+.system-table tr td:first-child {
+    width: 40%%;
+}
+.system-table tr td:nth-child(2) {
+    width: 60%%;
+}
 
 </style>
 
@@ -300,8 +317,8 @@ table tr td:nth-child(2) {
     </ul>
 </div>
 
-<h3>系统资源：</h3>
-<table border>
+<h3>系统状态：</h3>
+<table border class="system-table">
 %(sysinfo_tips)s
 </table>
 

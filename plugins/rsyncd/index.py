@@ -632,6 +632,7 @@ def makeLsyncdConf(data):
 \t}},
 \tssh = {{
   \t\tport = {t['ssh_port']},
+  \t\tidentityFile = "{t['key_path']}",
 \t}}
 }}
                 """

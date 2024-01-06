@@ -51,9 +51,25 @@ Install_rsyncd()
 	mkdir -p $serverPath/rsyncd/send
 	mkdir -p $serverPath/rsyncd/logs
   
-  echo 524288 | tee /proc/sys/fs/inotify/max_user_watches
-  echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf
-  sysctl -p
+    # 修改inotify最大监听数
+    echo 524288 | tee /proc/sys/fs/inotify/max_user_watches
+    echo fs.inotify.max_user_watches=524288 | tee -a /etc/sysctl.conf
+    sysctl -p
+
+    # lsyncd日志文件清理配置
+    LOGROTATE_CONFIG="/etc/logrotate.d/lsyncd"
+    if [ ! -f "$LOGROTATE_CONFIG" ]; then
+        echo "/www/server/lsyncd/lsyncd.log {
+            size 1G
+            rotate 1
+            missingok
+            notifempty
+            compress
+            delaycompress
+            copytruncate
+        }" > $LOGROTATE_CONFIG
+        echo "logrotate configuration for lsyncd has been added."
+    fi
 	
 	echo '2.0' > $serverPath/rsyncd/version.pl
 	echo '安装完成' > $install_tmp

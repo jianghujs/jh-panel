@@ -224,15 +224,20 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
         const databaseTables = database.databaseTables || [];
         const databaseIgnoreTables = database.databaseIgnoreTables || [];
         const databaseWithDataTables = database.databaseWithDataTables || [];
-        await dumpSql({
-            database: database.database,
-            sqlFile: path.join(sqlFileDir, `${database.database}.sql`),
-            tables: databaseTables,
-            ignoreTables: [...ignoreTables, ...databaseIgnoreTables],
-            withDataTables: [...withDataTables, ...databaseWithDataTables],
-            clearFields,
-            replace
-        });
+        try {
+            await dumpSql({
+                database: database.database,
+                sqlFile: path.join(sqlFileDir, `${database.database}.sql`),
+                tables: databaseTables,
+                ignoreTables: [...ignoreTables, ...databaseIgnoreTables],
+                withDataTables: [...withDataTables, ...databaseWithDataTables],
+                clearFields,
+                replace
+            });
+            console.log(`|- 导出${database.database}成功✅`);
+        } catch (e) {   
+            console.log(`|- 导出${database.database}失败❌, error: ${e.message}`);
+        }
     }
     
     console.log("")

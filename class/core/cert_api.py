@@ -1533,13 +1533,9 @@ fullchain.pem       粘贴到证书输入框
 
                             self.__config['orders'][i]['auth_to'] = auth_to
 
-
-                    
                     # 已更换证书的网站跳过续签
                     cent_valid = False
                     for domain in self.__config['orders'][i]['domains']:
-                        # 域名更改类型？
-                        
                         ssl_path = mw.getWebConfSSLDir() + '/' + domain
                         ssl_type = csr_path = key_path = cert_data = None
                         if os.path.exists(ssl_path):

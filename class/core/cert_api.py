@@ -1536,16 +1536,25 @@ fullchain.pem       粘贴到证书输入框
 
                     
                     # 已更换证书的网站跳过续签
-                    cent_valid = True
+                    cent_valid = False
                     for domain in self.__config['orders'][i]['domains']:
                         # 域名更改类型？
-                        ssl_lets_path = mw.getWebConfSSLLetsDir() + '/' + domain
-                        ssl_acme_path = mw.getAcmeDir() + '/' + domain
-                        if not os.path.exists(ssl_lets_path) and not os.path.exists(ssl_acme_path):
-                            cent_valid = False
-                            writeLog(
-                                "|-跳过已更换证书的域名: {}".format(self.__config['orders'][i]['domains']))
+                        
+                        ssl_path = mw.getWebConfSSLDir() + '/' + domain
+                        ssl_type = csr_path = key_path = cert_data = None
+                        if os.path.exists(ssl_path):
+                            csr_path = ssl_path + '/fullchain.pem'  # 生成证书路径
+                            key_path = ssl_path + '/privkey.pem'    # 密钥文件路径
+                            if csr_path and key_path:
+                                key = mw.readFile(key_path)
+                                csr = mw.readFile(csr_path)
+                                cert_data = mw.getCertName(csr_path)
+                                if cert_data:
+                                    cert_issuer = cert_data.get('issuer', '')
+                                    if cert_issuer == 'R3':
+                                        cent_valid = True
                     if not cent_valid:
+                        writeLog("|-跳过已更换证书的域名: {}".format(self.__config['orders'][i]['domains']))
                         continue                        
 
 

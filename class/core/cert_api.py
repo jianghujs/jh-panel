@@ -1568,11 +1568,11 @@ fullchain.pem       粘贴到证书输入框
                     #         continue
 
                     # 是否到了最大重试次数
-                    if 'retry_count' in self.__config['orders'][i]:
-                        if self.__config['orders'][i]['retry_count'] >= 5:
-                            writeLog('|-本次跳过域名:{}，因连续5次续签失败，不再续签此证书(可尝试手动续签此证书，成功后错误次数将被重置)'.format(
-                                self.__config['orders'][i]['domains']))
-                            continue
+                    # if 'retry_count' in self.__config['orders'][i]:
+                    #     if self.__config['orders'][i]['retry_count'] >= 5:
+                    #         writeLog('|-本次跳过域名:{}，因连续5次续签失败，不再续签此证书(可尝试手动续签此证书，成功后错误次数将被重置)'.format(
+                    #             self.__config['orders'][i]['domains']))
+                    #         continue
 
                     # 加入到续签订单
                     order_index.append(i)

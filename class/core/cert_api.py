@@ -1559,20 +1559,20 @@ fullchain.pem       粘贴到证书输入框
 
 
                     # 是否到了允许重试的时间
-                    # if 'next_retry_time' in self.__config['orders'][i]:
-                    #     timeout = self.__config['orders'][i][
-                    #         'next_retry_time'] - int(time.time())
-                    #     if timeout > 0:
-                    #         writeLog('|-本次跳过域名:{}，因第上次续签失败，还需要等待{}小时后再重试'.format(
-                    #             self.__config['orders'][i]['domains'], int(timeout / 60 / 60)))
-                    #         continue
+                    if 'next_retry_time' in self.__config['orders'][i]:
+                        timeout = self.__config['orders'][i][
+                            'next_retry_time'] - int(time.time())
+                        if timeout > 0:
+                            writeLog('|-本次跳过域名:{}，因第上次续签失败，还需要等待{}小时后再重试'.format(
+                                self.__config['orders'][i]['domains'], int(timeout / 60 / 60)))
+                            continue
 
                     # 是否到了最大重试次数
-                    # if 'retry_count' in self.__config['orders'][i]:
-                    #     if self.__config['orders'][i]['retry_count'] >= 5:
-                    #         writeLog('|-本次跳过域名:{}，因连续5次续签失败，不再续签此证书(可尝试手动续签此证书，成功后错误次数将被重置)'.format(
-                    #             self.__config['orders'][i]['domains']))
-                    #         continue
+                    if 'retry_count' in self.__config['orders'][i]:
+                        if self.__config['orders'][i]['retry_count'] >= 5:
+                            writeLog('|-本次跳过域名:{}，因连续5次续签失败，不再续签此证书(可尝试手动续签此证书，成功后错误次数将被重置)'.format(
+                                self.__config['orders'][i]['domains']))
+                            continue
 
                     # 加入到续签订单
                     order_index.append(i)

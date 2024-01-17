@@ -892,7 +892,7 @@ class site_api:
 
         data = self.createLet(request.form)
 
-        if not data.get('status', None):
+        if not isinstance(data, str) and not data.get('status', None):
             msg = data['msg']
             if type(data['msg']) != str:
                 msg = data['msg'][0]

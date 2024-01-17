@@ -891,9 +891,8 @@ class site_api:
         email_args = request.form.get('email', '')
 
         data = self.createLet(request.form)
-        print(data, 'ahah')
         if not isinstance(data, str) and not data.get('status', None):
-            msg = data['msg']
+            msg = data if isinstance(data, str) else data['msg']
             if type(data['msg']) != str:
                 msg = data['msg'][0]
                 emsg = data['msg'][1]['challenges'][0]['error']

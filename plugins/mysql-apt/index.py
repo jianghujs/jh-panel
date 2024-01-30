@@ -2318,6 +2318,7 @@ def initSlaveStatus(version=''):
         ssh.connect(hostname=ip, port=int(master_port),
                     username='root', pkey=key)
 
+        # todo 修复使用指定账号
         cmd = 'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py get_master_rep_slave_user_cmd {"username":"","db":""}'
         stdin, stdout, stderr = ssh.exec_command(cmd)
         result = stdout.read()
@@ -2339,11 +2340,11 @@ def initSlaveStatus(version=''):
         # 保证同步IP一致
         cmd = cmd_data['data']['cmd']
         if cmd.find('SOURCE_HOST') > -1:
-            cmd = re.sub(r"SOURCE_HOST='(.*)'",
+            cmd = re.sub(r"SOURCE_HOST='([^']*)'",
                          "SOURCE_HOST='" + ip + "'", cmd, 1)
 
         if cmd.find('MASTER_HOST') > -1:
-            cmd = re.sub(r"MASTER_HOST='(.*)'",
+            cmd = re.sub(r"MASTER_HOST='([^']*)'",
                          "MASTER_HOST='" + ip + "'", cmd, 1)
         db.query(cmd)
         db.query("start slave user='{}' password='{}';".format(
@@ -2477,7 +2478,7 @@ def doFullSync(version=''):
     writeDbSyncStatus({'code': 0, 'msg': '登录Master成功...', 'progress': 5})
 
     dbname = args['db']
-    cmd = "cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py dump_mysql_data {\"db\":'" + dbname + "'}"
+    cmd = "cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py dump_mysql_data {\"db\":\"" + dbname + "\"}"
     print(cmd)
     stdin, stdout, stderr = ssh.exec_command(cmd)
     result = stdout.read()

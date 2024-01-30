@@ -1940,21 +1940,6 @@ def setMasterStatus(version=''):
     if con.find('#log-bin') != -1:
         return mw.returnJson(False, '必须开启二进制日志')
 
-    sign = 'mdserver_ms_open'
-
-    dodb = findBinlogDoDb()
-    if not sign in dodb:
-        prefix = '#binlog-do-db'
-        con = con.replace(prefix, prefix + "\nbinlog-do-db=" + sign)
-        mw.writeFile(conf, con)
-    else:
-        con = con.replace("binlog-do-db=" + sign + "\n", '')
-        rep = r"(binlog-do-db\s*?=\s*?(.*))"
-        dodb = re.findall(rep, con, re.M)
-        for x in range(0, len(dodb)):
-            con = con.replace(dodb[x][0] + "\n", '')
-        mw.writeFile(conf, con)
-
     restart(version)
     return mw.returnJson(True, '设置成功')
 

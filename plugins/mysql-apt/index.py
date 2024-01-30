@@ -13,8 +13,8 @@ import psutil
 # reload(sys)
 # sys.setdefaultencoding('utf-8')
 
-import mw
 sys.path.append(os.getcwd() + "/class/core")
+import mw
 
 app_debug = False
 if mw.isAppleSystem():

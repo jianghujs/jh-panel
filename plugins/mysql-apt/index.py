@@ -758,7 +758,6 @@ def setDbStatus(version):
     return mw.returnJson(True, '设置成功!')
 
 
-
 def isSqlError(mysqlMsg):
     # 检测数据库执行错误
     mysqlMsg = str(mysqlMsg)

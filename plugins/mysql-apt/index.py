@@ -1,5 +1,6 @@
 # coding:utf-8
 
+import mw
 import sys
 import io
 import os
@@ -14,7 +15,6 @@ import psutil
 # sys.setdefaultencoding('utf-8')
 
 sys.path.append(os.getcwd() + "/class/core")
-import mw
 
 app_debug = False
 if mw.isAppleSystem():
@@ -361,11 +361,11 @@ def initMysql8Pwd():
     # 删除冗余账户
     hostname = mw.execShell('hostname')[0].strip()
     if hostname != 'localhost':
-        drop_hostname =  cmd_my + ' --defaults-file=' + \
+        drop_hostname = cmd_my + ' --defaults-file=' + \
             myconf + ' -uroot -p' + pwd + ' -e "drop user \'\'@\'' + hostname + '\'";'
         mw.execShell(drop_hostname)
 
-        drop_root_hostname =  cmd_my + ' --defaults-file=' + \
+        drop_root_hostname = cmd_my + ' --defaults-file=' + \
             myconf + ' -uroot -p' + pwd + ' -e "drop user \'root\'@\'' + hostname + '\'";'
         mw.execShell(drop_root_hostname)
 
@@ -579,120 +579,120 @@ def myDbStatus(version):
                 result['mem'][g] = d["Value"]
     return mw.getJson(result)
 
+
 def setDbStatusBySystemMemory(version):
-    pc_mem =psutil.virtual_memory()
-    div_gb_factor =(1024.0 ** 3)
+    pc_mem = psutil.virtual_memory()
+    div_gb_factor = (1024.0 ** 3)
     pc_mem_g = float('%.2f' % (pc_mem.total/div_gb_factor))
     args = {}
     if pc_mem_g > 16:
         args = {
             'key_buffer_size': 1024,
-            'query_cache_size': 384, 
-            'tmp_table_size': 2048, 
-            'max_heap_table_size': 2048, 
-            'innodb_buffer_pool_size': 4096, 
-            'innodb_log_buffer_size': 32, 
-            'sort_buffer_size': 4096, 
-            'read_buffer_size': 4096, 
-            'read_rnd_buffer_size': 2048, 
-            'join_buffer_size': 8192, 
-            'thread_stack': 512, 
-            'binlog_cache_size': 256, 
-            'thread_cache_size': 256, 
-            'table_open_cache': 2048, 
-            'max_connections': 500, 
+            'query_cache_size': 384,
+            'tmp_table_size': 2048,
+            'max_heap_table_size': 2048,
+            'innodb_buffer_pool_size': 4096,
+            'innodb_log_buffer_size': 32,
+            'sort_buffer_size': 4096,
+            'read_buffer_size': 4096,
+            'read_rnd_buffer_size': 2048,
+            'join_buffer_size': 8192,
+            'thread_stack': 512,
+            'binlog_cache_size': 256,
+            'thread_cache_size': 256,
+            'table_open_cache': 2048,
+            'max_connections': 500,
         }
     elif pc_mem_g > 8:
         args = {
             'key_buffer_size': 512,
-            'query_cache_size': 256, 
-            'tmp_table_size': 1024, 
-            'max_heap_table_size': 1024, 
-            'innodb_buffer_pool_size': 1024, 
-            'innodb_log_buffer_size': 32, 
-            'sort_buffer_size': 2048, 
-            'read_buffer_size': 2048, 
-            'read_rnd_buffer_size': 1024, 
-            'join_buffer_size': 4096, 
-            'thread_stack': 384, 
-            'binlog_cache_size': 192, 
-            'thread_cache_size': 192, 
-            'table_open_cache': 1024, 
-            'max_connections': 400, 
+            'query_cache_size': 256,
+            'tmp_table_size': 1024,
+            'max_heap_table_size': 1024,
+            'innodb_buffer_pool_size': 1024,
+            'innodb_log_buffer_size': 32,
+            'sort_buffer_size': 2048,
+            'read_buffer_size': 2048,
+            'read_rnd_buffer_size': 1024,
+            'join_buffer_size': 4096,
+            'thread_stack': 384,
+            'binlog_cache_size': 192,
+            'thread_cache_size': 192,
+            'table_open_cache': 1024,
+            'max_connections': 400,
         }
     elif pc_mem_g > 4:
         args = {
             'key_buffer_size': 384,
-            'query_cache_size': 192, 
-            'tmp_table_size': 512, 
-            'max_heap_table_size': 512, 
-            'innodb_buffer_pool_size': 512, 
-            'innodb_log_buffer_size': 32, 
-            'sort_buffer_size': 1024, 
-            'read_buffer_size': 1024, 
-            'read_rnd_buffer_size': 768, 
-            'join_buffer_size': 2048, 
-            'thread_stack': 256, 
-            'binlog_cache_size': 128, 
-            'thread_cache_size': 128, 
-            'table_open_cache': 384, 
-            'max_connections': 300, 
+            'query_cache_size': 192,
+            'tmp_table_size': 512,
+            'max_heap_table_size': 512,
+            'innodb_buffer_pool_size': 512,
+            'innodb_log_buffer_size': 32,
+            'sort_buffer_size': 1024,
+            'read_buffer_size': 1024,
+            'read_rnd_buffer_size': 768,
+            'join_buffer_size': 2048,
+            'thread_stack': 256,
+            'binlog_cache_size': 128,
+            'thread_cache_size': 128,
+            'table_open_cache': 384,
+            'max_connections': 300,
         }
-    elif pc_mem_g > 1.7:    
+    elif pc_mem_g > 1.7:
         args = {
             'key_buffer_size': 256,
-            'query_cache_size': 128, 
-            'tmp_table_size': 384, 
-            'max_heap_table_size': 384, 
-            'innodb_buffer_pool_size': 384, 
-            'innodb_log_buffer_size': 32, 
-            'sort_buffer_size': 768, 
-            'read_buffer_size': 768, 
-            'read_rnd_buffer_size': 512, 
-            'join_buffer_size': 2048, 
-            'thread_stack': 256, 
-            'binlog_cache_size': 64, 
-            'thread_cache_size': 96, 
-            'table_open_cache': 192, 
-            'max_connections': 200, 
+            'query_cache_size': 128,
+            'tmp_table_size': 384,
+            'max_heap_table_size': 384,
+            'innodb_buffer_pool_size': 384,
+            'innodb_log_buffer_size': 32,
+            'sort_buffer_size': 768,
+            'read_buffer_size': 768,
+            'read_rnd_buffer_size': 512,
+            'join_buffer_size': 2048,
+            'thread_stack': 256,
+            'binlog_cache_size': 64,
+            'thread_cache_size': 96,
+            'table_open_cache': 192,
+            'max_connections': 200,
         }
-    elif pc_mem_g > 0.8:    
+    elif pc_mem_g > 0.8:
         args = {
             'key_buffer_size': 128,
-            'query_cache_size': 64, 
-            'tmp_table_size': 64, 
-            'max_heap_table_size': 64, 
-            'innodb_buffer_pool_size': 256, 
-            'innodb_log_buffer_size': 32, 
-            'sort_buffer_size': 768, 
-            'read_buffer_size': 768, 
-            'read_rnd_buffer_size': 512, 
-            'join_buffer_size': 1024, 
-            'thread_stack': 256, 
-            'binlog_cache_size': 64, 
-            'thread_cache_size': 64, 
-            'table_open_cache': 128, 
-            'max_connections': 100, 
+            'query_cache_size': 64,
+            'tmp_table_size': 64,
+            'max_heap_table_size': 64,
+            'innodb_buffer_pool_size': 256,
+            'innodb_log_buffer_size': 32,
+            'sort_buffer_size': 768,
+            'read_buffer_size': 768,
+            'read_rnd_buffer_size': 512,
+            'join_buffer_size': 1024,
+            'thread_stack': 256,
+            'binlog_cache_size': 64,
+            'thread_cache_size': 64,
+            'table_open_cache': 128,
+            'max_connections': 100,
         }
-    else: 
+    else:
         args = {
             'key_buffer_size': 8,
-            'query_cache_size': 4, 
-            'tmp_table_size': 8, 
-            'max_heap_table_size': 8, 
-            'innodb_buffer_pool_size': 16, 
-            'innodb_log_buffer_size': 32, 
-            'sort_buffer_size': 256, 
-            'read_buffer_size': 256, 
-            'read_rnd_buffer_size': 128, 
-            'join_buffer_size': 128, 
-            'thread_stack': 256, 
-            'binlog_cache_size': 32, 
-            'thread_cache_size': 4, 
-            'table_open_cache': 32, 
-            'max_connections': 500, 
+            'query_cache_size': 4,
+            'tmp_table_size': 8,
+            'max_heap_table_size': 8,
+            'innodb_buffer_pool_size': 16,
+            'innodb_log_buffer_size': 32,
+            'sort_buffer_size': 256,
+            'read_buffer_size': 256,
+            'read_rnd_buffer_size': 128,
+            'join_buffer_size': 128,
+            'thread_stack': 256,
+            'binlog_cache_size': 32,
+            'thread_cache_size': 4,
+            'table_open_cache': 32,
+            'max_connections': 500,
         }
-
 
     gets = ['key_buffer_size', 'tmp_table_size', 'max_heap_table_size', 'innodb_buffer_pool_size', 'innodb_log_buffer_size', 'max_connections',
             'table_open_cache', 'thread_cache_size', 'sort_buffer_size', 'read_buffer_size', 'read_rnd_buffer_size', 'join_buffer_size', 'thread_stack', 'binlog_cache_size']
@@ -701,8 +701,6 @@ def setDbStatusBySystemMemory(version):
         # gets.append('query_cache_size')
         gets = ['key_buffer_size', 'query_cache_size', 'tmp_table_size', 'max_heap_table_size', 'innodb_buffer_pool_size', 'innodb_log_buffer_size', 'max_connections',
                 'table_open_cache', 'thread_cache_size', 'sort_buffer_size', 'read_buffer_size', 'read_rnd_buffer_size', 'join_buffer_size', 'thread_stack', 'binlog_cache_size']
-
-
 
     # print(gets)
     emptys = ['max_connections', 'thread_cache_size', 'table_open_cache']
@@ -726,6 +724,7 @@ def setDbStatusBySystemMemory(version):
         n += 1
     mw.writeFile(conFile, content)
     return mw.returnJson(True, '设置成功!')
+
 
 def setDbStatus(version):
     gets = ['key_buffer_size', 'tmp_table_size', 'max_heap_table_size', 'innodb_buffer_pool_size', 'innodb_log_buffer_size', 'max_connections',
@@ -792,7 +791,7 @@ def __createUser(dbname, username, password, address):
 
     t = pdb.execute(
         "CREATE USER `%s`@`localhost` IDENTIFIED BY '%s'" % (username, password))
-    
+
     if t != 0:
         errmsg = str(t)
 
@@ -818,7 +817,7 @@ def getDbBackupListFunc(dbname=''):
         fbstr = x[0:blen]
         if fbstr == bname:
             r.append(x)
-    r.sort(key=lambda fn: os.path.getmtime(bkDir + "/" + fn), reverse=True) 
+    r.sort(key=lambda fn: os.path.getmtime(bkDir + "/" + fn), reverse=True)
     return r
 
 
@@ -829,7 +828,7 @@ def setDbBackup():
         return data[1]
 
     scDir = getPluginDir() + '/scripts/backup.py'
-    cmd = 'python3 ' + scDir + ' database ' + args['name'] 
+    cmd = 'python3 ' + scDir + ' database ' + args['name']
     os.system(cmd)
     return mw.returnJson(True, 'ok')
 
@@ -918,11 +917,12 @@ def getImportDbBackupScript():
 
     pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
     sock = getSocketFile()
-    cmd += (getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + pwd + \
-        ' ' + name + ' < ' + file_path_sql + '\n')
+    cmd += (getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + pwd +
+            ' ' + name + ' < ' + file_path_sql + '\n')
 
     # print(mysql_cmd)
     return mw.returnJson(True, 'ok', cmd)
+
 
 def importDbBackup():
     args = getArgs()
@@ -1032,13 +1032,15 @@ def getMysqlInfo():
         "status": status()
     }
     pdb = pMysqlDb()
-    database_list = pSqliteDb('databases').field('id,pid,name,username,password,accept,rw,ps,addtime').select()
+    database_list = pSqliteDb('databases').field(
+        'id,pid,name,username,password,accept,rw,ps,addtime').select()
     total_bytes = 0
     # startTime = time.time()
     for database in database_list:
-        
+
         # 计算大小
-        sql = "select sum(DATA_LENGTH)+sum(INDEX_LENGTH) as sum_size from information_schema.tables  where table_schema='%s'" % database['name']
+        sql = "select sum(DATA_LENGTH)+sum(INDEX_LENGTH) as sum_size from information_schema.tables  where table_schema='%s'" % database[
+            'name']
         data_sum = pdb.query(sql)
         data = 0
         if data_sum[0]['sum_size'] != None:
@@ -1105,12 +1107,13 @@ def getDbListPage():
 
     return mw.getJson(data)
 
+
 def syncGetDatabases():
     pdb = pMysqlDb()
     psdb = pSqliteDb('databases')
     # 测试代码
     # psdb.delete()
-    
+
     data = pdb.query('show databases')
     isError = isSqlError(data)
     if isError != None:
@@ -1217,11 +1220,11 @@ def setRootPwd(version=''):
         isError = isSqlError(result)
         if isError != None:
             return isError
-        
+
         if version.find('8.0') > -1:
             result = pdb.execute(
                 "update mysql.user set password=password('" + password + "') where user='root'")
-            # Old code    
+            # Old code
             # pdb.execute(
             #     "UPDATE mysql.user SET authentication_string='' WHERE user='root'")
             # pdb.execute(
@@ -1231,7 +1234,7 @@ def setRootPwd(version=''):
         else:
             result = pdb.execute(
                 "update mysql.user set authentication_string=password('" + password + "') where user='root'")
-            # Old code    
+            # Old code
             # result = pdb.execute(
             #     "update mysql.user set Password=password('" + password + "') where User='root'")
         pdb.execute("flush privileges")
@@ -1239,6 +1242,7 @@ def setRootPwd(version=''):
         return mw.returnJson(True, '数据库root密码修改成功!')
     except Exception as ex:
         return mw.returnJson(False, '修改错误:' + str(ex))
+
 
 def fixRootPwd(version=''):
     args = getArgs()
@@ -1269,7 +1273,6 @@ def setUserPwd(version=''):
     if not data[0]:
         return data[1]
 
-
     newpassword = args['password']
     username = args['name']
     uid = args['id']
@@ -1279,7 +1282,7 @@ def setUserPwd(version=''):
         psdb = pSqliteDb('databases')
         name = psdb.where('id=?', (uid,)).getField('name')
         # if version.find('5.7') > -1 or version.find('8.0') > -1:
-        
+
         accept = pdb.query(
             "select Host from mysql.user where User='" + name + "' AND Host!='localhost'")
         if len(accept) == 0:
@@ -1293,7 +1296,7 @@ def setUserPwd(version=''):
         for my_host in accept:
             t2 = pdb.execute("ALTER USER `%s`@`%s` IDENTIFIED BY '%s'" % (
                 username, my_host["Host"], newpassword))
-                # print(t2)
+            # print(t2)
         # else:
         #     result = pdb.execute("update mysql.user set Password=password('" +
         #                          newpassword + "') where User='" + username + "'")
@@ -2091,18 +2094,18 @@ def getMasterRepSlaveUserCmd(version):
             clist[0]['password'] + "', MASTER_AUTO_POSITION=1"
         if version == '8.0':
             sql = "CHANGE REPLICATION SOURCE TO SOURCE_HOST='" + ip + "', SOURCE_PORT=" + port + ", SOURCE_USER='" + \
-                clist[0]['username']  + "', SOURCE_PASSWORD='" + \
+                clist[0]['username'] + "', SOURCE_PASSWORD='" + \
                 clist[0]['password'] + "', MASTER_AUTO_POSITION=1"
     else:
         sql = "CHANGE MASTER TO MASTER_HOST='" + ip + "', MASTER_PORT=" + port + ", MASTER_USER='" + \
-            clist[0]['username']  + "', MASTER_PASSWORD='" + \
+            clist[0]['username'] + "', MASTER_PASSWORD='" + \
             clist[0]['password'] + \
             "', MASTER_LOG_FILE='" + mstatus[0]["File"] + \
             "',MASTER_LOG_POS=" + str(mstatus[0]["Position"])
 
         if version == "8.0":
             sql = "CHANGE REPLICATION SOURCE TO SOURCE_HOST='" + ip + "', SOURCE_PORT=" + port + ", SOURCE_USER='" + \
-                clist[0]['username']  + "', SOURCE_PASSWORD='" + \
+                clist[0]['username'] + "', SOURCE_PASSWORD='" + \
                 clist[0]['password'] + \
                 "', SOURCE_LOG_FILE='" + mstatus[0]["File"] + \
                 "',SOURCE_LOG_POS=" + str(mstatus[0]["Position"])
@@ -2593,7 +2596,7 @@ def installPreInspection(version):
     if not sysName in ('debian', 'ubuntu'):
         return '仅支持debian,ubuntu'
 
-    if (sysName == 'debian' and not sysId in('11', '10')):
+    if (sysName == 'debian' and not sysId in ('11', '10')):
         return 'debian支持10,11'
 
     if (sysName == 'ubuntu' and version == '5.7' and not sysId in ('18.04')):
@@ -2602,6 +2605,7 @@ def installPreInspection(version):
     if (sysName == 'ubuntu' and version == '8.0' and not sysId in ('18.04', '20.04', '22.04')):
         return 'Ubuntu Apt MySQL[' + version + '] 仅支持18.04,20.04,22.04'
     return 'ok'
+
 
 class checksum_logger:
     def __init__(self):
@@ -2619,6 +2623,7 @@ class checksum_logger:
         f.close()
         return True
 
+
 def getChecksumReport(version):
     pdb = pMysqlDb()
     databasesData = pdb.query('show databases')
@@ -2633,11 +2638,12 @@ def getChecksumReport(version):
     checksumLogger = checksum_logger()
     checksumLogger.clear()
     checksumReportFile = 'tmp/mysql_checksum_report.txt'
-    
-    ignoreDatabases = ['information_schema', 'performance_schema', 'mysql', 'sys']
+
+    ignoreDatabases = ['information_schema',
+                       'performance_schema', 'mysql', 'sys']
     n = 0
     checksumLogger.info('正在计算checksum...')
-    mw.writeFile(checksumReportFile, '', 'w')    
+    mw.writeFile(checksumReportFile, '', 'w')
     for databaaseValue in databasesData:
         database = databaaseValue["Database"]
         current_database_checksum = 0
@@ -2645,28 +2651,36 @@ def getChecksumReport(version):
         if database in ignoreDatabases:
             continue
 
-        mw.writeFile(checksumReportFile, '|------------------ ' + database + ' ---------------\n', 'a+')
-        
-        tablesData = pdb.query(f"SELECT * FROM TABLES WHERE TABLE_SCHEMA='{database}' AND TABLE_COMMENT!='VIEW'")
+        mw.writeFile(checksumReportFile, '|------------------ ' +
+                     database + ' ---------------\n', 'a+')
+
+        tablesData = pdb.query(
+            f"SELECT * FROM TABLES WHERE TABLE_SCHEMA='{database}' AND TABLE_COMMENT!='VIEW'")
         for tableValue in tablesData:
             table = tableValue["TABLE_NAME"]
             checksumData = pdb.query(f"CHECKSUM TABLE `{database}`.`{table}`")
             checksum = checksumData[0]['Checksum']
-            mw.writeFile(checksumReportFile, f"|- {database}.{table}: {checksum}\n", 'a+')
+            mw.writeFile(checksumReportFile,
+                         f"|- {database}.{table}: {checksum}\n", 'a+')
             checksums[database] = {table: checksum}
-            current_database_checksum += (int(checksum) if checksum!= None else 0)
+            current_database_checksum += (int(checksum)
+                                          if checksum != None else 0)
 
         checksum_total += current_database_checksum
-        mw.writeFile(checksumReportFile, f'|- Total: {current_database_checksum}\n', 'a+')
+        mw.writeFile(checksumReportFile,
+                     f'|- Total: {current_database_checksum}\n', 'a+')
         # mw.writeFile(checksumReportFile, f'|----------------------------------------------------------\n', 'a+')
-        checksumLogger.info(f'|- {database}: {current_database_checksum}') 
-    
+        checksumLogger.info(f'|- {database}: {current_database_checksum}')
+
     title = mw.getConfig('title')
-    mw.writeFile(checksumReportFile, f'\n----------------------------------------------------------\n', 'a+')    
+    mw.writeFile(checksumReportFile,
+                 f'\n----------------------------------------------------------\n', 'a+')
     mw.writeFile(checksumReportFile, f'- Name：{title}\n', 'a+')
-    mw.writeFile(checksumReportFile, f'- All Database Total：{checksum_total}\n', 'a+')
-    mw.writeFile(checksumReportFile, f'----------------------------------------------------------\n', 'a+')    
-    
+    mw.writeFile(checksumReportFile,
+                 f'- All Database Total：{checksum_total}\n', 'a+')
+    mw.writeFile(checksumReportFile,
+                 f'----------------------------------------------------------\n', 'a+')
+
     checksumLogger.info(f'|- All Database Total：{checksum_total}')
     return mw.returnJson(True, 'ok',  '')
 
@@ -2682,7 +2696,8 @@ def uninstallPreInspection(version):
 def fixAllDbUser(version):
     pdb = pMysqlDb()
     psdb = pSqliteDb('databases')
-    databases = psdb.field('id,pid,name,username,password,accept,rw,ps,addtime').select()
+    databases = psdb.field(
+        'id,pid,name,username,password,accept,rw,ps,addtime').select()
 
     print("开始检查数据库用户信息...")
     fixDatabases = []
@@ -2691,37 +2706,42 @@ def fixAllDbUser(version):
         dbname = db['username']
         dbpsw = db['password']
         print(f'|- 开始检查：{dbname}...')
-        db_users = pdb.query("select Host from mysql.user where User='" + dbname + "'")
+        db_users = pdb.query(
+            "select Host from mysql.user where User='" + dbname + "'")
         # 密码为空
         if dbpsw is None or dbpsw == '':
             # 删除旧用户
             for us in db_users:
                 pdb.execute("drop user '" + dbname + "'@'" + us["Host"] + "'")
         # 查询用户
-        db_users = pdb.query("select Host from mysql.user where User='" + dbname + "'")
+        db_users = pdb.query(
+            "select Host from mysql.user where User='" + dbname + "'")
         if len(db_users) == 0:
             fixDatabases.append(db)
 
     if len(fixDatabases) == 0:
         print('暂无需要修复的数据库用户!')
-        return 
-    confirm = input(f"检测到异常数据库用户：{','.join(db.get('name', '') for db in fixDatabases)}，要重建这些用户吗？（默认y）[y/n] ")
+        return
+    confirm = input(
+        f"检测到异常数据库用户：{','.join(db.get('name', '') for db in fixDatabases)}，要重建这些用户吗？（默认y）[y/n] ")
     confirm = confirm if confirm else 'y'
     if confirm.lower() == 'y':
         defaultAccess = '127.0.0.1'
         addTime = time.strftime('%Y-%m-%d %X', time.localtime())
-        
+
         for databaseIndex in range(0, len(fixDatabases)):
             db = fixDatabases[databaseIndex]
             dbname = db['name']
-            dbpsw = db['password'] 
+            dbpsw = db['password']
             print(f"|- 开始重建用户：{dbname}...")
             password = dbpsw if dbpsw else mw.getRandomString(16)
-            createResult = __createUser(dbname, dbname, password, defaultAccess)
+            createResult = __createUser(
+                dbname, dbname, password, defaultAccess)
             if createResult:
                 print(f"|- 重建用户{dbname}失败❌：{createResult}")
                 continue
-            psdb.where('username=?', (dbname,)).save('password,accept,rw', (password,defaultAccess, 'rw',))
+            psdb.where('username=?', (dbname,)).save(
+                'password,accept,rw', (password, defaultAccess, 'rw',))
             print(f"|- 重建用户{dbname}成功✅，当前密码为{password}")
         print("全部数据库用户修复完成!✅")
     else:
@@ -2730,8 +2750,6 @@ def fixAllDbUser(version):
 
 
 if __name__ == "__main__":
-    
-
 
     func = sys.argv[1]
 
@@ -2756,7 +2774,7 @@ if __name__ == "__main__":
     elif func == 'initd_status':
         print(initdStatus())
     elif func == 'set_db_status_by_system_memory':
-        print(setDbStatusBySystemMemory(version))    
+        print(setDbStatusBySystemMemory(version))
     elif func == 'initd_install':
         print(initdInstall())
     elif func == 'initd_uninstall':

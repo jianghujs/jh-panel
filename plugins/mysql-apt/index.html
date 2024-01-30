@@ -13,6 +13,7 @@
 			<p onclick="myLogs();">日志</p>
 			<p onclick="pluginLogs('mysql-apt',$('.plugin_version').attr('version'),'show_log');">慢日志</p>
 			<p onclick="dbList()">管理列表</p>
+			<p onclick="masterOrSlaveConf($('.plugin_version').attr('version'))">主从配置</p>
 		</div>
 		<div class="bt-w-con pd15">
 			<div class="soft-man-con"></div>
@@ -23,35 +24,38 @@
 
 
 <style type="text/css">
-.db_list{
-	padding: 0px 0 10px 0;
-    font-size: 13px;
-    line-height: 35px;
-    height: 45px;
-}
-.db_list a{
-	margin-right: 15px;
-	color: #555;
-    font-weight: 600;
-}
-.db_list span:nth-child(1){
-	display: block;
-    float: left;
-    padding-left: 15px;
-    background: #ececec;
-    border-radius: 3px;
-}
+	.db_list {
+		padding: 0px 0 10px 0;
+		font-size: 13px;
+		line-height: 35px;
+		height: 45px;
+	}
 
-#db_tools button {
-    margin-right: 10px;
-}
-#db_tools button:last-child{
-	margin-right: 0;
-}
+	.db_list a {
+		margin-right: 15px;
+		color: #555;
+		font-weight: 600;
+	}
+
+	.db_list span:nth-child(1) {
+		display: block;
+		float: left;
+		padding-left: 15px;
+		background: #ececec;
+		border-radius: 3px;
+	}
+
+	#db_tools button {
+		margin-right: 10px;
+	}
+
+	#db_tools button:last-child {
+		margin-right: 0;
+	}
 </style>
 <script type="text/javascript">
-resetPluginWinWidth(800);
-$.getScript( "/plugins/file?name=mysql-apt&f=js/mysql-apt.js", function(){
-	pluginService('mysql-apt',$('.plugin_version').attr('version'));
-});
+	resetPluginWinWidth(800);
+	$.getScript("/plugins/file?name=mysql-apt&f=js/mysql-apt.js", function () {
+		pluginService('mysql-apt', $('.plugin_version').attr('version'));
+	});
 </script>

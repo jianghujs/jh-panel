@@ -1,6 +1,5 @@
 # coding:utf-8
 
-import mw
 import sys
 import io
 import os
@@ -14,6 +13,7 @@ import psutil
 # reload(sys)
 # sys.setdefaultencoding('utf-8')
 
+import mw
 sys.path.append(os.getcwd() + "/class/core")
 
 app_debug = False

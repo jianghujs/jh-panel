@@ -2125,7 +2125,7 @@ function masterOrSlaveConf(version=''){
                 <hr/>\
                 <p class="conf_p master_box">\
                     <span class="f14 c6 mr20">Master[主]配置</span><span class="f14 c6 mr20"></span>\
-                    <button class="btn '+(!rdata.status ? 'btn-danger' : 'btn-success')+' btn-xs btn-master">'+(!rdata.status ? '未开启' : '已开启') +'</button>\
+                    <!-- <button class="btn '+(!rdata.status ? 'btn-danger' : 'btn-success')+' btn-xs btn-master">'+(!rdata.status ? '未开启' : '已开启') +'</button> -->\
                 </p>\
                 <hr/>\
                 <hr/>\
@@ -2203,10 +2203,10 @@ function masterOrSlaveConf(version=''){
                 });
             });
 
-            if (rdata.status){
-                var con = '<span class="sync btn btn-default btn-sm" style="width: auto" onclick="getMasterRepSlaveListPage()" title="">同步账户列表</span>';
+            // if (rdata.status){
+                var con = '<span class="sync btn btn-default btn-sm" style="width: auto" onclick="getMasterRepSlaveListPage()" title="">配置同步账户</span>';
                 $(".master_box").append(con);
-            }
+            // }
             
             if (rdata.slave_status){
                 getAsyncMasterDbList();

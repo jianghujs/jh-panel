@@ -2528,7 +2528,7 @@ def doFullSync(version=''):
     root_dir = getServerDir()
     msock = root_dir + "/mysql.sock"
     mw.execShell("cd /tmp && gzip -d dump.sql.gz")
-    cmd = root_dir + "/bin/mysql -S " + msock + \
+    cmd = root_dir + "/bin/usr/bin/mysql -S " + msock + \
         " -uroot -p" + pwd + " < /tmp/dump.sql"
     import_data = mw.execShell(cmd)
     if import_data[0] == '':

@@ -1717,6 +1717,14 @@ def setDbrunMode(version=''):
     con = re.sub(rep, rep_after, con)
     mw.writeFile(path, con)
 
+    # 保证配置文件存在
+    cnf_file = getServerDir() + "/etc/mode/" + mode + ".cnf"
+    if not os.path.exists(getServerDir() + "/etc/mode"):
+        os.makedirs(getServerDir() + "/etc/mode", exist_ok=True)
+    if not os.path.exists(cnf_file):
+        origin_cnf_file = getPluginDir() + "/conf/" + mode + ".cnf"
+        mw.writeFile(cnf_file, mw.readFile(origin_cnf_file, 'rb'), 'wb')
+
     if version == '5.6':
         dbreload = 'yes'
     else:

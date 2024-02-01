@@ -2210,7 +2210,7 @@ function masterOrSlaveConf(version=''){
             
             if (rdata.slave_status){
                 getAsyncMasterDbList();
-                getAsyncDataList()
+                // getAsyncDataList()
             }
         });
     }

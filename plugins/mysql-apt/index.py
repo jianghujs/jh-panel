@@ -1715,6 +1715,12 @@ def setDbrunMode(version=''):
     rep = r"!include %s/%s\.cnf" % (getServerDir() + "/etc/mode", origin_mode)
     rep_after = "!include %s/%s.cnf" % (getServerDir() + "/etc/mode", mode)
     con = re.sub(rep, rep_after, con)
+
+    # 如果配置文件中 server-id = 1，则改成当前时间
+    if re.search(r"server-id\s*?=\s*?1", con):
+        con = re.sub(r"server-id\s*?=\s*?1", "server-id = " +
+                     str(int(time.time())), con)
+
     mw.writeFile(path, con)
 
     # 保证配置文件存在

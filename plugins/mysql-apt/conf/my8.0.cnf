@@ -54,18 +54,18 @@ relay-log-index=mdserver
 
 #master
 #binlog-do-db
-binlog-ignore-db = test
-binlog-ignore-db = mysql
-binlog-ignore-db = information_schema
-binlog-ignore-db = performance_schema
+#binlog-ignore-db = test
+#binlog-ignore-db = mysql
+#binlog-ignore-db = information_schema
+#binlog-ignore-db = performance_schema
 
 #slave
 log_replica_updates
 #replicate-do-db
-replicate-ignore-db = information_schema
-replicate-ignore-db = performance_schema
-replicate-ignore-db = mysql
-replicate-ignore-db = test
+#replicate-ignore-db = information_schema
+#replicate-ignore-db = performance_schema
+#replicate-ignore-db = mysql
+#replicate-ignore-db = test
 
 default_storage_engine = InnoDB
 innodb_data_home_dir = {$SERVER_APP_PATH}/data

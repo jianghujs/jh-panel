@@ -270,7 +270,7 @@ class reportTools:
                 summary_tips.append("<span style='color: red;'>" + "、".join(backup_summary_tips) + '备份状态异常</span>')
             # lsyncd实时同步延迟提示
             if rsyncd_info is not None and  len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_delays', 0) > 0:
-                summary_tips.append("<span style='color: orange;'>实时备份延迟%s次</span>" % rsyncd_info.get('realtime_delays', 0))
+                summary_tips.append("<span style='color: orange;'>实时备份文件延迟%s个</span>" % rsyncd_info.get('realtime_delays', 0))
 
 
             # 无异常默认信息
@@ -620,7 +620,7 @@ table tr td:nth-child(2) {
 最后一次定时同步时间：<br/>%s<br/>
                 """ % (
                     f'<span style="color:{"red" if last_realtime_sync_date is None or last_realtime_sync_date.timestamp() < self.__START_TIMESTAMP else "auto"}">{last_realtime_sync_date if last_realtime_sync_date else "无"}</span>',
-                    f'<span style="color:{"red" if realtime_delays > 0 else "auto"}">{realtime_delays}</span>',
+                    f'<span style="color:{"orange" if realtime_delays > 0 else "auto"}">{realtime_delays}</span>',
                     ''.join(f"- {item.get('name', '')}：<span style='color: {'red' if item.get('status', 'enabled') == 'disabled' or item.get('last_sync_at', '无') == '无' or item.get('last_sync_at', '无') < mw.toTime(self.__START_TIMESTAMP) else 'auto'}'>{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}</span><br/>\n" for item in send_list if item.get('realtime') == 'false')
                 )
             })

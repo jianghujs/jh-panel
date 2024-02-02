@@ -267,7 +267,11 @@ class reportTools:
                         if send_open_fixtime_item.get('last_sync_at', None) == None or send_open_fixtime_item.get('last_sync_at', None) < mw.toTime(self.__START_TIMESTAMP):
                             backup_summary_tips.append(send_open_fixtime_item.get('name'))
             if len(backup_summary_tips) > 0:
-                summary_tips.append("<span style='color: orange;'>" + "、".join(backup_summary_tips) + '备份状态异常</span>')
+                summary_tips.append("<span style='color: red;'>" + "、".join(backup_summary_tips) + '备份状态异常</span>')
+            # lsyncd实时同步延迟提示
+            if rsyncd_info is not None and  len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_delays', 0) > 0:
+                summary_tips.append("<span style='color: orange;'>实时备份延迟%s次</span>" % rsyncd_info.get('realtime_delays', 0))
+
 
             # 无异常默认信息
             if len(summary_tips) == 0:
@@ -565,6 +569,7 @@ table tr td:nth-child(2) {
             send_close_count = len(send_close_list)
             last_realtime_sync_date = None
             last_realtime_sync_timestamp = None
+            realtime_delays = 0
 
             for send_item in send_list:
                 if send_item.get('status', 'enabled') == 'enabled':
@@ -589,10 +594,14 @@ table tr td:nth-child(2) {
                     last_realtime_sync_date_str = last_sync_match.group(1).replace('\n', '')
                     last_realtime_sync_date = datetime.datetime.strptime(last_realtime_sync_date_str, "%a %b %d %H:%M:%S %Y")
                     last_realtime_sync_timestamp = datetime.datetime.timestamp(last_realtime_sync_date)
+                realtime_delays_match = re.search(r"There are ([\d.]+) delays", real_time_status_file)
+                if realtime_delays_match:
+                    realtime_delays = int(realtime_delays_match.group(1))
             
             rsyncd_info = {
                 "last_realtime_sync_date": last_realtime_sync_date,
                 "last_realtime_sync_timestamp": last_realtime_sync_timestamp,
+                "realtime_delays": realtime_delays,
                 # "send_list": send_list,
                 "send_count": send_count,
                 "send_open_list": send_open_list,
@@ -607,9 +616,11 @@ table tr td:nth-child(2) {
                 "name": 'Rsyncd',
                 "desc": """
 最后一次实时同步时间：%s<br/>
+实时同步延迟文件数：%s<br/>
 最后一次定时同步时间：<br/>%s<br/>
                 """ % (
                     f'<span style="color:{"red" if last_realtime_sync_date is None or last_realtime_sync_date.timestamp() < self.__START_TIMESTAMP else "auto"}">{last_realtime_sync_date if last_realtime_sync_date else "无"}</span>',
+                    f'<span style="color:{"red" if realtime_delays > 0 else "auto"}">{realtime_delays}</span>',
                     ''.join(f"- {item.get('name', '')}：<span style='color: {'red' if item.get('status', 'enabled') == 'disabled' or item.get('last_sync_at', '无') == '无' or item.get('last_sync_at', '无') < mw.toTime(self.__START_TIMESTAMP) else 'auto'}'>{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}</span><br/>\n" for item in send_list if item.get('realtime') == 'false')
                 )
             })

@@ -20,7 +20,7 @@ if mw.isAppleSystem():
 
 def getPluginName():
 
-    return 'docker'
+    return 'cmd'
 
 
 def getPluginDir():
@@ -106,8 +106,8 @@ def deleteOne(table, id):
 
 
 def status():
-    status_exec = mw.execShell('systemctl status docker | grep running')
-    return 'stop' if status_exec[0] == '' else 'start'
+    # status_exec = mw.execShell('systemctl status docker | grep running')
+    return 'start'
 
 def start():
     initDb()
@@ -123,9 +123,9 @@ def serviceCtl():
     s_type = args['s_type']
     if s_type not in ['start', 'stop', 'restart']:
         return mw.returnJson(False, '操作不正确')
-    exec_str = 'systemctl {} docker'.format(s_type)
-    print(exec_str)
-    mw.execShell(exec_str)
+    # exec_str = 'systemctl {} docker'.format(s_type)
+    # print(exec_str)
+    # mw.execShell(exec_str)
     return 'ok'
 
 # 仓库列表
@@ -204,7 +204,7 @@ def scriptAdd():
         return data[1]
     name = args['name']
     script = getScriptArg('script')
-    echo =  mw.md5(str(time.time()) + '_docker')
+    echo =  mw.md5(str(time.time()) + '_cmd')
     id = int(time.time())
     saveOne('script', id, {
         'name': name,

@@ -837,7 +837,7 @@ class system_api:
         docker_info = {
             "status": "stop"
         }
-        if os.path.exists('/www/server/docker/'):
+        if os.path.exists('/www/server/docker/') and os.path.exists('/www/server/docker/version.pl'):
             project_list_result = mw.execShell('python3 /www/server/jh-panel/plugins/docker/index.py project_list')[0]
             if project_list_result:
                 project_list_result = json.loads(project_list_result)

@@ -1,7 +1,18 @@
 #!/bin/bash
 script_file="/tmp/online.sh"
 
-read -p "确定生成服务器上线（包括执行xtrabackup增量恢复、更新wwwroot目录、启动xtrabackup增量备份、xtrabackup、mysqldump定时任务、开启邮件通知）的脚本文件${script_file}吗？（默认y）[y/n]: " choice
+
+echo "-----------------------"
+echo "即将生成服务器上线脚本到${script_file}，包含内容如下："
+echo "1. （可选）同步服务器文件"
+echo "2. （可选）执行xtrabackup增量恢复"
+echo "3. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
+echo "4. 从authorized_keys删除同步公钥"
+echo "5. 启动rsyncd任务"
+echo "6. 启动Openresty"
+echo "7. 开启邮件通知"
+echo "-----------------------"
+read -p "确认生成吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}
 
 echo "" > $script_file
@@ -50,8 +61,8 @@ if [ $choice == "y" ]; then
 
   echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
   echo "" >> $script_file
-  read -p "需要执行增量恢复吗？（默认y）[y/n]: " xtrabackup_inc_restore_choice
-  xtrabackup_inc_restore_choice=${xtrabackup_inc_restore_choice:-"y"}
+  read -p "需要执行增量恢复吗？（默认n）[y/n]: " xtrabackup_inc_restore_choice
+  xtrabackup_inc_restore_choice=${xtrabackup_inc_restore_choice:-"n"}
 
   if [ $xtrabackup_inc_restore_choice == "y" ]; then
     echo "# 执行xtrabackup增量恢复" >> $script_file

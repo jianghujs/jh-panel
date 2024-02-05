@@ -1,7 +1,13 @@
 #!/bin/bash
 script_file="/tmp/offline.sh"
-
-read -p "确定生成服务器下线（包括停止xtrabackup增量备份、xtrabackup、mysqldump定时任务、停止邮件通知）的脚本文件${script_file}吗？（默认y）[y/n]: " choice
+echo "-----------------------"
+echo "即将生成服务器下线脚本到${script_file}，包含内容如下："
+echo "1. 关闭xtrabackup增量备份、xtrabackup、mysqldump定时任务"
+echo "2. 配置同步公钥到authorized_keys"
+echo "3. 关闭rsyncd任务"
+echo "4. 关闭邮件通知"
+echo "-----------------------"
+read -p "确认生成吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}
 
 echo "" > $script_file

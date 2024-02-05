@@ -83,8 +83,8 @@ EOF
 
 
 # 提示是否rsync同步
-read -p "是否需要打包成zip文件?(默认y)[y/n]" zip_choice
-zip_choice=${zip_choice:-y}
+read -p "是否需要打包成zip文件?(默认n)[y/n]" zip_choice
+zip_choice=${zip_choice:-n}
 if [ "$zip_choice" == "y" ]; then
     # 打包迁移临时文件存放目录
     timestamp=$(date +%s)

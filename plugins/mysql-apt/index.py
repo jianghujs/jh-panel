@@ -1717,7 +1717,7 @@ def setDbrunMode(version=''):
     con = re.sub(rep, rep_after, con)
 
     # 如果配置文件中 server-id = 1，则改成当前时间
-    if re.search(r"server-id\s*?=\s*?1", con):
+    if re.search(r"server-id\s*?=\s*?1\n", con):
         con = re.sub(r"server-id\s*?=\s*?1", "server-id = " +
                      str(int(time.time())), con)
 
@@ -1729,7 +1729,8 @@ def setDbrunMode(version=''):
         os.makedirs(getServerDir() + "/etc/mode", exist_ok=True)
     if not os.path.exists(cnf_file):
         origin_cnf_file = getPluginDir() + "/conf/" + mode + ".cnf"
-        mw.writeFile(cnf_file, mw.readFile(origin_cnf_file, 'rb'), 'wb')
+        # 复制 origin_cnf_file
+        mw.execShell("cp -f " + origin_cnf_file + " " + cnf_file)
 
     if version == '5.6':
         dbreload = 'yes'
@@ -2043,10 +2044,12 @@ def addMasterRepSlaveUser(version=''):
         sql = "FLUSH PRIVILEGES;"
         pdb.execute(sql)
     else:
+        result = pdb.execute('SET sql_log_bin = 0;')
         sql = "GRANT REPLICATION SLAVE ON *.* TO  '" + username + \
             "'@'%' identified by '" + password + "';"
         result = pdb.execute(sql)
         result = pdb.execute('FLUSH PRIVILEGES;')
+        result = pdb.execute('SET sql_log_bin = 1;')
         isError = isSqlError(result)
         if isError != None:
             return isError
@@ -2348,6 +2351,10 @@ def initSlaveStatus(version=''):
         db.query(cmd)
         db.query("start slave user='{}' password='{}';".format(
             u['username'], u['password']))
+        
+        # # 开始只读
+        # db.query('set global read_only=on')
+        # db.query('flush tables with read lock')
     except Exception as e:
         return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
 

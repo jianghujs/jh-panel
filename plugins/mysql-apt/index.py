@@ -7,6 +7,8 @@ import time
 import subprocess
 import re
 import json
+import paramiko
+from paramiko import RSAKey
 import psutil
 
 
@@ -2262,6 +2264,26 @@ def updateSlaveSSH(version=''):
     conn.where("ip=?", (ip,)).save('id_rsa', (id_rsa,))
     return mw.returnJson(True, 'ok')
 
+def testSSH():
+    args = getArgs()
+    data = checkArgs(args, ['ip', 'port', 'id_rsa'])
+    if not data[0]:
+        return data[1]
+    
+    SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
+    # 如果data['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
+    if data['id_rsa'] and data['id_rsa'].find('BEGIN OPENSSH PRIVATE KEY') > -1:
+        SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
+        mw.writeFile(SSH_PRIVATE_KEY, data['id_rsa'].replace('\\n', '\n'))
+
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # 自动添加主机名和主机密钥
+    try:
+        ssh.connect(hostname=args['ip'], port=args['port'], username='root', pkey=RSAKey(filename=SSH_PRIVATE_KEY), timeout=2)  # 你的主机名，用户名和密码
+        return mw.returnJson(True, '连接成功')
+    except Exception as e:
+        return mw.returnJson(False, str(e))
 
 def getSlaveList(version=''):
 
@@ -2911,6 +2933,8 @@ if __name__ == "__main__":
         print(delSlaveSSH(version))
     elif func == 'update_slave_ssh':
         print(updateSlaveSSH(version))
+    elif func == 'test_ssh':
+        print(testSSH())
     elif func == 'init_slave_status':
         print(initSlaveStatus(version))
     elif func == 'set_slave_status':

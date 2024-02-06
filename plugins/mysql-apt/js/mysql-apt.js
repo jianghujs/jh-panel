@@ -1,30 +1,33 @@
 
 function myPost(method,args,callback, title){
+    return new Promise((resolve, reject) => {   
 
-    var _args = null; 
-    if (typeof(args) == 'string'){
-        _args = JSON.stringify(toArrayObject(args));
-    } else {
-        _args = JSON.stringify(args);
-    }
+      var _args = null; 
+      if (typeof(args) == 'string'){
+          _args = JSON.stringify(toArrayObject(args));
+      } else {
+          _args = JSON.stringify(args);
+      }
 
-    var _title = '正在获取...';
-    if (typeof(title) != 'undefined'){
-        _title = title;
-    }
+      var _title = '正在获取...';
+      if (typeof(title) != 'undefined'){
+          _title = title;
+      }
 
-    var loadT = layer.msg(_title, { icon: 16, time: 0, });
-    $.post('/plugins/run', {name:'mysql-apt', func:method, args:_args}, function(data) {
-        layer.close(loadT);
-        if (!data.status){
-            layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});
-            return;
-        }
+      var loadT = layer.msg(_title, { icon: 16, time: 0, });
+      $.post('/plugins/run', {name:'mysql-apt', func:method, args:_args}, function(data) {
+          layer.close(loadT);
+          if (!data.status){
+              layer.msg(data.msg,{icon:0,time:2000,shade: [0.3, '#000']});
+              return;
+          }
 
-        if(typeof(callback) == 'function'){
-            callback(data);
-        }
-    },'json'); 
+          if(typeof(callback) == 'function'){
+              callback(data);
+          }
+          resolve(data)
+      },'json'); 
+    })
 }
 
 function myPostN(method,args,callback, title){
@@ -1868,13 +1871,20 @@ function addSlaveSSH(ip=''){
             success:function(){
                 $('textarea[name="id_rsa"]').html(id_rsa);
             },
-            yes:function(index){
+            yes:async function(index){
                 var ip = $('input[name="ip"]').val();
                 var port = $('input[name="port"]').val();
                 var db_user = $('input[name="db_user"]').val();
                 var id_rsa = $('textarea[name="id_rsa"]').val();
 
                 var data = {ip:ip,port:port,id_rsa:id_rsa,db_user:db_user};
+
+                let testResult = JSON.parse((await myPost('test_ssh', args)).data)
+                if (!testResult.status) {
+                    layer.msg("使用密钥文件连接服务器失败!<br/>请检查对应的公钥内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
+                    return 
+                }
+
                 myPost('add_slave_ssh', data, function(data){
                     layer.close(index);
                     var rdata = $.parseJSON(data.data);

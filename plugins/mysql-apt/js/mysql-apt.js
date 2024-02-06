@@ -1838,6 +1838,7 @@ function addSlaveSSH(ip=''){
         var port = "22";
         var id_rsa = '';
         var db_user ='';
+        var id_rsa = '/root/.ssh/id_rsa'
 
         if (rdata.data.length>0){
             ip = rdata.data[0]['ip'];
@@ -1859,8 +1860,8 @@ function addSlaveSSH(ip=''){
                 <div class='line'><span class='tname'>端口</span><div class='info-r'><input name='port' class='bt-input-text mr5' type='number' style='width:330px;' value='"+port+"'></div></div>\
                 <div class='line'><span class='tname'>同步账户[DB]</span><div class='info-r'><input name='db_user'  placeholder='为空则取第一个!' class='bt-input-text mr5' type='text' style='width:330px;' value='"+db_user+"'></div></div>\
                 <div class='line'>\
-                <span class='tname'>ID_RSA</span>\
-                <div class='info-r'><textarea class='bt-input-text mr5' row='20' cols='50' name='id_rsa' style='width:330px;height:200px;'></textarea></div>\
+                <span class='tname'>密钥文件</span>\
+                <div class='info-r'><input class='bt-input-text mr5' name='id_rsa' style='width:330px;'  value='"+id_rsa+"' placeholder='密钥文件位置（如：/root/.ssh/id_rsa.pub）' ></input></div>\
                 </div>\
                 <input type='hidden' name='ps' value='' />\
               </form>",

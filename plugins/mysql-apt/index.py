@@ -2303,10 +2303,13 @@ def initSlaveStatus(version=''):
     if len(data) < 1:
         return mw.returnJson(False, '需要先配置【[主]SSH配置】!')
 
-    SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
     ip = data['ip']
     master_port = data['port']
-    mw.writeFile(SSH_PRIVATE_KEY, data['id_rsa'].replace('\\n', '\n'))
+    SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
+    # 如果data['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
+    if data['id_rsa'] and data['id_rsa'].find('BEGIN OPENSSH PRIVATE KEY') > -1:
+        SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
+        mw.writeFile(SSH_PRIVATE_KEY, data['id_rsa'].replace('\\n', '\n'))
 
     import paramiko
     paramiko.util.log_to_file('paramiko.log')

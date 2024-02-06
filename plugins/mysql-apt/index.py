@@ -2385,7 +2385,9 @@ def initSlaveStatus(version=''):
 
     ssh.close()
     time.sleep(1)
-    os.system("rm -rf " + SSH_PRIVATE_KEY)
+    # 如果是tmp下的证书，删除证书
+    if SSH_PRIVATE_KEY == "/tmp/t_ssh.txt":
+      os.system("rm -rf " + SSH_PRIVATE_KEY)
     return mw.returnJson(True, '初始化成功!')
 
 

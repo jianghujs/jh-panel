@@ -2271,10 +2271,10 @@ def testSSH():
         return data[1]
     
     SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
-    # 如果data['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
-    if data['id_rsa'] and data['id_rsa'].find('BEGIN OPENSSH PRIVATE KEY') > -1:
+    # 如果args['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
+    if args['id_rsa'] and args['id_rsa'].find('BEGIN OPENSSH PRIVATE KEY') > -1:
         SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
-        mw.writeFile(SSH_PRIVATE_KEY, data['id_rsa'].replace('\\n', '\n'))
+        mw.writeFile(SSH_PRIVATE_KEY, args['id_rsa'].replace('\\n', '\n'))
 
 
     ssh = paramiko.SSHClient()

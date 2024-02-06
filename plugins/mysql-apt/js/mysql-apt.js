@@ -1878,7 +1878,7 @@ function addSlaveSSH(ip=''){
                 var id_rsa = $('input[name="id_rsa"]').val();
 
                 var data = {ip:ip,port:port,id_rsa:id_rsa,db_user:db_user};
-                let testResult = await myPost('test_ssh', data)
+                let testResult = JSON.parse((await myPost('test_ssh', data)).data)
                 if (!testResult.status) {
                     layer.msg("使用密钥文件连接服务器失败!<br/>请检查对应的公钥内容是否添加到目标服务器的/root/.ssh/authorized_keys中",{icon:2,time:8000,shade: [0.3, '#000']});
                     return 

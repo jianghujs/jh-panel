@@ -1869,13 +1869,13 @@ function addSlaveSSH(ip=''){
                 <input type='hidden' name='ps' value='' />\
               </form>",
             success:function(){
-                $('textarea[name="id_rsa"]').html(id_rsa);
+                $('input[name="id_rsa"]').html(id_rsa);
             },
             yes:async function(index){
                 var ip = $('input[name="ip"]').val();
                 var port = $('input[name="port"]').val();
                 var db_user = $('input[name="db_user"]').val();
-                var id_rsa = $('textarea[name="id_rsa"]').val();
+                var id_rsa = $('input[name="id_rsa"]').val();
 
                 var data = {ip:ip,port:port,id_rsa:id_rsa,db_user:db_user};
 

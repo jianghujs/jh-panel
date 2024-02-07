@@ -75,12 +75,14 @@ async function getDatabaseChecksum(connection) {
     let checksums = {};
     let checksumTotal = 0;
 
+    console.log("")
+    console.log(`|- 开始计算${connection.host}...`)
     for (let database of databases) {
       
       if (ignoreDatabases.includes(database)) {
         continue;
       }
-      // console.log('|------------------ 开始计算' + database + ' ---------------');
+      console.log('|------------------ ' + database + ' ---------------');
       let currentDatabaseChecksum = 0;
         const tables = (await knex("TABLES").select("*")).filter((o) => o.TABLE_SCHEMA === database && o.TABLE_COMMENT !== "VIEW")
         .map((o) => o.TABLE_NAME);
@@ -89,14 +91,19 @@ async function getDatabaseChecksum(connection) {
         for (let table of tables.filter((o) => o.indexOf('view') == -1)) {
             const checksumRaw = await knex.raw(`CHECKSUM TABLE \`${database}\`.\`${table}\``);
             const checksum = checksumRaw[0][0].Checksum;
-            // console.log('|- ' + database + '.' + table + ': ' + checksum + '');
+            console.log('|- ' + database + '.' + table + ': ' + checksum + '');
 
             checksums[database][table] = checksum;
             currentDatabaseChecksum += checksum;
         }
         checksumTotal += currentDatabaseChecksum;
-        // console.log('|- ' + database + ': ' + currentDatabaseChecksum, true);   
+        console.log('|- Total : ' + currentDatabaseChecksum);   
     }
+    console.log("----------------------------------------------------------")
+    console.log(`- IP：${connection.host}`)
+    console.log(`- All Database Total：${checksumTotal}`)
+    console.log("----------------------------------------------------------")
+    console.log("")
 
     await knex.destroy();
 

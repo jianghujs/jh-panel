@@ -19,11 +19,12 @@ choice=${choice:-"y"}
 echo "" > $script_file
 
 if [ $choice == "y" ]; then
+
+  # 主备服务器checksum检查
   read -p "需要检查主备服务器的checksum吗？（默认y）[y/n]: " checksum_choice
   checksum_choice=${checksum_choice:-"y"}
 
   if [ $checksum_choice == "y" ]; then
-    # 输入需要同步服务器IP
     read -p "请输入线上服务器IP: " remote_ip
     if [ -z "$remote_ip" ]; then
       echo "错误:未指定目标服务器IP"
@@ -49,6 +50,7 @@ if [ $choice == "y" ]; then
     echo "" >> $script_file
   fi
 
+  # 同步文件
   read -p "需要从目标服务器更新文件到本地吗？（默认n）[y/n]: " sync_file_choice
   sync_file_choice=${sync_file_choice:-"n"}
 
@@ -91,7 +93,7 @@ if [ $choice == "y" ]; then
     done
   fi
 
-
+  # 增量恢复
   echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
   echo "" >> $script_file
   read -p "需要执行增量恢复吗？（默认n）[y/n]: " xtrabackup_inc_restore_choice
@@ -107,6 +109,7 @@ if [ $choice == "y" ]; then
     echo "" >> $script_file
   fi
 
+  # 开启定时任务
   echo "# 开启定时任务" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份数据库[backupAll]" >> $script_file
   echo "echo \"|- 开启 备份数据库 定时任务完成✅\"" >> $script_file
@@ -124,6 +127,8 @@ if [ $choice == "y" ]; then
   echo "   grep -Fxv \"\$(cat $STANDBY_SYNC_PUB_PATH)\" $AUTHORIZED_KEYS_PATH > /root/.ssh/temp && mv /root/.ssh/temp $AUTHORIZED_KEYS_PATH" >> $script_file
   echo "fi" >> $script_file
   echo "" >> $script_file
+
+  # 启用rsyncd任务
   echo "# 启用rsyncd任务" >> $script_file
   pushd /www/server/jh-panel > /dev/null
   lsyncd_list=$(python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_list | jq -r .data | jq -r .list)
@@ -132,10 +137,14 @@ if [ $choice == "y" ]; then
   popd > /dev/null
   echo "echo \"|- 启用 rsyncd任务 完成✅\"" >> $script_file
   echo "" >> $script_file
+
+  # 启用openresty
   echo "# 启用openresty" >> $script_file
   echo "python3 /www/server/jh-panel/plugins/openresty/index.py start" >> $script_file
   echo "echo \"|- 启动 OpenResty’ 完成✅\"" >> $script_file
   echo "" >> $script_file
+
+  # 开启邮件通知
   echo "# 开启邮件通知" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openEmailNotify" >> $script_file
   echo "echo \"|- 开启 邮件通知 完成✅\"" >> $script_file
@@ -143,6 +152,7 @@ if [ $choice == "y" ]; then
   echo "popd > /dev/null" >> $script_file
   echo "" >> $script_file
   echo "echo \"\"" >> $script_file
+  
   echo "echo \"=========================服务器上线完成✅=======================\"" >> $script_file
   echo "echo \"后续操作指引：\"" >> $script_file
   echo "echo \"1. 请检查项目运行情况\"" >> $script_file

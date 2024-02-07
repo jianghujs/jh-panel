@@ -12,8 +12,15 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-const connection = {
+const connectionA = {
   host: '127.0.0.1',
+  port: '33067',
+  user: 'root',
+  password: ''
+};
+
+const connectionB = {
+  host: process.env.REMOTE_IP || '',
   port: '33067',
   user: 'root',
   password: ''
@@ -23,9 +30,6 @@ const connection = {
 let ignoreDatabases = [];
 
 const logFile = path.join('/tmp', 'checksum.log');
-let writeLog = true;
-
-
 
 async function prompt(question, defaultValue) {
   return new Promise((resolve) => {
@@ -38,10 +42,11 @@ async function prompt(question, defaultValue) {
 
 async function execSync(cmd) {
   return new Promise((resolve) => {
-    exec(`pushd /www/server/jh-panel > /dev/null\n
+    exec(`
+pushd /www/server/jh-panel > /dev/null\n
 ${cmd}\n
 popd > /dev/null
-`, (error, stdout, stderr) => {
+    `, (error, stdout, stderr) => {
       if (error) {
         console.error(`执行出错: ${error}`);
         return;
@@ -75,7 +80,7 @@ async function getDatabaseChecksum(connection) {
       if (ignoreDatabases.includes(database)) {
         continue;
       }
-      Logger.info('|------------------ 开始计算' + database + ' ---------------');
+      // console.log('|------------------ 开始计算' + database + ' ---------------');
       let currentDatabaseChecksum = 0;
         const tables = (await knex("TABLES").select("*")).filter((o) => o.TABLE_SCHEMA === database && o.TABLE_COMMENT !== "VIEW")
         .map((o) => o.TABLE_NAME);
@@ -84,76 +89,70 @@ async function getDatabaseChecksum(connection) {
         for (let table of tables.filter((o) => o.indexOf('view') == -1)) {
             const checksumRaw = await knex.raw(`CHECKSUM TABLE \`${database}\`.\`${table}\``);
             const checksum = checksumRaw[0][0].Checksum;
-            Logger.info('|- ' + database + '.' + table + ': ' + checksum + '');
+            // console.log('|- ' + database + '.' + table + ': ' + checksum + '');
 
             checksums[database][table] = checksum;
             currentDatabaseChecksum += checksum;
         }
         checksumTotal += currentDatabaseChecksum;
-        Logger.info('|- ' + database + ': ' + currentDatabaseChecksum, true);   
+        // console.log('|- ' + database + ': ' + currentDatabaseChecksum, true);   
     }
-    Logger.info("|- All Database Total：" + checksumTotal, true);  
 
     await knex.destroy();
 
-    return checksumTotal;
+    return checksums;
+}
+
+function findDifferences(obj1, obj2, prefix = '') {
+  const diffs = [];
+  const keys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+
+  keys.forEach(key => {
+    const path = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof obj1[key] === 'object' && typeof obj2[key] === 'object') {
+      diffs.push(...findDifferences(obj1[key], obj2[key], path));
+    } else if (obj1[key] !== obj2[key]) {
+      diffs.push(path);
+    }
+  });
+
+  return diffs;
 }
 
 
-const Logger = {
-  clear: () => {
-    fs.writeFileSync(logFile, '');
-  },
-  info: (content, echo = false) => {
-    if (!writeLog) {
-      return; 
-    }
-    if (!fs.existsSync(logFile)) {
-      fs.writeFileSync(logFile, '');
-    }
-    const log = fs.readFileSync(logFile, 'utf8');
-    fs.writeFileSync(logFile, log + '\n' + content);
-    if (echo) {
-      console.log(content);
-    }
-  }
-};
-
 (async () => {
-  let mysql_info = await execSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list_page')  
-  console.log(JSON.parse(mysql_info).info.root_pwd)
-  process.exit(0);
-  return
-  console.log(`---------数据库checksum检查工具-----------`);
+  try {
+    let mysql_info = await execSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list_page') 
+    let password =  JSON.parse(mysql_info).info.root_pwd
+    connectionA.password = password
+    connectionB.password = password
 
-    connection.host = await prompt(`请输入数据库IP地址（默认为：${connection.host}）：`, connection.host);
-    connection.port = await prompt(`请输入数据库端口（默认为：${connection.port}）：`, connection.port);
-    connection.user = await prompt(`请输入数据库用户名（默认为：${connection.user}）：`, connection.user);
-    connection.password = await prompt(`请输入数据库密码${connection.password? ('（默认为：' + connection.password + '）'): ''}：`, connection.password);
+  } catch (error) {
+    console.error('获取数据库信息失败')
+  }
+
+    // 本地数据库信息
+    // connectionA.host = await prompt(`请输入当前数据库IP地址（默认为：${connectionA.host}）：`, connectionA.host);
+    // connectionA.port = await prompt(`请输入当前数据库端口（默认为：${connectionA.port}）：`, connectionA.port);
+    // connectionA.user = await prompt(`请输入当前数据库用户名（默认为：${connectionA.user}）：`, connectionA.user);
+    // connectionA.password = await prompt(`请输入当前数据库密码${connectionA.password? ('（默认为：' + (connectionA.password? '当前mysql密码': '空') + '）'): ''}：`, connectionA.password);
+
+    // 目标数据库信息
+    // connectionB.host = await prompt(`请输入目标数据库IP地址（默认为：${connectionB.host}）：`, connectionB.host);
+    // connectionB.port = await prompt(`请输入目标数据库端口（默认为：${connectionB.port}）：`, connectionB.port);
+    // connectionB.user = await prompt(`请输入目标数据库用户名（默认为：${connectionB.user}）：`, connectionB.user);
+    // connectionB.password = await prompt(`请输入目标数据库密码${connectionB.password? ('（默认为：' + (connectionB.password? '当前mysql密码': '空') + '）'): ''}：`, connectionB.password);
 
     const defaultIgnoreDeatabasesInput = "mysql,performance_schema,sys,information_schema,test";
-    const ignoreDatabasesInput = await prompt(`请输入需要忽略的库，多个用英文逗号隔开（默认为${defaultIgnoreDeatabasesInput || '空'}）：`, defaultIgnoreDeatabasesInput);
+    // const ignoreDatabasesInput = await prompt(`请输入需要忽略的库，多个用英文逗号隔开（默认为${defaultIgnoreDeatabasesInput || '空'}）：`, defaultIgnoreDeatabasesInput);
+    const ignoreDatabasesInput = defaultIgnoreDeatabasesInput;
     ignoreDatabases = ignoreDatabasesInput.split(",").map(database => database.trim());
-    
-    const writeLogInput = await prompt(`需要将checksum的结果写入到${logFile}吗（默认y）[y/n]？ `, 'y');
-    if (writeLogInput.toLowerCase() == 'y') {
-      writeLog = true;
-      Logger.clear();
-    } else {
-      writeLog = false;
-    }
 
-    console.log("正在计算checksum...")
-    const checksum = await getDatabaseChecksum(connection);
+    const checksumA = await getDatabaseChecksum(connectionA);
+    const checksumB = await getDatabaseChecksum(connectionB);
+    const checksumDiff = findDifferences(checksumA, checksumB).sort();
 
-    console.log("")
-    console.log("===========================Checksum计算完毕✅==========================")
-    console.log(`- Total：${checksum}`)
-    console.log("---------------------------后续操作指引❗❗----------------------------")
-    console.log(`如果你要保证两个服务器的数据库是一致的，请先确保两个服务器执行此脚本得到的Total是一致的，如果不一致，请对比两边的${logFile}中每个表的checksum值`)
-    console.log("=====================================================================")
+    fs.writeFileSync('/tmp/compare_checksum_diff', `checksum_diff=${checksumDiff.join(',')}`);
     rl.close();
-    setTimeout(() => {
-      process.exit(0);
-    }, 3000)
 })();

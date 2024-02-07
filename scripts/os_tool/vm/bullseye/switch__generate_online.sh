@@ -4,13 +4,14 @@ script_file="/tmp/online.sh"
 
 echo "-----------------------"
 echo "即将生成服务器上线脚本到${script_file}，包含内容如下："
-echo "1. （可选）同步服务器文件"
-echo "2. （可选）执行xtrabackup增量恢复"
-echo "3. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
-echo "4. 从authorized_keys删除同步公钥"
-echo "5. 启动rsyncd任务"
-echo "6. 启动Openresty"
-echo "7. 开启邮件通知"
+echo "1. （可选）检查数据一致性"
+echo "2. （可选）同步服务器文件"
+echo "3. （可选）执行xtrabackup增量恢复"
+echo "4. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
+echo "5. 从authorized_keys删除同步公钥"
+echo "6. 启动rsyncd任务"
+echo "7. 启动Openresty"
+echo "8. 开启邮件通知"
 echo "-----------------------"
 read -p "确认生成吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}
@@ -18,15 +19,47 @@ choice=${choice:-"y"}
 echo "" > $script_file
 
 if [ $choice == "y" ]; then
-  read -p "需要从目标服务器更新文件到本地吗？（默认n）[y/n]: " sync_file_choice
-  sync_file_choice=${sync_file_choice:-"n"}
+  read -p "需要检查主备服务器的checksum吗？（默认y）[y/n]: " checksum_choice
+  checksum_choice=${checksum_choice:-"y"}
 
-  if [ $sync_file_choice == "y" ]; then
+  if [ $checksum_choice == "y" ]; then
     # 输入需要同步服务器IP
     read -p "请输入线上服务器IP: " remote_ip
     if [ -z "$remote_ip" ]; then
       echo "错误:未指定目标服务器IP"
       exit 1
+    fi
+    echo "# 检查主备服务器checksum" >> $script_file
+    echo "echo \"|- 检查主备服务器checksum...\"" >> $script_file
+    echo "export REMOTE_IP=$remote_ip" >> $script_file
+    echo "node /www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__generate_online__compare_checksum.js" >> $script_file
+    echo "source /tmp/compare_checksum_diff" >> $script_file
+    echo "if [[ -n \$checksum_diff ]]; then" >> $script_file
+    echo "  checksum_diff=\$(echo \"\$checksum_diff\" | tr ',' '\n')" >> $script_file
+    echo "  echo \"|- checksum结果存在以下不同：\"" >> $script_file
+    echo "  echo -e \"\033[0;31m\$checksum_diff\033[0m\"" >> $script_file
+    echo "  read -p \"确定要继续上线吗？（默认n）[y/n]: \" checksum_ignore_choice" >> $script_file
+    echo "  checksum_ignore_choice=\${checksum_ignore_choice:-\"n\"}" >> $script_file
+    echo "  if [ \$checksum_ignore_choice == \"n\" ]; then" >> $script_file
+    echo "    echo \"错误:数据不一致，上线终止\"" >> $script_file
+    echo "    exit 1" >> $script_file
+    echo "  fi" >> $script_file
+    echo "fi" >> $script_file
+    echo "echo \"|- 主备服务器checksum检查完成✅\"" >> $script_file
+    echo "" >> $script_file
+  fi
+
+  read -p "需要从目标服务器更新文件到本地吗？（默认n）[y/n]: " sync_file_choice
+  sync_file_choice=${sync_file_choice:-"n"}
+
+  if [ $sync_file_choice == "y" ]; then
+    if [ -z "$remote_ip" ]; then
+      # 输入需要同步服务器IP
+      read -p "请输入线上服务器IP: " remote_ip
+      if [ -z "$remote_ip" ]; then
+        echo "错误:未指定目标服务器IP"
+        exit 1
+      fi
     fi
 
     # 输入目标服务器SSH端口

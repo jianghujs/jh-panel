@@ -57,7 +57,7 @@ case $choice in
 3)
     download_and_run repair__fix_mysql_apt_db_user.sh
     ;;
-3)
+4)
     download_and_run repair__restore_mysql_slave_from_xtrabackup.sh
     ;;
 esac

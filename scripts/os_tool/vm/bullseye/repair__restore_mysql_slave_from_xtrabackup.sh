@@ -30,7 +30,7 @@ pushd /www/server/jh-panel > /dev/null
 mysql_info=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list_page)
 popd > /dev/null
 mysql_pwd=$(echo ${mysql_info} | jq -r '.info.root_pwd')
-echho "mysql_pwd: ${mysql_pwd}"
+echo "mysql_pwd: ${mysql_pwd}"
 
 # 使用 python3 /www/server/jh-panel/plugins/xtrabackup/index.py get_recovery_backup_script "{filename: xtrabackup_data_20230821_203001.zip}" 获取并执行恢复xtrabackup文件脚本
 pushd /www/server/jh-panel > /dev/null

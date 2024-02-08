@@ -4,9 +4,9 @@ script_file="/tmp/online.sh"
 
 echo "-----------------------"
 echo "即将生成服务器上线脚本到${script_file}，包含内容如下："
-echo "1. （可选）检查数据一致性"
-echo "2. （可选）同步服务器文件"
-echo "3. （可选）执行xtrabackup增量恢复"
+echo "1. （可选）执行xtrabackup增量恢复"
+echo "2. （可选）检查数据一致性"
+echo "3. （可选）同步服务器文件"
 echo "4. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
 echo "5. 从authorized_keys删除同步公钥"
 echo "6. 启动rsyncd任务"
@@ -35,6 +35,23 @@ if [ $choice == "y" ]; then
   echo "export REMOTE_IP=$remote_ip" >> $script_file
 
   echo "" > $script_file
+
+  
+  # 增量恢复
+  echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
+  echo "" >> $script_file
+  read -p "需要执行增量恢复吗？（默认n）[y/n]: " xtrabackup_inc_restore_choice
+  xtrabackup_inc_restore_choice=${xtrabackup_inc_restore_choice:-"n"}
+
+  if [ $xtrabackup_inc_restore_choice == "y" ]; then
+    echo "# 执行xtrabackup增量恢复" >> $script_file
+    pushd /www/server/jh-panel > /dev/null
+    recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | jq -r .data)
+    popd > /dev/null
+    echo "${recovery_script}" >> $script_file
+    echo "echo \"|- xtrabackup增量恢复完成✅\"" >> $script_file
+    echo "" >> $script_file
+  fi
 
   # 主备服务器checksum检查
   read -p "需要检查主备服务器的checksum吗？（默认y）[y/n]: " checksum_choice
@@ -118,22 +135,6 @@ if [ $choice == "y" ]; then
       echo "echo \"|- 从线上服务器同步${sync_file_dir}完成✅\"" >> $script_file
       echo "" >> $script_file
     done
-  fi
-
-  # 增量恢复
-  echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
-  echo "" >> $script_file
-  read -p "需要执行增量恢复吗？（默认n）[y/n]: " xtrabackup_inc_restore_choice
-  xtrabackup_inc_restore_choice=${xtrabackup_inc_restore_choice:-"n"}
-
-  if [ $xtrabackup_inc_restore_choice == "y" ]; then
-    echo "# 执行xtrabackup增量恢复" >> $script_file
-    pushd /www/server/jh-panel > /dev/null
-    recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | jq -r .data)
-    popd > /dev/null
-    echo "${recovery_script}" >> $script_file
-    echo "echo \"|- xtrabackup增量恢复完成✅\"" >> $script_file
-    echo "" >> $script_file
   fi
 
   # 开启定时任务

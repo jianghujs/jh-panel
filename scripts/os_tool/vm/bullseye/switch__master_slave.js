@@ -1,7 +1,20 @@
 const mysql = require('mysql');
+const readline = require('readline');
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+async function prompt(question, defaultValue) {
+  return new Promise((resolve) => {
+      rl.question(question, (answer) => {
+          resolve(answer || defaultValue);
+      });
+  });
+}
 
 const Logger = {
   success: (content) => {
@@ -16,15 +29,14 @@ const Logger = {
 };
 
 
-const MASTER_HOST = '192.168.3.63';
-const MASTER_PORT = 33067;
-const SLAVE_HOST = '192.168.3.73';
-const SLAVE_PORT = 33067;
-
-const SLAVE_USER = 'BwciBS';
-const SLAVE_PASS = 'cBcSheKeBBLrbCtW';
-const MYSQL_USER = 'root';
-const MYSQL_PASS = 'deuuKtRfdCPWA9X4';
+let MASTER_HOST = process.env.REMOTE_IP || '';
+let MASTER_PORT = 33067;
+let SLAVE_HOST = '127.0.0.1';
+let SLAVE_PORT = 33067;
+let SLAVE_USER = 'BwciBS';
+let SLAVE_PASS = 'cBcSheKeBBLrbCtW';
+let MYSQL_USER = 'root';
+let MYSQL_PASS = '';
 
 const MYSQLADMIN_COMMAND = `/www/server/mysql-apt/bin/usr/bin/mysqladmin -u${MYSQL_USER} -p${MYSQL_PASS}`;
 
@@ -120,4 +132,40 @@ async function switchMasterSlave() {
   }
 }
 
-switchMasterSlave();
+
+
+(async () => {
+  try {
+    let mysql_info = await execSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list_page') 
+    MYSQL_PASS =  JSON.parse(mysql_info).info.root_pwd
+  } catch (error) {
+    console.error('获取数据库信息失败')
+  }
+
+  if (!MASTER_HOST) {
+    // 从数据库信息
+    SLAVE_HOST = await prompt(`请输入从数据库IP地址（默认为：${SLAVE_HOST}）：`, SLAVE_HOST);
+    if (!SLAVE_HOST) {
+      console.error("|- 从数据库IP地址不能为空");
+      process.exit(1);
+    }
+    SLAVE_PORT = await prompt(`请输入从数据库端口（默认为：${SLAVE_PORT}）：`, SLAVE_PORT);
+    
+    // 主数据库信息
+    MASTER_HOST = await prompt(`请输入主数据库IP地址${MASTER_HOST? ('（默认为：' + MASTER_HOST + '）'): ''}：`, MASTER_HOST);
+    if (!MASTER_HOST) {
+      console.error("|- 主数据库IP地址不能为空");
+      process.exit(1);
+    }
+    MASTER_PORT = await prompt(`请输入主数据库端口（默认为：${MASTER_PORT}）：`, MASTER_PORT);
+    
+    // 数据库用户
+    MYSQL_USER = await prompt(`请输入数据库用户名（默认为：${MYSQL_USER}）：`, MYSQL_USER);
+    MYSQL_USER = await prompt(`请输入数据库密码${MYSQL_PASS? ('（默认为：' + (MYSQL_PASS? '当前mysql密码': '空') + '）'): ''}：`, MYSQL_PASS);
+  } 
+
+  switchMasterSlave();
+  rl.close();
+})();
+
+

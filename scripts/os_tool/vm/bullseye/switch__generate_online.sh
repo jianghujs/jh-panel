@@ -33,7 +33,7 @@ if [ $choice == "y" ]; then
     echo "# 检查主备服务器checksum" >> $script_file
     echo "echo \"|- 检查主备服务器checksum...\"" >> $script_file
     echo "export REMOTE_IP=$remote_ip" >> $script_file
-    echo "node /www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__generate_online__compare_checksum.js" >> $script_file
+    echo "node /www/server/jh-panel/scripts/os_tool/vm/bullseye/monitor__export_mysql_checksum_compare.js" >> $script_file
     echo "source /tmp/compare_checksum_diff" >> $script_file
     echo "if [[ -n \$checksum_diff ]]; then" >> $script_file
     echo "  checksum_diff=\$(echo \"\$checksum_diff\" | tr ',' '\n')" >> $script_file
@@ -152,7 +152,7 @@ if [ $choice == "y" ]; then
   echo "popd > /dev/null" >> $script_file
   echo "" >> $script_file
   echo "echo \"\"" >> $script_file
-  
+
   echo "echo \"=========================服务器上线完成✅=======================\"" >> $script_file
   echo "echo \"后续操作指引：\"" >> $script_file
   echo "echo \"1. 请检查项目运行情况\"" >> $script_file

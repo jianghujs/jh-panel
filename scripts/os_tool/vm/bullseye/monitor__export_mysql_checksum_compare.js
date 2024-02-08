@@ -28,6 +28,7 @@ const connectionB = {
 
 // 不检查的库
 let ignoreDatabases = [];
+const defaultIgnoreDeatabasesInput = "mysql,performance_schema,sys,information_schema,test";
 
 const logFile = path.join('/tmp', 'checksum.log');
 
@@ -139,27 +140,38 @@ function findDifferences(obj1, obj2, prefix = '') {
     console.error('获取数据库信息失败')
   }
 
+  if (!connectionB.host) {
     // 本地数据库信息
-    // connectionA.host = await prompt(`请输入当前数据库IP地址（默认为：${connectionA.host}）：`, connectionA.host);
-    // connectionA.port = await prompt(`请输入当前数据库端口（默认为：${connectionA.port}）：`, connectionA.port);
-    // connectionA.user = await prompt(`请输入当前数据库用户名（默认为：${connectionA.user}）：`, connectionA.user);
-    // connectionA.password = await prompt(`请输入当前数据库密码${connectionA.password? ('（默认为：' + (connectionA.password? '当前mysql密码': '空') + '）'): ''}：`, connectionA.password);
+    connectionA.host = await prompt(`请输入当前数据库IP地址（默认为：${connectionA.host}）：`, connectionA.host);
+    connectionA.port = await prompt(`请输入当前数据库端口（默认为：${connectionA.port}）：`, connectionA.port);
+    connectionA.user = await prompt(`请输入当前数据库用户名（默认为：${connectionA.user}）：`, connectionA.user);
+    connectionA.password = await prompt(`请输入当前数据库密码${connectionA.password? ('（默认为：' + (connectionA.password? '当前mysql密码': '空') + '）'): ''}：`, connectionA.password);
 
     // 目标数据库信息
-    // connectionB.host = await prompt(`请输入目标数据库IP地址（默认为：${connectionB.host}）：`, connectionB.host);
-    // connectionB.port = await prompt(`请输入目标数据库端口（默认为：${connectionB.port}）：`, connectionB.port);
-    // connectionB.user = await prompt(`请输入目标数据库用户名（默认为：${connectionB.user}）：`, connectionB.user);
-    // connectionB.password = await prompt(`请输入目标数据库密码${connectionB.password? ('（默认为：' + (connectionB.password? '当前mysql密码': '空') + '）'): ''}：`, connectionB.password);
+    connectionB.host = await prompt(`请输入目标数据库IP地址${connectionB.host? ('（默认为：' + connectionB.host + '）'): ''}：`, connectionB.host);
+    if (!connectionB.host) {
+      console.error("|- 目标数据库IP地址不能为空");
+      process.exit(1);
+    }
+    connectionB.port = await prompt(`请输入目标数据库端口（默认为：${connectionB.port}）：`, connectionB.port);
+    connectionB.user = await prompt(`请输入目标数据库用户名（默认为：${connectionB.user}）：`, connectionB.user);
+    connectionB.password = await prompt(`请输入目标数据库密码${connectionB.password? ('（默认为：' + (connectionB.password? '当前mysql密码': '空') + '）'): ''}：`, connectionB.password);
 
-    const defaultIgnoreDeatabasesInput = "mysql,performance_schema,sys,information_schema,test";
-    // const ignoreDatabasesInput = await prompt(`请输入需要忽略的库，多个用英文逗号隔开（默认为${defaultIgnoreDeatabasesInput || '空'}）：`, defaultIgnoreDeatabasesInput);
-    const ignoreDatabasesInput = defaultIgnoreDeatabasesInput;
+    
+    const ignoreDatabasesInput = await prompt(`请输入需要忽略的库，多个用英文逗号隔开（默认为${defaultIgnoreDeatabasesInput || '空'}）：`, defaultIgnoreDeatabasesInput);
     ignoreDatabases = ignoreDatabasesInput.split(",").map(database => database.trim());
+  } else {
+    ignoreDatabases = defaultIgnoreDeatabasesInput.split(",").map(database => database.trim());
+  }
 
-    const checksumA = await getDatabaseChecksum(connectionA);
-    const checksumB = await getDatabaseChecksum(connectionB);
-    const checksumDiff = findDifferences(checksumA, checksumB).sort();
+  const checksumA = await getDatabaseChecksum(connectionA);
+  const checksumB = await getDatabaseChecksum(connectionB);
+  const checksumDiff = findDifferences(checksumA, checksumB).sort();
 
-    fs.writeFileSync('/tmp/compare_checksum_diff', `checksum_diff=${checksumDiff.join(',')}`);
-    rl.close();
+  fs.writeFileSync('/tmp/compare_checksum_diff', `checksum_diff=${checksumDiff.join(',')}`);
+  console.log("")
+  console.log("===========================Checksum对比完毕✅==========================")
+  console.log(checksumDiff.length > 0? `\x1b[31m存在以下差异：\n${checksumDiff.join("\n")}\x1b[0m`: '\x1b[32m未检测到差异\x1b[0m')
+  console.log("=====================================================================")
+  rl.close();
 })();

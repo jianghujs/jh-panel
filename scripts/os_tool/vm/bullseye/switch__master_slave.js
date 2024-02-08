@@ -157,7 +157,7 @@ popd > /dev/null
     console.error('获取数据库信息失败')
   }
 
-  if (!MASTER_HOST) {
+  if (!MASTER_HOST || !SLAVE_HOST) {
     // 从数据库信息
     SLAVE_HOST = await prompt(`请输入从数据库IP地址：`, SLAVE_HOST);
     if (!SLAVE_HOST) {

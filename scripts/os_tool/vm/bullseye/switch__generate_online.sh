@@ -19,20 +19,30 @@ choice=${choice:-"y"}
 echo "" > $script_file
 
 if [ $choice == "y" ]; then
+  
+  read -p "请输入本地服务器外网IP: " local_ip
+  if [ -z "$local_ip" ]; then
+    echo "错误:未指定本地服务器外网IP"
+    exit 1
+  fi
+  echo "export LOCAL_IP=$local_ip" >> $script_file
+
+  read -p "请输入备用服务器外网IP: " remote_ip
+  if [ -z "$remote_ip" ]; then
+    echo "错误:未指定备用服务器外网IP"
+    exit 1
+  fi
+  echo "export REMOTE_IP=$remote_ip" >> $script_file
+
+  echo "" > $script_file
 
   # 主备服务器checksum检查
   read -p "需要检查主备服务器的checksum吗？（默认y）[y/n]: " checksum_choice
   checksum_choice=${checksum_choice:-"y"}
 
   if [ $checksum_choice == "y" ]; then
-    read -p "请输入线上服务器IP: " remote_ip
-    if [ -z "$remote_ip" ]; then
-      echo "错误:未指定目标服务器IP"
-      exit 1
-    fi
     echo "# 检查主备服务器checksum" >> $script_file
     echo "echo \"|- 检查主备服务器checksum...\"" >> $script_file
-    echo "export REMOTE_IP=$remote_ip" >> $script_file
     echo "pushd /www/server/jh-panel/scripts/os_tool/vm/bullseye/ > /dev/null"  >> $script_file
     echo "npm i" >> $script_file
     echo "node /www/server/jh-panel/scripts/os_tool/vm/bullseye/monitor__export_mysql_checksum_compare.js" >> $script_file
@@ -51,6 +61,20 @@ if [ $choice == "y" ]; then
     echo "fi" >> $script_file
     echo "echo \"|- 主备服务器checksum检查完成✅\"" >> $script_file
     echo "" >> $script_file
+  fi
+
+  # 主从切换
+  read -p "需要进行主从切换吗？（默认y）[y/n]: " switch_master_slave_choice
+  switch_master_slave_choice=${switch_master_slave_choice:-"y"}
+
+  if [ $switch_master_slave_choice == "y" ]; then
+    echo "# 主从切换" >> $script_file
+    echo "echo \"|- 主从切换...\"" >> $script_file
+    echo "pushd /www/server/jh-panel/scripts/os_tool/vm/bullseye/ > /dev/null"  >> $script_file
+    echo "npm i" >> $script_file
+    echo "node /www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__master_slave.js" >> $script_file
+    echo "echo \"|- 主从切换完成✅\"" >> $script_file
+    echo "popd > /dev/null" >> $script_file
   fi
 
   # 同步文件

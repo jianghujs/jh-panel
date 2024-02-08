@@ -46,3 +46,5 @@ rm -f $tmp_script_file
 echo "恢复xtrabackup文件成功✔"
 
 
+
+

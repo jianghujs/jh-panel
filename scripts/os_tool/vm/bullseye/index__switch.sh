@@ -12,6 +12,26 @@ download_and_run() {
     fi    
 }
 
+
+download_and_run_node() {
+    local script_name=$1
+    if [ "$USE_PANEL_SCRIPT" == "true" ]; then 
+      pushd $SCRIPT_BASE > /dev/null
+      npm i
+      node ${script_name} ${@:2}
+      popd > /dev/null
+    else
+      wget -nv -O /tmp/package.json ${URLBase}/package.json
+      pushd /tmp/ > /dev/null
+      npm i
+      popd > /dev/null
+      
+      wget -nv -O /tmp/vm_${script_name} ${URLBase}/${script_name}
+      node /tmp/vm_${script_name} ${@:2}
+    fi    
+}
+
+
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."
@@ -34,6 +54,7 @@ show_menu() {
     echo "请选择切换工具:"
     echo "1. 获取服务器下线脚本（停止xtrabackup增量备份、xtrabackup、mysqldump定时任务、停止邮件通知）"
     echo "2. 获取服务器上线脚本（执行xtrabackup增量恢复、更新wwwroot目录、启动xtrabackup增量备份、xtrabackup、mysqldump定时任务、开启邮件通知）"
+    echo "3. Mysql主从切换"
     echo "========================================================"
 }
 
@@ -51,6 +72,9 @@ case $choice in
     ;;
 2)
     download_and_run switch__generate_online.sh
+    ;;
+3)
+    download_and_run_node switch__master_slave.js
     ;;
 esac
 

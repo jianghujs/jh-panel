@@ -810,16 +810,16 @@ def __createUser(dbname, username, password, address):
 
 def getDbBackupListFunc(dbname=''):
     bkDir = mw.getRootDir() + '/backup/database'
-    blist = os.listdir(bkDir)
     r = []
-
-    bname = 'db_' + dbname
-    blen = len(bname)
-    for x in blist:
-        fbstr = x[0:blen]
-        if fbstr == bname:
-            r.append(x)
-    r.sort(key=lambda fn: os.path.getmtime(bkDir + "/" + fn), reverse=True)
+    if os.path.exists(bkDir):
+      blist = os.listdir(bkDir)
+      bname = 'db_' + dbname
+      blen = len(bname)
+      for x in blist:
+          fbstr = x[0:blen]
+          if fbstr == bname:
+              r.append(x)
+      r.sort(key=lambda fn: os.path.getmtime(bkDir + "/" + fn), reverse=True)
     return r
 
 
@@ -974,24 +974,25 @@ def getDbBackupList():
     if not data[0]:
         return data[1]
 
-    r = getDbBackupListFunc(args['name'])
     bkDir = mw.getRootDir() + '/backup/database'
     rr = []
-    for x in range(0, len(r)):
-        p = bkDir + '/' + r[x]
-        data = {}
-        data['name'] = r[x]
+    if os.path.exists(bkDir):
+      r = getDbBackupListFunc(args['name'])
+      for x in range(0, len(r)):
+          p = bkDir + '/' + r[x]
+          data = {}
+          data['name'] = r[x]
 
-        rsize = os.path.getsize(p)
-        data['size'] = mw.toSize(rsize)
+          rsize = os.path.getsize(p)
+          data['size'] = mw.toSize(rsize)
 
-        t = os.path.getctime(p)
-        t = time.localtime(t)
+          t = os.path.getctime(p)
+          t = time.localtime(t)
 
-        data['time'] = time.strftime('%Y-%m-%d %H:%M:%S', t)
-        rr.append(data)
+          data['time'] = time.strftime('%Y-%m-%d %H:%M:%S', t)
+          rr.append(data)
 
-        data['file'] = p
+          data['file'] = p
 
     return mw.returnJson(True, 'ok', rr)
 

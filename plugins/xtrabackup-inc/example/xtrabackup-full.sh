@@ -75,9 +75,9 @@ BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.backup_full.backup_compress')
 BACKUP_ZIP=$(echo "$backup_config" | jq -r '.backup_full.backup_zip')
 
 if [ $BACKUP_COMPRESS -eq 1 ];then
-    xtrabackup --backup --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_full_$timestamp.log
+    xtrabackup --backup --slave-info --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_full_$timestamp.log
 else
-    xtrabackup --backup --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_full_$timestamp.log
+    xtrabackup --backup --slave-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_full_$timestamp.log
 fi
 
 if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then

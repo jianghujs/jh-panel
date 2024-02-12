@@ -40,7 +40,7 @@ BACKUP_INC_PREV_PATH=$BACKUP_INC_PATH.prev
 if [ -d "$BACKUP_INC_PREV_PATH" ];then
     rm -rf $BACKUP_INC_PREV_PATH
 fi
-if [ -d "$BACKUP_INC_PATH" ];then
+if [ ! -d "$BACKUP_INC_PREV_PATH" ] && [ -d "$BACKUP_INC_PATH" ];then
     mv $BACKUP_INC_PATH $BACKUP_INC_PREV_PATH
     echo "|- 备份增量目录到${BACKUP_INC_PREV_PATH}完成"
 fi
@@ -79,7 +79,7 @@ else
     if [ -d "$BACKUP_INC_PATH" ];then
         rm -rf $BACKUP_INC_PATH
     fi
-    if [ -d "$BACKUP_INC_PREV_PATH" ];then
+    if [ ! -d "$BACKUP_INC_PATH" ] && [ -d "$BACKUP_INC_PREV_PATH" ];then
         cp -r $BACKUP_INC_PREV_PATH $BACKUP_INC_PATH
         echo "|- 恢复增量目录内容完成"
     fi

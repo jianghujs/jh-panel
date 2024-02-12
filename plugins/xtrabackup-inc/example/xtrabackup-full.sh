@@ -57,7 +57,7 @@ if [ -d "$BACKUP_BASE_PREV_PATH" ];then
     rm -rf $BACKUP_BASE_PREV_PATH
 fi
 
-if [ -d "$BACKUP_BASE_PATH" ];then
+if [ ! -d "$BACKUP_BASE_PREV_PATH" ] && [ -d "$BACKUP_BASE_PATH" ];then
     mv $BACKUP_BASE_PATH $BACKUP_BASE_PREV_PATH
     echo "|- 备份全量目录到${BACKUP_BASE_PREV_PATH}完成"
 fi
@@ -96,7 +96,7 @@ else
     if [ -d "$BACKUP_BASE_PATH" ];then
         rm -rf $BACKUP_BASE_PATH
     fi
-    if [ -d "$BACKUP_BASE_PREV_PATH" ];then
+    if [ ! -d "$BACKUP_BASE_PATH" ] && [ -d "$BACKUP_BASE_PREV_PATH" ];then
         cp -r $BACKUP_BASE_PREV_PATH $BACKUP_BASE_PATH
         echo "|- 恢复全量目录内容完成"
     fi

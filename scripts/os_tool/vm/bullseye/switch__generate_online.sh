@@ -20,21 +20,21 @@ echo "" > $script_file
 
 if [ $choice == "y" ]; then
   
-  read -p "请输入本地服务器外网IP: " local_ip
+  read -p "请输入本地服务器IP: " local_ip
   if [ -z "$local_ip" ]; then
-    echo "错误:未指定本地服务器外网IP"
+    echo "错误:未指定本地服务器IP"
     exit 1
   fi
   echo "export LOCAL_IP=$local_ip" >> $script_file
 
-  read -p "请输入备用服务器外网IP: " remote_ip
+  read -p "请输入备用服务器IP: " remote_ip
   if [ -z "$remote_ip" ]; then
-    echo "错误:未指定备用服务器外网IP"
+    echo "错误:未指定备用服务器IP"
     exit 1
   fi
   echo "export REMOTE_IP=$remote_ip" >> $script_file
 
-  echo "" > $script_file
+  echo "" >> $script_file
 
   
   # 增量恢复

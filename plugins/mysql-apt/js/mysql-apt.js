@@ -2132,6 +2132,7 @@ function masterOrSlaveConf(version=''){
             var limitCon = '\
                 <p class="conf_p">\
                     <span class="f14 c6 mr20">主从同步模式</span><span class="f14 c6 mr20"></span>\
+                    <button class="btn '+(!(rdata.mode == "classic") ? 'btn-danger' : 'btn-success')+' btn-xs db-mode btn-classic">经典</button>\
                     <button class="btn '+(!(rdata.mode == "gtid") ? 'btn-danger' : 'btn-success')+' btn-xs db-mode btn-gtid">GTID</button>\
                 </p>\
                 <hr/>\

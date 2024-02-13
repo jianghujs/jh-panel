@@ -2037,10 +2037,10 @@ function masterOrSlaveConf(version=''){
                 list += '<td>' + rdata.data[i]['Master_Port'] +'</td>';
                 list += '<td>' + rdata.data[i]['Master_User'] +'</td>';
                 list += '<td>' + rdata.data[i]['Master_Log_File'] +'</td>';
-                list += '<td style="color: ' + (rdata.data[i]['Slave_IO_Running'] != 'Yes'? 'red': 'green') + '">' + rdata.data[i]['Slave_IO_Running'] +'</td>';
-                list += '<td style="color: ' + (rdata.data[i]['Slave_SQL_Running'] != 'Yes'? 'red': 'green') + '">' + rdata.data[i]['Slave_SQL_Running'] +'</td>';
-                list += '<td style="color: ' + (rdata.data[i]['Seconds_Behind_Master'] != 0? 'red': 'green') + '">' + rdata.data[i]['Seconds_Behind_Master'] +'</td>';
-                list += '<td style="color: ' + (status != '正常'? 'red': 'green') + '">' + status +'</td>';
+                list += '<td style="color: ' + (rdata.data[i]['Slave_IO_Running'] == 'Yes'? 'green': 'red') + '">' + rdata.data[i]['Slave_IO_Running'] +'</td>';
+                list += '<td style="color: ' + (rdata.data[i]['Slave_SQL_Running'] == 'Yes'? 'green': 'red') + '">' + rdata.data[i]['Slave_SQL_Running'] +'</td>';
+                list += '<td style="color: ' + (rdata.data[i]['Seconds_Behind_Master'] == 0? 'green': 'red') + '">' + rdata.data[i]['Seconds_Behind_Master'] +'</td>';
+                list += '<td style="color: ' + (status == '正常'? 'green': 'red') + '">' + status + (status == '正常'? '': ` <span title="${rdata.data[i]['Last_Error']}" class='bt-ico-ask' style='cursor: pointer; margin-left: 0;'>?</span>`) + '</td>';
                 list += '<td style="text-align:right">' + 
                     '<a href="javascript:;" class="btlink" onclick="deleteSlave()" title="删除">删除</a>' +
                 '</td>';

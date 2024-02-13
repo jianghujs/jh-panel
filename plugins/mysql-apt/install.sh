@@ -52,5 +52,7 @@ if [ "${action}" == "install" ];then
 	cd ${rootPath} && python3 ${rootPath}/plugins/mysql-apt/index.py start ${type}
 	cd ${rootPath} && python3 ${rootPath}/plugins/mysql-apt/index.py initd_install ${type}
 	cd ${rootPath} && python3 ${rootPath}/plugins/mysql-apt/index.py set_db_status_by_system_memory ${type}
+  mkdir -p /www/server/mysql-apt/etc/mode/
+  rsync -a --delete ${rootPath}/plugins/mysql-apt/conf/gtid.cnf  ${serverPath}/mysql-apt/etc/mode/gtid.cnf
 	cd ${rootPath} && python3 ${rootPath}/plugins/mysql-apt/index.py restart ${type}
 fi

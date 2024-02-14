@@ -151,6 +151,7 @@ class arrangeTools:
         sys_crontab_repeat_echo_list = []
         for index,item in enumerate(sys_crontab_list):
             if not item:
+                sys_crontab_result_list.append(item)
                 continue
             sys_echo_result = re.search(r'\/www\/server\/cron\/([\w.-]+)', item)
             if not sys_echo_result:

@@ -155,6 +155,7 @@ class arrangeTools:
                 continue
             sys_echo_result = re.search(r'\/www\/server\/cron\/([\w.-]+)', item)
             if not sys_echo_result:
+                sys_crontab_result_list.append(item)
                 continue
             sys_echo = sys_echo_result.group(1)
             

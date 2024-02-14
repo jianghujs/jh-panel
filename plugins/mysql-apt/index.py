@@ -2322,6 +2322,7 @@ def initSlaveStatus(version=''):
     args = getArgs()
     log_file = args.get('log_file', '')
     log_pos = args.get('log_pos', '')
+    gtid_purged = args.get('gtid_purged', '')
     
     db = pMysqlDb()
     dlist = db.query('show slave status')
@@ -2388,7 +2389,11 @@ def initSlaveStatus(version=''):
             cmd = re.sub(r", MASTER_AUTO_POSITION=1", "", cmd, 1)
             cmd = cmd + " ,MASTER_LOG_FILE='" + log_file + \
                "',MASTER_LOG_POS=" + log_pos
-        
+        if gtid_purged != '':
+            gtid_purged = gtid_purged.replace('：', ':')
+            # print(gtid_purged)
+            db.query("SET GLOBAL gtid_purged='" + gtid_purged + "'")
+        # print('cmd', cmd)
         db.query(cmd)
         db.query("start slave user='{}' password='{}';".format(
             u['username'], u['password']))

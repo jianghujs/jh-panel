@@ -37,6 +37,7 @@ show_menu() {
     echo "3. 整理目录（生成移动并链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
     echo "4. 查找指定目录（查找并生成指定名称（如.git）目录的路径列表文件，可用于rsync、zip打包）"
     echo "5. 整理项目配置文件数据库连接信息，统一使用数据库自己的用户"
+    echo "6. 清理系统crontab"
     echo "========================================================"
 }
 
@@ -63,6 +64,11 @@ case $choice in
     ;;
 5)
     download_and_run arrange__fix_project_config_use_database_root_user.sh
+    ;;
+6)
+    pushd /www/server/jh-panel > /dev/null
+    python3 /www/server/jh-panel/scripts/arrange.py cleanSysCrontab
+    popd > /dev/null
     ;;
 esac
 

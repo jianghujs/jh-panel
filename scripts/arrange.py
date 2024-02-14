@@ -25,8 +25,10 @@ import db
 import time
 import system_api
 import site_api
+import crontab_api
 systemApi = system_api.system_api()
 siteApi = site_api.site_api()
+crontabApi = crontab_api.crontab_api()
 
 mysql_dir = '/www/server/mysql-apt'
 mysql_cnf = os.path.join(mysql_dir, 'etc/my.cnf')
@@ -131,12 +133,67 @@ class arrangeTools:
             print("全部配置文件更新完成!✅")
         else:
             print("已取消")
-   
+    
+    def cleanSysCrontab(self):
+        print("|- 正在检测系统crontab...")
+        
+        crontab_list = mw.M('crontab').field(crontabApi.field).order('id desc').select()
+        crontab_echo_list = [item['echo'] for item in crontab_list]
+        
+        # 待清理的crontab列表
+        sys_crontab_clean_list = []
+        sys_crontab_clean_index_list = []
+
+        # 获取系统crontab列表
+        sys_crontab_list = mw.execShell('crontab -l')[0]
+        sys_crontab_list = sys_crontab_list.split("\n")
+        sys_crontab_repeat_echo_list = []
+        for index,item in enumerate(sys_crontab_list):
+            if not item:
+                continue
+            sys_echo_result = re.search(r'\/www\/server\/cron\/([\w.-]+)', item)
+            if not sys_echo_result:
+                continue
+            sys_echo = sys_echo_result.group(1)
+            
+            # 检查任务是否存在或者是否重复
+            if sys_echo not in crontab_echo_list or sys_echo in sys_crontab_repeat_echo_list:
+                sys_crontab_clean_list.append(item)
+                sys_crontab_clean_index_list.append(index)
+
+            if sys_echo not in sys_crontab_repeat_echo_list:
+                sys_crontab_repeat_echo_list.append(sys_echo)
+        
+        if len(sys_crontab_clean_list) == 0:
+            print('暂无需要清理的crontab任务')
+            return
+        
+        try:
+          print(f"\033[31m检测到需要清理的crontab任务：") 
+          # 用红色字体打印换行的sys_crontab_clean_list
+          print("\n".join(sys_crontab_clean_list) + "\033[0m")
+          confirm = input(f"要清理这些crontab任务？（默认y）[y/n] ")
+          confirm = confirm if confirm else 'y'
+          if confirm.lower() == 'y':
+              mw.execShell(f"crontab -l > /tmp/crontab.tmp")
+              for index, item in enumerate(sys_crontab_clean_list):
+                sys_crontab_index = sys_crontab_clean_index_list[index]
+                print(f"|- 正在清理crontab任务：{item} {sys_crontab_index}")
+                mw.execShell(f"sed -i '{sys_crontab_index}d' /tmp/crontab.tmp")
+              mw.execShell(f"crontab /tmp/crontab.tmp")
+              print("清理完成！✅") 
+        except KeyboardInterrupt as e:
+          print("已取消")
+        except Exception as e:
+          print(e)
+          
 if __name__ == "__main__":
     arrange = arrangeTools()
     type = sys.argv[1]
 
     if type == 'fixProjectConfigUseDatabaseRootUser':
         arrange.fixProjectConfigUseDatabaseRootUser()
+    elif type == 'cleanSysCrontab':
+        arrange.cleanSysCrontab()
     else:
         print("无效参数")

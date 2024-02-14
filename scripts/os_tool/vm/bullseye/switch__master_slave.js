@@ -49,8 +49,8 @@ async function switchMasterSlave() {
   try {
     // 主备服务器加上只读锁
     console.log("|- 正在为主备服务器添加只读锁...");
-    await masterQuery("FLUSH TABLES WITH READ LOCK; SET GLOBAL read_only = ON; FLUSH PRIVILEGES;");
-    await slaveQuery("FLUSH TABLES WITH READ LOCK; SET GLOBAL read_only = ON; FLUSH PRIVILEGES;");
+    await masterQuery("SET GLOBAL read_only = ON; FLUSH PRIVILEGES;");
+    await slaveQuery("SET GLOBAL read_only = ON; FLUSH PRIVILEGES;");
 
     // 检查从库状态
     console.log("|- 正在检查从库状态 ...");
@@ -102,7 +102,7 @@ async function switchMasterSlave() {
 
     // 取消新主的只读锁
     console.log("|- 正在取消新主的只读锁...");
-    await slaveQuery("UNLOCK TABLES; SET GLOBAL read_only = OFF; FLUSH PRIVILEGES;");
+    await slaveQuery("SET GLOBAL read_only = OFF; FLUSH PRIVILEGES;");
     Logger.success("|- 取消新主的只读锁完成✅");
 
     Logger.success("主从切换完毕✅");

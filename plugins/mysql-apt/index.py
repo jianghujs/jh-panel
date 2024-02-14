@@ -2317,6 +2317,10 @@ def getSlaveSyncCmd(version=''):
 
 
 def initSlaveStatus(version=''):
+    args = getArgs()
+    log_file = args.get('log_file', '')
+    log_pos = args.get('log_pos', '')
+    
     db = pMysqlDb()
     dlist = db.query('show slave status')
     if len(dlist) > 0:
@@ -2376,6 +2380,13 @@ def initSlaveStatus(version=''):
         if cmd.find('MASTER_HOST') > -1:
             cmd = re.sub(r"MASTER_HOST='([^']*)'",
                          "MASTER_HOST='" + ip + "'", cmd, 1)
+
+        # 指定位置启动从库
+        if log_file != '' and log_pos != '':
+            cmd = re.sub(r", MASTER_AUTO_POSITION=1", "", cmd, 1)
+            cmd = cmd + " ,MASTER_LOG_FILE='" + log_file + \
+               "',MASTER_LOG_POS=" + log_pos
+        
         db.query(cmd)
         db.query("start slave user='{}' password='{}';".format(
             u['username'], u['password']))

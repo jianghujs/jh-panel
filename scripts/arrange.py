@@ -147,6 +147,7 @@ class arrangeTools:
         # 获取系统crontab列表
         sys_crontab_list = mw.execShell('crontab -l')[0]
         sys_crontab_list = sys_crontab_list.split("\n")
+        sys_crontab_result_list = []
         sys_crontab_repeat_echo_list = []
         for index,item in enumerate(sys_crontab_list):
             if not item:
@@ -160,6 +161,8 @@ class arrangeTools:
             if sys_echo not in crontab_echo_list or sys_echo in sys_crontab_repeat_echo_list:
                 sys_crontab_clean_list.append(item)
                 sys_crontab_clean_index_list.append(index)
+            else:
+                sys_crontab_result_list.append(item)
 
             if sys_echo not in sys_crontab_repeat_echo_list:
                 sys_crontab_repeat_echo_list.append(sys_echo)
@@ -167,21 +170,25 @@ class arrangeTools:
         if len(sys_crontab_clean_list) == 0:
             print('暂无需要清理的crontab任务')
             return
-        
+
+        # # 检查crontab_list中存在但是sys_crontab_list不存在的任务
+        # for item in crontab_list:
+        #     if item['echo'] not in sys_crontab_repeat_echo_list:
+        #         print(f"\033[31m检测到crontab任务{item['echo']}在数据库中存在，但是系统中不存在。\033[0m")
+                
         try:
-          print(f"\033[31m检测到需要清理的crontab任务：") 
+          print(f"\033[31m检测到需要清理的crontab任务（{len(sys_crontab_clean_list)}）：") 
           # 用红色字体打印换行的sys_crontab_clean_list
           print("\n".join(sys_crontab_clean_list) + "\033[0m")
-          confirm = input(f"要清理这些crontab任务？（默认y）[y/n] ")
+          print(f"即将重建crontab为（{len(sys_crontab_result_list)}）：")
+          print("\n".join(sys_crontab_result_list))
+          confirm = input(f"确定要这样做吗？（默认y）[y/n] ")
           confirm = confirm if confirm else 'y'
           if confirm.lower() == 'y':
-              mw.execShell(f"crontab -l > /tmp/crontab.tmp")
-              for index, item in enumerate(sys_crontab_clean_list):
-                sys_crontab_index = sys_crontab_clean_index_list[index]
-                print(f"|- 正在清理crontab任务：{item} {sys_crontab_index}")
-                mw.execShell(f"sed -i '{sys_crontab_index}d' /tmp/crontab.tmp")
+              # 重新使用sys_crontab_result_list生成crontab
+              mw.writeFile('/tmp/crontab.tmp', "\n".join(sys_crontab_result_list) + "\n")
               mw.execShell(f"crontab /tmp/crontab.tmp")
-              print("清理完成！✅") 
+              print("重建crontab完成！✅") 
         except KeyboardInterrupt as e:
           print("已取消")
         except Exception as e:

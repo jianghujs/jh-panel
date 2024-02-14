@@ -35,18 +35,18 @@ if [ "${choice}" != "y" ]; then
     exit 0
 fi
 
-# # 恢复xtrabackup
-# pushd /www/server/jh-panel > /dev/null
-# recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py  get_recovery_backup_script "{filename:${xtrabackup_file}}" | jq -r .data)
-# recovery_tmp_file="/tmp/temp_recovery.sh"
-# popd > /dev/null
-# echo "pushd /www/server/jh-panel > /dev/null" > $recovery_tmp_file
-# echo "${recovery_script}" >> $recovery_tmp_file
-# echo "popd > /dev/null" >> $recovery_tmp_file
-# chmod +x $recovery_tmp_file
-# bash $recovery_tmp_file
-# rm $recovery_tmp_file
-# echo "恢复xtrabackup文件成功✅"
+# 恢复xtrabackup
+pushd /www/server/jh-panel > /dev/null
+recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py  get_recovery_backup_script "{filename:${xtrabackup_file}}" | jq -r .data)
+recovery_tmp_file="/tmp/temp_recovery.sh"
+popd > /dev/null
+echo "pushd /www/server/jh-panel > /dev/null" > $recovery_tmp_file
+echo "${recovery_script}" >> $recovery_tmp_file
+echo "popd > /dev/null" >> $recovery_tmp_file
+chmod +x $recovery_tmp_file
+bash $recovery_tmp_file
+rm $recovery_tmp_file
+echo "恢复xtrabackup文件成功✅"
 
 # 获取/www/backup/xtrabackup_data_restore/xtrabackup_binlog_info中的binlog文件名和pos
 binlog_info_file="/www/backup/xtrabackup_data_restore/xtrabackup_binlog_info"

@@ -2398,9 +2398,9 @@ def initSlaveStatus(version=''):
         db.query("start slave user='{}' password='{}';".format(
             u['username'], u['password']))
         
-        # # 开始只读
-        # db.query('set global read_only=on')
-        # db.query('flush tables with read lock')
+        # 开始只读
+        db.query('SET GLOBAL read_only = on')
+        db.query('SET GLOBAL super_read_only = on')
     except Exception as e:
         return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
 

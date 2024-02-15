@@ -2392,6 +2392,8 @@ def initSlaveStatus(version=''):
         if gtid_purged != '':
             gtid_purged = gtid_purged.replace('：', ':')
             # print(gtid_purged)
+            # 使用 reset master 清空 GTID_EXECUTED，否则 gtid_purged 设置会报错
+            db.query("RESET MASTER")
             db.query("SET GLOBAL gtid_purged='" + gtid_purged + "'")
         # print('cmd', cmd)
         db.query(cmd)

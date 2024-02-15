@@ -2435,8 +2435,10 @@ def setSlaveStatus(version=''):
 
 def deleteSlave(version=''):
     db = pMysqlDb()
-    dlist = db.query('stop slave')
-    dlist = db.query('reset slave all')
+    db.query('STOP SLAVE')
+    db.query('RESET SLAVE ALL')
+    db.query('SET GLOBAL read_only = off')
+    db.query('SET GLOBAL super_read_only = off')
     return mw.returnJson(True, '删除成功!')
 
 

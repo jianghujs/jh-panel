@@ -16,12 +16,14 @@ download_and_run_node() {
     local script_name=$1
     if [ "$USE_PANEL_SCRIPT" == "true" ]; then 
       pushd $SCRIPT_BASE > /dev/null
+      source /root/.bashrc
       npm i
       node ${script_name} ${@:2}
       popd > /dev/null
     else
       wget -nv -O /tmp/package.json ${URLBase}/package.json
       pushd /tmp/ > /dev/null
+      source /root/.bashrc
       npm i
       popd > /dev/null
       

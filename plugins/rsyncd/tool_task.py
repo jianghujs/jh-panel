@@ -59,7 +59,10 @@ def createBgTask(data):
 def createBgTaskByName(name, args):
     cfg = getConfigTpl()
     _name = "[勿删]同步插件定时任务[" + name + "]"
-
+    res = mw.M("crontab").field("id, name").where("name=?", (_name,)).find()
+    if res:
+        return True
+    
     if "task_id" in cfg.keys() and cfg["task_id"] > 0:
         res = mw.M("crontab").field("id, name").where(
             "id=?", (cfg["task_id"],)).find()
@@ -130,9 +133,9 @@ def removeBgTask():
     for x in range(len(cfg_list)):
         cfg = cfg_list[x]
         if "task_id" in cfg.keys() and cfg["task_id"] > 0:
+            _name = "[勿删]同步插件定时任务[" + cfg['name'] + "]"
             resById = mw.M("crontab").field("id, name").where(
                 "id=?", (cfg["task_id"],)).find()
-            _name = "[勿删]同步插件定时任务[" + cfg['name'] + "]"
             resByName = mw.M("crontab").field("id, name").where(
                 "name=?", (_name,)).find()
             if resById or resByName:

@@ -39,14 +39,16 @@ fi
 pushd /www/server/jh-panel > /dev/null
 recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py  get_recovery_backup_script "{filename:${xtrabackup_file}}" | jq -r .data)
 recovery_tmp_file="/tmp/temp_recovery.sh"
+recovery_log="/tmp/temp_recovery.log"
 popd > /dev/null
 echo "pushd /www/server/jh-panel > /dev/null" > $recovery_tmp_file
 echo "${recovery_script}" >> $recovery_tmp_file
 echo "popd > /dev/null" >> $recovery_tmp_file
 chmod +x $recovery_tmp_file
-bash $recovery_tmp_file
+echo "|- 正在恢复xtrabackup文件..."
+bash $recovery_tmp_file > $recovery_log 2>&1
 rm $recovery_tmp_file
-echo "恢复xtrabackup文件成功✅"
+echo "|- 恢复xtrabackup文件成功✅"
 
 # 获取/www/backup/xtrabackup_data_restore/xtrabackup_binlog_info中的binlog文件名和pos
 binlog_info_file="/www/backup/xtrabackup_data_restore/xtrabackup_binlog_info"
@@ -71,8 +73,9 @@ fi
 echo "正在恢复从库..."
 pushd /www/server/jh-panel > /dev/null
 # init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {log_file:${log_file},log_pos:${log_pos},gtid_purged:${gtid_purged})
-init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged//:/：}})
-# python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged//:/：}}
+gtid_purged_arg=${gtid_purged//:/：}
+init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged_arg}})
+# python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged_arg}}
 popd > /dev/null
 init_slave_status=$(echo $init_slave_result | jq -r '.status')
 init_slave_msg=$(echo $init_slave_result | jq -r '.msg')

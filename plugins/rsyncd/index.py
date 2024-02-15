@@ -657,11 +657,9 @@ def makeLsyncdConf(data):
 
     path = getServerDir() + "/lsyncd.conf"
     mw.writeFile(path, content)
-
     lsyncdReload()
-    if t['realtime'] == "false":
-      import tool_task
-      tool_task.createBgTask(lsyncd_list)
+    import tool_task
+    tool_task.createBgTask(lsyncd_list)
 
 
 def lsyncdListFindIp(slist, ip):
@@ -909,7 +907,6 @@ def lsyncdAdd():
         slist.append(info)
 
     data['send']["list"] = slist
-
     setDefaultConf(data)
     makeLsyncdConf(data)
     return mw.returnJson(True, "设置成功!")

@@ -55,10 +55,9 @@ binlog_info_file="/www/backup/xtrabackup_data_restore/xtrabackup_binlog_info"
 log_file=""
 log_pos=""
 if [[ -f "$binlog_info_file" ]]; then
-    binlog_info=$(awk '{print $1 " " $2 " " $3}' "$binlog_info_file")
-    log_file=$(echo $binlog_info | cut -d ' ' -f 1)
-    log_pos=$(echo $binlog_info | cut -d ' ' -f 2)
-    gtid_purged=$(echo $binlog_info | cut -d ' ' -f 3)
+    log_file=$(awk 'NR==1 {print $1}' "$binlog_info_file")
+    log_pos=$(awk 'NR==1 {print $2}' "$binlog_info_file")
+    gtid_purged=$(awk 'NR==1 {for(i=3;i<=NF;i++) printf "%s ", $i; next} {for(i=1;i<=NF;i++) printf "%s ", $i} END {print ""}' "$binlog_info_file")
 
     # 输出结果
     echo "|- log_file：$log_file"
@@ -72,8 +71,13 @@ fi
 # 使用binlog_file和binlog_pos恢复从库
 echo "正在恢复从库..."
 pushd /www/server/jh-panel > /dev/null
-# init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {log_file:${log_file},log_pos:${log_pos},gtid_purged:${gtid_purged})
+
+# gtid_purged_arg参数处理
 gtid_purged_arg=${gtid_purged//:/：}
+gtid_purged_arg=${gtid_purged_arg// /}
+gtid_purged_arg=${gtid_purged_arg//$'\n'/}
+
+# init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {log_file:${log_file},log_pos:${log_pos},gtid_purged:${gtid_purged})
 init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged_arg}})
 # python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged_arg}}
 popd > /dev/null

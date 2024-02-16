@@ -14,6 +14,7 @@ if sys.platform != 'darwin':
 
 chdir = os.getcwd()
 sys.path.append(chdir + '/class/core')
+sys.path.append(chdir + '/class/plugin')
 
 # reload(sys)
 # sys.setdefaultencoding('utf-8')
@@ -22,6 +23,7 @@ sys.path.append(chdir + '/class/core')
 import mw
 import db
 import time
+import clean_tool
 
 
 class backupTools:
@@ -70,7 +72,7 @@ class backupTools:
         print("★[" + endDate + "] " + log)
         
         print("|---文件名:" + filename)
-        self.cleanBackup('0', pid, save)
+        self.cleanBackupByHistory('0', pid, save)
 
     def backupDatabase(self, name, save):
         db_path = mw.getServerDir() + '/mysql-apt'
@@ -124,7 +126,7 @@ class backupTools:
         mw.writeLog('计划任务', log)
         print("★[" + endDate + "] " + log)
         print("|---文件名:" + filename)
-        self.cleanBackup('1', pid, save)
+        self.cleanBackupByHistory('1', pid, save)
 
 
     def backupDatabaseAll(self, save):
@@ -142,7 +144,7 @@ class backupTools:
             self.backupSite(site['name'], save)
         print('|----备份所有网站任务完成')
     
-    def cleanBackup(self, type, pid, save):
+    def cleanBackupByHistory(self, type, pid, save):
         # 清理多余备份
         saveAllDay = int(save.get('saveAllDay'))
         saveOther = int(save.get('saveOther'))
@@ -185,6 +187,7 @@ class backupTools:
             # 最长保留saveMaxDay天
             if days > saveMaxDay:
                 to_delete.extend(backups_on_date)
+
         if len(to_delete) == 0:
             print("|---没有需要清理的备份")
             return
@@ -208,8 +211,10 @@ if __name__ == "__main__":
             backup.backupSiteAll(save)
         else:
             backup.backupSite(name, save)
+        clean_tool.cleanPath("/www/backup/site", save, "*")
     elif type == 'database':
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupDatabaseAll(save)
         else:
             backup.backupDatabase(name, save)
+        clean_tool.cleanPath("/www/backup/database", save, "*")

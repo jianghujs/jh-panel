@@ -1811,7 +1811,7 @@ function addSlaveSSH(ip=''){
         var rdata = $.parseJSON(rdata.data);
 
         var ip = '127.0.0.1';
-        var port = "22";
+        var port = "10022";
         var id_rsa = '';
         var db_user ='';
 

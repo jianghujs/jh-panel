@@ -111,9 +111,9 @@ async function getDatabaseChecksum(connection) {
     return checksums;
 }
 
-function findDifferences(obj1, obj2, prefix = '') {
+function findDifferences(obj1 = {}, obj2 = {}, prefix = '') {
   const diffs = [];
-  const keys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+  const keys = new Set([...Object.keys(obj1 || {}), ...Object.keys(obj2 || {})]);
 
   keys.forEach(key => {
     const path = prefix ? `${prefix}.${key}` : key;

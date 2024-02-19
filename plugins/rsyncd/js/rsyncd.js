@@ -602,10 +602,11 @@ function lsyncdSend(){
                 <button class="btn btn-default btn-sm" onclick="lsyncdLogCut();">实时日志切割</button>\
             </div>';
 
-        con += '<div class="divtable" style="margin-top:5px;"><table class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0">';
+        con += '<div class="lsyncd-send-table divtable" style="margin-top:5px;"><table class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0">';
         con += '<thead><tr>';
         con += '<th>名称(标识)</th>';
-        con += '<th>状态</th>';
+        con += '<th>启动状态</th>';
+        con += '<th>连接状态</th>';
         con += '<th>源目录</th>';
         con += '<th>同步到</th>';
         con += '<th>模式</th>';
@@ -641,6 +642,7 @@ function lsyncdSend(){
             con += '<tr>'+
                 '<td><div class="overflow_hide" style="width: 120px;" title="' + list[i]['name'] + '">' + list[i]['name']+'</div></td>' +
                 status +
+                '<td class="conn-status-' + i + '"><span class="tag disabled">测试中...<span></td>' +
                 '<td><a class="btlink overflow_hide" style="width:80px;" onclick="openNewWindowPath(\''+list[i]['path']+'\')" title="' + list[i]['path'] + '">' + list[i]['path']+'</a></td>' +
                 '<td><div class="overflow_hide" style="width: 120px;" title="' + target_path + '">' + target_path+'</div></td>' +
                 '<td>' + mode+'</td>' +
@@ -659,7 +661,19 @@ function lsyncdSend(){
         con += '</table></div>';
 
         $(".soft-man-con").html(con);
+        syncdListTest(list);
     });
+}
+
+function syncdListTest(list) {
+  for (index in list) {
+    let item = list[index];
+    let itemStatusClass = '.conn-status-' + index;
+    rsPost('lsyncd_test', {name: item.name}, function(rdata){
+      let data = JSON.parse(rdata['data']);
+      $('.lsyncd-send-table '+ itemStatusClass).html(data['status']?'<span class="tag normal">正常</span>':`<span class="tag error" title="${data.msg}">异常</span>`);        
+    });
+  }
 }
 
 

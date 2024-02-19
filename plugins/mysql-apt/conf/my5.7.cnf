@@ -7,6 +7,7 @@ default-character-set = UTF8MB4
 
 [mysqld]
 !include {$SERVER_APP_PATH}/etc/mode/gtid.cnf
+expire_logs_days = 7
 
 pid-file = {$SERVER_APP_PATH}/data/mysql.pid
 user = mysql

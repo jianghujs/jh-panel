@@ -912,13 +912,7 @@ def lsyncdAdd():
     return mw.returnJson(True, "设置成功!")
 
 
-def lsyncdTest():
-    args = getArgs()
-    data = checkArgs(args, ['name'])
-    if not data[0]:
-        return data[1]
-
-    name = args['name']
+def checkLsyncdTaskDryRun(name):
     send_dir = getServerDir() + "/send/" + name
     cmd_file = send_dir + "/cmd"
     cmd = mw.readFile(cmd_file)
@@ -930,8 +924,6 @@ def lsyncdTest():
         cmd += " --stats"
     if not re.search(r"--no-motd", cmd):
         cmd += " --no-motd"
-
-        
     data = getDefaultConf()
     slist = data['send']["list"]
     res = lsyncdListFindName(slist, name)
@@ -943,6 +935,15 @@ def lsyncdTest():
       cmd = cmd.replace(" " + path, " " + path + "testsync.tmp")
       cmd = cmd.replace(":" + target_path, ":" + target_path + "testsync.tmp")
     data = mw.execShell(f"bash {send_dir}/cmd")
+    return data
+
+def lsyncdTest():
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+    if not data[0]:
+        return data[1]
+    name = args['name']
+    data = checkLsyncdTaskDryRun(name)
     if data[2] != 0:
       return mw.returnJson(False, str(data))
     return mw.returnJson(True, '成功!')

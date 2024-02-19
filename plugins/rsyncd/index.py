@@ -679,15 +679,15 @@ def lsyncdListFindName(slist, name):
 def lsyncdList():
     data = getDefaultConf()
     send = data['send']
-    # 循环send，执行checkLsyncdTaskDryRun检查状态
-    slist = send["list"]
-    for i in range(len(slist)):
-        res = checkLsyncdTaskDryRun(slist[i]["name"])
-        if res[2] != 0:
-            slist[i]["connect_status"] = False
-            slist[i]["connect_error"] = res[1]
-        else:
-            slist[i]["connect_status"] = True
+    # 检查连接状态
+    # slist = send["list"]
+    # for i in range(len(slist)):
+    #     res = checkLsyncdTaskDryRun(slist[i]["name"])
+    #     if res[2] != 0:
+    #         slist[i]["connect_status"] = False
+    #         slist[i]["connect_error"] = res[1]
+    #     else:
+    #         slist[i]["connect_status"] = True
     return mw.returnJson(True, "设置成功!", send)
 
 

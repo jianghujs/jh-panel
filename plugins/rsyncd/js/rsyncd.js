@@ -639,10 +639,15 @@ function lsyncdSend(){
             '<td><span class="btOpen" onclick="lsyncdStatus(\'' + list[i]['name'] + '\',\'disabled\')" style="color:rgb(92, 184, 92);cursor:pointer" title="停用任务">正常<span class="glyphicon glyphicon-play"></span></span></td>' 
             :'<td><span onclick="lsyncdStatus(\''+ list[i]['name'] +'\',\'enabled\')" class="btClose" style="color:red;cursor:pointer" title="启用任务">停用<span style="color:rgb(255, 0, 0);" class="glyphicon glyphicon-pause"></span></span></td>';
 
+            let connect_status = `<td class="conn-status-${i}">
+              <span class="tag ${list[i]['connect_status'] = true? 'normal': 'error' }">${ list[i]['connect_status'] = true? '正常': '异常' }<span>
+            </td>`;
+                
+
             con += '<tr>'+
                 '<td><div class="overflow_hide" style="width: 120px;" title="' + list[i]['name'] + '">' + list[i]['name']+'</div></td>' +
                 status +
-                '<td class="conn-status-' + i + '"><span class="tag disabled">测试中...<span></td>' +
+                connect_status +
                 '<td><a class="btlink overflow_hide" style="width:80px;" onclick="openNewWindowPath(\''+list[i]['path']+'\')" title="' + list[i]['path'] + '">' + list[i]['path']+'</a></td>' +
                 '<td><div class="overflow_hide" style="width: 120px;" title="' + target_path + '">' + target_path+'</div></td>' +
                 '<td>' + mode+'</td>' +
@@ -661,7 +666,7 @@ function lsyncdSend(){
         con += '</table></div>';
 
         $(".soft-man-con").html(con);
-        syncdListTest(list);
+        // syncdListTest(list);
     });
 }
 

@@ -2169,12 +2169,12 @@ def updateMasterRepSlaveUser(version=''):
     pdb = pMysqlDb()
     psdb = pSqliteDb('master_replication_user')
     pdb.execute("drop user '" + args['username'] + "'@'%'")
-
     pdb.execute("GRANT REPLICATION SLAVE ON *.* TO  '" +
                 args['username'] + "'@'%' identified by '" + args['password'] + "'")
 
-    psdb.where("username=?", (args['username'],)).save(
-        'password', args['password'])
+    # 更新db文件中的密码
+    psdb.where("username=?", (args['username'],)).save('password', (args['password'],))
+    
 
     return mw.returnJson(True, '更新成功!')
 

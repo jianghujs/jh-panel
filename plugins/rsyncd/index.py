@@ -922,11 +922,12 @@ def lsyncdTest():
     send_dir = getServerDir() + "/send/" + name
     cmd_file = send_dir + "/cmd"
     cmd = mw.readFile(cmd_file)
-    # 如果cmd中不包含--dry-run和--max-size=1k，则添加
     if not re.search(r"--dry-run", cmd):
         cmd += " --dry-run"
     if not re.search(r"--max-size", cmd):
         cmd += " --max-size=1k"
+    if not re.search(r"----stats", cmd):
+        cmd += " ----stats"
     data = mw.execShell(f"bash {send_dir}/cmd")
     if data[2] != 0:
       return mw.returnJson(False, str(data))

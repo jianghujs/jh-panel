@@ -912,6 +912,28 @@ def lsyncdAdd():
     return mw.returnJson(True, "设置成功!")
 
 
+def lsyncdTest():
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+    if not data[0]:
+        return data[1]
+
+    name = args['name']
+    send_dir = getServerDir() + "/send/" + name
+    cmd_file = send_dir + "/cmd"
+    cmd = mw.readFile(cmd_file)
+    # 如果cmd中不包含--dry-run和--max-size=1k，则添加
+    if not re.search(r"--dry-run", cmd):
+        cmd += " --dry-run"
+    if not re.search(r"--max-size", cmd):
+        cmd += " --max-size=1k"
+    print(cmd)
+    data = mw.execShell(f"bash {send_dir}/cmd")
+    if data[2] != 0:
+      return mw.returnJson(False, '失败!' + str(data))
+    return mw.returnJson(True, '成功!')
+
+
 def lsyncdRun():
     args = getArgs()
     data = checkArgs(args, ['name'])
@@ -1096,6 +1118,8 @@ if __name__ == "__main__":
         print(lsyncdStatus())
     elif func == 'lsyncd_status_batch':
         print(lsyncdStatusBatch())
+    elif func == 'lsyncd_test':
+        print(lsyncdTest())
     elif func == 'lsyncd_run':
         print(lsyncdRun())
     elif func == 'lsyncd_log':

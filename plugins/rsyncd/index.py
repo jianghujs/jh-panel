@@ -942,6 +942,7 @@ def lsyncdTest():
       target_path = lsyncd_item['target_path']
       cmd = cmd.replace(" " + path, " " + path + "test")
       cmd = cmd.replace(":" + target_path, ":" + target_path + "test")
+    print("cmd", cmd)
     data = mw.execShell(f"bash {send_dir}/cmd")
     if data[2] != 0:
       return mw.returnJson(False, str(data))

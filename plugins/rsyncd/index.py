@@ -933,6 +933,8 @@ def checkLsyncdTaskDryRun(name):
         cmd += " --stats"
     if not re.search(r"--no-motd", cmd):
         cmd += " --no-motd"
+    if not re.search(r"--timeout", cmd):
+        cmd += " --timeout=3"
     data = getDefaultConf()
     slist = data['send']["list"]
     res = lsyncdListFindName(slist, name)

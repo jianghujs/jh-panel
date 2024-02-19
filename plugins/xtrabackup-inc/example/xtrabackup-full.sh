@@ -14,7 +14,7 @@ fi
 
 # 检查锁
 # 最大等待次数
-MAX_WAIT_COUNT=10
+MAX_WAIT_COUNT=30
 # 每次等待的时间（秒）
 WAIT_TIME=30
 if [ -e $LOCK_FILE_PATH ]; then

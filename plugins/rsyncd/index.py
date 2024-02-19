@@ -930,6 +930,18 @@ def lsyncdTest():
         cmd += " --stats"
     if not re.search(r"--no-motd", cmd):
         cmd += " --no-motd"
+
+        
+    data = getDefaultConf()
+    slist = data['send']["list"]
+    res = lsyncdListFindName(slist, name)
+    if res[0]:
+      list_index = res[1]
+      lsyncd_item = slist[list_index]
+      path = lsyncd_item['path']
+      target_path = lsyncd_item['target_path']
+      cmd = cmd.replace(path, path + "/test")
+      cmd = cmd.replace(target_path, target_path + "/test")
     data = mw.execShell(f"bash {send_dir}/cmd")
     if data[2] != 0:
       return mw.returnJson(False, str(data))

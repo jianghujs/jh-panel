@@ -1088,13 +1088,25 @@ def getDbListPage():
     clist = conn.where(condition, ()).field(
         field).limit(limit).order('id desc').select()
 
+    backup_list = []
+    if os.path.exists(mw.getRootDir() + '/backup/database'):
+        backup_list = os.listdir(mw.getRootDir() + '/backup/database')
+    
     for x in range(0, len(clist)):
         dbname = clist[x]['name']
-        blist = getDbBackupListFunc(dbname)
-        # print(blist)
+        
+        # 判断backup_list是否存在以"db_" + dbname开头的文件
         clist[x]['is_backup'] = False
-        if len(blist) > 0:
-            clist[x]['is_backup'] = True
+        for backup in backup_list:
+            if backup.startswith('db_' + dbname):
+                clist[x]['is_backup'] = True
+                break        
+
+        # blist = getDbBackupListFunc(dbname)
+        # # print(blist)
+        # clist[x]['is_backup'] = False
+        # if len(blist) > 0:
+        #     clist[x]['is_backup'] = True
 
     count = conn.where(condition, ()).count()
     _page = {}

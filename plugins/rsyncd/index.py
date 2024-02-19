@@ -928,6 +928,8 @@ def lsyncdTest():
         cmd += " --max-size=1k"
     if not re.search(r"--stats", cmd):
         cmd += " --stats"
+    if not re.search(r"--no-motd", cmd):
+        cmd += " --no-motd"
     data = mw.execShell(f"bash {send_dir}/cmd")
     if data[2] != 0:
       return mw.returnJson(False, str(data))

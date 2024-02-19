@@ -926,8 +926,8 @@ def lsyncdTest():
         cmd += " --dry-run"
     if not re.search(r"--max-size", cmd):
         cmd += " --max-size=1k"
-    if not re.search(r"----stats", cmd):
-        cmd += " ----stats"
+    if not re.search(r"--stats", cmd):
+        cmd += " --stats"
     data = mw.execShell(f"bash {send_dir}/cmd")
     if data[2] != 0:
       return mw.returnJson(False, str(data))

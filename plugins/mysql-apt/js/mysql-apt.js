@@ -1163,7 +1163,7 @@ function dbList(page, search){
     }
     
     _data['page'] = page;
-    _data['page_size'] = 1000;
+    _data['page_size'] = 10;
     if(typeof(search) != 'undefined'){
         _data['search'] = search;
     }
@@ -1258,7 +1258,8 @@ function dbList(page, search){
             <input type="text" name="db" id="db" value="">\
         </form>';
 
-        $(".soft-man-con").html(con);
+        $(".soft-man-con").html(con); 
+        $('#databasePage').html(rdata.page);
 
         readerTableChecked();
     });

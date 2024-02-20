@@ -2496,8 +2496,8 @@ def saveSlaveStatus(version=''):
     # 保存数据  
     slave_status_conn = pSqliteDb('slave_status')
     # 判断是否存在指定的ip，如果存在则更新，不存在则新增
-    data = slave_status_conn.field('id').where('ip=?', (ip,)).find()
-    if data and data['id'] > 0:
+    data = slave_status_conn.field('id').where('ip=?', (ip,)).select()
+    if len(data) > 0:
         slave_status_conn.where('ip=?', (ip,)).save('user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
     else:
         slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
@@ -2541,7 +2541,7 @@ def saveSlaveStatusToMaster(version=''):
             result = stdout.read()
             result = result.decode('utf-8')
             print("|- result：", result)
-            
+
         except Exception as e:
             return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
         ssh_client.close()

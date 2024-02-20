@@ -208,7 +208,27 @@ html {
 }
 
 .mt10 {
-    margin-top: 10px
+  margin-top: 10px
+}
+
+.mt15 {
+    margin-top: 15px
+}
+
+.mt20 {
+  margin-top: 20px
+}
+
+.mb10 {
+  margin-bottom: 10px
+}
+
+.mb15 {
+    margin-bottom: 15px
+}
+
+.mb20 {
+  margin-bottom: 20px
 }
 
 .mtb10 {

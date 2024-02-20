@@ -599,7 +599,7 @@ function lsyncdSend(){
         con += '<div style="padding-top:1px;">\
                 <button class="btn btn-success btn-sm" onclick="createSendTask();">创建发送任务</button>\
                 <button class="btn btn-default btn-sm" onclick="lsyncdConfLog();">实时日志</button>\
-                <button class="btn btn-default btn-sm" onclick="lsyncdLogCut();">实时日志切割</button>\
+                <button class="btn btn-default btn-sm" onclick="lsyncdSetting();">实时设置</button>\
             </div>';
 
         con += '<div class="lsyncd-send-table divtable" style="margin-top:5px;"><table class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0">';
@@ -883,45 +883,86 @@ cp /www/server/rsyncd/logs/lsyncd.log /www/server/rsyncd/logs/lsyncd_\${timestam
   backupTo: 'localhost' };
 var lsyncdLogCutCron = {...defaultLsyncdLogCutCron}
 
-function lsyncdLogCut() {
+var defaultLsyncdAllSyncCron = {      
+  name: '[勿删]lsyncd实时任务定时同步',
+  type: 'day',
+  where1: '',
+  week: '',
+  sType: 'toShell',
+  stype: 'toShell',
+  sName: '',
+  sBody: `
+#!/bin/bash
+pushd /www/server/jh-panel > /dev/null  
+python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_realtime_all_run
+popd > /dev/null
+  `,
+  backupTo: 'localhost' };
+var lsyncdAllSyncCron = {...defaultLsyncdAllSyncCron}
+
+
+function lsyncdSetting() {
   layer.open({
     type: 1,
     area: "560px",
-    title: '实时日志切割配置',
+    title: '实时设置',
     closeBtn: 1,
     shift: 5,
     shadeClose: false,
-    content: '<div id="lsyncd-log-cut-cron" class="pd20">\
-        <div>\
-            <span>每天</span>\
-            <span>\
-                <input type="hidden" name="id" value="">\
-                <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
-                <span class="name">:</span>\
-                <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
-            </span>\
-            <span>定时执行切割</span>\
+    content: '<div id="lsyncd-setting">\
+        <div id="lsyncd-log-cut-cron" class="pd20">\
+          <span class="flex align-center mb10">实时日志切割：</span>\
+          <div>\
+              <span>每天</span>\
+              <span>\
+                  <input type="hidden" name="id" value="">\
+                  <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
+                  <span class="name">:</span>\
+                  <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
+              </span>\
+              <span>定时执行切割</span>\
+          </div>\
+          <div class="flex align-center mtb10">\
+              <div class="mr5">保留规则</div>\
+              <div class="plan_hms pull-left mr20 bt-input-text">\
+                  <span><input type="number" name="saveAllDay" maxlength="4" max="100" min="1"></span>\
+                  <span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
+                  <span><input type="number" name="saveOther" maxlength="4" max="100" min="1"></span>\
+                  <span class="name" style="width: 90px;">份，最长保留</span>\
+                  <span><input type="number" name="saveMaxDay" maxlength="4" max="100" min="1"></span>\
+                  <span class="name">天</span>\
+              </div>\
+          </div>\
+          <button id="lsyncd-log-cut-cron-add" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="addLsyncdLogCutCron();">创建</button>\
+          <button id="lsyncd-log-cut-cron-update" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="updateLsyncdLogCutCron();">修改</button>\
+          <button id="lsyncd-log-cut-cron-delete" style="display: none;"\
+              class="btn btn-danger btn-sm" onclick="deleteLsyncdLogCutCron();">删除</button>\
         </div>\
-        <div class="flex align-center mtb10">\
-            <div class="mr5">保留规则</div>\
-            <div class="plan_hms pull-left mr20 bt-input-text">\
-                <span><input type="number" name="saveAllDay" maxlength="4" max="100" min="1"></span>\
-                <span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
-                <span><input type="number" name="saveOther" maxlength="4" max="100" min="1"></span>\
-                <span class="name" style="width: 90px;">份，最长保留</span>\
-                <span><input type="number" name="saveMaxDay" maxlength="4" max="100" min="1"></span>\
-                <span class="name">天</span>\
-            </div>\
+        <div id="lsyncd-all-sync-cron" class="pd20">\
+          <span class="flex align-center mb10">定时同步全部实时任务：</span>\
+          <div class="mb10">\
+              <span>每天</span>\
+              <span>\
+                  <input type="hidden" name="id" value="">\
+                  <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
+                  <span class="name">:</span>\
+                  <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
+              </span>\
+              <span>定时执行</span>\
+          </div>\
+          <button id="lsyncd-all-sync-add" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="addLsyncdAllSyncCron();">创建</button>\
+          <button id="lsyncd-all-sync-update" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="updateLsyncdAllSyncCron();">修改</button>\
+          <button id="lsyncd-all-sync-delete" style="display: none;"\
+              class="btn btn-danger btn-sm" onclick="deleteLsyncdAllSyncCron();">删除</button>\
         </div>\
-        <button id="lsyncd-log-cut-cron-add" style="display: none;"\
-            class="btn btn-success btn-sm" onclick="addLsyncdLogCutCron();">创建</button>\
-        <button id="lsyncd-log-cut-cron-update" style="display: none;"\
-            class="btn btn-success btn-sm" onclick="updateLsyncdLogCutCron();">修改</button>\
-        <button id="lsyncd-log-cut-cron-delete" style="display: none;"\
-            class="btn btn-danger btn-sm" onclick="deleteLsyncdLogCutCron();">删除</button>\
     </div>',
     success: function() {
       getLsyncdLogCutCron();
+      getLsyncdAllSyncCron();
     }
   })
 }
@@ -958,12 +999,49 @@ function getLsyncdLogCutCron() {
 }
 
 
+function getLsyncdAllSyncCron() {
+  $.post('/crontab/get', { name: lsyncdAllSyncCron.name },function(rdata){
+    const { status } = rdata;
+    if (status) {
+      const { id,name,type,where_hour: hour,where_minute: minute} = rdata.data;
+      $("#lsyncd-all-sync-cron #lsyncd-all-sync-add").css("display", "none");
+      $("#lsyncd-all-sync-cron #lsyncd-all-sync-update").css("display", "inline-block");
+      $("#lsyncd-all-sync-cron #lsyncd-all-sync-delete").css("display", "inline-block");
+      $("#lsyncd-all-sync-cron input[name='id']").val(id);
+      $("#lsyncd-all-sync-cron input[name='hour']").val(hour);
+      $("#lsyncd-all-sync-cron input[name='minute']").val(minute);
+      // lsyncdAllSyncCron = rdata.data;
+    }else {
+      $("#lsyncd-all-sync-cron #lsyncd-all-sync-add").css("display", "inline-block");
+      $("#lsyncd-all-sync-cron #lsyncd-all-sync-update").css("display", "none");
+      $("#lsyncd-all-sync-cron #lsyncd-all-sync-delete").css("display", "none");
+      $("#lsyncd-all-sync-cron input[name='id']").val("");
+      $("#lsyncd-all-sync-cron input[name='hour']").val(0);
+      $("#lsyncd-all-sync-cron input[name='minute']").val(0);
+      // lsyncdAllSyncCron = {...defaultLsyncdLogCutCron};
+    }
+  },'json');
+}
+
+
 function deleteLsyncdLogCutCron(e) {
   var id = $("#lsyncd-log-cut-cron input[name='id']").val();
   if (id) {
     safeMessage('确认删除', '确定删除定时任务吗', function(){
         $.post('/crontab/del', { id },function(rdata){
             getLsyncdLogCutCron();
+            layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+        },'json');
+    })
+  }
+}
+
+function deleteLsyncdAllSyncCron(e) {
+  var id = $("#lsyncd-all-sync-cron input[name='id']").val();
+  if (id) {
+    safeMessage('确认删除', '确定删除定时任务吗', function(){
+        $.post('/crontab/del', { id },function(rdata){
+            getLsyncdAllSyncCron();
             layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
         },'json');
     })
@@ -985,6 +1063,15 @@ function addLsyncdLogCutCron() {
       layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
   },'json');
 }
+function addLsyncdAllSyncCron() {
+  var hour =  $("#lsyncd-all-sync-cron input[name='hour']").val();
+  var minute =  $("#lsyncd-all-sync-cron input[name='minute']").val();
+  
+  $.post('/crontab/add', { ...lsyncdAllSyncCron, hour, minute },function(rdata){
+    getLsyncdAllSyncCron();
+      layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+  },'json');
+}
 
 function updateLsyncdLogCutCron() {
   var id = $("#lsyncd-log-cut-cron input[name='id']").val();
@@ -996,6 +1083,18 @@ function updateLsyncdLogCutCron() {
   if (id) {
       $.post('/crontab/modify_crond', { ...lsyncdLogCutCron, id, hour, minute, saveAllDay, saveOther, saveMaxDay },function(rdata){
           getLsyncdLogCutCron();
+          layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+      },'json');
+  }
+}
+
+function updateLsyncdAllSyncCron() {
+  var id = $("#lsyncd-all-sync-cron input[name='id']").val();
+  var hour =  $("#lsyncd-all-sync-cron input[name='hour']").val();
+  var minute =  $("#lsyncd-all-sync-cron input[name='minute']").val();
+  if (id) {
+      $.post('/crontab/modify_crond', { ...lsyncdAllSyncCron, id, hour, minute },function(rdata){
+          getLsyncdAllSyncCron();
           layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
       },'json');
   }

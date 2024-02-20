@@ -2490,7 +2490,6 @@ def saveSlaveStatus(version=''):
     error_msg = args.get('error_msg', '')
     ps = args.get('ps', '')
     addtime = int(time.time())
-    print(f'ip:{ip}, user:{user}' )
 
     # 创建表
     config_conn = pSqliteDb('config')
@@ -2501,7 +2500,12 @@ def saveSlaveStatus(version=''):
 
     # 保存数据  
     slave_status_conn = pSqliteDb('slave_status')
-    add_result = slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
+    # 判断是否存在指定的ip，如果存在则更新，不存在则新增
+    data = slave_status_conn.field('id').where('ip=?', (ip,)).find()
+    if len(data) > 0:
+        slave_status_conn.where('ip=?', (ip,)).save('user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
+    else:
+        slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
   
     return mw.returnJson(True, '保存成功!')
     
@@ -2511,16 +2515,6 @@ def saveSlaveStatusToMaster(version=''):
     dlist = db.query('show slave status')
     
     for x in range(0, len(dlist)):
-        tmp = {}
-        tmp['Master_User'] = dlist[x]["Master_User"]
-        tmp['Master_Host'] = dlist[x]["Master_Host"]
-        tmp['Master_Port'] = dlist[x]["Master_Port"]
-        tmp['Master_Log_File'] = dlist[x]["Master_Log_File"]
-        tmp['Slave_IO_Running'] = dlist[x]["Slave_IO_Running"]
-        tmp['Slave_SQL_Running'] = dlist[x]["Slave_SQL_Running"]
-        tmp['Seconds_Behind_Master'] = dlist[x]["Seconds_Behind_Master"] if dlist[x]["Seconds_Behind_Master"] != None else '异常'
-        tmp['Last_Error'] = dlist[x]["Last_Error"] 
-        tmp['Last_IO_Error'] = dlist[x]["Last_IO_Error"]
 
         # 报错从库状态
         conn = pSqliteDb('slave_id_rsa')

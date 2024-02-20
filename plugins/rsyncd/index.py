@@ -978,6 +978,20 @@ def lsyncdRun():
     )
     return mw.returnJson(True, '添加执行任务成功!')
 
+def lsyncdRealtimeAllRun():
+    data = getDefaultConf()
+    slist = data['send']["list"]
+    for i in range(len(slist)):
+        if slist[i]['status'] == 'enabled' and slist[i]['realtime'] == 'true':
+            print("|- 开始执行同步任务: " + slist[i]['name'])
+            cmd = "bash %(send_dir)s/cmd | tee -a %(send_dir)s/logs/run_%(timestamp)s.log" % {
+                'send_dir': getServerDir() + "/send/" + slist[i]['name'], 'timestamp': '$(date +%Y%m%d_%H%M%S)'
+            }
+            print("|- cmd: " + cmd)
+            data = mw.execShell(cmd)
+            print(f"|- 完成同步任务：{slist[i]['name']}")
+
+    return mw.returnJson(True, '成功!')
 
 def lsyncdConfLog():
     logs_path = getServerDir() + "/lsyncd.log"
@@ -1150,6 +1164,8 @@ if __name__ == "__main__":
         print(lsyncdRun())
     elif func == 'lsyncd_log':
         print(lsyncdLog())
+    elif func == 'lsyncd_realtime_all_run':
+        print(lsyncdRealtimeAllRun())
     elif func == 'lsyncd_conf_log':
         print(lsyncdConfLog())
     elif func == 'lsyncd_get_exclude':

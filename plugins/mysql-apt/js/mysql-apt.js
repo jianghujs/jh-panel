@@ -2012,6 +2012,27 @@ function initSlaveStatus(){
     });
 }
 
+var defaultAutoSaveSlaveStatusToMasterCron = {      
+  name: '[勿删]主从状态推送到[主]服务器',
+  type: 'minute-n',
+  where1: 30,
+  hour: 0,
+  minute: 30,
+  week: '',
+  sType: 'toShell',
+  stype: 'toShell',
+  sName: '',
+  sBody: `
+#!/bin/bash
+pushd /www/server/jh-panel > /dev/null  
+python3 /www/server/jh-panel/plugins/mysql-apt/index.py save_slave_status_to_master
+popd > /dev/null
+  `,
+  backupCompress: false,
+  backupZip: false,
+  backupTo: 'localhost' };
+var autoSaveSlaveStatusToMasterCron = {...defaultAutoSaveSlaveStatusToMasterCron};
+
 function masterOrSlaveConf(version=''){
 
     function getAsyncMasterDbList(){
@@ -2153,6 +2174,14 @@ function masterOrSlaveConf(version=''){
                     <button class="btn btn-success btn-xs" onclick="getSlaveSSHList()" >[主]SSH配置</button>\
                     <button class="btn btn-success btn-xs" onclick="initSlaveStatus()" >初始化</button>\
                 </p>\
+                <div class="auto-save-slave-to-master-cron mt20 conf_p flex" style="align-items: center;">\
+                    <span class="f14 c6 mr20">定时推送状态到[主]</span><span class="f14 c6 mr20"></span>\
+                    <div  class="ssh-item" id="openAutoSaveSlaveStatusToMasterCronSwitch"></div>\
+                    <div id="autoSaveSlaveStatusToMasterCronDetail">\
+                        <div></div>\
+                        <button class="open-cron-selecter-layer btn btn-default btn-sm mlr15" type="button">配置频率</button>\
+                    </div>\
+                </div>\
                 <hr/>\
                 <!-- slave status list -->\
                 <div class="safe bgw table_slave_status_list"></div>\
@@ -2160,6 +2189,11 @@ function masterOrSlaveConf(version=''){
                 <div class="safe bgw table_slave_list"></div>\
                 ';
             $(".soft-man-con").html(limitCon);
+            getAutoSaveSlaveStatusToMasterCron();
+            
+            $("#autoSaveSlaveStatusToMasterCronDetail .open-cron-selecter-layer").click(() => {
+              openCronSelectorLayer(autoSaveSlaveStatusToMasterCron, {yes: addOrUpdateAutoSaveSlaveStatusToMasterCron});
+            });
 
             //设置主服务器配置
             $(".btn-master").click(function () {
@@ -2232,4 +2266,47 @@ function masterOrSlaveConf(version=''){
         });
     }
     getMasterStatus();
+}
+
+function getAutoSaveSlaveStatusToMasterCron() {
+  $.post('/crontab/get', { name: autoSaveSlaveStatusToMasterCron.name },function(rdata){
+      const { status: openAutoSaveSlaveStatusToMasterCron } = rdata;
+      if (openAutoSaveSlaveStatusToMasterCron) {
+          autoSaveSlaveStatusToMasterCron = rdata.data;
+      }else {
+          autoSaveSlaveStatusToMasterCron = {...defaultAutoSaveSlaveStatusToMasterCron};
+      }
+      visibleDom('#autoSaveSlaveStatusToMasterCronDetail', openAutoSaveSlaveStatusToMasterCron);
+      $("#openAutoSaveSlaveStatusToMasterCronSwitch").createRadioSwitch(openAutoSaveSlaveStatusToMasterCron, (checked) => {
+          visibleDom('#autoSaveSlaveStatusToMasterCronDetail', checked);
+          if(checked) {
+              addOrUpdateAutoSaveSlaveStatusToMasterCron();
+          } else {
+              deleteCron(autoSaveSlaveStatusToMasterCron.id);
+          }
+      });
+  },'json');
+}
+
+async function addOrUpdateAutoSaveSlaveStatusToMasterCron(cronSelectorData) {
+  autoSaveSlaveStatusToMasterCron.sbody = autoSaveSlaveStatusToMasterCron.sBody;
+  // if(!autoSaveSlaveStatusToMasterCron.id) {
+  //     let scriptData = await myPost('inc_backup_cron_script','');
+  //     let scriptRData = $.parseJSON(scriptData.data);
+  //     xtrabackupIncCron.sBody = xtrabackupIncCron.sbody = scriptRData.data
+  // }
+  $.post(autoSaveSlaveStatusToMasterCron.id? '/crontab/modify_crond': '/crontab/add', {...autoSaveSlaveStatusToMasterCron, ...cronSelectorData},function(rdata){
+      getAutoSaveSlaveStatusToMasterCron();
+      layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+  },'json');
+}
+
+
+function deleteCron(id) {
+  if (id) {
+      $.post('/crontab/del', { id },function(rdata){
+          getAutoSaveSlaveStatusToMasterCron();
+          layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+      },'json');
+  }
 }

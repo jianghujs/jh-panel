@@ -255,7 +255,7 @@ class reportTools:
             if mysql_master_slave_info is not None:
                 if len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
                     for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
-                        if  (slave_status_item.get('error_msg', '') != '' or slave_status_item.get('delay', 0) > 0):  
+                        if  (slave_status_item.get('error_msg', '') != '' or int(slave_status_item.get('delay', '999')) > 0):  
                             backup_summary_tips.append("MySQL主从同步")
                             break
             if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
@@ -391,24 +391,35 @@ table tr td:nth-child(2) {
         mysql_master_slave_info = None
         mysql_dir = '/www/server/mysql-apt'
         if os.path.exists(mysql_dir + '/mysql.db'):
-            slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
-            slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()
-            slave_status_conn.close()
-            mysql_master_slave_info = {
-                "slave_status_list": slave_status
-            }
-            backup_tips.append({
-                "name": 'MySQL主从同步',
-                "desc":"""
+            slave_status = []
+            try:
+              config_conn = mw.M('config').dbPos(mysql_dir, 'mysql')
+              check_table_query = f"SELECT name FROM sqlite_master WHERE type='table' AND name='slave_status';"
+              table_exist = config_conn.originExecute(check_table_query)
+              if table_exist.fetchone():
+                slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
+                slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()
+                slave_status_conn.close()
+                mysql_master_slave_info = {
+                    "slave_status_list": slave_status
+                }
+                backup_tips.append({
+                    "name": 'MySQL主从同步',
+                    "desc":"""
 %s
-                """ % (
-                  ''.join(f"""
+                    """ % (
+                      ''.join(f"""
 IP：{item.get('ip', '')}<br/>
 状态：<span style=\"color: {'auto' if (item.get('error_msg', '') == '' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('error_msg', '') == '' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
-延迟：<span style=\"color: {'auto' if (item.get('delay', 'NULL') == 0) else 'red'}\">{item.get('delay', '')}</span>
+延迟：<span style=\"color: {'auto' if (int(item.get('delay', '-1')) == 0) else 'orange'}\">{item.get('delay', '异常')}</span>
 \n""" for item in slave_status)
-                )
-            })
+                    )
+                })
+            except Exception as e:
+              slave_status = []
+              print('获取MySQL主从同步状态失败')
+              pass
+            
 
         # xtrabackup
         xtrabackup_info = None

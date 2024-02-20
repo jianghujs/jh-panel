@@ -2314,7 +2314,8 @@ def getSlaveList(version=''):
         tmp['Slave_IO_Running'] = dlist[x]["Slave_IO_Running"]
         tmp['Slave_SQL_Running'] = dlist[x]["Slave_SQL_Running"]
         tmp['Seconds_Behind_Master'] = dlist[x]["Seconds_Behind_Master"] if dlist[x]["Seconds_Behind_Master"] != None else '异常'
-        tmp['Last_Error'] = dlist[x]["Last_Error"]
+        tmp['Last_Error'] = dlist[x]["Last_Error"] 
+        tmp['Last_IO_Error'] = dlist[x]["Last_IO_Error"]
         ret.append(tmp)
     data = {}
     data['data'] = ret

@@ -2034,6 +2034,8 @@ function masterOrSlaveConf(version=''){
                     status = "正常";
                 }
 
+                let errorMsg = v['Last_Error'] || v['Last_IO_Error']
+
                 list += '<tr>';
                 list += '<td>' + rdata.data[i]['Master_Host'] +'</td>';
                 list += '<td>' + rdata.data[i]['Master_Port'] +'</td>';
@@ -2042,7 +2044,7 @@ function masterOrSlaveConf(version=''){
                 list += '<td style="color: ' + (rdata.data[i]['Slave_IO_Running'] == 'Yes'? 'green': 'red') + '">' + rdata.data[i]['Slave_IO_Running'] +'</td>';
                 list += '<td style="color: ' + (rdata.data[i]['Slave_SQL_Running'] == 'Yes'? 'green': 'red') + '">' + rdata.data[i]['Slave_SQL_Running'] +'</td>';
                 list += '<td style="color: ' + (rdata.data[i]['Seconds_Behind_Master'] == 0? 'green': 'red') + '">' + rdata.data[i]['Seconds_Behind_Master'] +'</td>';
-                list += '<td style="color: ' + (status == '正常'? 'green': 'red') + '">' + status + (status == '正常'? '': ` <span title="${rdata.data[i]['Last_Error']}" class='bt-ico-ask' style='cursor: pointer; margin-left: 0;'>?</span>`) + '</td>';
+                list += '<td style="color: ' + (status == '正常'? 'green': 'red') + `"><span title="${errorMsg}">` + status + '</span>' + (status == '正常'? '': ` <span data-toggle="tooltip" title="${errorMsg}" class='bt-ico-ask' style='cursor: pointer; margin-left: 0;'>?</span>`) + '</td>';
                 list += '<td style="text-align:right">' + 
                     '<a href="javascript:;" class="btlink" onclick="deleteSlave()" title="删除">删除</a>' +
                 '</td>';
@@ -2073,6 +2075,10 @@ function masterOrSlaveConf(version=''){
             //     <span class="sync btn btn-default btn-sm" onclick="getMasterRepSlaveList()" title="">添加</span>\
             // </div>
             $(".table_slave_status_list").html(con);
+            setTimeout(() => {
+              $('[data-toggle="tooltip"]').tooltip();
+
+            }, 1000)
         });
     }
 

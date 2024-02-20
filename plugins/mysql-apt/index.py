@@ -2496,6 +2496,7 @@ def saveSlaveStatus(version=''):
     check_table_query = f"SELECT name FROM sqlite_master WHERE type='table' AND name='slave_status';"
     table_exist = config_conn.originExecute(check_table_query)
     if not table_exist.fetchone():
+        print('创建表 slave_status...')
         config_conn.originExecute("CREATE TABLE IF NOT EXISTS slave_status (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT, user TEXT, log_file TEXT, io_running TEXT, sql_running TEXT, delay TEXT, `delay` TEXT, ps TEXT, addtime TEXT)")
     
     slave_status_conn = pSqliteDb('slave_status')

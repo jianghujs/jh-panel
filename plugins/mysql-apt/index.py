@@ -2331,6 +2331,41 @@ def getSlaveSyncCmd(version=''):
     return mw.returnJson(True, 'ok', cmd)
 
 
+
+class master_ssh_client:
+    def __init__(self):
+        self._client = None
+        self._ssh_private_key = None
+
+    def connect(self, ip, port, id_rsa):
+        SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
+        # 如果args['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
+        if id_rsa and id_rsa.find('BEGIN OPENSSH PRIVATE KEY') > -1:
+          SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
+          mw.writeFile(SSH_PRIVATE_KEY, id_rsa.replace('\\n', '\n'))
+        self._ssh_private_key = SSH_PRIVATE_KEY 
+
+        import paramiko
+        paramiko.util.log_to_file('paramiko.log')
+        ssh = paramiko.SSHClient()
+
+        mw.execShell("chmod 600 " + SSH_PRIVATE_KEY)
+        key = paramiko.RSAKey.from_private_key_file(SSH_PRIVATE_KEY)
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(hostname=ip, port=int(port),
+                    username='root', pkey=key)
+        self._client = ssh
+        return ssh
+
+    def close(self):
+        # 如果是tmp下的证书，删除证书
+        if self._ssh_private_key == "/tmp/t_ssh.txt":
+          os.system("rm -rf " + self._ssh_private_key)
+        if self._client:
+          self._client.close()
+        return True
+
+
 def initSlaveStatus(version=''):
     args = getArgs()
     log_file = args.get('log_file', '')
@@ -2350,23 +2385,11 @@ def initSlaveStatus(version=''):
 
     ip = data['ip']
     master_port = data['port']
-    SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
-    # 如果data['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
-    if data['id_rsa'] and data['id_rsa'].find('BEGIN OPENSSH PRIVATE KEY') > -1:
-        SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
-        mw.writeFile(SSH_PRIVATE_KEY, data['id_rsa'].replace('\\n', '\n'))
+    id_rsa = data['id_rsa']
 
-    import paramiko
-    paramiko.util.log_to_file('paramiko.log')
-    ssh = paramiko.SSHClient()
-
+    ssh_client = master_ssh_client()
     try:
-
-        mw.execShell("chmod 600 " + SSH_PRIVATE_KEY)
-        key = paramiko.RSAKey.from_private_key_file(SSH_PRIVATE_KEY)
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(hostname=ip, port=int(master_port),
-                    username='root', pkey=key)
+        ssh = ssh_client.connect(ip, master_port, id_rsa)
 
         # todo 修复使用指定账号
         cmd = 'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py get_master_rep_slave_user_cmd {"username":"","db":""}'
@@ -2419,7 +2442,7 @@ def initSlaveStatus(version=''):
     except Exception as e:
         return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
 
-    ssh.close()
+    ssh_client.close()
     time.sleep(1)
     # 如果是tmp下的证书，删除证书
     if SSH_PRIVATE_KEY == "/tmp/t_ssh.txt":
@@ -2456,6 +2479,77 @@ def deleteSlave(version=''):
     db.query('SET GLOBAL super_read_only = off')
     return mw.returnJson(True, '删除成功!')
 
+def saveSlaveStatus(version=''):
+    args = getArgs()
+    ip = args.get('ip', '')
+    user = args.get('user', '')
+    log_file = args.get('log_file', '')
+    io_running = args.get('io_running', '')
+    sql_running = args.get('sql_running', '')
+    delay = args.get('delay', '')
+    error_msg = args.get('error_msg', '')
+    ps = args.get('ps', '')
+    addtime = int(time.time())
+
+    # 创建表
+    config_conn = pSqliteDb('config')
+    check_table_query = f"SELECT name FROM sqlite_master WHERE type='table' AND name='slave_status';"
+    table_exist = config_conn.originExecute(check_table_query)
+    if not table_exist.fetchone():
+        config_conn.originExecute("CREATE TABLE IF NOT EXISTS slave_status (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT, user TEXT, log_file TEXT, io_running TEXT, sql_running TEXT, delay TEXT, `delay` TEXT, ps TEXT, addtime TEXT)")
+    
+    slave_status_conn = pSqliteDb('slave_status')
+    slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
+
+    return mw.returnJson(True, '保存成功!')
+    
+
+def saveSlaveStatusToMaster(version=''):
+    db = pMysqlDb()
+    dlist = db.query('show slave status')
+    
+    for x in range(0, len(dlist)):
+        tmp = {}
+        tmp['Master_User'] = dlist[x]["Master_User"]
+        tmp['Master_Host'] = dlist[x]["Master_Host"]
+        tmp['Master_Port'] = dlist[x]["Master_Port"]
+        tmp['Master_Log_File'] = dlist[x]["Master_Log_File"]
+        tmp['Slave_IO_Running'] = dlist[x]["Slave_IO_Running"]
+        tmp['Slave_SQL_Running'] = dlist[x]["Slave_SQL_Running"]
+        tmp['Seconds_Behind_Master'] = dlist[x]["Seconds_Behind_Master"] if dlist[x]["Seconds_Behind_Master"] != None else '异常'
+        tmp['Last_Error'] = dlist[x]["Last_Error"] 
+        tmp['Last_IO_Error'] = dlist[x]["Last_IO_Error"]
+
+        # 报错从库状态
+        conn = pSqliteDb('slave_id_rsa')
+        data = conn.field('ip,port,id_rsa').where('ip=?', (dlist[x]["Master_Host"],)).find()
+        if len(data) < 1:
+          print('未找到【[主]SSH配置】!')
+          continue
+            
+        ip = data['ip']
+        master_port = data['port']
+        id_rsa = data['id_rsa']
+        user = dlist[x]["Master_User"]
+        log_file = dlist[x]["Master_Log_File"]
+        io_running = dlist[x]["Slave_IO_Running"]
+        sql_running = dlist[x]["Slave_SQL_Running"]
+        delay = dlist[x]["Seconds_Behind_Master"]
+        error_msg = dlist[x]["Last_Error"]
+        ps = ""
+
+        ssh_client = master_ssh_client()
+        try:
+            ssh = ssh_client.connect(ip, master_port, id_rsa)
+            cmd = f'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py save_slave_status {{"ip":"{ip}", "user":"{user}", "log_file":"{log_file}", "io_running":"{io_running}", "sql_running":"{sql_running}", "delay":"{delay}", "error_msg":"{error_msg}", "ps":"{ps}"}}'
+            print(cmd)
+            stdin, stdout, stderr = ssh.exec_command(cmd)
+            result = stdout.read()
+            result = result.decode('utf-8')
+            print('result', result)
+        except Exception as e:
+            return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
+        ssh_client.close()
 
 def dumpMysqlData(version=''):
     args = getArgs()
@@ -2981,6 +3075,10 @@ if __name__ == "__main__":
         print(setSlaveStatus(version))
     elif func == 'delete_slave':
         print(deleteSlave(version))
+    elif func == 'save_slave_status':
+        print(saveSlaveStatus(version))
+    elif func == 'save_slave_status_to_master':
+        print(saveSlaveStatusToMaster(version))
     elif func == 'full_sync':
         print(fullSync(version))
     elif func == 'do_full_sync':

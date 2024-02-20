@@ -41,3 +41,20 @@ CREATE TABLE IF NOT EXISTS `slave_id_rsa` (
 );
 
 
+-- 从库状态表
+-- drop table `slave_status`;
+CREATE TABLE IF NOT EXISTS `slave_status` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `ip` TEXT,
+  `port` TEXT,
+  `user` TEXT,
+  `log_file` TEXT,
+  `io_running` TEXT,
+  `sql_running` TEXT,
+  `error_msg` TEXT,
+  `delay` TEXT,
+  `ps` TEXT,
+  `addtime` TEXT
+);
+
+

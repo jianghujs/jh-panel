@@ -2195,6 +2195,9 @@ function masterOrSlaveConf(version=''){
               openCronSelectorLayer(autoSaveSlaveStatusToMasterCron, {yes: addOrUpdateAutoSaveSlaveStatusToMasterCron});
             });
 
+            visibleDom('.auto-save-slave-to-master-cron', rdata.slave_status);
+
+
             //设置主服务器配置
             $(".btn-master").click(function () {
                 myPost('set_master_status', 'close=change', function(data){

@@ -2441,12 +2441,7 @@ def initSlaveStatus(version=''):
         db.query('SET GLOBAL super_read_only = on')
     except Exception as e:
         return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
-
     ssh_client.close()
-    time.sleep(1)
-    # 如果是tmp下的证书，删除证书
-    if SSH_PRIVATE_KEY == "/tmp/t_ssh.txt":
-      os.system("rm -rf " + SSH_PRIVATE_KEY)
     return mw.returnJson(True, '初始化成功!')
 
 
@@ -2513,7 +2508,7 @@ def saveSlaveStatus(version=''):
 def saveSlaveStatusToMaster(version=''):
     db = pMysqlDb()
     dlist = db.query('show slave status')
-    
+
     ip = mw.getLocalIp()
     
     for x in range(0, len(dlist)):

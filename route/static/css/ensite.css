@@ -3721,3 +3721,9 @@ html .menu .menu_exit:hover {
     padding: 0 10px;
     position: static
 }
+
+.card {
+  background-color: #f8f8f8;
+  border-radius: 5px;
+  padding: 10px;
+}

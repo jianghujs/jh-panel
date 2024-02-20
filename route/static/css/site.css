@@ -4945,3 +4945,9 @@ select[disabled]{
 .cron-selector-layer .layui-layer-content, .cron-selector-layer .cron-selector-main {
 	overflow: visible !important;
 }
+
+.card {
+  background-color: #f8f8f8;
+  border-radius: 5px;
+  padding: 10px;
+}

@@ -135,7 +135,7 @@ class reportTools:
             })
 
             # 备份相关
-            xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
+            mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
 
             # 网站
             siteinfo_tips = []
@@ -252,6 +252,12 @@ class reportTools:
                 summary_tips.append( "<span style='color: red;'>" + "、".join(siteinfo_summary_tips) + '域名证书需要及时更新</span>')
             # 备份信息
             backup_summary_tips = []
+            if mysql_master_slave_info is not None:
+                if len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
+                    for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
+                        if  (slave_status_item.get('error_msg', '') != '' or slave_status_item.get('delay', 0) > 0):  
+                            backup_summary_tips.append("MySQL主从同步")
+                            break
             if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
                 backup_summary_tips.append("Xtrabackup")
             if xtrabackup_inc_info is not None and (xtrabackup_inc_info.get('full_last_backup_time', '') is None or xtrabackup_inc_info.get('inc_last_backup_time', '') is None or xtrabackup_inc_info.get('full_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or xtrabackup_inc_info.get('inc_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
@@ -388,8 +394,11 @@ table tr td:nth-child(2) {
             slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
             slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()
             slave_status_conn.close()
+            mysql_master_slave_info = {
+                "slave_status_list": slave_status
+            }
             backup_tips.append({
-                "name": '主从同步',
+                "name": 'MySQL主从同步',
                 "desc":"""
 %s
                 """ % (
@@ -647,7 +656,7 @@ IP：{item.get('ip', '')}<br/>
             })
 
 
-        return xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips
+        return mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips
 
 
 if __name__ == "__main__":

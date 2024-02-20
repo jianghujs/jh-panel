@@ -2541,6 +2541,7 @@ def saveSlaveStatusToMaster(version=''):
             result = stdout.read()
             result = result.decode('utf-8')
             print("|- result：", result)
+            
         except Exception as e:
             return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
         ssh_client.close()

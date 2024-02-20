@@ -2535,7 +2535,7 @@ def saveSlaveStatusToMaster(version=''):
         try:
             print(f"|- 开始连接{user}@{master_ip}")
             ssh = ssh_client.connect(master_ip, master_port, id_rsa)
-            cmd = f'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py save_slave_status {{ip:{ip},user:{user},log_file:{log_file},io_running:{io_running},sql_running:{sql_running},delay:{delay},error_msg:"{error_msg}",ps:{ps}}}'
+            cmd = f'cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/mysql-apt/index.py save_slave_status {{ip:{ip},user:{user},log_file:{log_file},io_running:{io_running},sql_running:{sql_running},delay:{delay},error_msg:"{error_msg}",ps:{ps}}}'
             print("|- cmd：", cmd)
             stdin, stdout, stderr = ssh.exec_command(cmd)
             result = stdout.read()

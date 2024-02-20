@@ -2490,6 +2490,7 @@ def saveSlaveStatus(version=''):
     error_msg = args.get('error_msg', '')
     ps = args.get('ps', '')
     addtime = int(time.time())
+    print(f'ip:{ip}, user:{user}' )
 
     # 创建表
     config_conn = pSqliteDb('config')
@@ -2536,21 +2537,20 @@ def saveSlaveStatusToMaster(version=''):
         io_running = dlist[x]["Slave_IO_Running"]
         sql_running = dlist[x]["Slave_SQL_Running"]
         delay = dlist[x]["Seconds_Behind_Master"]
-        error_msg = dlist[x]["Last_Error"]
+        error_msg = dlist[x]["Last_Error"] if dlist[x]["Last_Error"] else dlist[x]["Last_IO_Error"]
         ps = ""
 
         ssh_client = master_ssh_client()
         try:
             ssh = ssh_client.connect(ip, master_port, id_rsa)
-            cmd = f'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py save_slave_status {{"ip":"{ip}", "user":"{user}", "log_file":"{log_file}", "io_running":"{io_running}", "sql_running":"{sql_running}", "delay":"{delay}", "error_msg":"{error_msg}", "ps":"{ps}"}}'
-            print(cmd)
+            cmd = f'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py save_slave_status {{ip:{ip},user:{user},log_file:{log_file},io_running:{io_running},sql_running:{sql_running},delay:{delay},error_msg:"{error_msg}",ps:{ps}}}'
             stdin, stdout, stderr = ssh.exec_command(cmd)
             result = stdout.read()
             result = result.decode('utf-8')
-            print('result', result)
         except Exception as e:
             return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
         ssh_client.close()
+    return mw.returnJson(True, '保存成功!')
 
 def dumpMysqlData(version=''):
     args = getArgs()

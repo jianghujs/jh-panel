@@ -2502,7 +2502,7 @@ def saveSlaveStatus(version=''):
     slave_status_conn = pSqliteDb('slave_status')
     # 判断是否存在指定的ip，如果存在则更新，不存在则新增
     data = slave_status_conn.field('id').where('ip=?', (ip,)).find()
-    if len(data) > 0:
+    if data and data['id'] > 0:
         slave_status_conn.where('ip=?', (ip,)).save('user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
     else:
         slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))

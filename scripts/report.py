@@ -379,9 +379,30 @@ table tr td:nth-child(2) {
         return mw.returnJson(True, '设置成功!')
     
     def getBackupReport(self):
+        backup_tips = []
+
+        # mysql主从
+        mysql_master_slave_info = None
+        mysql_dir = '/www/server/mysql-apt'
+        if os.path.exists(mysql_dir + '/mysql.db'):
+            slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
+            slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()
+            slave_status_conn.close()
+            backup_tips.append({
+                "name": '主从同步',
+                "desc":"""
+%s
+                """ % (
+                  ''.join(f"""
+IP：{item.get('ip', '')}<br/>
+状态：<span style=\"color: {'auto' if (item.get('error_msg', '') == '' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('error_msg', '') == '' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
+延迟：<span style=\"color: {'auto' if (item.get('delay', 'NULL') == 0) else 'red'}\">{item.get('delay', '')}</span>
+\n""" for item in slave_status)
+                )
+            })
+
         # xtrabackup
         xtrabackup_info = None
-        backup_tips = []
         if os.path.exists('/www/server/xtrabackup/'):
             xtrabackup_ddb = mw.getDDB('/www/server/xtrabackup/data/')
             xtrabackup_history = xtrabackup_ddb.getAll('backup_history')

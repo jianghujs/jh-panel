@@ -2514,6 +2514,8 @@ def saveSlaveStatusToMaster(version=''):
     db = pMysqlDb()
     dlist = db.query('show slave status')
     
+    ip = mw.getLocalIp()
+    
     for x in range(0, len(dlist)):
 
         # 报错从库状态
@@ -2523,7 +2525,7 @@ def saveSlaveStatusToMaster(version=''):
           print('未找到【[主]SSH配置】!')
           continue
             
-        ip = data['ip']
+        master_ip = data['ip']
         master_port = data['port']
         id_rsa = data['id_rsa']
         user = dlist[x]["Master_User"]
@@ -2536,7 +2538,7 @@ def saveSlaveStatusToMaster(version=''):
 
         ssh_client = master_ssh_client()
         try:
-            ssh = ssh_client.connect(ip, master_port, id_rsa)
+            ssh = ssh_client.connect(master_ip, master_port, id_rsa)
             cmd = f'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py save_slave_status {{ip:{ip},user:{user},log_file:{log_file},io_running:{io_running},sql_running:{sql_running},delay:{delay},error_msg:"{error_msg}",ps:{ps}}}'
             stdin, stdout, stderr = ssh.exec_command(cmd)
             result = stdout.read()

@@ -2075,10 +2075,7 @@ function masterOrSlaveConf(version=''){
             //     <span class="sync btn btn-default btn-sm" onclick="getMasterRepSlaveList()" title="">添加</span>\
             // </div>
             $(".table_slave_status_list").html(con);
-            setTimeout(() => {
-              $('[data-toggle="tooltip"]').tooltip();
-
-            }, 1000)
+            $('[data-toggle="tooltip"]').tooltip();
         });
     }
 

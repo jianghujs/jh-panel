@@ -2014,10 +2014,10 @@ function initSlaveStatus(){
 
 var defaultAutoSaveSlaveStatusToMasterCron = {      
   name: '[勿删]主从状态推送到[主]服务器',
-  type: 'minute-n',
-  where1: 30,
+  type: 'hour-n',
+  where1: 2,
   hour: 0,
-  minute: 30,
+  minute: 0,
   week: '',
   sType: 'toShell',
   stype: 'toShell',

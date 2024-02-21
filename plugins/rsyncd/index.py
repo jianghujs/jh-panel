@@ -334,6 +334,34 @@ def initdUinstall():
     return 'ok'
 
 
+def lsyncdServiceStatus():
+    if mw.isAppleSystem():
+        return "Apple Computer does not support"
+
+    shell_cmd = 'systemctl status lsyncd | grep "active (running)"'
+    data = mw.execShell(shell_cmd)
+    if data[0] == '':
+        return 'fail'
+    return 'ok'
+
+def lsyncdServiceOpt():
+    if mw.isAppleSystem():
+        return "Apple Computer does not support"
+
+    args = getArgs()
+    data = checkArgs(args, ['opt'])
+    if not data[0]:
+        return data[1]
+
+    opt = args['opt']
+    if opt == 'start':
+        mw.execShell('systemctl start lsyncd')
+    elif opt == 'stop':
+        mw.execShell('systemctl stop lsyncd')
+    elif opt == 'restart':
+        mw.execShell('systemctl restart lsyncd')
+    return mw.returnJson(True, '操作成功!')
+
 def getRecListData():
     path = appConf()
     content = mw.readFile(path)
@@ -1130,6 +1158,10 @@ if __name__ == "__main__":
         print(initdInstall())
     elif func == 'initd_uninstall':
         print(initdUinstall())
+    elif func == 'lsyncd_service_status':
+        print(lsyncdServiceStatus())
+    elif func == 'lsyncd_service_opt':
+        print(lsyncdServiceOpt())
     elif func == 'conf':
         print(appConf())
     elif func == 'run_log':

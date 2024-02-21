@@ -585,6 +585,115 @@ function lsyncdConfLog(){
     openNewWindowPath(`/www/server/rsyncd/logs/`)
 }
 
+
+function lsyncdServiceLog(){
+  execScriptAndShowLog('正在获取lsyncd日志...', 'journalctl -f -u lsyncd');
+}
+
+function lsyncdServiceStatus() {
+  rsPost('lsyncd_service_status', '', function(data){
+    let status = data.data
+    $('.lsyncd-status').text(status == 'ok'?'运行中':'已停止');
+    $('.lsyncd-status').css('color', status == 'ok'?'green':'red');
+    visibleDom('.lsyncd-service-start-btn', status != 'ok');
+    visibleDom('.lsyncd-service-stop-btn', status == 'ok');
+  });
+
+}
+
+function lsyncdServiceOpt(opt) {
+  rsPost('lsyncd_service_opt', {opt}, function(data){
+    var rdata = $.parseJSON(data.data);
+    layer.msg(rdata.msg,{icon:rdata.status?1:2,time:2000,shade: [0.3, '#000']});
+    lsyncdServiceStatus();
+  });
+}
+
+
+function lsyncdRealtime(){
+  var con = `\
+  
+  <div class="safe container-fluid mt10" style="overflow: hidden;">
+      <div class="flex align-center">
+          lsyncd服务状态：
+          <span class="lsyncd-status">获取中...</span>
+      </div>
+      <div class="mt15 flex align-center">
+          <button class="btn btn-success btn-sm mr5 lsyncd-service-start-btn" onclick="lsyncdServiceOpt('start')" >启用</button>\    
+          <button class="btn btn-danger btn-sm mr5 lsyncd-service-stop-btn" onclick="lsyncdServiceOpt('stop')" >停用</button>\
+          <button class="btn btn-success btn-sm mr5" onclick="lsyncdServiceOpt('restart')" >重启</button>\
+          <button class="btn btn-default btn-sm mr5" onclick="lsyncdConfLog()" >同步日志</button>\
+          <button class="btn btn-default btn-sm mr5" onclick="lsyncdServiceLog()" >服务日志</button>\
+      </div>
+  </div>
+  <hr/>\
+  <div class="safe container-fluid mt10" style="overflow: hidden;">
+      <div class="flex align-center">任务设置：</div>
+      <div class="mt15">\
+
+        <div class="card mb10" id="lsyncd-log-cut-cron">\
+          <span class="flex align-center mb10">定时切割实时日志：</span>\
+          
+          <div>\
+              <span>每天</span>\
+              <span>\
+                  <input type="hidden" name="id" value="">\
+                  <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
+                  <span class="name">:</span>\
+                  <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
+              </span>\
+              <span>定时执行切割</span>\
+          </div>\
+          <div class="flex align-center mtb10">\
+              <div class="mr5">保留规则</div>\
+              <div class="plan_hms pull-left mr20 bt-input-text">\
+                  <span><input type="number" name="saveAllDay" maxlength="4" max="100" min="1"></span>\
+                  <span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
+                  <span><input type="number" name="saveOther" maxlength="4" max="100" min="1"></span>\
+                  <span class="name" style="width: 90px;">份，最长保留</span>\
+                  <span><input type="number" name="saveMaxDay" maxlength="4" max="100" min="1"></span>\
+                  <span class="name">天</span>\
+              </div>\
+          </div>\
+          <button id="lsyncd-log-cut-cron-add" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="addLsyncdLogCutCron();">创建</button>\
+          <button id="lsyncd-log-cut-cron-update" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="updateLsyncdLogCutCron();">修改</button>\
+          <button id="lsyncd-log-cut-cron-delete" style="display: none;"\
+              class="btn btn-danger btn-sm" onclick="deleteLsyncdLogCutCron();">删除</button>\
+        </div>\
+        <div class="card" id="lsyncd-all-sync-cron">\
+          <span class="flex align-center mb10">定时同步全部实时任务：</span>\
+          <div class="mb10">\
+              <span>每天</span>\
+              <span>\
+                  <input type="hidden" name="id" value="">\
+                  <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
+                  <span class="name">:</span>\
+                  <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
+              </span>\
+              <span>定时执行</span>\
+          </div>\
+          <button id="lsyncd-all-sync-add" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="addLsyncdAllSyncCron();">创建</button>\
+          <button id="lsyncd-all-sync-update" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="updateLsyncdAllSyncCron();">修改</button>\
+          <button id="lsyncd-all-sync-delete" style="display: none;"\
+              class="btn btn-danger btn-sm" onclick="deleteLsyncdAllSyncCron();">删除</button>\
+        </div>\
+
+      </div>\
+    </div>\
+  </div>
+  `;
+
+  $(".soft-man-con").html(con);
+  
+  getLsyncdLogCutCron();
+  getLsyncdAllSyncCron();
+  lsyncdServiceStatus();
+}
+
 function lsyncdSend(){
     rsPost('lsyncd_list', '', function(data){
         var rdata = $.parseJSON(data.data);
@@ -598,8 +707,6 @@ function lsyncdSend(){
 
         con += '<div style="padding-top:1px;">\
                 <button class="btn btn-success btn-sm" onclick="createSendTask();">创建发送任务</button>\
-                <button class="btn btn-default btn-sm" onclick="lsyncdConfLog();">实时日志</button>\
-                <button class="btn btn-default btn-sm" onclick="lsyncdSetting();">实时设置</button>\
             </div>';
 
         con += '<div class="lsyncd-send-table divtable" style="margin-top:5px;"><table class="table table-hover" width="100%" cellspacing="0" cellpadding="0" border="0">';
@@ -899,77 +1006,6 @@ popd > /dev/null
   `,
   backupTo: 'localhost' };
 var lsyncdAllSyncCron = {...defaultLsyncdAllSyncCron}
-
-
-function lsyncdSetting() {
-  layer.open({
-    type: 1,
-    area: "590px",
-    title: '实时设置',
-    closeBtn: 1,
-    shift: 5,
-    shadeClose: false,
-    content: '<div id="lsyncd-setting">\
-        <div id="lsyncd-log-cut-cron" class="pd20">\
-          <div class="card">\
-            <span class="flex align-center mb10">定时切割实时日志：</span>\
-            <div>\
-                <span>每天</span>\
-                <span>\
-                    <input type="hidden" name="id" value="">\
-                    <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
-                    <span class="name">:</span>\
-                    <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
-                </span>\
-                <span>定时执行切割</span>\
-            </div>\
-            <div class="flex align-center mtb10">\
-                <div class="mr5">保留规则</div>\
-                <div class="plan_hms pull-left mr20 bt-input-text">\
-                    <span><input type="number" name="saveAllDay" maxlength="4" max="100" min="1"></span>\
-                    <span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
-                    <span><input type="number" name="saveOther" maxlength="4" max="100" min="1"></span>\
-                    <span class="name" style="width: 90px;">份，最长保留</span>\
-                    <span><input type="number" name="saveMaxDay" maxlength="4" max="100" min="1"></span>\
-                    <span class="name">天</span>\
-                </div>\
-            </div>\
-            <button id="lsyncd-log-cut-cron-add" style="display: none;"\
-                class="btn btn-success btn-sm" onclick="addLsyncdLogCutCron();">创建</button>\
-            <button id="lsyncd-log-cut-cron-update" style="display: none;"\
-                class="btn btn-success btn-sm" onclick="updateLsyncdLogCutCron();">修改</button>\
-            <button id="lsyncd-log-cut-cron-delete" style="display: none;"\
-                class="btn btn-danger btn-sm" onclick="deleteLsyncdLogCutCron();">删除</button>\
-          </div>\
-        </div>\
-        <div id="lsyncd-all-sync-cron" class="pd20" style="padding-top: 0">\
-          <div class="card">\
-            <span class="flex align-center mb10">定时同步全部实时任务：</span>\
-            <div class="mb10">\
-                <span>每天</span>\
-                <span>\
-                    <input type="hidden" name="id" value="">\
-                    <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
-                    <span class="name">:</span>\
-                    <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
-                </span>\
-                <span>定时执行</span>\
-            </div>\
-            <button id="lsyncd-all-sync-add" style="display: none;"\
-                class="btn btn-success btn-sm" onclick="addLsyncdAllSyncCron();">创建</button>\
-            <button id="lsyncd-all-sync-update" style="display: none;"\
-                class="btn btn-success btn-sm" onclick="updateLsyncdAllSyncCron();">修改</button>\
-            <button id="lsyncd-all-sync-delete" style="display: none;"\
-                class="btn btn-danger btn-sm" onclick="deleteLsyncdAllSyncCron();">删除</button>\
-          </div>\
-        </div>\
-    </div>',
-    success: function() {
-      getLsyncdLogCutCron();
-      getLsyncdAllSyncCron();
-    }
-  })
-}
 
 
 function getLsyncdLogCutCron() {

@@ -53,7 +53,7 @@ def mw_input_default_cmd(msg, default):
     return in_val
 
 
-def mwcli(mw_input=0):
+def mwcli(mw_input=0, confirm=False):
     raw_tip = "======================================================"
     if not mw_input:
         print("===============jh-panel cli tools=================")
@@ -85,17 +85,20 @@ def mwcli(mw_input=0):
         exit()
 
     if mw_input == 1:
+      if not confirm:
         confirm = mw_input_default_cmd("提示：在面板终端执行此操作可能会失败，请勿在面板终端执行此操作\n确定要重启面板吗？（默认y）[y/n]：", 'y')
-        if confirm == 'y':
-            os.system(INIT_CMD + " restart")
-        else:
+        if confirm != 'y':
             print("已取消")
+            exit()
+      os.system(INIT_CMD + " restart")
     elif mw_input == 2:
+      if not confirm:
         confirm = mw_input_default_cmd("提示：在面板终端执行此操作可能会失败，请勿在面板终端执行此操作\n确定要停止面板吗？（默认y）[y/n]：", 'n')
-        if confirm == 'y':
-            os.system(INIT_CMD + " stop")
-        else:
+        if confirm != 'y':
             print("已取消")
+            exit()
+      
+      os.system(INIT_CMD + " stop")
     elif mw_input == 3:
         os.system(INIT_CMD + " start")
     elif mw_input == 4:
@@ -212,6 +215,7 @@ def getLocalIp():
 
 if __name__ == "__main__":
     method = sys.argv[1]
+    confirm = True if len(sys.argv) > 3 and sys.argv[3] == '-y' else False
     if method == 'panel':
         set_panel_pwd(sys.argv[2])
     elif method == 'username':
@@ -232,6 +236,6 @@ if __name__ == "__main__":
                 clinum = int(sys.argv[2]) if sys.argv[2][:6] else sys.argv[2]
         except:
             clinum = sys.argv[2]
-        mwcli(clinum)
+        mwcli(clinum, confirm)
     else:
         print('ERROR: Parameter error')

@@ -74,6 +74,78 @@ class backupTools:
         print("|---文件名:" + filename)
         self.cleanBackupByHistory('0', pid, save)
 
+    
+    def backupSiteSetting(self, name, save):
+        sql = db.Sql()
+        path = sql.table('sites').where('name=?', (name,)).getField('path')
+        startTime = time.time()
+        if not path:
+            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+            log = "网站[" + name + "]不存在!"
+            print("★[" + endDate + "] " + log)
+            print(
+                "----------------------------------------------------------------------------")
+            return
+
+        backup_path = mw.getBackupDir() + '/siteSetting'
+        if not os.path.exists(backup_path):
+            mw.execShell("mkdir -p " + backup_path)
+
+        filename = backup_path + "/" + name + "_" + \
+            time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.tar.gz'
+
+        random_str = mw.getRandomString(8).lower()
+        tmp_path = '/tmp/siteSetting/' + random_str
+        if os.path.exists(tmp_path):
+            mw.execShell('rm -rf ' + tmp_path)
+        mw.execShell('mkdir -p ' + tmp_path)
+
+        print(tmp_path)
+
+        backup_cmd = f"""
+set -e
+site_name={name}
+filename={filename}
+tmp_path={tmp_path}
+tmp_site_path=$tmp_path/$site_name
+
+mkdir -p ${{tmp_site_path}}/web_conf/nginx/rewrite
+mkdir -p ${{tmp_site_path}}/web_conf/nginx/vhost
+
+cp /www/server/web_conf/nginx/rewrite/$site_name.conf ${{tmp_site_path}}/web_conf/nginx/rewrite/
+cp /www/server/web_conf/nginx/vhost/$site_name.conf ${{tmp_site_path}}/web_conf/nginx/vhost/
+
+cd $tmp_site_path
+zip -r $filename .
+
+rm -rf $tmp_path
+        """
+        
+        # 写入临时文件用于执行
+        tempFilePath = tmp_path + '/zip.sh'
+        mw.writeFile(tempFilePath, backup_cmd)
+        mw.execShell('chmod 750 ' + tempFilePath)
+        mw.execShell('source /root/.bashrc && ' + tempFilePath)
+
+        endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+
+        print(filename)
+        if not os.path.exists(filename):
+            log = "网站[" + name + "]备份配置失败!"
+            print("★[" + endDate + "] " + log)
+            print(
+                "----------------------------------------------------------------------------")
+            return
+
+        outTime = time.time() - startTime
+        pid = sql.table('sites').where('name=?', (name,)).getField('id')
+        sql.table('backup').add('type,name,pid,filename,addtime,size', ('2', os.path.basename(
+            filename), pid, filename, endDate, os.path.getsize(filename)))
+        log = "网站[" + name + "]备份配置成功,用时[" + str(round(outTime, 2)) + "]秒"
+        mw.writeLog('计划任务', log)
+        print("★[" + endDate + "] " + log)
+        
+
     def backupDatabase(self, name, save):
         db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
@@ -143,6 +215,12 @@ class backupTools:
         for site in sites:
             self.backupSite(site['name'], save)
         print('|----备份所有网站任务完成')
+
+    def backupSiteSettingAll(self, save):
+        sites = mw.M('sites').field('name').select()
+        for site in sites:
+            self.backupSiteSetting(site['name'], save)
+        print('|----备份所有网站配置任务完成')
     
     def cleanBackupByHistory(self, type, pid, save):
         # 清理多余备份
@@ -212,6 +290,12 @@ if __name__ == "__main__":
         else:
             backup.backupSite(name, save)
         clean_tool.cleanPath("/www/backup/site", save, "*")
+    elif type == 'siteSetting':
+        if sys.argv[2].find('backupAll') >= 0:
+            backup.backupSiteSettingAll(save)
+        else:
+            backup.backupSiteSetting(name, save)
+        clean_tool.cleanPath("/www/backup/siteSetting", save, "*")
     elif type == 'database':
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupDatabaseAll(save)

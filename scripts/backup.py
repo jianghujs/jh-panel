@@ -15,7 +15,6 @@ if sys.platform != 'darwin':
 chdir = os.getcwd()
 sys.path.append(chdir + '/class/core')
 sys.path.append(chdir + '/class/plugin')
-
 # reload(sys)
 # sys.setdefaultencoding('utf-8')
 
@@ -24,6 +23,10 @@ import mw
 import db
 import time
 import clean_tool
+import system_api
+import site_api
+systemApi = system_api.system_api()
+siteApi = site_api.site_api()
 
 
 class backupTools:
@@ -293,6 +296,22 @@ rm -rf $tmp_path
         sites = mw.M('sites').field('name').select()
         for site in sites:
             self.backupSiteSetting(site['name'], save)
+
+        # 备份all包
+        backup_path = mw.getBackupDir() + '/siteSetting'
+        filename = backup_path + "/all_" + \
+            time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.zip'
+        random_str = mw.getRandomString(8).lower()
+        tmp_path = '/tmp/siteSetting/' + random_str
+        if os.path.exists(tmp_path):
+            mw.execShell('rm -rf ' + tmp_path)
+        mw.execShell('mkdir -p ' + tmp_path)
+
+        site_info = systemApi.getSiteInfo()
+        mw.writeFile(tmp_path + "/site_info.json", site_info)
+        mw.execShell(f'pushd /www/server/web_conf/ > /dev/null && zip -r {tmp_path}/web_conf.zip . && popd > /dev/null')
+        mw.execShell(f'cp -r /www/server/jh-panel/data/letsencrypt.json {tmp_path}/letsencrypt.json')
+        mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null')
         print('|----备份所有网站配置任务完成')
     
     def backupPluginSettingAll(self, save):

@@ -774,7 +774,7 @@ function lsyncdSend(){
         con += '</table></div>';
 
         $(".soft-man-con").html(con);
-        syncdListTest(list);
+        // syncdListTest(list);
     });
 }
 

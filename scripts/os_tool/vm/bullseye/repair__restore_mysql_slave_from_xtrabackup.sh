@@ -24,6 +24,10 @@ backup_dir=${backup_dir:-${default_backup_dir}}
 
 # 获取最近的一个xtrabackup文件
 xtrabackup_file_path=$(ls -t ${backup_dir}/xtrabackup_data*.zip | head -n 1)
+if [ -z "$xtrabackup_file_path" ]; then
+  echo "错误:未找到xtrabackup备份文件"
+  exit 1
+fi
 xtrabackup_file=$(basename ${xtrabackup_file_path})
 read -p "请输入xtrabackup文件名称（默认为：${xtrabackup_file}）: " xtrabackup_file_input
 xtrabackup_file=${xtrabackup_file_input:-$xtrabackup_file}

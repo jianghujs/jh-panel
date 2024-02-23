@@ -66,6 +66,10 @@ if [ $choice == "y" ]; then
     site_setting_backup_dir=${site_setting_backup_dir:-${default_site_setting_backup_dir}}
     # 获取最近的一个网站配置all文件
     site_setting_file_path=$(ls -t ${site_setting_backup_dir}/all_*.zip | head -n 1)
+    if [ -z "$plugin_setting_file_path" ]; then
+      echo "错误:未找到网站配置备份文件"
+      exit 1
+    fi
     site_setting_file=$(basename ${site_setting_file_path})
     read -p "请输入网站配置备份文件名称（默认为：${site_setting_file}）: " site_setting_file_input
     site_setting_file=${site_setting_file_input:-$site_setting_file}
@@ -112,6 +116,10 @@ if [ $choice == "y" ]; then
     plugin_setting_backup_dir=${plugin_setting_backup_dir:-${default_plugin_setting_backup_dir}}
     # 获取最近的一个插件配置all文件
     plugin_setting_file_path=$(ls -t ${plugin_setting_backup_dir}/all_*.zip | head -n 1)
+    if [ -z "$plugin_setting_file_path" ]; then
+      echo "错误:未找到插件配置备份文件"
+      exit 1
+    fi
     plugin_setting_file=$(basename ${plugin_setting_file_path})
     read -p "请输入插件配置备份文件名称（默认为：${plugin_setting_file}）: " plugin_setting_file_input
     plugin_setting_file=${plugin_setting_file_input:-$plugin_setting_file}

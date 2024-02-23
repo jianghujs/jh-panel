@@ -431,10 +431,7 @@ class crontab_api:
             data['data'] = mw.M('sites').field('name,ps').select()
 
         if stype == 'pluginSetting':
-            data['data'] = [
-              { "name": 'JianghuJS', "ps": 'JianghuJS管理器项目数据' },
-              { "name": 'Docker', "ps": 'Docker管理器项目数据' }
-            ]
+            data['data'] = mw.getBackupPluginList()
 
         if stype == 'databases':
             db_list = {}

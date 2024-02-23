@@ -2122,3 +2122,10 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
             notify_msg = generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
             notifyMessage(title='服务器异常通知', msg=notify_msg, stype='面板监控', trigger_time=600)
             updateLockData(site_ssl_lock_data_key)
+
+
+def getBackupPluginList():
+  return [
+    { "name": 'jianghujs', "path": "/www/server/jianghujs", "ps": 'JianghuJS管理器项目数据' },
+    { "name": 'docker', "path": "/www/server/docker", "ps": 'Docker管理器项目数据' }
+  ]

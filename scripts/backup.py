@@ -145,6 +145,79 @@ rm -rf $tmp_path
         mw.writeLog('计划任务', log)
         print("★[" + endDate + "] " + log)
         
+    
+    def backupPluginSetting(self, name, save):
+        sql = db.Sql()
+        
+        plugin_list = mw.getBackupPluginList()
+        find_plugin_list = [data for data in plugin_list if data.get('name') == name]
+        if len(find_plugin_list) == 0:
+            print(f"插件[{name}]不存在!")
+            return
+        plugin = find_plugin_list[0]
+        path = plugin.get('path')
+
+        startTime = time.time()
+        if not path:
+            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+            log = "插件[" + name + "]不存在!"
+            print("★[" + endDate + "] " + log)
+            print(
+                "----------------------------------------------------------------------------")
+            return
+
+        backup_path = mw.getBackupDir() + '/pluginSetting'
+        if not os.path.exists(backup_path):
+            mw.execShell("mkdir -p " + backup_path)
+
+        filename = backup_path + "/" + name + "_" + \
+            time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.tar.gz'
+
+        random_str = mw.getRandomString(8).lower()
+        tmp_path = '/tmp/pluginSetting/' + random_str
+        if os.path.exists(tmp_path):
+            mw.execShell('rm -rf ' + tmp_path)
+        mw.execShell('mkdir -p ' + tmp_path)
+
+        print(tmp_path)
+
+        backup_cmd = f"""
+set -e
+plugin_name={name}
+plugin_path={path}
+tmp_path={tmp_path}
+tmp_plugin_path=$tmp_path/$plugin_name
+
+cp -r ${{plugin_path}} ${{tmp_plugin_path}} 
+cd $tmp_plugin_path
+zip -r {filename} .
+
+rm -rf $tmp_path
+        """
+        
+        # 写入临时文件用于执行
+        tempFilePath = tmp_path + '/zip.sh'
+        mw.writeFile(tempFilePath, backup_cmd)
+        mw.execShell('chmod 750 ' + tempFilePath)
+        mw.execShell('source /root/.bashrc && ' + tempFilePath)
+
+        endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+
+        print(filename)
+        if not os.path.exists(filename):
+            log = "插件[" + name + "]备份配置失败!"
+            print("★[" + endDate + "] " + log)
+            print(
+                "----------------------------------------------------------------------------")
+            return
+
+        outTime = time.time() - startTime
+        sql.table('backup').add('type,name,filename,addtime,size', ('3', os.path.basename(
+            filename), filename, endDate, os.path.getsize(filename)))
+        log = "插件[" + name + "]备份配置成功,用时[" + str(round(outTime, 2)) + "]秒"
+        mw.writeLog('计划任务', log)
+        print("★[" + endDate + "] " + log)
+        
 
     def backupDatabase(self, name, save):
         db_path = mw.getServerDir() + '/mysql-apt'
@@ -222,6 +295,12 @@ rm -rf $tmp_path
             self.backupSiteSetting(site['name'], save)
         print('|----备份所有网站配置任务完成')
     
+    def backupPluginSettingAll(self, save):
+        plugin_list = mw.getBackupPluginList()
+        for plugin in plugin_list:
+            self.backupPluginSetting(plugin['name'], save)
+        print('|----备份所有插件配置任务完成')
+    
     def cleanBackupByHistory(self, type, pid, save):
         # 清理多余备份
         saveAllDay = int(save.get('saveAllDay'))
@@ -296,6 +375,12 @@ if __name__ == "__main__":
         else:
             backup.backupSiteSetting(name, save)
         clean_tool.cleanPath("/www/backup/siteSetting", save, "*")
+    elif type == 'pluginSetting':
+        if sys.argv[2].find('backupAll') >= 0:
+            backup.backupPluginSettingAll(save)
+        else:
+            backup.backupPluginSetting(name, save)
+        clean_tool.cleanPath("/www/backup/pluginSetting", save, "*")
     elif type == 'database':
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupDatabaseAll(save)

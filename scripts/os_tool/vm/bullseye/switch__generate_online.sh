@@ -56,7 +56,6 @@ if [ $choice == "y" ]; then
   fi
 
   # 恢复网站数据
-  echo "" >> $script_file
   read -p "需要恢复网站配置吗？（默认n）[y/n]: " site_setting_restore_choice
   site_setting_restore_choice=${site_setting_restore_choice:-"n"}
 
@@ -123,8 +122,8 @@ if [ $choice == "y" ]; then
     echo "pushd \$plugin_setting_restore_tmp > /dev/null" >> $script_file
     echo "for zipfile in *.zip; do" >> $script_file
     echo "    filename=\$(basename \"\$zipfile\" .zip)" >> $script_file
-    echo "    server_dir=/www/server1/\$filename" >> $script_file
-    echo "    mkdir -p \$server_dir"
+    echo "    server_dir=/www/server/\$filename" >> $script_file
+    echo "    mkdir -p \$server_dir" >> $script_file
     echo "    echo \"正在解压 \$zipfile 到 \$server_dir\"" >> $script_file
     echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\"" >> $script_file
     echo "done" >> $script_file

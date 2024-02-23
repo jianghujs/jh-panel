@@ -182,8 +182,6 @@ rm -rf $tmp_path
             mw.execShell('rm -rf ' + tmp_path)
         mw.execShell('mkdir -p ' + tmp_path)
 
-        print(tmp_path)
-
         backup_cmd = f"""
 set -e
 plugin_name={name}
@@ -319,6 +317,21 @@ rm -rf $tmp_path
         plugin_list = mw.getBackupPluginList()
         for plugin in plugin_list:
             self.backupPluginSetting(plugin['name'], save)
+
+        # 备份all包
+        backup_path = mw.getBackupDir() + '/pluginSetting'
+        filename = backup_path + "/all_" + \
+            time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.zip'
+        random_str = mw.getRandomString(8).lower()
+        tmp_path = '/tmp/pluginSetting/' + random_str
+        if os.path.exists(tmp_path):
+            mw.execShell('rm -rf ' + tmp_path)
+        mw.execShell('mkdir -p ' + tmp_path)
+        for plugin in plugin_list:
+            name = plugin['name']
+            plugin_path = plugin['path']
+            mw.execShell(f'pushd {plugin_path}/ > /dev/null && zip -r {tmp_path}/{name}.zip . && popd > /dev/null')        
+        mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null')
         print('|----备份所有插件配置任务完成')
     
     def cleanBackupByHistory(self, type, pid, save):

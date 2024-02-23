@@ -308,7 +308,8 @@ rm -rf $tmp_path
         mw.execShell('mkdir -p ' + tmp_path)
 
         site_info = systemApi.getSiteInfo()
-        mw.writeFile(tmp_path + "/site_info.json", site_info)
+        with open(tmp_path + "/site_info.json", 'w') as f:
+          json.dump(site_info, f)
         mw.execShell(f'pushd /www/server/web_conf/ > /dev/null && zip -r {tmp_path}/web_conf.zip . && popd > /dev/null')
         mw.execShell(f'cp -r /www/server/jh-panel/data/letsencrypt.json {tmp_path}/letsencrypt.json')
         mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null')

@@ -56,7 +56,6 @@ if [ $choice == "y" ]; then
   fi
 
   # 恢复网站数据
-  echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
   echo "" >> $script_file
   read -p "需要恢复网站配置吗？（默认n）[y/n]: " site_setting_restore_choice
   site_setting_restore_choice=${site_setting_restore_choice:-"n"}
@@ -99,6 +98,39 @@ if [ $choice == "y" ]; then
 
     echo "popd > /dev/null" >> $script_file
     echo "echo \"|- 恢复网站配置✅\"" >> $script_file
+    echo "" >> $script_file
+  fi
+
+  # 恢复插件数据
+  echo "" >> $script_file
+  read -p "需要恢复插件配置吗？（默认n）[y/n]: " plugin_setting_restore_choice
+  plugin_setting_restore_choice=${plugin_setting_restore_choice:-"n"}
+
+  if [ $plugin_setting_restore_choice == "y" ]; then
+    echo "# 恢复插件配置" >> $script_file
+    default_plugin_setting_backup_dir="/www/backup/pluginSetting"
+    read -p "请输入插件配置备份文件所在目录（默认为：${default_plugin_setting_backup_dir}）: " plugin_setting_backup_dir
+    plugin_setting_backup_dir=${plugin_setting_backup_dir:-${default_plugin_setting_backup_dir}}
+    # 获取最近的一个插件配置all文件
+    plugin_setting_file_path=$(ls -t ${plugin_setting_backup_dir}/all_*.zip | head -n 1)
+    plugin_setting_file=$(basename ${plugin_setting_file_path})
+    read -p "请输入插件配置备份文件名称（默认为：${plugin_setting_file}）: " plugin_setting_file_input
+    plugin_setting_file=${plugin_setting_file_input:-$plugin_setting_file}
+    
+    echo "plugin_setting_restore_tmp=/tmp/pluginSettingRestore" >> $script_file
+    echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/" >> $script_file
+    
+    echo "pushd \$plugin_setting_restore_tmp > /dev/null" >> $script_file
+    echo "for zipfile in *.zip; do" >> $script_file
+    echo "    filename=\$(basename \"\$zipfile\" .zip)" >> $script_file
+    echo "    server_dir=/www/server1/\$filename" >> $script_file
+    echo "    mkdir -p \$server_dir"
+    echo "    echo \"正在解压 \$zipfile 到 \$server_dir\"" >> $script_file
+    echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\"" >> $script_file
+    echo "done" >> $script_file
+
+    echo "popd > /dev/null" >> $script_file
+    echo "echo \"|- 恢复插件配置✅\"" >> $script_file
     echo "" >> $script_file
   fi
 

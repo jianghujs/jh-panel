@@ -414,18 +414,27 @@ class crontab_api:
         
         stype = request.form.get('type', '')
 
+        data = {}
+        data['stype'] = stype
+
         bak_data = []
-
-        if stype == 'virtualbox':
-            data = {}
-            data['data'] = mw.getAllVms()
-            return mw.getJson(data)
-
+        
+        # bak_data获取
         if stype == 'sites' or stype == 'databases':
             hookPath = mw.getPanelDataDir() + "/hook_backup.json"
             if os.path.exists(hookPath):
                 t = mw.readFile(hookPath)
                 bak_data = json.loads(t)
+        
+        # data获取
+        if stype == 'sites' or stype == 'siteSetting' or stype == 'logs': 
+            data['data'] = mw.M('sites').field('name,ps').select()
+
+        if stype == 'pluginSetting':
+            data['data'] = [
+              { "name": 'JianghuJS', "ps": 'JianghuJS管理器项目数据' },
+              { "name": 'Docker', "ps": 'Docker管理器项目数据' }
+            ]
 
         if stype == 'databases':
             db_list = {}
@@ -447,16 +456,8 @@ class crontab_api:
                     path, 'mysql').field('name,ps').select()
                 
             return mw.getJson(db_list)
-        data = {}
-        data['stype'] = stype
-        data['orderOpt'] = bak_data
-        
-        default_db = 'sites'
-        # if stype == 'site' or stype == 'logs':
-        #     stype == 'sites'
 
-        data['data'] = mw.M(default_db).field('name,ps').select()
-        # data['data'] = mw.M(stype).field('name,ps').select()
+        data['orderOpt'] = bak_data
         return mw.getJson(data)
     ##### ----- start ----- ###
 
@@ -570,6 +571,8 @@ fi
             wheres = {
                 'path': head + "python3 " + script_dir + "/backup.py path " + param['sname'] + " '" + str(save) + "'",
                 'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " '" + str(save) + "'",
+                'siteSetting':   head + "python3 " + script_dir + "/backup.py siteSetting " + param['sname'] + " '" + str(save) + "'",
+                'pluginSetting':   head + "python3 " + script_dir + "/backup.py pluginSetting " + param['sname'] + " '" + str(save) + "'",
                 'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " '" + str(save) + "'",
                 'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                 'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
@@ -580,6 +583,8 @@ fi
                 wheres = {
                     'path': head + "python3 " + cfile + " path " + param['sname'] + " '" + str(save) + "'",
                     'site':   head + "python3 " + cfile + " site " + param['sname'] + " '" + str(save) + "'",
+                    'siteSetting':   head + "python3 " + cfile + " siteSetting " + param['sname'] + " '" + str(save) + "'",
+                    'pluginSetting':   head + "python3 " + cfile + " pluginSetting " + param['sname'] + " '" + str(save) + "'",
                     'database': head + "python3 " + cfile + " database " + param['sname'] + " '" + str(save) + "'",
                     'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                     'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'

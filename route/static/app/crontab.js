@@ -416,17 +416,21 @@ function initDropdownMenu(){
 				rememory();
 				$(".controls").html('提示');
 				break;
-			case 'site':
-				toBackup('sites');
-				$(".controls").html('备份网站');
-				break;
+      case 'site':
+        toBackup('sites');
+        $(".controls").html('备份网站');
+        break;
+      case 'siteSetting':
+        toBackup('siteSetting');
+        $(".controls").html('备份网站');
+        break;
+      case 'pluginSetting':
+        toBackup('pluginSetting');
+        $(".controls").html('备份插件');
+        break;
 			case 'database':
 				toBackup('databases');
 				$(".controls").html('备份数据库');
-				break;
-			case 'virtualbox':
-				toBackup('virtualbox');
-				$(".controls").html('备份VirtualBox快照');
 				break;
 			case 'logs':
 				toBackup('logs');
@@ -446,9 +450,17 @@ function toBackup(type){
 	var sMsg = "";
 	switch(type){
 		case 'sites':
-			sMsg = '备份网站';
+			sMsg = '备份网站资源';
 			sType = "sites";
 			break;
+    case 'siteSetting':
+      sMsg = '备份网站配置';
+      sType = "siteSetting";
+      break;
+    case 'pluginSetting':
+      sMsg = '备份插件配置';
+      sType = "pluginSetting";
+      break;
 		case 'databases':
 			sMsg = '备份数据库';
 			sType = "databases";
@@ -465,7 +477,7 @@ function toBackup(type){
 	var data='type='+sType
 	$.post('/crontab/get_data_list',data,function(rdata){
 		$(".planname input[name='name']").attr('readonly','true').css({"background-color":"#f6f6f6","color":"#666"});
-		var sOpt = "";
+    var sOpt = "";
 		if(rdata.data.length == 0){
 			layer.msg(lan.public.list_empty,{icon:2})
 			return
@@ -553,7 +565,7 @@ function editTaskInfo(id){
 				saveMaxDay: rdata.saveMaxDay,
 				urladdress: rdata.urladdress,
 			},
-			sTypeArray:[['toShell','Shell脚本'],['site','备份网站'],['database','备份数据库'],['logs','日志切割'],['path','备份目录'],['rememory','释放内存'],['toUrl','访问URL']],
+			sTypeArray:[['toShell','Shell脚本'],['site','备份网站资源'],['siteSetting','备份网站配置'],['pluginSetting','备份插件配置'],['database','备份数据库'],['logs','日志切割'],['path','备份目录'],['rememory','释放内存'],['toUrl','访问URL']],
 			cycleArray:[['day','每天'],['day-n','N天'],['hour','每小时'],['hour-n','N小时'],['minute-n','N分钟'],['week','每星期'],['month','每月']],
 			weekArray:[[1,'周一'],[2,'周二'],[3,'周三'],[4,'周四'],[5,'周五'],[6,'周六'],[7,'周日']],
 			sNameArray:[],

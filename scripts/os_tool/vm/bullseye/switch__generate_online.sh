@@ -53,6 +53,53 @@ if [ $choice == "y" ]; then
     echo "" >> $script_file
   fi
 
+  # 恢复网站数据
+  echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
+  echo "" >> $script_file
+  read -p "需要恢复网站配置吗？（默认n）[y/n]: " site_setting_restore_choice
+  site_setting_restore_choice=${site_setting_restore_choice:-"n"}
+
+  if [ $site_setting_restore_choice == "y" ]; then
+    echo "# 恢复网站配置" >> $script_file
+    default_site_setting_backup_dir="/www/backup/siteSetting"
+    read -p "请输入网站配置备份文件所在目录（默认为：${default_site_setting_backup_dir}）: " site_setting_backup_dir
+    site_setting_backup_dir=${site_setting_backup_dir:-${default_site_setting_backup_dir}}
+    # 获取最近的一个网站配置all文件
+    site_setting_file_path=$(ls -t ${site_setting_backup_dir}/all_*.zip | head -n 1)
+    site_setting_file=$(basename ${site_setting_file_path})
+    read -p "请输入网站配置备份文件名称（默认为：${site_setting_file}）: " site_setting_file_input
+    site_setting_file=${site_setting_file_input:-$site_setting_file}
+    
+    echo "site_setting_restore_tmp=/tmp/siteSettingRestore" >> $script_file
+    echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/" >> $script_file
+    
+    echo "pushd \$site_setting_restore_tmp > /dev/null" >> $script_file
+    echo "python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/site_info.json" >> $script_file
+    echo "echo \"导入站点数据完成✔!\"" >> $script_file
+    
+    echo "# 合并letsencrypt.json" >> $script_file
+    echo "local_letsencrypt_path=/www/server/jh-panel/data/letsencrypt.json" >> $script_file
+    echo "add_letsencrypt_path=\$(pwd)/letsencrypt.json" >> $script_file
+    echo "local_letsencrypt_content=\$(cat \"\$local_letsencrypt_path\")" >> $script_file
+    echo "add_letsencrypt_content=\$(cat "\$add_letsencrypt_path")" >> $script_file
+    echo "merged_letsencrypt_content=\$(jq -sc '.[0] * .[1]' <<< "\$local_letsencrypt_content \$add_letsencrypt_content")" >> $script_file
+    echo "echo \"\$merged_letsencrypt_content\" > \"\$local_letsencrypt_path\"" >> $script_file
+
+    echo "echo \"# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/\"" >> $script_file
+    echo "unzip -o ./web_conf.zip -d /www/server/web_conf/" >> $script_file
+    echo "echo \"恢复网站配置完成✔!\"" >> $script_file
+
+    echo "# 重启openresty" >> $script_file
+    echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
+    echo "python3 /www/server/jh-panel/plugins/openresty/index.py restart" >> $script_file
+    echo "popd > /dev/null" >> $script_file
+    echo "echo \"重启openresty完成✔!\"" >> $script_file
+
+    echo "popd > /dev/null" >> $script_file
+    echo "echo \"|- 恢复网站配置✅\"" >> $script_file
+    echo "" >> $script_file
+  fi
+
   # 主备服务器checksum检查
   read -p "需要检查主备服务器的checksum吗？（默认y）[y/n]: " checksum_choice
   checksum_choice=${checksum_choice:-"y"}

@@ -7,13 +7,13 @@ echo "即将生成服务器上线脚本到${script_file}，包含内容如下：
 echo "1. （可选）执行xtrabackup增量恢复"
 echo "2. （可选）检查数据一致性"
 echo "3. （可选）同步服务器文件"
-echo "1. （可选）恢复网站数据"
-echo "1. （可选）恢复插件数据"
-echo "4. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
-echo "5. 从authorized_keys删除同步公钥"
-echo "6. 启动rsyncd任务"
-echo "7. 启动Openresty"
-echo "8. 开启邮件通知"
+echo "4. （可选）恢复网站数据"
+echo "5. （可选）恢复插件数据"
+echo "6. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
+echo "7. 从authorized_keys删除同步公钥"
+echo "8. 启动rsyncd任务"
+echo "9. 启动Openresty"
+echo "10. 开启邮件通知"
 echo "-----------------------"
 read -p "确认生成吗？（默认y）[y/n]: " choice
 choice=${choice:-"y"}
@@ -146,12 +146,13 @@ if [ $choice == "y" ]; then
 
   if [ $site_setting_restore_choice == "y" ]; then
     echo "# 恢复网站配置" >> $script_file
-    default_site_setting_backup_dir="/www/backup/site-setting"
+    default_site_setting_backup_dir="/www/backup/site_setting"
     read -p "请输入网站配置备份文件所在目录（默认为：${default_site_setting_backup_dir}）: " site_setting_backup_dir
     site_setting_backup_dir=${site_setting_backup_dir:-${default_site_setting_backup_dir}}
     # 获取最近的一个网站配置all文件
     site_setting_file_path=$(ls -t ${site_setting_backup_dir}/all_*.zip | head -n 1)
-    if [ -z "$plugin_setting_file_path" ]; then
+    echo "$site_setting_file_path"
+    if [ -z "$site_setting_file_path" ]; then
       echo "错误:未找到网站配置备份文件"
       exit 1
     fi
@@ -159,7 +160,7 @@ if [ $choice == "y" ]; then
     read -p "请输入网站配置备份文件名称（默认为：${site_setting_file}）: " site_setting_file_input
     site_setting_file=${site_setting_file_input:-$site_setting_file}
     
-    echo "site_setting_restore_tmp=/tmp/site-setting-restore" >> $script_file
+    echo "site_setting_restore_tmp=/tmp/site_setting-restore" >> $script_file
     echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/" >> $script_file
     
     echo "pushd \$site_setting_restore_tmp > /dev/null" >> $script_file
@@ -196,7 +197,7 @@ if [ $choice == "y" ]; then
 
   if [ $plugin_setting_restore_choice == "y" ]; then
     echo "# 恢复插件配置" >> $script_file
-    default_plugin_setting_backup_dir="/www/backup/plugin-setting"
+    default_plugin_setting_backup_dir="/www/backup/plugin_setting"
     read -p "请输入插件配置备份文件所在目录（默认为：${default_plugin_setting_backup_dir}）: " plugin_setting_backup_dir
     plugin_setting_backup_dir=${plugin_setting_backup_dir:-${default_plugin_setting_backup_dir}}
     # 获取最近的一个插件配置all文件
@@ -209,7 +210,7 @@ if [ $choice == "y" ]; then
     read -p "请输入插件配置备份文件名称（默认为：${plugin_setting_file}）: " plugin_setting_file_input
     plugin_setting_file=${plugin_setting_file_input:-$plugin_setting_file}
     
-    echo "plugin_setting_restore_tmp=/tmp/plugin-setting-restore" >> $script_file
+    echo "plugin_setting_restore_tmp=/tmp/plugin_setting-restore" >> $script_file
     echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/" >> $script_file
     
     echo "pushd \$plugin_setting_restore_tmp > /dev/null" >> $script_file

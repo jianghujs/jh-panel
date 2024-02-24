@@ -1,6 +1,19 @@
 #!/bin/bash
 source /www/server/jh-panel/scripts/os_tool/tools.sh
 
+# 安装pygments
+if ! command -v pygmentize &> /dev/null; then
+    echo "pygmentize未安装，正在尝试自动安装..."
+    apt-get update
+    apt-get install python3-pygments -y
+    if ! command -v pygmentize &> /dev/null; then
+        echo "安装pygmentize失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+else
+    echo "pygmentize已安装。"
+fi
+
 script_file="/tmp/offline.sh"
 echo "-----------------------"
 echo "即将生成服务器下线脚本到${script_file}，包含内容如下："
@@ -61,9 +74,18 @@ if [ $choice == "y" ]; then
   echo ""
   echo "==========================生成脚本完成✅========================"
   echo "- 脚本路径：$script_file"
-  echo "---------------------------------------------------------------"
-  echo "请手动确认脚本内容并执行该脚本完成服务器下线操作："
-  echo "vi ${script_file}"
-  echo "bash ${script_file}"
+  echo "- 脚本内容："
+  show_info "---------------------------------------------------------------"
+  pygmentize $script_file
+  show_info "---------------------------------------------------------------"
   echo "==============================================================="
+  prompt "是否执行上面的脚本？（默认n）[y/n]: " run_script_choice "n"
+  if [ $run_script_choice == "n" ]; then
+    show_info "已取消执行脚本"
+    echo -e "\033[1;32m提示:\033[0m 您也可以手动确认脚本内容并执行该脚本完成服务器下线操作："
+    echo "vi ${script_file}"
+    echo "bash ${script_file}"
+    exit 0
+  fi
+  bash $script_file
 fi

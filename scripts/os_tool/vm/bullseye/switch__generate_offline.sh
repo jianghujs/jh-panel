@@ -55,7 +55,7 @@ if [ $choice == "y" ]; then
   echo "popd > /dev/null" >> $script_file
   echo "" >> $script_file
   echo "echo \"=========================服务器下线完成✅=======================\"" >> $script_file
-  echo "echo \"后续操作指引：请在备用机上线后启用当前环境NAS的同步任务\"" >> $script_file
+  echo "echo \"后续操作指引：请在备用机执行上线脚本\"" >> $script_file
   echo "echo \"===============================================================\"" >> $script_file
 
   echo ""

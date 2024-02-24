@@ -145,6 +145,12 @@ def getBackupDir():
     if os.path.exists(file):
         return readFile(file).strip()
     return getRootDir() + '/backup'
+  
+def getSiteSettingBackupDir():
+    return getBackupDir() + '/site_setting'
+
+def getPluginSettingBackupDir():
+    return getBackupDir() + '/plugin_setting'
 
 
 def setBackupDir(bdir):

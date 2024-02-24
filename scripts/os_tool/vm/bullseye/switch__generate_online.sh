@@ -5,10 +5,10 @@ script_file="/tmp/online.sh"
 echo "-----------------------"
 echo "即将生成服务器上线脚本到${script_file}，包含内容如下："
 echo "1. （可选）执行xtrabackup增量恢复"
-echo "1. （可选）恢复网站数据"
-echo "1. （可选）恢复插件数据"
 echo "2. （可选）检查数据一致性"
 echo "3. （可选）同步服务器文件"
+echo "1. （可选）恢复网站数据"
+echo "1. （可选）恢复插件数据"
 echo "4. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
 echo "5. 从authorized_keys删除同步公钥"
 echo "6. 启动rsyncd任务"
@@ -52,92 +52,6 @@ if [ $choice == "y" ]; then
     popd > /dev/null
     echo "${recovery_script}" >> $script_file
     echo "echo \"|- xtrabackup增量恢复完成✅\"" >> $script_file
-    echo "" >> $script_file
-  fi
-
-  # 恢复网站数据
-  read -p "需要恢复网站配置吗？（默认n）[y/n]: " site_setting_restore_choice
-  site_setting_restore_choice=${site_setting_restore_choice:-"n"}
-
-  if [ $site_setting_restore_choice == "y" ]; then
-    echo "# 恢复网站配置" >> $script_file
-    default_site_setting_backup_dir="/www/backup/siteSetting"
-    read -p "请输入网站配置备份文件所在目录（默认为：${default_site_setting_backup_dir}）: " site_setting_backup_dir
-    site_setting_backup_dir=${site_setting_backup_dir:-${default_site_setting_backup_dir}}
-    # 获取最近的一个网站配置all文件
-    site_setting_file_path=$(ls -t ${site_setting_backup_dir}/all_*.zip | head -n 1)
-    if [ -z "$plugin_setting_file_path" ]; then
-      echo "错误:未找到网站配置备份文件"
-      exit 1
-    fi
-    site_setting_file=$(basename ${site_setting_file_path})
-    read -p "请输入网站配置备份文件名称（默认为：${site_setting_file}）: " site_setting_file_input
-    site_setting_file=${site_setting_file_input:-$site_setting_file}
-    
-    echo "site_setting_restore_tmp=/tmp/siteSettingRestore" >> $script_file
-    echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/" >> $script_file
-    
-    echo "pushd \$site_setting_restore_tmp > /dev/null" >> $script_file
-    echo "python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/site_info.json" >> $script_file
-    echo "echo \"导入站点数据完成✔!\"" >> $script_file
-    
-    echo "# 合并letsencrypt.json" >> $script_file
-    echo "local_letsencrypt_path=/www/server/jh-panel/data/letsencrypt.json" >> $script_file
-    echo "add_letsencrypt_path=\$(pwd)/letsencrypt.json" >> $script_file
-    echo "local_letsencrypt_content=\$(cat \"\$local_letsencrypt_path\")" >> $script_file
-    echo "add_letsencrypt_content=\$(cat "\$add_letsencrypt_path")" >> $script_file
-    echo "merged_letsencrypt_content=\$(jq -sc '.[0] * .[1]' <<< "\$local_letsencrypt_content \$add_letsencrypt_content")" >> $script_file
-    echo "echo \"\$merged_letsencrypt_content\" > \"\$local_letsencrypt_path\"" >> $script_file
-
-    echo "echo \"# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/\"" >> $script_file
-    echo "unzip -o ./web_conf.zip -d /www/server/web_conf/" >> $script_file
-    echo "echo \"恢复网站配置完成✔!\"" >> $script_file
-
-    echo "# 重启openresty" >> $script_file
-    echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
-    echo "python3 /www/server/jh-panel/plugins/openresty/index.py restart" >> $script_file
-    echo "popd > /dev/null" >> $script_file
-    echo "echo \"重启openresty完成✔!\"" >> $script_file
-
-    echo "popd > /dev/null" >> $script_file
-    echo "echo \"|- 恢复网站配置✅\"" >> $script_file
-    echo "" >> $script_file
-  fi
-
-  # 恢复插件数据
-  echo "" >> $script_file
-  read -p "需要恢复插件配置吗？（默认n）[y/n]: " plugin_setting_restore_choice
-  plugin_setting_restore_choice=${plugin_setting_restore_choice:-"n"}
-
-  if [ $plugin_setting_restore_choice == "y" ]; then
-    echo "# 恢复插件配置" >> $script_file
-    default_plugin_setting_backup_dir="/www/backup/pluginSetting"
-    read -p "请输入插件配置备份文件所在目录（默认为：${default_plugin_setting_backup_dir}）: " plugin_setting_backup_dir
-    plugin_setting_backup_dir=${plugin_setting_backup_dir:-${default_plugin_setting_backup_dir}}
-    # 获取最近的一个插件配置all文件
-    plugin_setting_file_path=$(ls -t ${plugin_setting_backup_dir}/all_*.zip | head -n 1)
-    if [ -z "$plugin_setting_file_path" ]; then
-      echo "错误:未找到插件配置备份文件"
-      exit 1
-    fi
-    plugin_setting_file=$(basename ${plugin_setting_file_path})
-    read -p "请输入插件配置备份文件名称（默认为：${plugin_setting_file}）: " plugin_setting_file_input
-    plugin_setting_file=${plugin_setting_file_input:-$plugin_setting_file}
-    
-    echo "plugin_setting_restore_tmp=/tmp/pluginSettingRestore" >> $script_file
-    echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/" >> $script_file
-    
-    echo "pushd \$plugin_setting_restore_tmp > /dev/null" >> $script_file
-    echo "for zipfile in *.zip; do" >> $script_file
-    echo "    filename=\$(basename \"\$zipfile\" .zip)" >> $script_file
-    echo "    server_dir=/www/server/\$filename" >> $script_file
-    echo "    mkdir -p \$server_dir" >> $script_file
-    echo "    echo \"正在解压 \$zipfile 到 \$server_dir\"" >> $script_file
-    echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\"" >> $script_file
-    echo "done" >> $script_file
-
-    echo "popd > /dev/null" >> $script_file
-    echo "echo \"|- 恢复插件配置✅\"" >> $script_file
     echo "" >> $script_file
   fi
 
@@ -223,6 +137,93 @@ if [ $choice == "y" ]; then
       echo "echo \"|- 从线上服务器同步${sync_file_dir}完成✅\"" >> $script_file
       echo "" >> $script_file
     done
+  fi
+
+  
+  # 恢复网站数据
+  read -p "需要恢复网站配置吗？（默认n）[y/n]: " site_setting_restore_choice
+  site_setting_restore_choice=${site_setting_restore_choice:-"n"}
+
+  if [ $site_setting_restore_choice == "y" ]; then
+    echo "# 恢复网站配置" >> $script_file
+    default_site_setting_backup_dir="/www/backup/site-setting"
+    read -p "请输入网站配置备份文件所在目录（默认为：${default_site_setting_backup_dir}）: " site_setting_backup_dir
+    site_setting_backup_dir=${site_setting_backup_dir:-${default_site_setting_backup_dir}}
+    # 获取最近的一个网站配置all文件
+    site_setting_file_path=$(ls -t ${site_setting_backup_dir}/all_*.zip | head -n 1)
+    if [ -z "$plugin_setting_file_path" ]; then
+      echo "错误:未找到网站配置备份文件"
+      exit 1
+    fi
+    site_setting_file=$(basename ${site_setting_file_path})
+    read -p "请输入网站配置备份文件名称（默认为：${site_setting_file}）: " site_setting_file_input
+    site_setting_file=${site_setting_file_input:-$site_setting_file}
+    
+    echo "site_setting_restore_tmp=/tmp/site-setting-restore" >> $script_file
+    echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/" >> $script_file
+    
+    echo "pushd \$site_setting_restore_tmp > /dev/null" >> $script_file
+    echo "python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/site_info.json" >> $script_file
+    echo "echo \"导入站点数据完成✔!\"" >> $script_file
+    
+    echo "# 合并letsencrypt.json" >> $script_file
+    echo "local_letsencrypt_path=/www/server/jh-panel/data/letsencrypt.json" >> $script_file
+    echo "add_letsencrypt_path=\$(pwd)/letsencrypt.json" >> $script_file
+    echo "local_letsencrypt_content=\$(cat \"\$local_letsencrypt_path\")" >> $script_file
+    echo "add_letsencrypt_content=\$(cat "\$add_letsencrypt_path")" >> $script_file
+    echo "merged_letsencrypt_content=\$(jq -sc '.[0] * .[1]' <<< "\$local_letsencrypt_content \$add_letsencrypt_content")" >> $script_file
+    echo "echo \"\$merged_letsencrypt_content\" > \"\$local_letsencrypt_path\"" >> $script_file
+
+    echo "echo \"# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/\"" >> $script_file
+    echo "unzip -o ./web_conf.zip -d /www/server/web_conf/" >> $script_file
+    echo "echo \"恢复网站配置完成✔!\"" >> $script_file
+
+    echo "# 重启openresty" >> $script_file
+    echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
+    echo "python3 /www/server/jh-panel/plugins/openresty/index.py restart" >> $script_file
+    echo "popd > /dev/null" >> $script_file
+    echo "echo \"重启openresty完成✔!\"" >> $script_file
+
+    echo "popd > /dev/null" >> $script_file
+    echo "echo \"|- 恢复网站配置✅\"" >> $script_file
+    echo "" >> $script_file
+  fi
+
+  # 恢复插件数据
+  echo "" >> $script_file
+  read -p "需要恢复插件配置吗？（默认n）[y/n]: " plugin_setting_restore_choice
+  plugin_setting_restore_choice=${plugin_setting_restore_choice:-"n"}
+
+  if [ $plugin_setting_restore_choice == "y" ]; then
+    echo "# 恢复插件配置" >> $script_file
+    default_plugin_setting_backup_dir="/www/backup/plugin-setting"
+    read -p "请输入插件配置备份文件所在目录（默认为：${default_plugin_setting_backup_dir}）: " plugin_setting_backup_dir
+    plugin_setting_backup_dir=${plugin_setting_backup_dir:-${default_plugin_setting_backup_dir}}
+    # 获取最近的一个插件配置all文件
+    plugin_setting_file_path=$(ls -t ${plugin_setting_backup_dir}/all_*.zip | head -n 1)
+    if [ -z "$plugin_setting_file_path" ]; then
+      echo "错误:未找到插件配置备份文件"
+      exit 1
+    fi
+    plugin_setting_file=$(basename ${plugin_setting_file_path})
+    read -p "请输入插件配置备份文件名称（默认为：${plugin_setting_file}）: " plugin_setting_file_input
+    plugin_setting_file=${plugin_setting_file_input:-$plugin_setting_file}
+    
+    echo "plugin_setting_restore_tmp=/tmp/plugin-setting-restore" >> $script_file
+    echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/" >> $script_file
+    
+    echo "pushd \$plugin_setting_restore_tmp > /dev/null" >> $script_file
+    echo "for zipfile in *.zip; do" >> $script_file
+    echo "    filename=\$(basename \"\$zipfile\" .zip)" >> $script_file
+    echo "    server_dir=/www/server/\$filename" >> $script_file
+    echo "    mkdir -p \$server_dir" >> $script_file
+    echo "    echo \"正在解压 \$zipfile 到 \$server_dir\"" >> $script_file
+    echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\"" >> $script_file
+    echo "done" >> $script_file
+
+    echo "popd > /dev/null" >> $script_file
+    echo "echo \"|- 恢复插件配置✅\"" >> $script_file
+    echo "" >> $script_file
   fi
 
   # 开启定时任务

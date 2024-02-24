@@ -90,7 +90,7 @@ class backupTools:
                 "----------------------------------------------------------------------------")
             return
 
-        backup_path = mw.getBackupDir() + '/siteSetting'
+        backup_path = mw.getSiteSettingBackupDir()
         if not os.path.exists(backup_path):
             mw.execShell("mkdir -p " + backup_path)
 
@@ -98,7 +98,7 @@ class backupTools:
             time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.tar.gz'
 
         random_str = mw.getRandomString(8).lower()
-        tmp_path = '/tmp/siteSetting/' + random_str
+        tmp_path = '/tmp/site-setting/' + random_str
         if os.path.exists(tmp_path):
             mw.execShell('rm -rf ' + tmp_path)
         mw.execShell('mkdir -p ' + tmp_path)
@@ -169,7 +169,7 @@ rm -rf $tmp_path
                 "----------------------------------------------------------------------------")
             return
 
-        backup_path = mw.getBackupDir() + '/pluginSetting'
+        backup_path = mw.getPluginSettingBackupDir()
         if not os.path.exists(backup_path):
             mw.execShell("mkdir -p " + backup_path)
 
@@ -296,11 +296,11 @@ rm -rf $tmp_path
             self.backupSiteSetting(site['name'], save)
 
         # 备份all包
-        backup_path = mw.getBackupDir() + '/siteSetting'
+        backup_path = mw.getSiteSettingBackupDir()
         filename = backup_path + "/all_" + \
             time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.zip'
         random_str = mw.getRandomString(8).lower()
-        tmp_path = '/tmp/siteSetting/' + random_str
+        tmp_path = '/tmp/site-setting/' + random_str
         if os.path.exists(tmp_path):
             mw.execShell('rm -rf ' + tmp_path)
         mw.execShell('mkdir -p ' + tmp_path)
@@ -319,11 +319,11 @@ rm -rf $tmp_path
             self.backupPluginSetting(plugin['name'], save)
 
         # 备份all包
-        backup_path = mw.getBackupDir() + '/pluginSetting'
+        backup_path = mw.getPluginSettingBackupDir()
         filename = backup_path + "/all_" + \
             time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.zip'
         random_str = mw.getRandomString(8).lower()
-        tmp_path = '/tmp/pluginSetting/' + random_str
+        tmp_path = '/tmp/plugin-setting/' + random_str
         if os.path.exists(tmp_path):
             mw.execShell('rm -rf ' + tmp_path)
         mw.execShell('mkdir -p ' + tmp_path)
@@ -407,13 +407,13 @@ if __name__ == "__main__":
             backup.backupSiteSettingAll(save)
         else:
             backup.backupSiteSetting(name, save)
-        clean_tool.cleanPath("/www/backup/siteSetting", save, "*")
+        clean_tool.cleanPath("/www/backup/site-setting", save, "*")
     elif type == 'pluginSetting':
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupPluginSettingAll(save)
         else:
             backup.backupPluginSetting(name, save)
-        clean_tool.cleanPath("/www/backup/pluginSetting", save, "*")
+        clean_tool.cleanPath(mw.getPluginSettingBackupDir(), save, "*")
     elif type == 'database':
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupDatabaseAll(save)

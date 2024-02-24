@@ -47,7 +47,7 @@ if [ $xtrabackup_inc_restore_choice == "y" ]; then
   recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | jq -r .data)
   popd > /dev/null
   echo "${recovery_script}" >> $script_file
-  echo "echo \"|- xtrabackup增量恢复完成✅\"" >> $script_file
+  echo "show_info \"|- xtrabackup增量恢复完成✅\"" >> $script_file
   echo "" >> $script_file
 fi
 
@@ -72,7 +72,7 @@ if [ $checksum_choice == "y" ]; then
   echo "    exit 1" >> $script_file
   echo "  fi" >> $script_file
   echo "fi" >> $script_file
-  echo "echo \"|- 主备服务器checksum检查完成✅\"" >> $script_file
+  echo "show_info \"|- 主备服务器checksum检查完成✅\"" >> $script_file
   echo "" >> $script_file
 fi
 
@@ -123,7 +123,7 @@ if [ $sync_file_choice == "y" ]; then
     rsync_command+="\"root@$remote_ip:${sync_file_dir}/\" \"${sync_file_dir}/\""
     rsync_command+=" &> ./sync_file.log"
     echo $rsync_command >> $script_file
-    echo "echo \"|- 从线上服务器同步${sync_file_dir}完成✅\"" >> $script_file
+    echo "show_info \"|- 从线上服务器同步${sync_file_dir}完成✅\"" >> $script_file
     echo "" >> $script_file
   done
 fi
@@ -171,7 +171,7 @@ if [ $site_setting_restore_choice == "y" ]; then
   echo "echo \"重启openresty完成✔!\"" >> $script_file
 
   echo "popd > /dev/null" >> $script_file
-  echo "echo \"|- 恢复网站配置✅\"" >> $script_file
+  echo "show_info \"|- 恢复网站配置✅\"" >> $script_file
   echo "" >> $script_file
 fi
 
@@ -205,20 +205,20 @@ if [ $plugin_setting_restore_choice == "y" ]; then
   echo "done" >> $script_file
 
   echo "popd > /dev/null" >> $script_file
-  echo "echo \"|- 恢复插件配置✅\"" >> $script_file
+  echo "show_info \"|- 恢复插件配置✅\"" >> $script_file
   echo "" >> $script_file
 fi
 
 # 开启定时任务
 echo "# 开启定时任务" >> $script_file
 echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份数据库[backupAll]" >> $script_file
-echo "echo \"|- 开启 备份数据库 定时任务完成✅\"" >> $script_file
+echo "show_info \"|- 开启 备份数据库 定时任务完成✅\"" >> $script_file
 echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-cron" >> $script_file
-echo "echo \"|- 开启 xtrabackup 定时任务完成✅\"" >> $script_file
+echo "show_info \"|- 开启 xtrabackup 定时任务完成✅\"" >> $script_file
 echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-inc全量备份" >> $script_file
-echo "echo \"|- 开启 xtrabackup-inc全量备份 定时任务完成✅\"" >> $script_file
+echo "show_info \"|- 开启 xtrabackup-inc全量备份 定时任务完成✅\"" >> $script_file
 echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-inc增量备份" >> $script_file
-echo "echo \"|- 开启 xtrabackup-inc增量备份 定时任务完成✅\"" >> $script_file
+echo "show_info \"|- 开启 xtrabackup-inc增量备份 定时任务完成✅\"" >> $script_file
 echo "" >> $script_file
 echo "# 删除authorized_keys的同步公钥" >> $script_file
 STANDBY_SYNC_PUB_PATH="/root/.ssh/standby_sync.pub"
@@ -236,19 +236,19 @@ names=$(echo "${lsyncd_list}" | jq -r '.[] | .name' | tr '\n' '|' | sed 's/|$//'
 echo "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch {names:\"$names\",status:enabled}" >> $script_file
 echo "systemctl restart lsyncd" >> $script_file
 popd > /dev/null
-echo "echo \"|- 启用 rsyncd任务 完成✅\"" >> $script_file
+echo "show_info \"|- 启用 rsyncd任务 完成✅\"" >> $script_file
 echo "" >> $script_file
 
 # 启用openresty
 echo "# 启用openresty" >> $script_file
 echo "python3 /www/server/jh-panel/plugins/openresty/index.py start" >> $script_file
-echo "echo \"|- 启动 OpenResty’ 完成✅\"" >> $script_file
+echo "show_info \"|- 启动 OpenResty’ 完成✅\"" >> $script_file
 echo "" >> $script_file
 
 # 开启邮件通知
 echo "# 开启邮件通知" >> $script_file
 echo "python3 /www/server/jh-panel/scripts/switch.py openEmailNotify" >> $script_file
-echo "echo \"|- 开启 邮件通知 完成✅\"" >> $script_file
+echo "show_info \"|- 开启 邮件通知 完成✅\"" >> $script_file
 echo "" >> $script_file
 echo "popd > /dev/null" >> $script_file
 echo "" >> $script_file

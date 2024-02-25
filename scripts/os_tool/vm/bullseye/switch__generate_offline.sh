@@ -1,5 +1,5 @@
 #!/bin/bash
-source /www/server/jh-panel/scripts/os_tool/tools.sh
+source /www/server/jh-panel/scripts/util/msg.sh
 
 # 安装pygments
 if ! command -v pygmentize &> /dev/null; then
@@ -27,7 +27,7 @@ prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 echo "" > $script_file
 
 if [ $choice == "y" ]; then
-  echo "source /www/server/jh-panel/scripts/os_tool/tools.sh" > $script_file
+  echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
   echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
   echo "" >> $script_file
   echo "# 关闭定时任务" >> $script_file

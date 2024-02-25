@@ -1,5 +1,5 @@
 #!/bin/bash
-source /www/server/jh-panel/scripts/os_tool/tools.sh
+source /www/server/jh-panel/scripts/util/msg.sh
 
 # 安装pygments
 if ! command -v pygmentize &> /dev/null; then
@@ -37,7 +37,7 @@ echo "-----------------------"
 prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 
 if [ $choice == "y" ]; then
-  echo "source /www/server/jh-panel/scripts/os_tool/tools.sh" > $script_file
+  echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
   echo "" >> $script_file
   prompt "请输入本地服务器IP: " local_ip
   if [ -z "$local_ip" ]; then

@@ -2439,6 +2439,7 @@ def initSlaveStatus(version=''):
         # 开始只读
         db.query('SET GLOBAL read_only = on')
         db.query('SET GLOBAL super_read_only = on')
+        mw.execShell(f'source {getPluginDir()}/readonly.sh && enable_readonly')
     except Exception as e:
         return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
     ssh_client.close()
@@ -2472,6 +2473,7 @@ def deleteSlave(version=''):
     db.query('RESET SLAVE ALL')
     db.query('SET GLOBAL read_only = off')
     db.query('SET GLOBAL super_read_only = off')
+    mw.execShell(f'source {getPluginDir()}/readonly.sh && disable_readonly')
     return mw.returnJson(True, '删除成功!')
 
 def saveSlaveStatus(version=''):

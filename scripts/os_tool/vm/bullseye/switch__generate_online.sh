@@ -10,11 +10,15 @@ if ! command -v pygmentize &> /dev/null; then
         echo "安装pygmentize失败，请手动安装后再运行脚本。"
         exit 1
     fi
-else
-    echo "pygmentize已安装。"
 fi
 
 script_file="/tmp/online.sh"
+echo -ne "\033[1;32m提示：\033[0m 为减少服务中断时间，请确保\033[1m程序（JianghuJS、Docker）\033[0m和\033[1m配置\033[0m正确后执行上线操作，确定执行吗？（默认y）[y/n]: "
+read check_choice
+if [ $check_choice == "n" ]; then
+  echo "已取消执行上线操作"
+  exit 0
+fi
 
 echo "-----------------------"
 echo "即将生成服务器上线脚本到${script_file}，包含内容如下："

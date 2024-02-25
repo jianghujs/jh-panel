@@ -1,4 +1,3 @@
-source /www/server/jh-panel/plugins/mysql-apt/readonly.sh
 const mysql = require('mysql');
 const readline = require('readline');
 const util = require('util');

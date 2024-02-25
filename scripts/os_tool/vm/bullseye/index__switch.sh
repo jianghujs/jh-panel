@@ -76,7 +76,7 @@ case $choice in
     download_and_run switch__generate_online.sh
     ;;
 3)
-    download_and_run_node switch__master_slave.js
+    download_and_run_node 'switch__master_slave(ssh).js'
     ;;
 esac
 

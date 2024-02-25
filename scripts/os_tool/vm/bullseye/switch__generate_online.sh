@@ -104,7 +104,7 @@ if [ $choice == "y" ]; then
     echo "echo \"|- 主从切换...\"" >> $script_file
     echo "pushd /www/server/jh-panel/scripts/os_tool/vm/bullseye/ > /dev/null"  >> $script_file
     echo "npm i" >> $script_file
-    echo "node /www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__master_slave.js" >> $script_file
+    echo "node \"/www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__master_slave(ssh).js\"" >> $script_file
     echo "echo \"|- 主从切换完成✅\"" >> $script_file
     echo "popd > /dev/null" >> $script_file
   fi

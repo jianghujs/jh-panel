@@ -97,15 +97,15 @@ if [ $choice == "y" ]; then
   fi
 
   # 主从切换
-  prompt "需要进行主从切换吗？（默认y）[y/n]: " switch_master_slave_choice "y"
+  prompt "需要将当前数据库提升为主吗？（默认y）[y/n]: " switch_master_slave_choice "y"
 
   if [ $switch_master_slave_choice == "y" ]; then
-    echo "# 主从切换" >> $script_file
-    echo "echo \"|- 主从切换...\"" >> $script_file
+    echo "# 将当前数据库提升为主" >> $script_file
+    echo "echo \"|- 将当前数据库提升为主...\"" >> $script_file
     echo "pushd /www/server/jh-panel/scripts/os_tool/vm/bullseye/ > /dev/null"  >> $script_file
     echo "npm i" >> $script_file
-    echo "node \"/www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__master_slave(ssh).js\"" >> $script_file
-    echo "echo \"|- 主从切换完成✅\"" >> $script_file
+    echo "node \"/www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__mysql_master.js\"" >> $script_file
+    echo "echo \"|- 将当前数据库提升为主完成✅\"" >> $script_file
     echo "popd > /dev/null" >> $script_file
   fi
 

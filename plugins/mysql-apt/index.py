@@ -2445,6 +2445,20 @@ def initSlaveStatus(version=''):
     ssh_client.close()
     return mw.returnJson(True, '初始化成功!')
 
+def setDbReadOnly(version=''):
+    db = pMysqlDb()
+    db.query('SET GLOBAL read_only = on')
+    db.query('SET GLOBAL super_read_only = on')
+    mw.execShell(f'source {getPluginDir()}/readonly.sh && enable_readonly')
+    return mw.returnJson(True, '设置成功!')
+
+def setDbReadWrite(version=''):
+    db = pMysqlDb()
+    db.query('SET GLOBAL read_only = off')
+    db.query('SET GLOBAL super_read_only = off')
+    mw.execShell(f'source {getPluginDir()}/readonly.sh && disable_readonly')
+    return mw.returnJson(True, '设置成功!')
+
 
 def setSlaveStatus(version=''):
 
@@ -3071,6 +3085,10 @@ if __name__ == "__main__":
         print(initSlaveStatus(version))
     elif func == 'set_slave_status':
         print(setSlaveStatus(version))
+    elif func == 'set_db_read_only':
+        print(setDbReadOnly(version))
+    elif func == 'set_db_read_write':
+        print(setDbReadWrite(version))
     elif func == 'delete_slave':
         print(deleteSlave(version))
     elif func == 'save_slave_status':

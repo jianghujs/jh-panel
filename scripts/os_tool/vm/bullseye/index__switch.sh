@@ -56,7 +56,6 @@ show_menu() {
     echo "请选择切换工具:"
     echo "1. 获取服务器下线脚本（停止xtrabackup增量备份、xtrabackup、mysqldump定时任务、停止邮件通知）"
     echo "2. 获取服务器上线脚本（执行xtrabackup增量恢复、更新wwwroot目录、启动xtrabackup增量备份、xtrabackup、mysqldump定时任务、开启邮件通知）"
-    echo "3. Mysql主从切换"
     echo "========================================================"
 }
 
@@ -74,9 +73,6 @@ case $choice in
     ;;
 2)
     download_and_run switch__generate_online.sh
-    ;;
-3)
-    download_and_run_node 'switch__master_slave(ssh).js'
     ;;
 esac
 

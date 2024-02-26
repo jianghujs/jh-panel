@@ -51,7 +51,35 @@ class migrateTools:
                     else:
                         print('创建站点失败，' + result['msg'])
 
+    def importLetsencryptOrder(self, addOrderFile):
+        # 本地letsencrypt.json
+        local_letsencrypt_path = '/www/server/jh-panel/data/letsencrypt.json'
+        local_letsencrypt_content = {}
+        try:
+          with open(local_letsencrypt_path, 'r') as file:
+              local_letsencrypt_content = json.load(file)
+        except:
+          print('本地letsencrypt.json解析失败❌')
+          pass
+
+        # 合并letsencrypt.json
+        add_letsencrypt_path = addOrderFile
+        print('add_letsencrypt_path', add_letsencrypt_path)
+        add_letsencrypt_content = {}
+        try:
+          with open(add_letsencrypt_path, 'r') as file:
+              add_letsencrypt_content = json.load(file)
+        except:
+          print('导入letsencrypt.json解析失败❌')
+          pass
+
+        # 合并两个JSON内容
+        local_letsencrypt_content.update(add_letsencrypt_content)
         
+        # 写入本地letsencrypt.json
+        with open(local_letsencrypt_path, 'w') as file:
+            json.dump(local_letsencrypt_content, file)
+        print('导入成功')
    
 if __name__ == "__main__":
     migrate = migrateTools()
@@ -62,3 +90,6 @@ if __name__ == "__main__":
     elif type == 'importSiteInfo':
         siteInfoFile = sys.argv[2]
         migrate.importSiteInfo(siteInfoFile)
+    elif type == 'importLetsencryptOrder':
+        addOrderFile = sys.argv[2]
+        migrate.importLetsencryptOrder(addOrderFile)

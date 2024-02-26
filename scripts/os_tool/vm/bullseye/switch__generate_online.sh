@@ -170,25 +170,21 @@ if [ $choice == "y" ]; then
     
     echo "pushd \$site_setting_restore_tmp > /dev/null" >> $script_file
     echo "python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/site_info.json" >> $script_file
-    echo "echo \"导入站点数据完成✔!\"" >> $script_file
+    echo "echo \"导入站点数据完成✅!\"" >> $script_file
     
     echo "# 合并letsencrypt.json" >> $script_file
-    echo "local_letsencrypt_path=/www/server/jh-panel/data/letsencrypt.json" >> $script_file
-    echo "add_letsencrypt_path=\$(pwd)/letsencrypt.json" >> $script_file
-    echo "local_letsencrypt_content=\$(cat \"\$local_letsencrypt_path\")" >> $script_file
-    echo "add_letsencrypt_content=\$(cat "\$add_letsencrypt_path")" >> $script_file
-    echo "merged_letsencrypt_content=\$(jq -sc '.[0] * .[1]' <<< "\$local_letsencrypt_content \$add_letsencrypt_content")" >> $script_file
-    echo "echo \"\$merged_letsencrypt_content\" > \"\$local_letsencrypt_path\"" >> $script_file
+    echo "python3 /www/server/jh-panel/scripts/migrate.py importLetsencryptOrder \$(pwd)/letsencrypt.json" >> $script_file
+    echo "echo \"合并letsencrypt.json完成✅!\"" >> $script_file
 
     echo "echo \"# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/\"" >> $script_file
     echo "unzip -o ./web_conf.zip -d /www/server/web_conf/" >> $script_file
-    echo "echo \"恢复网站配置完成✔!\"" >> $script_file
+    echo "echo \"恢复网站配置完成✅!\"" >> $script_file
 
     echo "# 重启openresty" >> $script_file
     echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
     echo "python3 /www/server/jh-panel/plugins/openresty/index.py restart" >> $script_file
     echo "popd > /dev/null" >> $script_file
-    echo "echo \"重启openresty完成✔!\"" >> $script_file
+    echo "echo \"重启openresty完成✅!\"" >> $script_file
 
     echo "popd > /dev/null" >> $script_file
     echo "show_info \"|- 恢复网站配置✅\"" >> $script_file

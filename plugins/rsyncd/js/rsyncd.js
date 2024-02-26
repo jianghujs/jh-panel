@@ -586,7 +586,7 @@ function lsyncdConfLog(){
 }
 
 function lsyncdStatusLog(){
-  execScriptAndShowLog('正在获取同步状态...', 'head /www/server/rsyncd/logs/rsyncd.status');
+  execScriptAndShowLog('正在获取同步状态...', 'head -n 10 /www/server/rsyncd/logs/lsyncd.status', {doLogWindowsSuccess: false});
 }
 
 

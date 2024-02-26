@@ -827,12 +827,14 @@ def getDbBackupListFunc(dbname=''):
 
 def setDbBackup():
     args = getArgs()
-    data = checkArgs(args, ['name'])
+    data = checkArgs(args, ['name', 'exec_type'])
     if not data[0]:
         return data[1]
 
-    scDir = getPluginDir() + '/scripts/backup.py'
-    cmd = 'python3 ' + scDir + ' database ' + args['name']
+    exec_type = args['exec_type']
+    name = args['name']
+    script_dir = mw.getServerDir() + "/jh-panel/scripts"
+    cmd = "python3 " + script_dir + "/backup.py database " + name + " " + ' \'{"saveAllDay":"3","saveOther":"1","saveMaxDay":"30"}\' ' + exec_type
     os.system(cmd)
     return mw.returnJson(True, 'ok')
 
@@ -852,53 +854,72 @@ def importDbExternal():
     if not os.path.exists(file_path):
         return mw.returnJson(False, '文件突然消失?')
 
-    exts = ['sql', 'gz', 'zip']
+    exts = ['sql', 'gz', 'zip', 'zst']
     ext = mw.getFileSuffix(file)
     if ext not in exts:
         return mw.returnJson(False, '导入数据库格式不对!')
 
-    tmp = file.split('/')
-    tmpFile = tmp[len(tmp) - 1]
-    tmpFile = tmpFile.replace('.sql.' + ext, '.sql')
-    tmpFile = tmpFile.replace('.' + ext, '.sql')
-    tmpFile = tmpFile.replace('tar.', '')
+    pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
+    port = getMyPort()
 
-    # print(tmpFile)
-    import_sql = ""
-    if file.find("sql.gz") > -1:
-        cmd = 'cd ' + import_dir + ' && gzip -dc ' + \
-            file + " > " + import_dir + tmpFile
-        info = mw.execShell(cmd)
-        if info[1] == "":
+    # 按文件名区分类型
+    if '.mydumper.tar.zst' in file:
+        # mydumper 部分，使用 myloader
+        # 先解 zst 和 tar
+        mydumper_folder = import_dir + '/' + name
+        mw.execShell('mkdir -p ' + mydumper_folder + ' && cd ' + mydumper_folder)
+        mw.execShell('unzstd -c ' + file  + ' | tar -x')
+        # 导入数据库
+        mw.execShell('myloader -d ' + mydumper_folder + '/' + name + ' -u root -p ' + pwd + ' -h 127.0.0.1 -P ' + port + ' -B ' + name + ' -o')
+        mw.execShell('rm -r ' + mydumper_folder)
+    else:
+        # mysqldump 部分，可以直接执行 mysql
+        tmp = file.split('/')
+        tmpFile = tmp[len(tmp) - 1]
+        tmpFile = tmpFile.replace('.sql.' + ext, '.sql')
+        tmpFile = tmpFile.replace('.' + ext, '.sql')
+        tmpFile = tmpFile.replace('tar.', '')
+
+        # print(tmpFile)
+        import_sql = ""
+        if file.find("sql.gz") > -1:
+            cmd = 'cd ' + import_dir + ' && gzip -dc ' + \
+                file + " > " + import_dir + tmpFile
+            info = mw.execShell(cmd)
+            if info[1] == "":
+                import_sql = import_dir + tmpFile
+
+        if file.find(".zst") > -1:
+            cmd = 'cd ' + import_dir + ' && unzstd ' + file
+            mw.execShell(cmd)
             import_sql = import_dir + tmpFile
 
-    if file.find(".zip") > -1:
-        cmd = 'cd ' + import_dir + ' && unzip -o ' + file
-        mw.execShell(cmd)
-        import_sql = import_dir + tmpFile
+        if file.find(".zip") > -1:
+            cmd = 'cd ' + import_dir + ' && unzip -o ' + file
+            mw.execShell(cmd)
+            import_sql = import_dir + tmpFile
 
-    if file.find("tar.gz") > -1:
-        cmd = 'cd ' + import_dir + ' && tar -zxvf ' + file
-        mw.execShell(cmd)
-        import_sql = import_dir + tmpFile
+        if file.find("tar.gz") > -1:
+            cmd = 'cd ' + import_dir + ' && tar -zxvf ' + file
+            mw.execShell(cmd)
+            import_sql = import_dir + tmpFile
 
-    if file.find(".sql") > -1 and file.find(".sql.gz") == -1:
-        import_sql = import_dir + file
+        if file.find(".sql") > -1 and file.find(".sql.gz") == -1:
+            import_sql = import_dir + file
 
-    if import_sql == "":
-        return mw.returnJson(False, '未找SQL文件')
+        if import_sql == "":
+            return mw.returnJson(False, '未找SQL文件')
 
-    pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
-    sock = getSocketFile()
+        sock = getSocketFile()
 
-    os.environ["MYSQL_PWD"] = pwd
-    mysql_cmd = getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + \
-        pwd + ' ' + name + ' < ' + import_sql
+        os.environ["MYSQL_PWD"] = pwd
+        mysql_cmd = getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + \
+            pwd + ' ' + name + ' < ' + import_sql
 
-    # print(mysql_cmd)
-    os.system(mysql_cmd)
-    if ext != 'sql':
-        os.remove(import_sql)
+        # print(mysql_cmd)
+        os.system(mysql_cmd)
+        if ext != 'sql':
+            os.remove(import_sql)
 
     return mw.returnJson(True, 'ok')
 
@@ -912,17 +933,39 @@ def getImportDbBackupScript():
     file = args['file']
     name = args['name']
 
-    file_path = mw.getRootDir() + '/backup/database/' + file
-    file_path_sql = mw.getRootDir() + '/backup/database/' + file.replace('.gz', '')
+    pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
+    port = getMyPort()
 
     cmd = ''
-    if not os.path.exists(file_path_sql):
-        cmd += 'cd ' + mw.getRootDir() + '/backup/database && gzip -d ' + file + '\n'
-
-    pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
-    sock = getSocketFile()
-    cmd += (getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + pwd +
-            ' ' + name + ' < ' + file_path_sql + '\n')
+    # 按文件名区分类型
+    if '.mydumper.tar.zst' in file:
+        # mydumper 部分
+        # 先解 zst 和 tar
+        mydumper_folder = mw.getRootDir() + '/backup/database/' + file.replace('.mydumper.tar.zst', '')
+        cmd += 'mkdir -p ' + mydumper_folder + ' && cd ' + mydumper_folder + '\n'
+        cmd += 'unzstd -c ' + mw.getRootDir() + '/backup/database/' + file  + ' | tar -x \n'
+        # 导入数据库
+        cmd += 'myloader -d ' + mydumper_folder + '/' + name + ' -u root -p ' + pwd + ' -h 127.0.0.1 -P ' + port + ' -B ' + name + ' -o\n'
+        cmd += 'rm -r ' + mydumper_folder
+    else:
+        # mysqldump 部分
+        file_path_sql = ''
+        # 后缀 .zst 用 zstd 解压，其它用 gzip 解压
+        if '.zst' in file:
+            file_path_sql = mw.getRootDir() + '/backup/database/' + file.replace('.zst', '')
+            if not os.path.exists(file_path_sql):
+                cmd += 'cd ' + mw.getRootDir() + '/backup/database && unzstd ' + file + '\n'
+        elif '.gz' in file:
+            file_path_sql = mw.getRootDir() + '/backup/database/' + file.replace('.gz', '')
+            if not os.path.exists(file_path_sql):
+                cmd += 'cd ' + mw.getRootDir() + '/backup/database && gzip -d ' + file + '\n'
+        elif '.sql' in file:
+            file_path_sql = mw.getRootDir() + '/backup/database/' + file
+        # 用 mysql 导入
+        sock = getSocketFile()
+        cmd += (getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + pwd +
+                ' ' + name + ' < ' + file_path_sql + '\n')
+        cmd += 'rm ' + file_path_sql
 
     # print(mysql_cmd)
     return mw.returnJson(True, 'ok', cmd)

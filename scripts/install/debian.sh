@@ -15,6 +15,7 @@ apt-get update -y
 # apt 安装相应工具
 apt install -y devscripts
 apt install -y wget zip unzip
+apt install -y mydumper zstd
 apt install -y git
 
 

@@ -7,6 +7,7 @@ import sys
 import os
 import json
 import datetime
+import re
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -220,9 +221,49 @@ rm -rf $tmp_path
         print("★[" + endDate + "] " + log)
         
 
-    def backupDatabase(self, name, save):
+    def getConf(self):
+        path = mw.getServerDir() + '/mysql-apt/etc/my.cnf'
+        return path
+
+    def getMyPort(self):
+        file = self.getConf()
+        content = mw.readFile(file)
+        rep = 'port\s*=\s*(.*)'
+        tmp = re.search(rep, content)
+        return tmp.groups()[0].strip()
+
+    def backupDatabase(self, name, save, exec_type='mysqldump'):
+        # 检查 mydumper, zstd 是否安装
+        mw.execShell("""
+#!/bin/bash
+
+# 检查mydumper是否安装
+if ! command -v mydumper &> /dev/null; then
+    echo "mydumper未安装，正在尝试自动安装..."
+    apt-get update
+    apt-get install mydumper -y
+    if ! command -v mydumper &> /dev/null; then
+        echo "安装mydumper失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+
+# 检查zstd是否安装
+if ! command -v zstd &> /dev/null; then
+    echo "zstd未安装，正在尝试自动安装..."
+    apt-get update
+    apt-get install zstd -y
+    if ! command -v zstd &> /dev/null; then
+        echo "安装zstd失败，请手动安装后再运行脚本。"
+        exit 1
+    fi
+fi
+                     """)
+
         db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
+
+        # 检查数据库是否存在
         find_name = mw.M('databases').dbPos(db_path, 'mysql').where(
             'name=?', (name,)).getField('name')
         startTime = time.time()
@@ -238,21 +279,36 @@ rm -rf $tmp_path
         if not os.path.exists(backup_path):
             mw.execShell("mkdir -p " + backup_path)
 
-        filename = backup_path + "/db_" + name + "_" + \
-            time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.gz"
-
+        # 密码
         mysql_root = mw.M('config').dbPos(db_path, db_name).where(
             "id=?", (1,)).getField('mysql_root')
+        # 端口
+        port = self.getMyPort()
+        filename = ''
 
-        # 优化cpu占用
-        # cmd = db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
-        #     name + " -uroot -p" + mysql_root + " | gzip > " + filename
-        cmd = "nice -n 19 ionice -c2 -n7 " + db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
-            name + " -uroot -p" + mysql_root + " | gzip > " + filename
+        print(exec_type)
+        if exec_type == 'mysqldump':
+            filename = backup_path + "/db_" + name + "_" + \
+                time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.zst"
+            # 执行备份（优化cpu占用）
+            cmd = "nice -n 19 ionice -c2 -n7 " + db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
+                name + " -uroot -p" + mysql_root + " | zstd > " + filename
+            mw.execShell(cmd)
+        elif exec_type == 'mydumper':
+            filename = backup_path + "/db_" + name + "_" + \
+                time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".mydumper.tar.zst"
+            random_str = mw.getRandomString(8).lower()
+            tmp_path = '/tmp/mydumper_' + random_str
+            if os.path.exists(tmp_path):
+                mw.execShell('rm -rf ' + tmp_path)
+            mw.execShell('mkdir -p ' + tmp_path)
+            # 执行备份
+            mw.execShell('/usr/bin/mydumper -u root -p ' + mysql_root + ' -h 127.0.0.1 -P ' + port + ' -B ' + name + ' -o ' + tmp_path + '/' + name + ' --trx-consistency-only')
+            mw.execShell('cd ' + tmp_path + ' && ' + 'tar -c ' + name + ' | zstd -o ' + filename)
+            # 删除临时文件
+            # mw.execShell('rm -rf ' + tmp_path)
 
-
-        mw.execShell(cmd)
-
+        # 检查备份情况并记录
         if not os.path.exists(filename):
             endDate = time.strftime('%Y/%m/%d %X', time.localtime())
             log = "数据库[" + name + "]备份失败!"
@@ -268,6 +324,8 @@ rm -rf $tmp_path
 
         mw.M('backup').add('type,name,pid,filename,addtime,size', (1, os.path.basename(
             filename), pid, filename, endDate, os.path.getsize(filename)))
+
+        # 记录日志
         log = "数据库[" + name + "]备份成功,用时[" + str(round(outTime, 2)) + "]秒"
         mw.writeLog('计划任务', log)
         print("★[" + endDate + "] " + log)
@@ -275,13 +333,13 @@ rm -rf $tmp_path
         self.cleanBackupByHistory('1', pid, save)
 
 
-    def backupDatabaseAll(self, save):
+    def backupDatabaseAll(self, save, exec_type='mysqldump'):
         db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
         databases = mw.M('databases').dbPos(
             db_path, db_name).field('name').select()
         for database in databases:
-            self.backupDatabase(database['name'], save)
+            self.backupDatabase(database['name'], save, exec_type)
         print('|----备份所有数据库任务完成')
 
     def backupSiteAll(self, save):
@@ -395,6 +453,7 @@ if __name__ == "__main__":
     save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
     if len(sys.argv) > 3:
         save = json.loads(sys.argv[3])
+    execType = sys.argv[4]
 
     if type == 'site':
         if sys.argv[2].find('backupAll') >= 0:
@@ -416,7 +475,7 @@ if __name__ == "__main__":
         clean_tool.cleanPath(mw.getPluginSettingBackupDir(), save, "*")
     elif type == 'database':
         if sys.argv[2].find('backupAll') >= 0:
-            backup.backupDatabaseAll(save)
+            backup.backupDatabaseAll(save, execType)
         else:
-            backup.backupDatabase(name, save)
+            backup.backupDatabase(name, save, execType)
         clean_tool.cleanPath("/www/backup/database", save, "*")

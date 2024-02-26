@@ -1070,7 +1070,7 @@ function setLocalImport(db_name){
                     </table>\
                     </div>\
                     <ul class="help-info-text c7">\
-                        <li>仅支持sql、zip、sql.gz、(tar.gz|gz|tgz)</li>\
+                        <li>仅支持sql、zip、sql.gz、(tar.gz|gz|tgz|zst)</li>\
                         <li>zip、tar.gz压缩包结构：test.zip或test.tar.gz压缩包内，必需包含test.sql</li>\
                         <li>若文件过大，您还可以使用SFTP工具，将数据库文件上传到/www/backup/import</li>\
                     </ul>\
@@ -1098,7 +1098,8 @@ function setBackup(db_name){
         shadeClose: false,
         content: '<div class="pd15">\
                     <div class="db_list">\
-                        <button id="btn_backup" class="btn btn-success btn-sm" type="button">备份</button>\
+                        <button id="btn_backup" class="btn btn-success btn-sm" type="button">备份（mydumper,快）</button>\
+                        <button id="btn_backup_old" class="btn btn-success btn-sm" type="button">备份（mysqldump,小）</button>\
                         <button id="btn_local_import" class="btn btn-success btn-sm" type="button">外部导入</button>\
                     </div >\
                     <div class="divtable">\
@@ -1119,7 +1120,15 @@ function setBackup(db_name){
         </div>',
         success:function(index){
             $('#btn_backup').click(function(){
-                myPost('set_db_backup',{name:db_name}, function(data){
+                myPost('set_db_backup',{name:db_name, exec_type: 'mydumper'}, function(data){
+                    showMsg('执行成功!', function(){
+                        setBackupReq(db_name);
+                    }, {icon:1}, 2000);
+                });
+            });
+
+            $('#btn_backup_old').click(function(){
+                myPost('set_db_backup',{name:db_name, exec_type: 'mysqldump'}, function(data){
                     showMsg('执行成功!', function(){
                         setBackupReq(db_name);
                     }, {icon:1}, 2000);

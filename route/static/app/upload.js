@@ -83,7 +83,7 @@ function uploadStart(d) {
 				g = e.name.split(".");
 				g = Object.prototype.toString.call(g) === "[object Array]" ? g[g.length - 1] : "";
 				if(d) {
-					if(g != "sql" && g != "zip" && g != "gz" && g != "tgz") {
+					if(g != "sql" && g != "zip" && g != "gz" && g != "tgz" && g != "zst") {
 						layer.msg(lan.upload.file_type_err, {
 							icon: 5
 						});

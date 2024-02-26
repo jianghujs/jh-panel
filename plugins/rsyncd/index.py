@@ -13,6 +13,7 @@ from urllib.parse import unquote
 sys.path.append(os.getcwd() + "/class/core")
 sys.path.append(os.getcwd() + "/class/plugin")
 import mw
+from debounce_tool import set_debounce_command
 
 app_debug = False
 if mw.isAppleSystem():
@@ -361,7 +362,7 @@ def lsyncdServiceOpt():
         mw.execShell('systemctl stop lsyncd')
     elif opt == 'restart':
         mw.execShell('systemctl reset-failed')
-        mw.execShell('systemctl restart lsyncd')
+        set_debounce_command('systemctl restart lsyncd', 3)
     return mw.returnJson(True, '操作成功!')
 
 def getRecListData():
@@ -573,7 +574,7 @@ def lsyncdReload():
         mw.execShell(' start lsyncd')
     else:
         mw.execShell('systemctl reset-failed')
-        mw.execShell('systemctl restart lsyncd')
+        set_debounce_command('systemctl restart lsyncd', 3)
 
 
 def makeLsyncdConf(data):

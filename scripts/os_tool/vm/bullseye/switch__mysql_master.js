@@ -54,10 +54,10 @@ async function switchMasterSlave() {
     // 主备服务器加上只读锁
     console.log("|- 正在为主备服务器添加只读锁...");
 
-    // let masterSetDbReadOnlyResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
-    // if(!masterSetDbReadOnlyResult.status) {
-    //   throw new Error("执行主库加锁异常❌");
-    // }
+    let masterSetDbReadOnlyResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
+    if(!masterSetDbReadOnlyResult.status) {
+      throw new Error("执行主库加锁异常❌");
+    }
     let slaveSetDbReadOnlyResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
     if(!slaveSetDbReadOnlyResult.status) {
       throw new Error("执行从库加锁异常❌");

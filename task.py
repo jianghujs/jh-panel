@@ -605,24 +605,25 @@ def write_debounce_commands_pool(debounce_commands_pool):
         json.dump(debounce_commands_pool, file)
 
 def debounceCommandsService():
-    if not os.path.exists(debounce_commands_pool_file):
-      write_debounce_commands_pool([])
-    # 倒计时并执行命令
-    debounce_commands_pool = read_debounce_commands_pool()
-    debounce_commands_to_remove = []
-    for debounce_commands_info in debounce_commands_pool:
-      debounce_commands_info['seconds_to_run'] -= 1
-      if debounce_commands_info['seconds_to_run'] < 0:
-        command = debounce_commands_info.get('command', '')
-        debounce_commands_to_remove.append(debounce_commands_info)
-        if command:
-          mw.execShell(command)
-    # 删除已经执行的命令
-    for debounce_commands_info in debounce_commands_to_remove:
-      debounce_commands_pool.remove(debounce_commands_info)
-    # 写回文件
-    write_debounce_commands_pool(debounce_commands_pool)
-    time.sleep(1)
+    while True:
+      if not os.path.exists(debounce_commands_pool_file):
+        write_debounce_commands_pool([])
+      # 倒计时并执行命令
+      debounce_commands_pool = read_debounce_commands_pool()
+      debounce_commands_to_remove = []
+      for debounce_commands_info in debounce_commands_pool:
+        debounce_commands_info['seconds_to_run'] -= 1
+        if debounce_commands_info['seconds_to_run'] < 0:
+          command = debounce_commands_info.get('command', '')
+          debounce_commands_to_remove.append(debounce_commands_info)
+          if command:
+            mw.execShell(command)
+      # 删除已经执行的命令
+      for debounce_commands_info in debounce_commands_to_remove:
+        debounce_commands_pool.remove(debounce_commands_info)
+      # 写回文件
+      write_debounce_commands_pool(debounce_commands_pool)
+      time.sleep(1)
 
 # --------------------------------------Debounce Commands End   --------------------------------------------- #
 

@@ -585,6 +585,10 @@ function lsyncdConfLog(){
     openNewWindowPath(`/www/server/rsyncd/logs/`)
 }
 
+function lsyncdStatusLog(){
+  execScriptAndShowLog('正在获取同步状态...', 'head -f /www/server/rsyncd/logs/rsyncd.status');
+}
+
 
 function lsyncdServiceLog(){
   execScriptAndShowLog('正在获取lsyncd日志...', 'journalctl -f -u lsyncd');
@@ -623,6 +627,7 @@ function lsyncdRealtime(){
           <button class="btn btn-danger btn-sm mr5 lsyncd-service-stop-btn" onclick="lsyncdServiceOpt('stop')" >停用</button>\
           <button class="btn btn-success btn-sm mr5" onclick="lsyncdServiceOpt('restart')" >重启</button>\
           <button class="btn btn-default btn-sm mr5" onclick="lsyncdConfLog()" >同步日志</button>\
+          <button class="btn btn-default btn-sm mr5" onclick="lsyncdStatusLog()" >同步状态</button>\
           <button class="btn btn-default btn-sm mr5" onclick="lsyncdServiceLog()" >服务日志</button>\
       </div>
   </div>

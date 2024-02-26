@@ -594,6 +594,39 @@ def restartPanelService():
 # --------------------------------------Panel Restart End   --------------------------------------------- #
 
 
+# --------------------------------------Debounce Commands Start   --------------------------------------------- #
+debounce_commands_pool_file = 'data/debounce_commands_pool.json'
+def read_debounce_commands_pool():
+    with open(debounce_commands_pool_file, 'r') as file:
+        return json.load(file)
+
+def write_debounce_commands_pool(debounce_commands_pool):
+    with open(debounce_commands_pool_file, 'w') as file:
+        json.dump(debounce_commands_pool, file)
+
+def debounceCommandsService():
+    if not os.path.exists(debounce_commands_pool_file):
+      write_debounce_commands_pool([])
+    # 倒计时并执行命令
+    debounce_commands_pool = read_debounce_commands_pool()
+    debounce_commands_to_remove = []
+    for debounce_commands_info in debounce_commands_pool:
+      debounce_commands_info['seconds_to_run'] -= 1
+      if debounce_commands_info['seconds_to_run'] < 0:
+        command = debounce_commands_info.get('command', '')
+        debounce_commands_to_remove.append(debounce_commands_info)
+        if command:
+          mw.execShell(command)
+    # 删除已经执行的命令
+    for debounce_commands_info in debounce_commands_to_remove:
+      debounce_commands_pool.remove(debounce_commands_info)
+    # 写回文件
+    write_debounce_commands_pool(debounce_commands_pool)
+    time.sleep(1)
+
+# --------------------------------------Debounce Commands End   --------------------------------------------- #
+
+
 def setDaemon(t):
     if sys.version_info.major == 3 and sys.version_info.minor >= 10:
         t.daemon = True
@@ -602,30 +635,38 @@ def setDaemon(t):
     return t
 
 if __name__ == "__main__":
+    debounceCommandsService()
 
-    # 系统监控
-    sysTask = threading.Thread(target=systemTask)
-    sysTask = setDaemon(sysTask)
-    sysTask.start()
+    # # 系统监控
+    # sysTask = threading.Thread(target=systemTask)
+    # sysTask = setDaemon(sysTask)
+    # sysTask.start()
 
-    # PHP 502错误检查线程
-    php502 = threading.Thread(target=check502Task)
-    php502 = setDaemon(php502)
-    php502.start()
+    # # PHP 502错误检查线程
+    # php502 = threading.Thread(target=check502Task)
+    # php502 = setDaemon(php502)
+    # php502.start()
 
-    # OpenResty Auto Restart Start
-    oar = threading.Thread(target=openrestyAutoRestart)
-    oar = setDaemon(oar)
-    oar.start()
+    # # OpenResty Auto Restart Start
+    # oar = threading.Thread(target=openrestyAutoRestart)
+    # oar = setDaemon(oar)
+    # oar.start()
 
-    # Panel Restart Start
-    rps = threading.Thread(target=restartPanelService)
-    rps = setDaemon(rps)
-    rps.start()
+    # # Panel Restart Start
+    # rps = threading.Thread(target=restartPanelService)
+    # rps = setDaemon(rps)
+    # rps.start()
 
-    # Restart Start
-    rs = threading.Thread(target=restartService)
-    rs = setDaemon(rs)
-    rs.start()
+    # # Restart Start
+    # rs = threading.Thread(target=restartService)
+    # rs = setDaemon(rs)
+    # rs.start()
 
-    startTask()
+    # # Debounce Commands
+    # dcs = threading.Thread(target=debounceCommandsService)
+    # dcs = setDaemon(dcs)
+    # dcs.start()
+
+
+
+    # startTask()

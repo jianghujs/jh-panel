@@ -11,7 +11,9 @@ from paramiko import RSAKey
 from urllib.parse import unquote
 
 sys.path.append(os.getcwd() + "/class/core")
+sys.path.append(os.getcwd() + "/class/plugin")
 import mw
+from debounce_tool import debounce
 
 app_debug = False
 if mw.isAppleSystem():
@@ -565,6 +567,7 @@ def cmdRecCmd():
 
 # ----------------------------- rsyncdSend start -------------------------
 
+@debounce(delay=10.0)
 def lsyncdReload():
     data = mw.execShell(
         "ps -ef|grep lsyncd |grep -v grep | grep -v python | awk '{print $2}'")

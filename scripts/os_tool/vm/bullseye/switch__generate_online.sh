@@ -38,6 +38,8 @@ prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 
 if [ $choice == "y" ]; then
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
+  echo "log_file=\"/tmp/online.log\"" >> $script_file
+  echo "echo \"\" > \$log_file" >> $script_file
   echo "" >> $script_file
   prompt "请输入本地服务器IP: " local_ip
   if [ -z "$local_ip" ]; then
@@ -166,7 +168,7 @@ if [ $choice == "y" ]; then
     prompt "请输入网站配置备份文件名称（默认为：${site_setting_file}）: " site_setting_file_input $site_setting_file
     
     echo "site_setting_restore_tmp=/tmp/site_setting-restore" >> $script_file
-    echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/" >> $script_file
+    echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/ >> \$log_file" >> $script_file
     
     echo "pushd \$site_setting_restore_tmp > /dev/null" >> $script_file
     echo "python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/site_info.json" >> $script_file
@@ -176,8 +178,8 @@ if [ $choice == "y" ]; then
     echo "python3 /www/server/jh-panel/scripts/migrate.py importLetsencryptOrder \$(pwd)/letsencrypt.json" >> $script_file
     echo "echo \"合并letsencrypt.json完成✅!\"" >> $script_file
 
-    echo "echo \"# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/\"" >> $script_file
-    echo "unzip -o ./web_conf.zip -d /www/server/web_conf/" >> $script_file
+    echo "# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/" >> $script_file
+    echo "unzip -o ./web_conf.zip -d /www/server/web_conf/ >> \$log_file" >> $script_file
     echo "echo \"恢复网站配置完成✅!\"" >> $script_file
 
     echo "# 重启openresty" >> $script_file
@@ -209,7 +211,7 @@ if [ $choice == "y" ]; then
     prompt "请输入插件配置备份文件名称（默认为：${plugin_setting_file}）: " plugin_setting_file_input $plugin_setting_file
     
     echo "plugin_setting_restore_tmp=/tmp/plugin_setting-restore" >> $script_file
-    echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/" >> $script_file
+    echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/ >> \$log_file" >> $script_file
     
     echo "pushd \$plugin_setting_restore_tmp > /dev/null" >> $script_file
     echo "for zipfile in *.zip; do" >> $script_file
@@ -217,7 +219,7 @@ if [ $choice == "y" ]; then
     echo "    server_dir=/www/server/\$filename" >> $script_file
     echo "    mkdir -p \$server_dir" >> $script_file
     echo "    echo \"正在解压 \$zipfile 到 \$server_dir\"" >> $script_file
-    echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\"" >> $script_file
+    echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\" >> \$log_file" >> $script_file
     echo "done" >> $script_file
 
     echo "popd > /dev/null" >> $script_file

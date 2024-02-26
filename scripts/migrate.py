@@ -40,7 +40,6 @@ class migrateTools:
         with open(siteInfoFile, 'r') as f:
             importSiteInfo = json.load(f)
             importSiteList = importSiteInfo['site_list']
-            print(importSiteList)
             # 循环对比currentSiteList每个对象的name值和importSiteList的name值，找出不存在的site并创建
             for importSite in importSiteList:
                 if any(curentSite.get('name', None) == importSite.get('name', None) for curentSite in currentSiteList) == False:
@@ -64,7 +63,6 @@ class migrateTools:
 
         # 合并letsencrypt.json
         add_letsencrypt_path = addOrderFile
-        print('add_letsencrypt_path', add_letsencrypt_path)
         add_letsencrypt_content = {}
         try:
           with open(add_letsencrypt_path, 'r') as file:
@@ -79,7 +77,6 @@ class migrateTools:
         # 写入本地letsencrypt.json
         with open(local_letsencrypt_path, 'w') as file:
             json.dump(local_letsencrypt_content, file)
-        print('导入成功')
    
 if __name__ == "__main__":
     migrate = migrateTools()

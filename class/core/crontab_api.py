@@ -383,6 +383,10 @@ class crontab_api:
     def delete(self, tid):
 
         find = mw.M('crontab').where("id=?", (tid,)).field('name,echo').find()
+
+        if len(find) == 0：
+            return (False, '任务不存在!')
+            
         if not self.removeCrond(find['echo']):
             return (False, '无法写入文件，请检查是否开启了系统加固功能!')
 

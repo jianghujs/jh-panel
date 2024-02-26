@@ -13,7 +13,7 @@ if ! command -v pygmentize &> /dev/null; then
 fi
 
 script_file="/tmp/online.sh"
-echo -ne "\033[1;32m提示：\033[0m 为减少服务中断时间，请确保\033[1m程序（JianghuJS、Docker）\033[0m和\033[1m配置\033[0m正确后执行上线操作，确定执行吗？（默认n）[y/n]: " 
+echo -ne "\033[1;31m提示：\033[0m 为减少服务中断时间，请确保\033[1m程序（JianghuJS、Docker）\033[0m和\033[1m配置\033[0m正确后执行上线操作，确定执行吗？（默认n）[y/n]: " 
 read check_choice
 check_choice=${check_choice:-n}
 if [ $check_choice != "y" ]; then

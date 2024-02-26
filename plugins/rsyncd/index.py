@@ -359,6 +359,7 @@ def lsyncdServiceOpt():
     elif opt == 'stop':
         mw.execShell('systemctl stop lsyncd')
     elif opt == 'restart':
+        mw.execShell('systemctl reset-failed')
         mw.execShell('systemctl restart lsyncd')
     return mw.returnJson(True, '操作成功!')
 
@@ -570,6 +571,7 @@ def lsyncdReload():
     if data[0] == '':
         mw.execShell(' start lsyncd')
     else:
+        mw.execShell('systemctl reset-failed')
         mw.execShell('systemctl restart lsyncd')
 
 

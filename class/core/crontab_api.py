@@ -666,6 +666,7 @@ fi
             if os.path.exists('/etc/init.d/crond'):
                 mw.execShell('/etc/init.d/crond reload')
             elif os.path.exists('/etc/init.d/cron'):
+                mw.execShell('systemctl reset-failed')
                 mw.execShell('service cron restart')
             else:
                 mw.execShell("systemctl reload crond")

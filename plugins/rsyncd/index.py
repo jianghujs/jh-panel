@@ -11,6 +11,7 @@ from paramiko import RSAKey
 from urllib.parse import unquote
 
 sys.path.append(os.getcwd() + "/class/core")
+sys.path.append(os.getcwd() + "/class/plugin")
 import mw
 
 app_debug = False

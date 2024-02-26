@@ -31,6 +31,26 @@ let ignoreDatabases = [];
 const defaultIgnoreDeatabasesInput = "mysql,performance_schema,sys,information_schema,test";
 
 const logFile = path.join('/tmp', 'checksum.log');
+let writeLog = true;
+const Logger = {
+  clear: () => {
+    fs.writeFileSync(logFile, '');
+  },
+  info: (content, echo = false) => {
+    if (!writeLog) {
+      return; 
+    }
+    if (!fs.existsSync(logFile)) {
+      fs.writeFileSync(logFile, '');
+    }
+    const log = fs.readFileSync(logFile, 'utf8');
+    fs.writeFileSync(logFile, log + '\n' + content);
+    if (echo) {
+      console.log(content);
+    }
+  }
+};
+
 
 async function prompt(question, defaultValue) {
   return new Promise((resolve) => {
@@ -76,14 +96,14 @@ async function getDatabaseChecksum(connection) {
     let checksums = {};
     let checksumTotal = 0;
 
-    console.log("")
-    console.log(`|- 开始计算${connection.host}...`)
+    Logger.info("")
+    Logger.info(`|- 开始计算${connection.host}...`, true)
     for (let database of databases) {
       
       if (ignoreDatabases.includes(database)) {
         continue;
       }
-      console.log('|------------------ ' + database + ' ---------------');
+      Logger.info('|------------------ ' + database + ' ---------------');
       let currentDatabaseChecksum = 0;
         const tables = (await knex("TABLES").select("*")).filter((o) => o.TABLE_SCHEMA === database && o.TABLE_COMMENT !== "VIEW")
         .map((o) => o.TABLE_NAME);
@@ -92,19 +112,19 @@ async function getDatabaseChecksum(connection) {
         for (let table of tables.filter((o) => o.indexOf('view') == -1)) {
             const checksumRaw = await knex.raw(`CHECKSUM TABLE \`${database}\`.\`${table}\``);
             const checksum = checksumRaw[0][0].Checksum;
-            console.log('|- ' + database + '.' + table + ': ' + checksum + '');
+            Logger.info('|- ' + database + '.' + table + ': ' + checksum + '');
 
             checksums[database][table] = checksum;
             currentDatabaseChecksum += checksum;
         }
         checksumTotal += currentDatabaseChecksum;
-        console.log('|- Total : ' + currentDatabaseChecksum);   
+        Logger.info('|- Total : ' + currentDatabaseChecksum);   
     }
-    console.log("----------------------------------------------------------")
-    console.log(`- IP：${connection.host}`)
-    console.log(`- All Database Total：${checksumTotal}`)
-    console.log("----------------------------------------------------------")
-    console.log("")
+    Logger.info("----------------------------------------------------------")
+    Logger.info(`- IP：${connection.host}`)
+    Logger.info(`- All Database Total：${checksumTotal}`)
+    Logger.info("----------------------------------------------------------")
+    Logger.info("")
 
     await knex.destroy();
 
@@ -169,9 +189,9 @@ function findDifferences(obj1 = {}, obj2 = {}, prefix = '') {
   const checksumDiff = findDifferences(checksumA, checksumB).sort();
 
   fs.writeFileSync('/tmp/compare_checksum_diff', `checksum_diff=${checksumDiff.join(',')}`);
-  console.log("")
-  console.log("===========================Checksum对比完毕✅==========================")
-  console.log(checksumDiff.length > 0? `\x1b[31m存在以下差异：\n${checksumDiff.join("\n")}\x1b[0m`: '\x1b[32m未检测到差异\x1b[0m')
-  console.log("=====================================================================")
+  Logger.info("")
+  Logger.info("===========================Checksum对比完毕✅==========================", true)
+  Logger.info(checksumDiff.length > 0? `\x1b[31m存在以下差异：\n${checksumDiff.join("\n")}\x1b[0m`: '\x1b[32m未检测到差异\x1b[0m', true)
+  Logger.info("=====================================================================", true)
   rl.close();
 })();

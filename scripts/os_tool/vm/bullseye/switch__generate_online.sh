@@ -13,7 +13,7 @@ if ! command -v pygmentize &> /dev/null; then
 fi
 
 script_file="/tmp/online.sh"
-echo -ne "\033[1;32m提示：\033[0m 为减少服务中断时间，请确保\033[1m程序（JianghuJS、Docker）\033[0m和\033[1m配置\033[0m正确后执行上线操作，确定执行吗？（默认n）[y/n]: " 
+echo -ne "\033[1;31m提示：\033[0m 为减少服务中断时间，请确保\033[1m程序（JianghuJS、Docker）\033[0m和\033[1m配置\033[0m正确后执行上线操作，确定执行吗？（默认n）[y/n]: " 
 read check_choice
 check_choice=${check_choice:-n}
 if [ $check_choice != "y" ]; then
@@ -38,6 +38,8 @@ prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 
 if [ $choice == "y" ]; then
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
+  echo "log_file=\"/tmp/online.log\"" >> $script_file
+  echo "echo \"\" > \$log_file" >> $script_file
   echo "" >> $script_file
   prompt "请输入本地服务器IP: " local_ip
   if [ -z "$local_ip" ]; then
@@ -166,29 +168,25 @@ if [ $choice == "y" ]; then
     prompt "请输入网站配置备份文件名称（默认为：${site_setting_file}）: " site_setting_file_input $site_setting_file
     
     echo "site_setting_restore_tmp=/tmp/site_setting-restore" >> $script_file
-    echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/" >> $script_file
+    echo "unzip -o $site_setting_backup_dir/$site_setting_file -d \$site_setting_restore_tmp/ >> \$log_file" >> $script_file
     
     echo "pushd \$site_setting_restore_tmp > /dev/null" >> $script_file
     echo "python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/site_info.json" >> $script_file
-    echo "echo \"导入站点数据完成✔!\"" >> $script_file
+    echo "echo \"导入站点数据完成✅!\"" >> $script_file
     
     echo "# 合并letsencrypt.json" >> $script_file
-    echo "local_letsencrypt_path=/www/server/jh-panel/data/letsencrypt.json" >> $script_file
-    echo "add_letsencrypt_path=\$(pwd)/letsencrypt.json" >> $script_file
-    echo "local_letsencrypt_content=\$(cat \"\$local_letsencrypt_path\")" >> $script_file
-    echo "add_letsencrypt_content=\$(cat "\$add_letsencrypt_path")" >> $script_file
-    echo "merged_letsencrypt_content=\$(jq -sc '.[0] * .[1]' <<< "\$local_letsencrypt_content \$add_letsencrypt_content")" >> $script_file
-    echo "echo \"\$merged_letsencrypt_content\" > \"\$local_letsencrypt_path\"" >> $script_file
+    echo "python3 /www/server/jh-panel/scripts/migrate.py importLetsencryptOrder \$(pwd)/letsencrypt.json" >> $script_file
+    echo "echo \"合并letsencrypt.json完成✅!\"" >> $script_file
 
-    echo "echo \"# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/\"" >> $script_file
-    echo "unzip -o ./web_conf.zip -d /www/server/web_conf/" >> $script_file
-    echo "echo \"恢复网站配置完成✔!\"" >> $script_file
+    echo "# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/" >> $script_file
+    echo "unzip -o ./web_conf.zip -d /www/server/web_conf/ >> \$log_file" >> $script_file
+    echo "echo \"恢复网站配置完成✅!\"" >> $script_file
 
     echo "# 重启openresty" >> $script_file
     echo "pushd /www/server/jh-panel > /dev/null" >> $script_file
     echo "python3 /www/server/jh-panel/plugins/openresty/index.py restart" >> $script_file
     echo "popd > /dev/null" >> $script_file
-    echo "echo \"重启openresty完成✔!\"" >> $script_file
+    echo "echo \"重启openresty完成✅!\"" >> $script_file
 
     echo "popd > /dev/null" >> $script_file
     echo "show_info \"|- 恢复网站配置✅\"" >> $script_file
@@ -213,7 +211,7 @@ if [ $choice == "y" ]; then
     prompt "请输入插件配置备份文件名称（默认为：${plugin_setting_file}）: " plugin_setting_file_input $plugin_setting_file
     
     echo "plugin_setting_restore_tmp=/tmp/plugin_setting-restore" >> $script_file
-    echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/" >> $script_file
+    echo "unzip -o $plugin_setting_backup_dir/$plugin_setting_file -d \$plugin_setting_restore_tmp/ >> \$log_file" >> $script_file
     
     echo "pushd \$plugin_setting_restore_tmp > /dev/null" >> $script_file
     echo "for zipfile in *.zip; do" >> $script_file
@@ -221,7 +219,7 @@ if [ $choice == "y" ]; then
     echo "    server_dir=/www/server/\$filename" >> $script_file
     echo "    mkdir -p \$server_dir" >> $script_file
     echo "    echo \"正在解压 \$zipfile 到 \$server_dir\"" >> $script_file
-    echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\"" >> $script_file
+    echo "    unzip -o \"\$zipfile\" -d \"\$server_dir\" >> \$log_file" >> $script_file
     echo "done" >> $script_file
 
     echo "popd > /dev/null" >> $script_file

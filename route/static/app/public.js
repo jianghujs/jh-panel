@@ -1714,7 +1714,7 @@ function showLogWindow(msg, { logPath, autoClearLog = true }, callback){
 }
 
 
-async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, fail, logWindowSuccessTimeout = 3000} = {}) {
+async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, fail, doLogWindowsSuccess = true, logWindowSuccessTimeout = 3000} = {}) {
 	return new Promise((resolve, reject) => {
 		showLogWindow(logTitle, {logPath}, function({success: logWindowSuccess, logPath}){
 			$.post('/task/generate_script_file_and_excute', {logPath, scriptContent: encodeURIComponent(scriptContent)}, function (rdata) {
@@ -1730,7 +1730,7 @@ async function execScriptAndShowLog(logTitle, scriptContent, {logPath, success, 
 									layer.msg(data.msg,{icon:2, time:2000});
 									return;
 							}
-							await logWindowSuccess({timeout: logWindowSuccessTimeout});
+							doLogWindowsSuccess && await logWindowSuccess({timeout: logWindowSuccessTimeout});
 							success && success();
 							resolve();
 					}, 1000)

@@ -404,7 +404,7 @@ function getFiles(Path) {
 					$("#set_icon").removeClass("active");
 					body += "<tr class='folderBoxTr' data-path='" + rdata.PATH + "/" + fmp[0] + "' filetype='dir'>\
 						<td><input type='checkbox' name='id' value='"+fmp[0]+"'></td>\
-						<td class='column-name'>\
+						<td class='column-name' title='" + fmp[5] + "'>\
 						  <a class='cursor' title='" + fmp[0] + fmp[5] + "' onclick=\"getFiles('" + rdata.PATH + "/" + fmp[0] + "')\"><span class='ico ico-folder'></span>" + cnametext + "</a></td>\
 						<td>"+toSize(fmp[1])+"</td>\
 						<td>"+getLocalTime(fmp[2])+"</td>\
@@ -463,7 +463,7 @@ function getFiles(Path) {
 			if(getCookie("rank")=="a"){
 				body += "<tr style='cursor:pointer;' class='folderBoxTr' data-path='" + rdata.PATH +"/"+ fmp[0] + "' filetype='" + fmp[0] + "' ondblclick='openFilename(this)'>\
 					<td><input type='checkbox' name='id' value='"+fmp[0]+"'></td>\
-					<td class='column-name'><span class='ico ico-"+(getExtName(fmp[0]))+"'></span>" + cnametext + "</td>\
+					<td class='column-name' title='" + cnametext + "'><span class='ico ico-"+(getExtName(fmp[0]))+"'></span>" + cnametext + "</td>\
 					<td>" + (toSize(fmp[1])) + "</td>\
 					<td>" + ((fmp[2].length > 11)?fmp[2]:getLocalTime(fmp[2])) + "</td>\
 					<td>"+fmp[3]+"</td>\
@@ -666,11 +666,23 @@ function totalFile(){
 }
 //绑定操作
 function bindselect(){
+	let lastSelect = null;
+	let lastSelectTime = null;
 	$("#filesBody").selectable({
 		autoRefresh: false,
 		filter:"tr,.folderBox",
 		cancel: "a,span,input,.ico-folder",
 		selecting:function(e){
+			// 如果同时点击同个 item 小于 200ms，则触发打开编辑
+			if (lastSelect === $(".ui-selecting").find("input")[0] && new Date().getTime() - lastSelectTime < 200) {
+				if ($(".ui-selecting").attr('filetype') === 'dir') {
+					getFiles($(".ui-selecting").attr('data-path'))
+				} else {
+					openFilename($(".ui-selecting"))
+				}
+			}
+			lastSelect = $(".ui-selecting").find("input")[0]
+			lastSelectTime = new Date().getTime()
 			$(".ui-selecting").find("input").prop("checked", true);
 			showSeclect();
 		},

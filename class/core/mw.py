@@ -1917,12 +1917,14 @@ def emailNotifyTest(data):
 
 def getLockData(lock_type):
     lock_file = getPanelTmp() + '/lock.json'
-    if not os.path.exists(lock_file):
+    try:
+        if not os.path.exists(lock_file):
+            writeFile(lock_file, '{}')
+        lock_data = json.loads(readFile(lock_file))
+        if lock_type in lock_data:
+            return lock_data[lock_type]
+    except Exception as e:
         writeFile(lock_file, '{}')
-
-    lock_data = json.loads(readFile(lock_file))
-    if lock_type in lock_data:
-        return lock_data[lock_type]
     return {}
 
 def updateLockData(lock_type):

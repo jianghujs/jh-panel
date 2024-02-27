@@ -433,7 +433,6 @@ if __name__ == "__main__":
     save = {"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}
     if len(sys.argv) > 3:
         save = json.loads(sys.argv[3])
-    execType = sys.argv[4]
 
     if type == 'site':
         if sys.argv[2].find('backupAll') >= 0:
@@ -454,6 +453,9 @@ if __name__ == "__main__":
             backup.backupPluginSetting(name, save)
         clean_tool.cleanPath(mw.getPluginSettingBackupDir(), save, "*")
     elif type == 'database':
+        execType = 'mysqldump'
+        if len(sys.argv) > 4:
+            execType = sys.argv[4]
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupDatabaseAll(save, execType)
         else:

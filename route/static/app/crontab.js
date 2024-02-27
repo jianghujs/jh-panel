@@ -265,6 +265,7 @@ function planAdd(){
 	}
 	
 	var sName = $("#sName").attr("val");
+	var dumpType = '';
 	
 	if (type == 'minute-n'){
 		var where1 = $("#ptime input[name='where1']").val();
@@ -280,6 +281,12 @@ function planAdd(){
 		var where1 = $("#ptime input[name='where1']").val();
 		$("#set-Config input[name='where1']").val(where1);
 	}
+
+  if (sType == 'database') {
+    dumpType = $("#dType").attr('val');
+    $("#set-Config input[name='dumpType']").val(dumpType);
+    sBody = sbody = dumpType;
+  }
 
 	// 备份所有-切分成多个定时任务
 	// if(sName == 'backupAll'){
@@ -493,6 +500,22 @@ function toBackup(type){
 		for (var i=0;i<rdata.orderOpt.length;i++){
 			orderOpt += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+rdata.orderOpt[i].name+'">'+rdata.orderOpt[i].title+'</a></li>'
 		}
+
+    var extOpt = '';
+    if (sType == 'databases') {
+      // 增加一个备份方式（mysqldump、mydumper）的选项
+      extOpt = '\
+      <div class="textname pull-left mr20">备份方式</div>\
+      <div class="dropdown pull-left mr20">\
+        <button class="btn btn-default dropdown-toggle" type="button" id="dumptype" data-toggle="dropdown" style="width:auto">\
+          <b id="dType" val="mysqldump">mysqldump</b> <span class="caret"></span>\
+        </button>\
+        <ul class="dropdown-menu" role="menu" aria-labelledby="dumptype">\
+          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mysqldump">mysqldump</a></li>\
+          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mydumper">mydumper</a></li>\
+        </ul>\
+      </div>';
+    }
 		
 
 		var sBody = '<div>\
@@ -506,6 +529,7 @@ function toBackup(type){
 					  	'+sOpt+'\
 					  </ul>\
 					</div>\
+          '+ extOpt +'\
 					<div class="textname pull-left mr20">备份到</div>\
 					<div class="dropdown planBackupTo pull-left mr20">\
 					  <button class="btn btn-default dropdown-toggle" type="button" id="excode" data-toggle="dropdown" style="width:auto;">\
@@ -552,6 +576,7 @@ function editTaskInfo(id){
 				id:rdata.id,
 				name: rdata.name,
 				type: rdata['type'],
+        dumpType: rdata['sbody'],
 				stype: rdata.stype,
 				where1: rdata.where1,
 				hour: rdata.where_hour,
@@ -672,6 +697,18 @@ function editTaskInfo(id){
 									<div class="info-r" style="float: left;margin-right: 25px;display:'+ (obj.from.sType == "path"?'block;':'none') +'">\
 										<input id="inputPath" class="bt-input-text mr5 " type="text" name="path" value="'+ obj.from.sName +'" placeholder="备份目录" style="width:208px;height:33px;" disabled="disabled">\
 									</div>\
+                  <div class="dump-type" style="display:none">\
+                    <div class="textname pull-left mr20">备份方式</div>\
+                    <div class="dropdown pull-left mr20">\
+                      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" style="width:auto">\
+                        <b val="' + (obj.from.sbody || 'mysqldump') + '">' + (obj.from.sbody || 'mysqldump') + '</b> <span class="caret"></span>\
+                      </button>\
+                      <ul class="dropdown-menu" role="menu" aria-labelledby="dumptype_edit">\
+                        <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mysqldump">mysqldump</a></li>\
+                        <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mydumper">mydumper</a></li>\
+                      </ul>\
+                    </div>\
+                  </div>\
 									<div class="textname pull-left mr20">备份到</div>\
 										<div class="dropdown  pull-left mr20">\
 											<button class="btn btn-default dropdown-toggle backup_btn" type="button"  data-toggle="dropdown" style="width:auto;">\
@@ -724,6 +761,10 @@ function editTaskInfo(id){
 				}else{
 					$('.site_list').show();
 				}
+
+        if(obj.from.stype == 'database') {
+          $('.dump-type').show();
+        }
 
 				obj.from.minute = $('.minute_create').val();
 				obj.from.hour = $('.hour_create').val();
@@ -847,6 +888,11 @@ function editTaskInfo(id){
 					obj.from.week = $(this).attr('value');
 				});
 	
+				$('[aria-labelledby="dumptype_edit"] a').unbind().click(function () {
+					$('.dump-type').find('b').attr('val',$(this).attr('value')).html($(this).html());
+					obj.from.dumpType = $(this).attr('value');
+				});
+
 				$('[aria-labelledby="backupTo"] a').unbind().click(function () {
 					$('.backup_btn').find('b').attr('val',$(this).attr('value')).html($(this).html());
 					obj.from.backup_to = $(this).attr('value');
@@ -859,8 +905,9 @@ function editTaskInfo(id){
 						obj.from.where1 = obj.from.minute;
 						obj.from.minute = '';
 					}
+
 					var loadT = layer.msg('正在保存编辑内容，请稍后...',{icon:16,time:0,shade: [0.3, '#000']});
-					$.post('/crontab/modify_crond',obj.from,function(rdata){
+          $.post('/crontab/modify_crond',obj.from,function(rdata){
 
 						if (!rdata.status){
 							layer.msg(rdata.msg,{icon:rdata.status?1:2});

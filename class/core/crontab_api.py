@@ -208,9 +208,13 @@ class crontab_api:
         backup_to = request.form.get('backup_to', '')
         stype = request.form.get('stype', '')
         sname = request.form.get('sname', '')
+        dumpType = request.form.get('dumpType', '')
         sbody = request.form.get('sbody', '')
 
         urladdress = request.form.get('urladdress', '')
+
+        if stype == 'database':
+          sbody = dumpType
 
         if len(iname) < 1:
             return mw.returnJson(False, '任务名称不能为空!')
@@ -228,6 +232,7 @@ class crontab_api:
             'backup_to': backup_to,
             'stype': stype,
             'sname': sname,
+            'dumpType': dumpType,
             'sbody': sbody,
             'urladdress': urladdress,
         }
@@ -237,6 +242,7 @@ class crontab_api:
             return mw.returnJson(is_check_pass, msg)
 
         cuonConfig, get, name = self.getCrondCycle(params)
+        print(str(get))
         cronInfo = mw.M('crontab').where(
             'id=?', (sid,)).field(self.field).find()
         del(cronInfo['id'])
@@ -252,6 +258,7 @@ class crontab_api:
         cronInfo['backup_to'] = get['backup_to']
         cronInfo['sbody'] = get['sbody']
         cronInfo['urladdress'] = get['urladdress']
+        cronInfo['dumpType'] = get['dumpType']
 
         addData = mw.M('crontab').where('id=?', (sid,)).save('name,type,where1,where_hour,where_minute,saveAllDay,saveOther,saveMaxDay,backup_to,sbody,urladdress', (get[
             'name'], field_type, get['where1'], get['hour'], get['minute'], get['saveAllDay'], get['saveOther'], get['saveMaxDay'], get['backup_to'], get['sbody'], get['urladdress']))
@@ -282,6 +289,7 @@ class crontab_api:
         backup_to = request.form.get('backupTo', '')
         stype = request.form.get('sType', '')
         sname = request.form.get('sName', '')
+        dumpType = request.form.get('dumpType', '')
         sbody = request.form.get('sBody', '')
         urladdress = request.form.get('urladdress', '')
 
@@ -301,6 +309,7 @@ class crontab_api:
             'backup_to': backup_to,
             'stype': stype,
             'sname': sname,
+            'dumpType': dumpType,
             'sbody': sbody,
             'urladdress': urladdress,
         }
@@ -316,6 +325,9 @@ class crontab_api:
 
     def add(self, params):
 
+        stype = params["stype"]
+        if stype == 'database':
+          params["sbody"] = params.get("dumpType", "")
         iname = params["name"]
         field_type = params["type"]
         week = params["week"]
@@ -326,8 +338,8 @@ class crontab_api:
         saveOther = params.get('saveOther', '') 
         saveMaxDay = params.get('saveMaxDay', '') 
         backup_to = params["backup_to"]
-        stype = params["stype"]
         sname = params["sname"]
+        dumpType = params.get('dumpType', '')
         sbody = params["sbody"]
         urladdress = params["urladdress"]
 
@@ -574,7 +586,7 @@ fi
                 'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " '" + str(save) + "'",
                 'siteSetting':   head + "python3 " + script_dir + "/backup.py siteSetting " + param['sname'] + " '" + str(save) + "'",
                 'pluginSetting':   head + "python3 " + script_dir + "/backup.py pluginSetting " + param['sname'] + " '" + str(save) + "'",
-                'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " '" + str(save) + "'",
+                'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " '" + str(save) + "'" + " " + param.get('dumpType', ''),
                 'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                 'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
             }

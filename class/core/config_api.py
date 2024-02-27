@@ -468,7 +468,7 @@ class config_api:
                 mw.writeFile(dst_panel_path, conf)
 
             mw.writeLog('面板配置', '面板SSL关闭成功!')
-            mw.restartMw()
+            mw.restartMw(True)
             return mw.returnJson(True, 'SSL已关闭，即将跳转http协议访问面板!')
         else:
             try:

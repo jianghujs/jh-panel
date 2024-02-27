@@ -1193,7 +1193,7 @@ function dbList(page, search){
         
 
             list += '<td><span class="c9 input-edit" onclick="setDbPs(\''+rdata.data[i]['id']+'\',\''+rdata.data[i]['name']+'\',this)" style="display: inline-block;">'+rdata.data[i]['ps']+'</span></td>';
-            list += '<td style="text-align:right">';
+            list += '<td style="text-align:right;position: fixed;width: 160px;right: 10px;margin-top: -7px;border-top: none;background: white;">';
 
             list += '<a href="javascript:;" class="btlink" class="btlink" onclick="setBackup(\''+rdata.data[i]['name']+'\',this)" title="数据库备份">'+(rdata.data[i]['is_backup']?'备份':'未备份') +'</a> | ';
 
@@ -1246,7 +1246,8 @@ function dbList(page, search){
                     '+
                     // '<th>备份</th>'+
                     '<th>备注</th>\
-                    <th style="text-align:right; min-width: 154px;" width="154px" fixed="true">操作</th></tr>\
+                    <th style="min-width: 200px;"></th></tr>\
+                    <th style="text-align:center; position: fixed;width: 150px;right: 10px;margin-top: -6px;border-top: none;background: white;">操作</th></tr>\
                     <tbody>\
                     '+ list +'\
                     </tbody></table>\

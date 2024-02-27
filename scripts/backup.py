@@ -234,30 +234,10 @@ rm -rf $tmp_path
 
     def backupDatabase(self, name, save, exec_type='mysqldump'):
         # 检查 mydumper, zstd 是否安装
-        mw.execShell("""
-#!/bin/bash
-
-# 检查mydumper是否安装
-if ! command -v mydumper &> /dev/null; then
-    echo "mydumper未安装，正在尝试自动安装..."
-    apt-get update
-    apt-get install mydumper -y
-    if ! command -v mydumper &> /dev/null; then
-        echo "安装mydumper失败，请手动安装后再运行脚本。"
-        exit 1
-    fi
-fi
-
-# 检查zstd是否安装
-if ! command -v zstd &> /dev/null; then
-    echo "zstd未安装，正在尝试自动安装..."
-    apt-get update
-    apt-get install zstd -y
-    if ! command -v zstd &> /dev/null; then
-        echo "安装zstd失败，请手动安装后再运行脚本。"
-        exit 1
-    fi
-fi
+        mw.execShell(f"""
+source {mw.getScriptDir()}/util/apt.sh
+check_and_install "mydumper"
+check_and_install "zstd"
                      """)
 
         db_path = mw.getServerDir() + '/mysql-apt'

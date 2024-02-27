@@ -100,6 +100,8 @@ def getRootDir():
 def getPluginDir():
     return getRunDir() + '/plugins'
 
+def getScriptDir():
+    return getRunDir() + '/scripts'
 
 def getPanelDataDir():
     return getRunDir() + '/data'

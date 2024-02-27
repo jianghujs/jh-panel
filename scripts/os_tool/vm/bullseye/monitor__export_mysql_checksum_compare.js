@@ -61,6 +61,35 @@ async function prompt(question, defaultValue) {
 }
 
 
+// 获取要用于计算 checksum 的字段
+async function prepareColumns(knex, database, table) {
+  const columnList = await knex('INFORMATION_SCHEMA.COLUMNS')
+    .where({
+      TABLE_SCHEMA: database,
+      TABLE_NAME: table,
+    })
+    .select('COLUMN_NAME as columnName', 'DATA_TYPE as dataType');
+  let releventColumns = columnList.filter(column =>
+    column.columnName !== 'id'
+  ).map(column => {
+    if (column.dataType === 'varchar' || column.dataType.includes('text')) {
+      return {
+        name: column.columnName,
+        // 处理 null 字段
+        sql: `coalesce(\`${column.columnName}\`,'<null>')`,
+      };
+    }
+    return {
+      name: column.columnName,
+      // 处理 null 字段
+      // 处理非 char 字段
+      sql: `coalesce(cast(\`${column.columnName}\` as char),'<null>')`,
+    };
+  });
+  return releventColumns;
+}
+
+
 async function execSync(cmd) {
   return new Promise((resolve) => {
     exec(`
@@ -110,8 +139,17 @@ async function getDatabaseChecksum(connection) {
 
         checksums[database] = {};
         for (let table of tables.filter((o) => o.indexOf('view') == -1)) {
-            const checksumRaw = await knex.raw(`CHECKSUM TABLE \`${database}\`.\`${table}\``);
-            const checksum = checksumRaw[0][0].Checksum;
+            // 计算checksum
+
+            // const checksumRaw = await knex.raw(`CHECKSUM TABLE \`${database}\`.\`${table}\``);
+            // const checksum = checksumRaw[0][0].Checksum;
+            // Logger.info('|- ' + database + '.' + table + ': ' + checksum + '');
+
+            let releventColumns = await prepareColumns(knex, database, table);
+            const [{ checksum }] = await knex(`${database}.${table}`)
+            .select(knex.raw('count(*) as count, sum(cast(conv(substring(md5(concat('
+              + releventColumns.map(o => o.sql).join(',') +
+              ')), 18), 16, 10) as unsigned)) as checksum'));
             Logger.info('|- ' + database + '.' + table + ': ' + checksum + '');
 
             checksums[database][table] = checksum;

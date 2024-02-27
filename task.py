@@ -636,38 +636,36 @@ def setDaemon(t):
     return t
 
 if __name__ == "__main__":
-    debounceCommandsService()
+    # 系统监控
+    sysTask = threading.Thread(target=systemTask)
+    sysTask = setDaemon(sysTask)
+    sysTask.start()
 
-    # # 系统监控
-    # sysTask = threading.Thread(target=systemTask)
-    # sysTask = setDaemon(sysTask)
-    # sysTask.start()
+    # PHP 502错误检查线程
+    php502 = threading.Thread(target=check502Task)
+    php502 = setDaemon(php502)
+    php502.start()
 
-    # # PHP 502错误检查线程
-    # php502 = threading.Thread(target=check502Task)
-    # php502 = setDaemon(php502)
-    # php502.start()
+    # OpenResty Auto Restart Start
+    oar = threading.Thread(target=openrestyAutoRestart)
+    oar = setDaemon(oar)
+    oar.start()
 
-    # # OpenResty Auto Restart Start
-    # oar = threading.Thread(target=openrestyAutoRestart)
-    # oar = setDaemon(oar)
-    # oar.start()
+    # Panel Restart Start
+    rps = threading.Thread(target=restartPanelService)
+    rps = setDaemon(rps)
+    rps.start()
 
-    # # Panel Restart Start
-    # rps = threading.Thread(target=restartPanelService)
-    # rps = setDaemon(rps)
-    # rps.start()
+    # Restart Start
+    rs = threading.Thread(target=restartService)
+    rs = setDaemon(rs)
+    rs.start()
 
-    # # Restart Start
-    # rs = threading.Thread(target=restartService)
-    # rs = setDaemon(rs)
-    # rs.start()
-
-    # # Debounce Commands
-    # dcs = threading.Thread(target=debounceCommandsService)
-    # dcs = setDaemon(dcs)
-    # dcs.start()
+    # Debounce Commands
+    dcs = threading.Thread(target=debounceCommandsService)
+    dcs = setDaemon(dcs)
+    dcs.start()
 
 
 
-    # startTask()
+    startTask()

@@ -105,6 +105,8 @@ if [ $choice == "y" ]; then
     echo "# 将当前数据库提升为主" >> $script_file
     echo "echo \"|- 将当前数据库提升为主...\"" >> $script_file
     echo "pushd /www/server/jh-panel/scripts/os_tool/vm/bullseye/ > /dev/null"  >> $script_file
+    echo "source /root/.bashrc" >> $script_file
+    echo "export PATH=\"/www/server/nodejs/fnm:\$PATH\"" >> $script_file 
     echo "npm i" >> $script_file
     echo "node \"/www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__mysql_master.js\"" >> $script_file
     echo "echo \"|- 将当前数据库提升为主完成✅\"" >> $script_file

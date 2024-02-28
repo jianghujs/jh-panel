@@ -237,6 +237,10 @@ if [ $choice == "y" ]; then
   echo "show_info \"|- 开启 xtrabackup-inc全量备份 定时任务完成✅\"" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-inc增量备份" >> $script_file
   echo "show_info \"|- 开启 xtrabackup-inc增量备份 定时任务完成✅\"" >> $script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份网站配置[backupAll]" >> $script_file
+  echo "show_info \"|- 开启 备份网站配置 定时任务完成✅\"" >> $script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份插件配置[backupAll]" >> $script_file
+  echo "show_info \"|- 开启 备份插件配置 定时任务完成✅\"" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]服务器报告" >> $script_file
   echo "show_info \"|- 开启 服务器报告 定时任务完成✅\"" >> $script_file
   echo "" >> $script_file

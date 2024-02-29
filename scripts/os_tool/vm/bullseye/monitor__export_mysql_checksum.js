@@ -89,16 +89,16 @@ async function getDatabaseChecksum(connection) {
         for (let table of tables.filter((o) => o.indexOf('view') == -1)) {
             // 计算checksum
 
-            // const checksumRaw = await knex.raw(`CHECKSUM TABLE \`${database}\`.\`${table}\``);
-            // const checksum = checksumRaw[0][0].Checksum;
-            // Logger.info('|- ' + database + '.' + table + ': ' + checksum + '');
-
-            let releventColumns = await prepareColumns(knex, database, table);
-            const [{ checksum }] = await knex(table)
-            .select(knex.raw('count(*) as count, sum(cast(conv(substring(md5(concat('
-              + releventColumns.map(o => o.sql).join(',') +
-              ')), 18), 16, 10) as unsigned)) as checksum'));
+            const checksumRaw = await knex.raw(`CHECKSUM TABLE \`${database}\`.\`${table}\``);
+            const checksum = checksumRaw[0][0].Checksum;
             Logger.info('|- ' + database + '.' + table + ': ' + checksum + '');
+
+            // let releventColumns = await prepareColumns(knex, database, table);
+            // const [{ checksum }] = await knex(table)
+            // .select(knex.raw('count(*) as count, sum(cast(conv(substring(md5(concat('
+            //   + releventColumns.map(o => o.sql).join(',') +
+            //   ')), 18), 16, 10) as unsigned)) as checksum'));
+            // Logger.info('|- ' + database + '.' + table + ': ' + checksum + '');
 
             checksums[database][table] = checksum;
             currentDatabaseChecksum += checksum;

@@ -1035,6 +1035,7 @@ function openSetNotifyValue() {
 							<span class='name'>天</span>\
 						</div>\
 					</div>\
+          <div style='margin-bottom: 10px; color: #cecece;'>提示：配置为-1关闭异常通知</div>\
 					<div class='bt-form-submit-btn'>\
 						<button type='button' class='btn btn-danger btn-sm' onclick=\"layer.closeAll()\">关闭</button>\
 						<button type='button' class='btn btn-success btn-sm' onclick=\"setNotifyValue()\">修改</button>\

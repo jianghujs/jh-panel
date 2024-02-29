@@ -2090,13 +2090,13 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         
         error_msg_arr = []
         # CPU
-        if (cpu_percent > control_notify_config['cpu']):
+        if (control_notify_config['cpu'] != -1) and (cpu_percent > control_notify_config['cpu']):
             error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + '%' + ']')
         # 内存
-        if (mem_percent > control_notify_config['memory']):
+        if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
             error_msg_arr.append('内存负载过高[' + str(mem_percent) + '%' + ']')
         # 磁盘容量
-        if len(disk_list) > 0:
+        if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
             for disk in disk_list:
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
 
@@ -2105,7 +2105,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
         
         # 网站SSL证书
         site_ssl_lock_data_key = '网站SSL证书异常通知'
-        if not checkLockValid(site_ssl_lock_data_key, 'day_start') and len(site_list) > 0:
+        if (control_notify_config['ssl_cert'] != -1) and not checkLockValid(site_ssl_lock_data_key, 'day_start') and len(site_list) > 0:
             for site in site_list:
                 site_name = site['name']
                 cert_data = site['cert_data']

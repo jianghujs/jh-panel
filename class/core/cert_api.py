@@ -1492,6 +1492,26 @@ fullchain.pem       粘贴到证书输入框
                     self.__config['orders'] = {}
 
                 for i in self.__config['orders'].keys():
+                    
+                    # 站点配置检查
+                    site_valid = True
+                    for domain in self.__config['orders'][i]['domains']:
+                      if domain.find('*') != -1:
+                          break
+                      site = None
+                      try:
+                        current_domain = mw.M('domain').where("name=?", (domain,)).field('pid,name').find()
+                        if current_domain:
+                          site = mw.M('sites').where("id=?", (current_domain['pid'],)).field('name,path,status').find()
+                          if not site or site['status'] != '1':
+                            site_valid = False
+                      except:
+                        pass
+                    if not site_valid:
+                        writeLog("|-本次跳过域名: {}，站点配置异常或已关闭站点".format(self.__config['orders'][i]['domains'][0]))
+                        continue     
+
+
                     # print(self.__config['orders'][i])
                     if not 'save_path' in self.__config['orders'][i]:
                         continue

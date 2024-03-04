@@ -1523,6 +1523,10 @@ fullchain.pem       粘贴到证书输入框
                                     break
                                 
                                 # 域名不存在？
+                                current_domain = mw.M('domain').where("name=?", (domain,)).field('pid,name').find()
+                                current_binding = mw.M('binding').where("domain=?", domain).field('pid,domain,path').find()
+                                print("####current_domain", current_domain)
+                                print("####current_binding", current_binding)
                                 if not mw.M('domain').where("name=?", (domain,)).count() and not mw.M('binding').where("domain=?", domain).count():
                                     auth_to = None
                                     writeLog(

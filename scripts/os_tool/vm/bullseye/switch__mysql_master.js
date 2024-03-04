@@ -167,7 +167,7 @@ popd > /dev/null
     MASTER_SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
     if (MASTER_ID_RSA && MASTER_ID_RSA.indexOf('BEGIN OPENSSH PRIVATE KEY') > -1) {
       MASTER_SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
-      fs.writeFileSync(MASTER_SSH_PRIVATE_KEY, MASTER_ID_RSA.replace('\\n', '\n'))
+      fs.writeFileSync(MASTER_SSH_PRIVATE_KEY, MASTER_ID_RSA)
     }
   } catch (error) {
     throw new Error(`获取主SSH信息失败❌`);

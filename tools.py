@@ -212,6 +212,20 @@ def getLocalIp():
         sock.close()
     print(local_ip) 
 
+def getPanelIp():
+    print(mw.getLocalIpBack())
+
+def getStandbyIp():
+    standby_ip = ""
+    try:
+        slave_ssh_list_result = mw.execShell("python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_ssh_list {page:1,page_size:5,tojs:getSlaveSSHPage}")
+        slave_ssh_list_result = json.loads(slave_ssh_list_result[0])
+        slave_ssh_list = slave_ssh_list_result.get("data")
+        if len(slave_ssh_list) > 0:
+            standby_ip = slave_ssh_list[0].get("ip")
+    except:
+        standby_ip = ""
+    print(standby_ip)
 
 if __name__ == "__main__":
     method = sys.argv[1]
@@ -229,6 +243,10 @@ if __name__ == "__main__":
         getServerIp()
     elif method == 'getLocalIp':
         getLocalIp()
+    elif method == 'getPanelIp':
+        getPanelIp()
+    elif method == 'getStandbyIp':
+        getStandbyIp()
     elif method == "cli":
         clinum = 0
         try:

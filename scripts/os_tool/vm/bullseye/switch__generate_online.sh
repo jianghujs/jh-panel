@@ -50,17 +50,31 @@ if [ $choice == "y" ]; then
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_merge_file
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
 
+  # 获取本地服务器IP
+  default_local_ip=$(python3 /www/server/jh-panel/tools.py getPanelIp)
+  # 获取备用服务器IP
+  default_remote_ip=$(python3 /www/server/jh-panel/tools.py getStandbyIp)
+
   echo "log_file=\"/tmp/online.log\"" >> $tmp_prepare_script_file
   echo "echo \"\" > \$log_file" >> $tmp_prepare_script_file
   echo "" >> $tmp_prepare_script_file
-  prompt "请输入本地服务器IP: " local_ip
+
+  local_ip_tip="请输入本地服务器IP"
+  if [ -n "$default_local_ip" ]; then
+    local_ip_tip+="（默认为：${default_local_ip}）"
+  fi
+  prompt "$local_ip_tip: " local_ip $default_local_ip
   if [ -z "$local_ip" ]; then
     show_error "错误:未指定本地服务器IP"
     exit 1
   fi
   echo "export LOCAL_IP=$local_ip" >> $tmp_prepare_script_file
 
-  prompt "请输入备用服务器IP: " remote_ip
+  remote_ip_tip="请输入备用服务器IP"
+  if [ -n "$default_remote_ip" ]; then
+    remote_ip_tip+="（默认为：${default_remote_ip}）"
+  fi
+  prompt "$remote_ip_tip: " remote_ip $default_remote_ip
   if [ -z "$remote_ip" ]; then
     show_error "错误:未指定备用服务器IP"
     exit 1
@@ -358,7 +372,7 @@ if [ $choice == "y" ]; then
   show_info "---------------------------------------------------------------"
   echo "==============================================================="
   prompt "是否执行上面的脚本？（默认n）[y/n]: " run_script_choice "n"
-  if [ $run_script_choice == "n" ]; then
+  if [ $run_script_choice != "y" ]; then
     show_info "已取消执行脚本"
     echo -e "\033[1;32m提示:\033[0m 您也可以手动确认脚本内容并执行该脚本完成服务器上线操作："
     echo "vi ${script_file}"

@@ -99,13 +99,13 @@ class reportTools:
             memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
             sysinfo_tips.append({
                 "name": "CPU",
-                "desc": f"平均使用率<span style='color: {'red' if cpuAnalyzeResult.get('average', 0) > cpu_notify_value else ('orange' if cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(cpuAnalyzeResult.get("overCount", 0))}次</span>') if cpuAnalyzeResult.get('overCount', 0) > 0 else '')
+                "desc": f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(cpuAnalyzeResult.get("overCount", 0))}次</span>') if (cpu_notify_value != -1 and cpuAnalyzeResult.get('overCount', 0) > 0) else '')
             })
             sysinfo_tips.append({
                 "name": "内存",
-                "desc": f"平均使用率<span style='color: {'red' if memAnalyzeResult.get('average', 0) > mem_notify_value else ('orange' if memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                    ((f'，<span style="color: red">异常（使用率超过{str(mem_notify_value)}%）{str(memAnalyzeResult.get("overCount", 0))}次</span>') if memAnalyzeResult.get('overCount', 0) > 0 else '')
+                "desc": f"平均使用率<span style='color: {'red' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value) else ('orange' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8)) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                    ((f'，<span style="color: red">异常（使用率超过{str(mem_notify_value)}%）{str(memAnalyzeResult.get("overCount", 0))}次</span>') if (mem_notify_value != -1 and memAnalyzeResult.get('overCount', 0) > 0) else '')
             })
 
             # 负载：资源使用率(pro)
@@ -113,8 +113,8 @@ class reportTools:
             loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
             sysinfo_tips.append({
                 "name": "资源使用率",
-                "desc": f"平均使用率<span style='color: {'red' if loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value else ('orange' if loadAverageAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8) else 'auto')}'>{round(loadAverageAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(loadAverageAnalyzeResult.get("overCount", 0))}次</span>') if loadAverageAnalyzeResult.get('overCount', 0) > 0 else '')
+                "desc": f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(loadAverageAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(loadAverageAnalyzeResult.get("overCount", 0))}次</span>') if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('overCount', 0) > 0) else '')
             })
 
             # 磁盘
@@ -123,7 +123,7 @@ class reportTools:
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
                 sysinfo_tips.append({
                     "name": "磁盘（%s）" % disk['path'],
-                    "desc": f"已使用<span style='color: {'red' if disk_size_percent > disk_notify_value else ('orange' if disk_size_percent > (disk_notify_value*0.8) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
+                    "desc": f"已使用<span style='color: {'red' if (disk_notify_value != -1 and disk_size_percent > disk_notify_value) else ('orange' if (disk_notify_value != -1 and disk_size_percent > (disk_notify_value*0.8)) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
                 })
 
             # 最后监控时间
@@ -221,16 +221,17 @@ class reportTools:
             summary_tips = []
             # 系统资源概要信息
             sysinfo_summary_tips = []
-            if cpuAnalyzeResult.get('average', 0) > cpu_notify_value:
+            if cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value:
                 sysinfo_summary_tips.append("CPU")
-            if memAnalyzeResult.get('average', 0) > mem_notify_value:
+            if mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value:
                 sysinfo_summary_tips.append("内存")
-            if loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value:
+            if cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value:
                 sysinfo_summary_tips.append("资源使用率")
-            for disk in diskInfo:
-                disk_size_percent = int(disk['size'][3].replace('%', ''))
-                if disk_size_percent > disk_notify_value:
-                    sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
+            if disk_notify_value != -1:
+              for disk in diskInfo:
+                  disk_size_percent = int(disk['size'][3].replace('%', ''))
+                  if disk_size_percent > disk_notify_value:
+                      sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
             if len(sysinfo_summary_tips) > 0:
                 summary_tips.append("<span style='color: red;'>" + "、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
             if lastMonitorTimestamp < self.__START_TIMESTAMP:
@@ -242,7 +243,8 @@ class reportTools:
                 site_name = site['name']
                 cert_data = site['cert_data']
                 ssl_type = site['ssl_type']
-                if cert_data is not None:
+                site_status = site['status']
+                if site['status'] == '1' and cert_data is not None:
                     cert_not_after = cert_data.get('notAfter', '0000-00-00')
                     cert_endtime = int(cert_data.get('endtime', 0))
                     site_error_msg = ''

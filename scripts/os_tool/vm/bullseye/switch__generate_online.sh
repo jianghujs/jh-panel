@@ -50,15 +50,12 @@ if [ $choice == "y" ]; then
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_merge_file
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
 
-  # 获取本地服务器IP
-  default_local_ip=$(python3 /www/server/jh-panel/tools.py getPanelIp)
-  # 获取备用服务器IP
-  default_remote_ip=$(python3 /www/server/jh-panel/tools.py getStandbyIp)
-
   echo "log_file=\"/tmp/online.log\"" >> $tmp_prepare_script_file
   echo "echo \"\" > \$log_file" >> $tmp_prepare_script_file
   echo "" >> $tmp_prepare_script_file
 
+  # 获取本地服务器IP
+  default_local_ip=$(python3 /www/server/jh-panel/tools.py getPanelIp)
   local_ip_tip="请输入本地服务器IP"
   if [ -n "$default_local_ip" ]; then
     local_ip_tip+="（默认为：${default_local_ip}）"
@@ -70,6 +67,8 @@ if [ $choice == "y" ]; then
   fi
   echo "export LOCAL_IP=$local_ip" >> $tmp_prepare_script_file
 
+  # 获取备用服务器IP
+  default_remote_ip=$(python3 /www/server/jh-panel/tools.py getStandbyIp)
   remote_ip_tip="请输入备用服务器IP"
   if [ -n "$default_remote_ip" ]; then
     remote_ip_tip+="（默认为：${default_remote_ip}）"

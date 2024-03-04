@@ -1876,18 +1876,18 @@ function addSlaveSSH(ip=''){
                 <div class='line'><span class='tname'>同步账户[DB]</span><div class='info-r'><input name='db_user'  placeholder='为空则取第一个!' class='bt-input-text mr5' type='text' style='width:330px;' value='"+db_user+"'></div></div>\
                 <div class='line'>\
                 <span class='tname'>密钥文件</span>\
-                <div class='info-r'><input class='bt-input-text mr5' name='id_rsa' style='width:330px;'  value='"+id_rsa+"' placeholder='密钥文件位置（如：/root/.ssh/id_rsa.pub）' ></input></div>\
+                <div class='info-r'><textarea class='bt-input-text mr5' row='20' cols='50' name='id_rsa'  style='width:330px;height:200px;'  value='"+id_rsa+"' placeholder='公钥文件位置或私钥内容（如：/root/.ssh/id_rsa.pub）' ></textarea></div>\
                 </div>\
                 <input type='hidden' name='ps' value='' />\
               </form>",
             success:function(){
-                $('input[name="id_rsa"]').html(id_rsa);
+                $('textarea[name="id_rsa"]').html(id_rsa);
             },
             yes:async function(index){
                 var ip = $('input[name="ip"]').val();
                 var port = $('input[name="port"]').val();
                 var db_user = $('input[name="db_user"]').val();
-                var id_rsa = $('input[name="id_rsa"]').val();
+                var id_rsa = $('textarea[name="id_rsa"]').val();
 
                 var data = {ip:ip,port:port,id_rsa:id_rsa,db_user:db_user};
                 let testResult = JSON.parse((await myPost('test_ssh', data)).data)

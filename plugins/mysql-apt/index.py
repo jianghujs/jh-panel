@@ -2279,7 +2279,7 @@ def addSlaveSSH(version=''):
     if not data[0]:
         return data[1]
 
-    id_rsa = args['id_rsa']
+    id_rsa = args['id_rsa'].replace('\\n', '\n')
     port = args['port']
     db_user = args['db_user']
     user = 'root'

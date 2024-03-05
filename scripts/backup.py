@@ -129,7 +129,7 @@ rm -rf $tmp_path
         tempFilePath = tmp_path + '/zip.sh'
         mw.writeFile(tempFilePath, backup_cmd)
         mw.execShell('chmod 750 ' + tempFilePath)
-        mw.execShell('source /root/.bashrc && ' + tempFilePath)
+        mw.execShell('source /root/.bashrc && ' + tempFilePath, useTmpFile=True)
 
         endDate = time.strftime('%Y/%m/%d %X', time.localtime())
 
@@ -201,11 +201,9 @@ rm -rf $tmp_path
         tempFilePath = tmp_path + '/zip.sh'
         mw.writeFile(tempFilePath, backup_cmd)
         mw.execShell('chmod 750 ' + tempFilePath)
-        mw.execShell('source /root/.bashrc && ' + tempFilePath)
-
+        mw.execShell('source /root/.bashrc && ' + tempFilePath, useTmpFile=True)
         endDate = time.strftime('%Y/%m/%d %X', time.localtime())
 
-        print(filename)
         if not os.path.exists(filename):
             log = "插件[" + name + "]备份配置失败!"
             print("★[" + endDate + "] " + log)
@@ -346,9 +344,9 @@ check_and_install "zstd"
         site_info = systemApi.getSiteInfo()
         with open(tmp_path + "/site_info.json", 'w') as f:
           json.dump(site_info, f)
-        mw.execShell(f'pushd /www/server/web_conf/ > /dev/null && zip -r {tmp_path}/web_conf.zip . && popd > /dev/null')
+        mw.execShell(f'pushd /www/server/web_conf/ > /dev/null && zip -r {tmp_path}/web_conf.zip . && popd > /dev/null', useTmpFile=True)
         mw.execShell(f'cp -r /www/server/jh-panel/data/letsencrypt.json {tmp_path}/letsencrypt.json')
-        mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null')
+        mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null', useTmpFile=True)
         print('|----备份所有网站配置任务完成')
     
     def backupPluginSettingAll(self, save):
@@ -368,8 +366,8 @@ check_and_install "zstd"
         for plugin in plugin_list:
             name = plugin['name']
             plugin_path = plugin['path']
-            mw.execShell(f'pushd {plugin_path}/ > /dev/null && zip -r {tmp_path}/{name}.zip . && popd > /dev/null')        
-        mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null')
+            mw.execShell(f'pushd {plugin_path}/ > /dev/null && zip -r {tmp_path}/{name}.zip . && popd > /dev/null', useTmpFile=True)        
+        mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null', useTmpFile=True)
         print('|----备份所有插件配置任务完成')
     
     def cleanBackupByHistory(self, type, pid, save):

@@ -322,7 +322,8 @@ if [ $choice == "y" ]; then
   echo "popd > /dev/null" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
 
-
+  echo "source /root/.bashrc" >> $tmp_merge_file
+  echo "source /www/server/jh-panel/scripts/util/msg.sh" >> $tmp_merge_file
   
   # 确认预上线操作
   echo "# 确认预上线操作" >> $tmp_merge_file

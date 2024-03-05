@@ -30,7 +30,7 @@ fi
 # done
 
 show_menu() {
-    echo "==================vm bullseye os-tools=================="
+    echo "==================vm os-tools=================="
     echo "请选择整理工具:"
     echo "1. 整理目录-第①步（生成复制wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"
     echo "2. 整理目录-第②步（生成链接wwwroot下的项目upload、multipartTmp等目录到wwwstorage脚本文件）"

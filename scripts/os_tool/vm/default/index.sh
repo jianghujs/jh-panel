@@ -35,7 +35,7 @@ fi
 # done
 
 show_menu() {
-    echo "==================vm bullseye os-tools=================="
+    echo "==================vm os-tools=================="
     echo "请选择一个操作:"
     echo "1. 初始化环境"
     echo "2. 生成SSH密钥"

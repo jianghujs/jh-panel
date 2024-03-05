@@ -30,7 +30,7 @@ fi
 # done
 
 show_menu() {
-    echo "==================vm bullseye os-tools=================="
+    echo "==================vm os-tools=================="
     echo "请选择迁移模式:"
     echo "1. 生成迁移包（全数据打包）"
     echo "2. 上线同步（数据库恢复文件+项目文件rsync同步）"

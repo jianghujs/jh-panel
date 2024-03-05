@@ -50,7 +50,7 @@ fi
 # done
 
 show_menu() {
-    echo "==================vm bullseye os-tools=================="
+    echo "==================vm os-tools=================="
     echo "请选择备份恢复工具:"
     echo "1. MySQL数据库备份-mysqldump版（使用mysqldump批量导出数据库）"
     echo "2. MySQL数据库恢复-mysqldump版（批量恢复使用mysqldump导出的数据库文件，视图部分逐条执行）"

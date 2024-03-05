@@ -30,7 +30,7 @@ fi
 # done
 
 show_menu() {
-    echo "==================vm bullseye os-tools=================="
+    echo "==================vm os-tools=================="
     echo "请选择工具:"
     echo "1. 生成指定域名SSH密钥（用于gitea、github公钥配置）"
     echo "2. 生成服务器同步SSH密钥（用于生成服务器同步专用密钥）"

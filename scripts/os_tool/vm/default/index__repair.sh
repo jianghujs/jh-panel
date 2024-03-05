@@ -30,7 +30,7 @@ fi
 # done
 
 show_menu() {
-    echo "==================vm bullseye os-tools=================="
+    echo "==================vm os-tools=================="
     echo "请选择修复工具:"
     echo "1. 修复数据库文件（修复可读写但xtrabackup备份报错的数据表）"
     echo "2. 修复网站异常SSL订单（修复无法续签的SSL证书）"

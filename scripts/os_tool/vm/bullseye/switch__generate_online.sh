@@ -44,6 +44,7 @@ echo "-----------------------"
 prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 
 if [ $choice == "y" ]; then
+  pushd /www/server/jh-panel > /dev/null
   # 清空文件并添加依赖
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_prepare_script_file
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_online_script_file
@@ -379,4 +380,5 @@ if [ $choice == "y" ]; then
     exit 0
   fi
   bash $script_file
+  popd > /dev/null
 fi

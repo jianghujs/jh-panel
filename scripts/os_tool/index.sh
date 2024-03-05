@@ -51,7 +51,7 @@ fi
 
 if [ "$usePanelScript" == "true" ]; then 
   export USE_PANEL_SCRIPT=true
-  export SCRIPT_BASE=/www/server/jh-panel/scripts/os_tool/${osType}/${CODENAME}
+  export SCRIPT_BASE=/www/server/jh-panel/scripts/os_tool/${osType}/${tool_dir}
   bash $SCRIPT_BASE/index.sh
 else
   toolURLBase="https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/os_tool"

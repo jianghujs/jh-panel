@@ -54,6 +54,26 @@ bash $recovery_tmp_file > $recovery_log 2>&1
 rm $recovery_tmp_file
 echo "|- 恢复xtrabackup文件成功✅"
 
+# 获取mysql-apt状态
+pushd /www/server/jh-panel > /dev/null
+mysql_apt_status=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py status)
+popd > /dev/null
+echo "|- mysql-apt状态：$mysql_apt_status"
+# 如果mysql-apt状态为stop，则调用start方法
+if [ "$mysql_apt_status" == "stop" ]; then
+    echo "|- 正在尝试启动mysql-apt..."
+    pushd /www/server/jh-panel > /dev/null
+    mysql_apt_start_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py start)
+    popd > /dev/null
+    if [ $mysql_apt_start_result == "ok" ]
+    then
+        echo "|- mysql-apt启动成功✅"
+    else
+        echo "mysql-apt启动失败❌"
+        exit 1
+    fi
+fi
+
 # 获取/www/backup/xtrabackup_data_restore/xtrabackup_binlog_info中的binlog文件名和pos
 binlog_info_file="/www/backup/xtrabackup_data_restore/xtrabackup_binlog_info"
 log_file=""

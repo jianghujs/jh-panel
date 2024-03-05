@@ -19,6 +19,7 @@
             "logfile": "/www/server/rsyncd/logs/lsyncd.log",
             "inotifyMode": "CloseWrite",
             "maxProcesses": 1,
+            "retry": "R/20/10",
             "statusFile": "/www/server/rsyncd/logs/lsyncd.status"
         },
         "list":[]

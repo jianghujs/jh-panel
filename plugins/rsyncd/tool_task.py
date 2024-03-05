@@ -8,6 +8,8 @@ import json
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
+import crontab_api
+crontabApi = crontab_api.crontab_api()
 
 
 app_debug = False
@@ -129,25 +131,14 @@ logs_file=$log_path/run_$timestamp.log
 
 
 def removeBgTask():
-    cfg_list = getConfigData()
-    for x in range(len(cfg_list)):
-        cfg = cfg_list[x]
-        if "task_id" in cfg.keys() and cfg["task_id"] > 0:
-            _name = "[勿删]同步插件定时任务[" + cfg['name'] + "]"
-            resById = mw.M("crontab").field("id, name").where(
-                "id=?", (cfg["task_id"],)).find()
-            resByName = mw.M("crontab").field("id, name").where(
-                "name=?", (_name,)).find()
-            if resById or resByName:
-                import crontab_api
-                api = crontab_api.crontab_api()
-                data = api.delete(cfg["task_id"])
-                if data[0]:
-                    cfg["task_id"] = -1
-                    cfg_list[x] = cfg
-                    mw.writeFile(getTaskConf(), '[]')
-                    return True
-    return False
+    crontab = mw.M("crontab").field("id, name").where(
+        "name like ?", ("[勿删]同步插件定时任务%",)).select()
+
+    if crontab:
+        for c in crontab:
+            crontabApi.delete(c['id'])
+        mw.writeFile(getTaskConf(), '[]')
+    return True
 
 
 if __name__ == "__main__":

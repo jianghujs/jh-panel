@@ -43,6 +43,12 @@ codename_value=$(echo $codename_line | cut -d ':' -f2)
 CODENAME=$(echo $codename_value | xargs)
 echo "Codename: ${CODENAME}"
 
+tool_dir=$CODENAME
+# 如果CODENAME为focal或bullseye，则tool_dir为default
+if [ $CODENAME == "bullseye" ] || [ $CODENAME == "focal"]; then
+  tool_dir="default"
+fi
+
 if [ "$usePanelScript" == "true" ]; then 
   export USE_PANEL_SCRIPT=true
   export SCRIPT_BASE=/www/server/jh-panel/scripts/os_tool/${osType}/${CODENAME}

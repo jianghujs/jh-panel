@@ -1110,6 +1110,32 @@ def downloadHook(count, blockSize, totalSize):
     speed = {'total': totalSize, 'block': blockSize, 'count': count}
     print('%02d%%' % (100.0 * count * blockSize / totalSize))
 
+def getLocalIp():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    local_ip = None
+    try:
+        # The IP address isn't really important here, we just need to select a valid IP address
+        # to allow the socket to be bound correctly
+        sock.connect(("8.8.8.8", 80))
+        local_ip = sock.getsockname()[0]
+    finally:
+        sock.close()
+    return local_ip
+
+def setHostAddr(addr):
+    file = getRunDir() + '/data/iplist.txt'
+    return writeFile(file, addr)
+
+
+def getHostPort():
+    if os.path.exists('data/port.pl'):
+        return readFile('data/port.pl').strip()
+    return '7200'
+
+
+def setHostPort(port):
+    file = getRunDir() + '/data/port.pl'
+    return writeFile(file, port)
 
 def getLocalIpBack():
     # 取本地外网IP
@@ -1137,31 +1163,14 @@ def getClientIp():
     return request.remote_addr.replace('::ffff:', '')
 
 
-def getLocalIp():
+def initPanelIp():
     filename = 'data/iplist.txt'
-    try:
-        ipaddress = readFile(filename)
-        if not ipaddress or ipaddress == '127.0.0.1':
-            cmd = "curl -4 -sS --connect-timeout 5 -m 60 https://v6r.ipip.net/?format=text"
-            ip = execShell(cmd)
-            result = ip[0].strip()
-            if result == '':
-                raise Exception("ipv4 is empty!")
-            writeFile(filename, result)
-            return result
-        return ipaddress
-    except Exception as e:
-        cmd = "curl -6 -sS --connect-timeout 5 -m 60 https://v6r.ipip.net/?format=text"
-        ip = execShell(cmd)
-        result = ip[0].strip()
-        if result == '':
-            return '127.0.0.1'
-        writeFile(filename, result)
+    ipaddress = readFile(filename)
+    if not ipaddress or ipaddress == '127.0.0.1':
+        result = getLocalIp()
+        setHostAddr(result)
         return result
-    finally:
-        pass
-    return '127.0.0.1'
-
+    return ipaddress
 
 def inArray(arrays, searchStr):
     # 搜索数据中是否存在
@@ -1392,35 +1401,6 @@ def getServerIp(version = 4):
     ip = execShell(
         "curl -{} -sS --connect-timeout 5 -m 60 https://api.ipify.org/?format=text".format(version))
     return ip[0] if ip[2] == 0 else ""
-
-def getLocalIp():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    local_ip = None
-    try:
-        # The IP address isn't really important here, we just need to select a valid IP address
-        # to allow the socket to be bound correctly
-        sock.connect(("8.8.8.8", 80))
-        local_ip = sock.getsockname()[0]
-    finally:
-        sock.close()
-    return local_ip
-
-
-def setHostAddr(addr):
-    file = getRunDir() + '/data/iplist.txt'
-    return writeFile(file, addr)
-
-
-def getHostPort():
-    if os.path.exists('data/port.pl'):
-        return readFile('data/port.pl').strip()
-    return '7200'
-
-
-def setHostPort(port):
-    file = getRunDir() + '/data/port.pl'
-    return writeFile(file, port)
-
 
 def auth_decode(data):
     # 解密数据

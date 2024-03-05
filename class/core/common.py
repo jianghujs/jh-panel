@@ -122,7 +122,8 @@ def initInitD():
         mw.execShell('which update-rc.d && update-rc.d -f mw defaults')
 
     # 获取系统IPV4
-    mw.setHostAddr(mw.getLocalIp())
+    # mw.setHostAddr(mw.getLocalIp())
+    mw.initPanelIp()
 
 
 def initInitTask():

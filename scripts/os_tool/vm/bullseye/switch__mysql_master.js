@@ -89,6 +89,7 @@ async function switchMasterSlave() {
     if (!slaveDeleteSlaveResult.status) {
       throw new Error('删除从库失败❌')
     }
+    Logger.success("|- 删除从库完成✅");
     // 设置新主的从库信息
     console.log("|- 正在设置新主的从库信息...");
     let masterAddSlaveResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status'))

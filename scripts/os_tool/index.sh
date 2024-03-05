@@ -59,7 +59,7 @@ else
     toolURLBase="https://gitee.com/jianghujs/jh-panel/raw/master/scripts/os_tool"
   fi
 
-  URLBase="${toolURLBase}/${osType}/${CODENAME}"
+  URLBase="${toolURLBase}/${osType}/${tool_dir}"
   echo "URLBase: ${URLBase}"
   export URLBase
 

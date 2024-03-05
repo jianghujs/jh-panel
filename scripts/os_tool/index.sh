@@ -45,7 +45,7 @@ echo "Codename: ${CODENAME}"
 
 tool_dir=$CODENAME
 # 如果CODENAME为focal或bullseye，则tool_dir为default
-if [ $CODENAME == "bullseye" ] || [ $CODENAME == "focal"]; then
+if [ $CODENAME == "bullseye" ] || [ $CODENAME == "focal" ]; then
   tool_dir="default"
 fi
 

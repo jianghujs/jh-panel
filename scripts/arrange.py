@@ -301,5 +301,3 @@ if __name__ == "__main__":
         arrange.fixCustomSSLSite(params)
     else:
         print("无效参数")
-
-print(is_subdomain('finance.jianghujs.org', '*.eggjs.tech'))

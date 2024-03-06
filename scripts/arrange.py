@@ -290,13 +290,12 @@ if __name__ == "__main__":
         arrange.cleanSysCrontab()
     elif type == 'getCustomSSLSiteInfo':
         arrange.getCustomSSLSiteInfo()
-
-    """
-    修改自定义SSL网站为letsencrypt证书
-    使用示例：
-    cd /www/server/jh-panel && python3 /www/server/jh-panel/scripts/arrange.py fixCustomSSLSite '{"email":"josephine_lixy@outlook.com","optSiteNames":"all","excludeSiteNames":"*.eggjs.tech,*.fsll.org,*.mdsx.org,*.yxzyxuexiao.com,mdjs.nextcloudtech.com"}'
-    """
     elif type == 'fixCustomSSLSite':
+        """
+        修改自定义SSL网站为letsencrypt证书
+        使用示例：
+        cd /www/server/jh-panel && python3 /www/server/jh-panel/scripts/arrange.py fixCustomSSLSite '{"email":"josephine_lixy@outlook.com","optSiteNames":"all","excludeSiteNames":"*.eggjs.tech,*.fsll.org,*.mdsx.org,*.yxzyxuexiao.com,mdjs.nextcloudtech.com"}'
+        """
         params = json.loads(sys.argv[2])
         arrange.fixCustomSSLSite(params)
     else:

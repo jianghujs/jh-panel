@@ -140,7 +140,7 @@ class arrangeTools:
         else:
             print("已取消")
     
-    def cleanSysCrontab(self):
+    def cleanSysCrontab(self, force_confirm=False):
         print("|- 正在检测系统crontab...")
         
         crontab_list = mw.M('crontab').field(crontabApi.field).order('id desc').select()
@@ -190,13 +190,16 @@ class arrangeTools:
           print("\n".join(sys_crontab_clean_list) + "\033[0m")
           print(f"即将重建crontab为（{len(sys_crontab_result_list)}）：")
           print("\n".join(sys_crontab_result_list))
-          confirm = input(f"确定要这样做吗？（默认y）[y/n] ")
-          confirm = confirm if confirm else 'y'
-          if confirm.lower() == 'y':
-              # 重新使用sys_crontab_result_list生成crontab
-              mw.writeFile('/tmp/crontab.tmp', "\n".join(sys_crontab_result_list) + "\n")
-              mw.execShell(f"crontab /tmp/crontab.tmp")
-              print("重建crontab完成！✅") 
+          if not force_confirm:
+              confirm = input(f"确定要这样做吗？（默认y）[y/n] ")
+              confirm = confirm if confirm else 'y'
+              if confirm.lower() != 'y':
+                  print("已取消")
+                  return
+          # 重新使用sys_crontab_result_list生成crontab
+          mw.writeFile('/tmp/crontab.tmp', "\n".join(sys_crontab_result_list) + "\n")
+          mw.execShell(f"crontab /tmp/crontab.tmp")
+          print("重建crontab完成！✅") 
         except KeyboardInterrupt as e:
           print("已取消")
         except Exception as e:
@@ -287,6 +290,9 @@ if __name__ == "__main__":
     if type == 'fixProjectConfigUseDatabaseRootUser':
         arrange.fixProjectConfigUseDatabaseRootUser()
     elif type == 'cleanSysCrontab':
+        force_confirm = False
+        if len(sys.argv) > 2 and sys.argv[2] == '-y':
+            force_confirm = True
         arrange.cleanSysCrontab()
     elif type == 'getCustomSSLSiteInfo':
         arrange.getCustomSSLSiteInfo()

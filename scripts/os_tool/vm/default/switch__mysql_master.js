@@ -1,6 +1,5 @@
 
 const fs = require("fs");
-const mysql = require('mysql');
 const readline = require('readline');
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);

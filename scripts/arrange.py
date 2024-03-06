@@ -293,7 +293,7 @@ if __name__ == "__main__":
         force_confirm = False
         if len(sys.argv) > 2 and sys.argv[2] == '-y':
             force_confirm = True
-        arrange.cleanSysCrontab()
+        arrange.cleanSysCrontab(force_confirm)
     elif type == 'getCustomSSLSiteInfo':
         arrange.getCustomSSLSiteInfo()
     elif type == 'fixCustomSSLSite':

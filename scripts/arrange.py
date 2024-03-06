@@ -258,7 +258,7 @@ class arrangeTools:
         for site in customSSLSiteList:
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")
-            print("|- 开始修复：%s" % siteName)
+            print("|- 开始清除并申请SSL证书：%s" % siteName)
             siteApi.closeSslConf(siteName)
             print("|- 关闭%sSSL成功✅" % siteName)
             siteApi.deleteSsl(siteName, "now")

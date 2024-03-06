@@ -1427,6 +1427,8 @@ fullchain.pem       粘贴到证书输入框
             self.sendCsr(index)
             writeLog("|-正在下载证书..")
             cert = self.downloadCert(index)
+            writeLog("|-申请成功，正在部署到站点..")
+            time.sleep(5)
             self.__config['orders'][index]['renew_time'] = int(time.time())
 
             # 清理失败重试记录

@@ -37,6 +37,9 @@ class switchTools:
         if not cronInfo:
             print("计划任务不存在")
             return
+        if cronInfo['status'] == 1:
+            print("计划任务已经启用了")
+            return
 
         mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 1)
         cronInfo['status'] = 1
@@ -48,6 +51,9 @@ class switchTools:
             'name=?', (name,)).field(crontabApi.field).find()
         if not cronInfo:
             print("计划任务不存在")
+            return
+        if cronInfo['status'] == 0:
+            print("计划任务已经停用了")
             return
 
         mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 0)

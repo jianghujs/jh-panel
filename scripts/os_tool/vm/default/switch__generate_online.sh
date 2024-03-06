@@ -117,7 +117,7 @@ if [ $choice == "y" ]; then
     echo "  checksum_diff=\$(echo \"\$checksum_diff\" | tr ',' '\n')" >> $tmp_prepare_script_file
     echo "  echo \"|- checksum结果存在以下不同：\"" >> $tmp_prepare_script_file
     echo "  echo -e \"\033[0;31m\$checksum_diff\033[0m\"" >> $tmp_prepare_script_file
-    echo "  prompt \"确定要继续上线吗？（默认n）[y/n]: \" checksum_ignore_choice \"n\"" >> $tmp_prepare_script_file
+    echo "  prompt \"要忽略checksum结果继续吗？（默认n）[y/n]: \" checksum_ignore_choice \"n\"" >> $tmp_prepare_script_file
     echo "  if [ \$checksum_ignore_choice == \"n\" ]; then" >> $tmp_prepare_script_file
     echo "    show_error \"错误:数据不一致，上线终止\"" >> $tmp_prepare_script_file
     echo "    exit 1" >> $tmp_prepare_script_file

@@ -221,7 +221,7 @@ class arrangeTools:
         for site in siteInfo.get("site_list", []):
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")
-            if sslType == 'custom' and siteName in optSiteNames:
+            if sslType == 'custom' and (optSiteNames == 'all' or siteName in optSiteNames):
                 customSSLSiteList.append(site)
 
         for site in customSSLSiteList:

@@ -241,7 +241,7 @@ class arrangeTools:
             # 判断域名是否在排除列表中，排除列表是通配符域名并且多个用,分隔的格式
             exclude_site = False
             if excludeSiteNames:
-              excludeSiteNames = excludeSiteNames.split(',')
+              excludeSiteNames = excludeSiteNames
               for excludeSiteName in excludeSiteNames:
                 if is_subdomain(siteName, excludeSiteName):
                   exclude_site = True

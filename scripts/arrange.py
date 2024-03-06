@@ -250,7 +250,9 @@ class arrangeTools:
                 "email": email
             }
             createResult = siteApi.createLet(createLetForm)
-            print("createResult", createResult)
+            if createResult.get('status', False) == False:
+                print("|- 创建%sSSL证书失败❌，%s" % (siteName, createResult.get('msg', '')))
+                continue
             print("|- 创建%sSSL证书成功✅" % siteName)
             siteApi.deploySsl(siteName, "lets")
             print("|- 部署%sSSL证书成功✅" % siteName)

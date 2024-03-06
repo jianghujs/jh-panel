@@ -212,7 +212,8 @@ class arrangeTools:
     
     def fixCustomSSLSite(self, params):
         email = params.get('email', None)
-        optSiteNames = params.get('optSiteNames', [])
+        optSiteNames = params.get('optSiteNames', "all")
+        excludeSiteNames = params.get('excludeSiteNames', "")
         if not email:
             print("请传入email参数")
             return
@@ -222,7 +223,10 @@ class arrangeTools:
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")
             if sslType == 'custom' and (optSiteNames == 'all' or siteName in optSiteNames):
-                customSSLSiteList.append(site)
+              if excludeSiteNames and siteName in excludeSiteNames:
+                print('跳过：%s' % siteName)
+                continue
+              customSSLSiteList.append(site)
 
         if len(customSSLSiteList) == 0:
             print('暂未发现自定义SSL网站')

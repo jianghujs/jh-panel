@@ -56,6 +56,8 @@ show_menu() {
     echo "2. MySQL数据库恢复-mysqldump版（批量恢复使用mysqldump导出的数据库文件，视图部分逐条执行）"
     echo "3. MySQL数据库备份-mydumper版（使用mydumper批量导出数据库）"
     echo "4. MySQL数据库恢复-mydumper版（恢复使用myloader批量导出的数据库文件）"
+    echo "5. 恢复网站配置（从最近的备份中恢复网站配置，包括网站列表、网站配置、letsencrypt订单）"
+    echo "6. 恢复插件配置（从最近的备份中恢复插件数据，包括jianghujs、docker插件）"
     echo "提示：mysqldump版适用于导出数据库结构合并到其他服务器，mydumper版适用于大数据量的快速备份恢复。"
     echo "========================================================"
 }
@@ -89,6 +91,12 @@ case $choice in
     ;;
 4)
     download_and_run_bash backup__import_mysql_database_myloader.sh
+    ;;
+5)
+    download_and_run_bash backup__restore_site_setting.sh
+    ;;
+6)
+    download_and_run_bash backup__restore_plugin_setting.sh
     ;;
 esac
 

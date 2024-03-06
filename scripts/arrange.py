@@ -249,7 +249,8 @@ class arrangeTools:
                 "force": True,
                 "email": email
             }
-            siteApi.createLet(createLetForm)
+            createResult = siteApi.createLet(createLetForm)
+            print("createResult", createResult)
             print("|- 创建%sSSL证书成功✅" % siteName)
             siteApi.deploySsl(siteName, "lets")
             print("|- 部署%sSSL证书成功✅" % siteName)

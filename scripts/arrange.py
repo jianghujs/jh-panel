@@ -219,7 +219,7 @@ class arrangeTools:
     def fixCustomSSLSite(self, params):
         email = params.get('email', None)
         optSiteNames = params.get('optSiteNames', "all")
-        excludeSiteNames = params.get('excludeSiteNames', "")
+        excludeSiteNames = params.get('excludeSiteNames', "").split(',')
         if not email:
             print("请传入email参数")
             return
@@ -229,25 +229,25 @@ class arrangeTools:
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")
             if site['status'] != '1':
-              print('跳过停止的域名：%s' % siteName)
+              print('|- 跳过停止的域名：%s' % siteName)
               continue
             if sslType != 'custom':
-              print('跳过非自定义SSL的域名：%s' % siteName)
+              print('|- 跳过非自定义SSL的域名：%s' % siteName)
               continue
             if (optSiteNames != 'all' and siteName not in optSiteNames):
-              print('跳过未指定域名：%s' % siteName)
+              print('|- 跳过未指定域名：%s' % siteName)
               continue
 
             # 判断域名是否在排除列表中，排除列表是通配符域名并且多个用,分隔的格式
             exclude_site = False
-            if excludeSiteNames:
-              excludeSiteNames = excludeSiteNames
+            if len(excludeSiteNames) > 0:
               for excludeSiteName in excludeSiteNames:
                 if is_subdomain(siteName, excludeSiteName):
+                  print('|- 域名 %s 匹配忽略项 %s' % (siteName, excludeSiteName))
                   exclude_site = True
                   break
             if exclude_site:
-              print('跳过忽略的域名：%s' % siteName)
+              print('|- 跳过忽略的域名：%s' % siteName)
               continue
             customSSLSiteList.append(site)
 
@@ -295,3 +295,5 @@ if __name__ == "__main__":
         arrange.fixCustomSSLSite(params)
     else:
         print("无效参数")
+
+print(is_subdomain('finance.jianghujs.org', '*.eggjs.tech'))

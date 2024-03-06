@@ -223,7 +223,8 @@ class arrangeTools:
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")
             if sslType == 'custom' and (optSiteNames == 'all' or siteName in optSiteNames):
-              if excludeSiteNames and siteName in excludeSiteNames:
+              superSiteName = siteName.split('.')[-2] + '.' + siteName.split('.')[-1]
+              if excludeSiteNames and superSiteName in excludeSiteNames:
                 print('跳过：%s' % siteName)
                 continue
               customSSLSiteList.append(site)

@@ -212,17 +212,17 @@ class arrangeTools:
     
     def fixCustomSSLSite(self, params):
         email = params.get('email', None)
+        optSiteNames = params.get('optSiteNames', [])
+        if not email:
+            print("请传入email参数")
+            return
         siteInfo = systemApi.getSiteInfo()
-        # 获取异常域名
         customSSLSiteList = []
         for site in siteInfo.get("site_list", []):
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")
-            if sslType == 'custom':
+            if sslType == 'custom' and siteName in optSiteNames:
                 customSSLSiteList.append(site)
-        if len(customSSLSiteList) == 0:
-            print("暂无自定义证书网站")
-            return
 
         for site in customSSLSiteList:
             sslType = site.get("ssl_type", "")

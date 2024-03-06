@@ -38,6 +38,7 @@ show_menu() {
     echo "4. 查找指定目录（查找并生成指定名称（如.git）目录的路径列表文件，可用于rsync、zip打包）"
     echo "5. 整理项目配置文件数据库连接信息，统一使用数据库自己的用户"
     echo "6. 清理系统crontab"
+    echo "7. 将使用自定义证书的站点改为letsencrypt证书"
     echo "========================================================"
 }
 
@@ -69,6 +70,9 @@ case $choice in
     pushd /www/server/jh-panel > /dev/null
     python3 /www/server/jh-panel/scripts/arrange.py cleanSysCrontab
     popd > /dev/null
+    ;;
+7)
+    download_and_run arrange__change_site_ssl_to_letsencrypt.sh
     ;;
 esac
 

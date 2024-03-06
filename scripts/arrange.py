@@ -195,6 +195,56 @@ class arrangeTools:
           print("已取消")
         except Exception as e:
           print(e)
+
+    
+    def getCustomSSLSiteInfo(self):
+        siteInfo = systemApi.getSiteInfo()
+        customSSLSiteList = []
+        for site in siteInfo.get("site_list", []):
+            sslType = site.get("ssl_type", "")
+            siteName = site.get("name", "")
+            if sslType == 'custom':
+                customSSLSiteList.append(site)
+        print(mw.getJson({
+            "customSSLSiteList": customSSLSiteList,
+            "customSSLSiteNameStr": ','.join([site['name'] for site in customSSLSiteList])
+        }))
+    
+    def fixCustomSSLSite(self, params):
+        email = params.get('email', None)
+        siteInfo = systemApi.getSiteInfo()
+        # 获取异常域名
+        customSSLSiteList = []
+        for site in siteInfo.get("site_list", []):
+            sslType = site.get("ssl_type", "")
+            siteName = site.get("name", "")
+            if sslType == 'custom':
+                customSSLSiteList.append(site)
+        if len(customSSLSiteList) == 0:
+            print("暂无自定义证书网站")
+            return
+
+        for site in customSSLSiteList:
+            sslType = site.get("ssl_type", "")
+            siteName = site.get("name", "")
+            print("|- 开始修复：%s" % siteName)
+            siteApi.closeSslConf(siteName)
+            print("|- 关闭%sSSL成功✅" % siteName)
+            siteApi.deleteSsl(siteName, "now")
+            print("|- 删除%sSSL配置成功✅" % siteName)
+            siteApi.deleteSsl(siteName, "lets")
+            print("|- 删除%sSSL证书成功✅" % siteName)
+            createLetForm = {
+                "siteName": siteName,
+                "domains": "[\"%s\"]" % siteName,
+                "force": True,
+                "email": email
+            }
+            siteApi.createLet(createLetForm)
+            print("|- 创建%sSSL证书成功✅" % siteName)
+            siteApi.deploySsl(siteName, "lets")
+            print("|- 部署%sSSL证书成功✅" % siteName)
+   
           
 if __name__ == "__main__":
     arrange = arrangeTools()
@@ -204,5 +254,10 @@ if __name__ == "__main__":
         arrange.fixProjectConfigUseDatabaseRootUser()
     elif type == 'cleanSysCrontab':
         arrange.cleanSysCrontab()
+    elif type == 'getCustomSSLSiteInfo':
+        arrange.getCustomSSLSiteInfo()
+    elif type == 'fixCustomSSLSite':
+        params = json.loads(sys.argv[2])
+        arrange.fixCustomSSLSite(params)
     else:
         print("无效参数")

@@ -8,7 +8,7 @@ import os
 import json
 import re
 import datetime
-
+from fnmatch import fnmatch
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
 
@@ -35,6 +35,12 @@ mysql_cnf = os.path.join(mysql_dir, 'etc/my.cnf')
 
 sys.path.append(chdir + '/plugins/mysql-apt')
 from index import getDbPort, pMysqlDb, pSqliteDb
+
+
+def is_subdomain(domain, wildcard):
+    reversed_domain = '.'.join(reversed(domain.split('.')))
+    reversed_wildcard = '.'.join(reversed(wildcard.split('.')))
+    return fnmatch(reversed_domain, reversed_wildcard)
 
 class arrangeTools:
 
@@ -222,12 +228,28 @@ class arrangeTools:
         for site in siteInfo.get("site_list", []):
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")
-            if sslType == 'custom' and (optSiteNames == 'all' or siteName in optSiteNames):
-              superSiteName = siteName.split('.')[-2] + '.' + siteName.split('.')[-1]
-              if excludeSiteNames and superSiteName in excludeSiteNames:
-                print('跳过：%s' % siteName)
-                continue
-              customSSLSiteList.append(site)
+            if site['status'] != '1':
+              print('跳过停止的域名：%s' % siteName)
+              continue
+            if sslType != 'custom':
+              print('跳过非自定义SSL的域名：%s' % siteName)
+              continue
+            if (optSiteNames != 'all' and siteName not in optSiteNames):
+              print('跳过未指定域名：%s' % siteName)
+              continue
+
+            # 判断域名是否在排除列表中，排除列表是通配符域名并且多个用,分隔的格式
+            exclude_site = False
+            if excludeSiteNames:
+              excludeSiteNames = excludeSiteNames.split(',')
+              for excludeSiteName in excludeSiteNames:
+                if is_subdomain(siteName, excludeSiteName):
+                  exclude_site = True
+                  break
+            if exclude_site:
+              print('跳过忽略的域名：%s' % siteName)
+              continue
+            customSSLSiteList.append(site)
 
         if len(customSSLSiteList) == 0:
             print('暂未发现自定义SSL网站')

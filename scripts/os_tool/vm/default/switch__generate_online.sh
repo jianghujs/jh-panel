@@ -108,9 +108,9 @@ if [ $choice == "y" ]; then
     prerepre_online_opts+="- 检查主备服务器checksum\n"
     echo "# 检查主备服务器checksum" >> $tmp_prepare_script_file
     echo "echo \"|- 检查主备服务器checksum...\"" >> $tmp_prepare_script_file
-    echo "pushd /www/server/jh-panel/scripts/os_tool/vm/bullseye/ > /dev/null"  >> $tmp_prepare_script_file
+    echo "pushd /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_prepare_script_file
     echo "npm i" >> $tmp_prepare_script_file
-    echo "node /www/server/jh-panel/scripts/os_tool/vm/bullseye/monitor__export_mysql_checksum_compare.js" >> $tmp_prepare_script_file
+    echo "node /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/monitor__export_mysql_checksum_compare.js" >> $tmp_prepare_script_file
     echo "popd > /dev/null" >> $tmp_prepare_script_file
     echo "source /tmp/compare_checksum_diff" >> $tmp_prepare_script_file
     echo "if [[ -n \$checksum_diff ]]; then" >> $tmp_prepare_script_file
@@ -257,11 +257,11 @@ if [ $choice == "y" ]; then
     confirm_online_opts+="- 将当前数据库提升为主\n"
     echo "# 将当前数据库提升为主" >> $tmp_online_script_file
     echo "echo \"|- 将当前数据库提升为主...\"" >> $tmp_online_script_file
-    echo "pushd /www/server/jh-panel/scripts/os_tool/vm/bullseye/ > /dev/null"  >> $tmp_online_script_file
+    echo "pushd /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_online_script_file
     echo "source /root/.bashrc" >> $tmp_online_script_file
     echo "export PATH=\"/www/server/nodejs/fnm:\$PATH\"" >> $tmp_online_script_file 
     echo "npm i" >> $tmp_online_script_file
-    echo "node \"/www/server/jh-panel/scripts/os_tool/vm/bullseye/switch__mysql_master.js\"" >> $tmp_online_script_file
+    echo "node \"/www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/switch__mysql_master.js\"" >> $tmp_online_script_file
     echo "echo \"|- 将当前数据库提升为主完成✅\"" >> $tmp_online_script_file
     echo "popd > /dev/null" >> $tmp_online_script_file
   fi

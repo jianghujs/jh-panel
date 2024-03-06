@@ -43,15 +43,17 @@ codename_value=$(echo $codename_line | cut -d ':' -f2)
 CODENAME=$(echo $codename_value | xargs)
 echo "Codename: ${CODENAME}"
 
-tool_dir=$CODENAME
+TOOL_DIR=$CODENAME
 # 如果CODENAME为focal或bullseye，则tool_dir为default
 if [ $CODENAME == "bullseye" ] || [ $CODENAME == "focal" ]; then
-  tool_dir="default"
+  TOOL_DIR="default"
 fi
+
+export TOOL_DIR
 
 if [ "$usePanelScript" == "true" ]; then 
   export USE_PANEL_SCRIPT=true
-  export SCRIPT_BASE=/www/server/jh-panel/scripts/os_tool/${osType}/${tool_dir}
+  export SCRIPT_BASE=/www/server/jh-panel/scripts/os_tool/${osType}/${TOOL_DIR}
   bash $SCRIPT_BASE/index.sh
 else
   toolURLBase="https://raw.githubusercontent.com/jianghujs/jh-panel/master/scripts/os_tool"
@@ -59,7 +61,7 @@ else
     toolURLBase="https://gitee.com/jianghujs/jh-panel/raw/master/scripts/os_tool"
   fi
 
-  URLBase="${toolURLBase}/${osType}/${tool_dir}"
+  URLBase="${toolURLBase}/${osType}/${TOOL_DIR}"
   echo "URLBase: ${URLBase}"
   export URLBase
 

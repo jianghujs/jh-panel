@@ -224,6 +224,10 @@ class arrangeTools:
             if sslType == 'custom' and (optSiteNames == 'all' or siteName in optSiteNames):
                 customSSLSiteList.append(site)
 
+        if len(customSSLSiteList) == 0:
+            print('暂未发现自定义SSL网站')
+            return
+
         for site in customSSLSiteList:
             sslType = site.get("ssl_type", "")
             siteName = site.get("name", "")

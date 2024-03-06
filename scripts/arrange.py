@@ -37,7 +37,7 @@ sys.path.append(chdir + '/plugins/mysql-apt')
 from index import getDbPort, pMysqlDb, pSqliteDb
 
 
-def is_subdomain(domain, wildcard):
+def is_match_domain(domain, wildcard):
     reversed_domain = '.'.join(reversed(domain.split('.')))
     reversed_wildcard = '.'.join(reversed(wildcard.split('.')))
     return fnmatch(reversed_domain, reversed_wildcard)
@@ -242,7 +242,7 @@ class arrangeTools:
             exclude_site = False
             if len(excludeSiteNames) > 0:
               for excludeSiteName in excludeSiteNames:
-                if is_subdomain(siteName, excludeSiteName):
+                if is_match_domain(siteName, excludeSiteName):
                   print('|- 域名 %s 匹配忽略项 %s' % (siteName, excludeSiteName))
                   exclude_site = True
                   break

@@ -251,7 +251,7 @@ class arrangeTools:
             }
             createResult = siteApi.createLet(createLetForm)
             if createResult.get('status', False) == False:
-                print("|- 创建%sSSL证书失败❌，%s" % (siteName, createResult.get('msg', '')))
+                print("|- 创建%sSSL证书失败❌，%s" % (siteName, createResult.get('msg', '')[0]))
                 continue
             print("|- 创建%sSSL证书成功✅" % siteName)
             siteApi.deploySsl(siteName, "lets")

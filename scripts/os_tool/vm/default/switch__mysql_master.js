@@ -38,6 +38,8 @@ let MASTER_ID_RSA = '';
 let MASTER_SSH_PRIVATE_KEY = '';
 let MASTER_SSH_COMMAND = null;
 
+let MASTER_OPT_FLAG = true;
+
 // let SLAVE_HOST = '127.0.0.1';
 // let SLAVE_SSH_PORT = null;
 
@@ -48,20 +50,61 @@ let MASTER_SSH_COMMAND = null;
 // let slaveConnection = null;
 // let slaveQuery = null;
 
-async function switchMasterSlave() {
-  try {
-    // 主备服务器加上只读锁
-    console.log("|- 正在为主备服务器添加只读锁...");
+async function _switchMasterSlave() {
+  console.log("|- 开始切换主从服务器...");
+  // 主备服务器加上只读锁
+  console.log("|- 正在为主备服务器添加只读锁...");
 
-    let masterSetDbReadOnlyResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
-    if(!masterSetDbReadOnlyResult.status) {
-      throw new Error("执行主库加锁异常❌");
-    }
-    let slaveSetDbReadOnlyResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
-    if(!slaveSetDbReadOnlyResult.status) {
-      throw new Error("执行从库加锁异常❌");
-    }
-    Logger.success("|- 主备服务器添加只读锁完成✅");
+  let masterSetDbReadOnlyResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
+  if(!masterSetDbReadOnlyResult.status) {
+    throw new Error("执行主库加锁异常❌");
+  }
+  let slaveSetDbReadOnlyResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
+  if(!slaveSetDbReadOnlyResult.status) {
+    throw new Error("执行从库加锁异常❌");
+  }
+  Logger.success("|- 主备服务器添加只读锁完成✅");
+
+
+  let slaveDeleteSlaveResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave'))
+  if (!slaveDeleteSlaveResult.status) {
+    throw new Error('删除从库失败❌')
+  }
+  Logger.success("|- 删除从库完成✅");
+  // 设置新主的从库信息
+  console.log("|- 正在设置新主的从库信息...");
+  let masterAddSlaveResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status'))
+  if(!masterAddSlaveResult.status) {
+    throw new Error("添加从库失败❌");
+  }
+  Logger.success("|- 新主的从库信息设置完成✅");
+
+  // 取消新主的只读锁
+  console.log("|- 正在取消新主的只读锁...");
+  let slaveSetDbReadWriteResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_write'))
+  if(!slaveSetDbReadWriteResult.status) {
+    throw new Error("取消新主的只读锁异常❌");
+  }
+  Logger.success("|- 取消新主的只读锁完成✅");
+
+  Logger.success("主从切换完毕✅");
+}
+
+async function _switchSlave() {
+  
+  console.log("|- 开始将当前服务器提升为主...");
+  
+  let slaveDeleteSlaveResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave'))
+  if (!slaveDeleteSlaveResult.status) {
+    throw new Error('删除从库失败❌')
+  }
+  Logger.success("|- 删除从库完成✅");
+  
+  Logger.success("将当前服务器提升为主完毕✅");
+}
+
+async function startSwitch() {
+  try {
 
     // 检查从库状态
     console.log("|- 正在检查从库状态 ...");
@@ -73,39 +116,33 @@ async function switchMasterSlave() {
     const { Slave_IO_Running, Slave_SQL_Running, Seconds_Behind_Master } = slaveStatus;
 
     if (Slave_IO_Running !== 'Yes' || Slave_SQL_Running !== 'Yes') {
-      throw new Error("检查异常，从库未运行或同步异常❌");
+      console.log("检查异常，从库未运行或同步异常❌");
+      let ignore_error_choise = await prompt("继续提升当前库为主库吗？(默认n）[y/n]:", 'n');
+      if (ignore_error_choise.toLowerCase() !== 'y') {
+        console.log("操作已取消")
+        process.exit(1);
+      }
+      MASTER_OPT_FLAG = false;
+    } else {
+      Logger.success("|- 从库状态正常✅");
+      // 检查数据同步延迟
+      console.log("|- 正在检查数据同步延迟...");
+      if (Seconds_Behind_Master !== 0) {
+        throw new Error(`数据尚未完全同步，从库延迟了 ${Seconds_Behind_Master} 秒❌`);
+      } 
+      Logger.success("|- 数据无延迟✅");
     }
-    Logger.success("|- 从库状态正常✅");
 
-    // 检查数据同步延迟
-    console.log("|- 正在检查数据同步延迟...");
-    if (Seconds_Behind_Master !== 0) {
-      throw new Error(`数据尚未完全同步，从库延迟了 ${Seconds_Behind_Master} 秒❌`);
-    } 
-    Logger.success("|- 数据无延迟✅");
-
-    let slaveDeleteSlaveResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave'))
-    if (!slaveDeleteSlaveResult.status) {
-      throw new Error('删除从库失败❌')
+    switch(MASTER_OPT_FLAG) {
+      case true:
+        await _switchMasterSlave();
+        break;
+      case false:
+        await _switchSlave();
+        break;
+      default:
+        throw new Error("MASTER_OPT_FLAG 未知状态");
     }
-    Logger.success("|- 删除从库完成✅");
-    // 设置新主的从库信息
-    console.log("|- 正在设置新主的从库信息...");
-    let masterAddSlaveResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status'))
-    if(!masterAddSlaveResult.status) {
-      throw new Error("添加从库失败❌");
-    }
-    Logger.success("|- 新主的从库信息设置完成✅");
-
-    // 取消新主的只读锁
-    console.log("|- 正在取消新主的只读锁...");
-    let slaveSetDbReadWriteResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_write'))
-    if(!slaveSetDbReadWriteResult.status) {
-      throw new Error("取消新主的只读锁异常❌");
-    }
-    Logger.success("|- 取消新主的只读锁完成✅");
-
-    Logger.success("主从切换完毕✅");
 
   } catch (error) {
     console.error(error.message);
@@ -198,7 +235,7 @@ popd > /dev/null
   
   // slaveQuery = util.promisify(slaveConnection.query).bind(slaveConnection);
 
-  await switchMasterSlave();
+  await startSwitch();
   rl.close();
 })();
 

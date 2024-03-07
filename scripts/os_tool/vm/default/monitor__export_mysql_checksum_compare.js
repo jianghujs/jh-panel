@@ -186,6 +186,30 @@ function findDifferences(obj1 = {}, obj2 = {}, prefix = '') {
   return diffs;
 }
 
+async function checkConnection(connection) {
+  return new Promise(async (resolve, reject) => {
+    let connectionValid = false;
+    let knex = null;
+    try {
+      knex = Knex({
+        client: 'mysql',
+        connection: {
+          ...connection,
+          database: "information_schema",
+        },
+      });
+      await knex.raw('SELECT 1')
+      connectionValid = true;
+    } catch (error) {
+      console.error(`|- 连接到${connection.host}:${connection.port}失败❌`);
+    } finally {
+      if (knex) {
+        await knex.destroy();
+      }
+    }
+    resolve(connectionValid);
+  });
+}   
 
 (async () => {
   try {
@@ -221,6 +245,14 @@ function findDifferences(obj1 = {}, obj2 = {}, prefix = '') {
   } else {
     ignoreDatabases = defaultIgnoreDeatabasesInput.split(",").map(database => database.trim());
   }
+
+  let connectionAValid = await checkConnection( connectionA);
+  let connectionBValid = await checkConnection(connectionB);
+  if (!connectionAValid || !connectionBValid) {
+    console.error("|- 请检查数据库连接❌");
+    process.exit(1);
+  }
+  
 
   const checksumA = await getDatabaseChecksum(connectionA);
   const checksumB = await getDatabaseChecksum(connectionB);

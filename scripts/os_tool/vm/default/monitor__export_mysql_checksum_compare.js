@@ -179,7 +179,7 @@ function findDifferences(obj1 = {}, obj2 = {}, prefix = '') {
     if (typeof obj1[key] === 'object' && typeof obj2[key] === 'object') {
       diffs.push(...findDifferences(obj1[key], obj2[key], path));
     } else if (obj1[key] !== obj2[key]) {
-      diffs.push(path);
+      diffs.push(path + `: ${obj1[key]} -> ${obj2[key]}`);
     }
   });
 
@@ -230,7 +230,18 @@ async function checkConnection(connection) {
     connectionA.password = await prompt(`请输入当前数据库密码${connectionA.password? ('（默认为：' + (connectionA.password? '当前mysql密码': '空') + '）'): ''}：`, connectionA.password);
 
     // 目标数据库信息
-    connectionB.host = await prompt(`请输入目标数据库IP地址${connectionB.host? ('（默认为：' + connectionB.host + '）'): ''}：`, connectionB.host);
+    let defaultConnectionBHost = connectionB.host;
+    let connectionBTip = "请输入目标数据库IP地址"
+    try {
+      defaultConnectionBHost = (await execSync('python3 /www/server/jh-panel/tools.py getStandbyIp')).trim();
+      if (defaultConnectionBHost) {
+        connectionBTip += `（默认为：${defaultConnectionBHost}）`;
+      } 
+    } catch (error) {
+      console.error('获取备机IP失败')
+    }
+    
+    connectionB.host = await prompt(`${connectionBTip}:`, defaultConnectionBHost);
     if (!connectionB.host) {
       console.error("|- 目标数据库IP地址不能为空");
       process.exit(1);

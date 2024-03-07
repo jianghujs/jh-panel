@@ -2898,6 +2898,8 @@ def getChecksumReport(version):
                  f'\n----------------------------------------------------------\n', 'a+')
     mw.writeFile(checksumReportFile, f'- Name：{title}\n', 'a+')
     mw.writeFile(checksumReportFile,
+                 f'- Database Count：{len(databasesData) - len(ignoreDatabases)}\n', 'a+')
+    mw.writeFile(checksumReportFile,
                  f'- All Database Total：{checksum_total}\n', 'a+')
     mw.writeFile(checksumReportFile,
                  f'----------------------------------------------------------\n', 'a+')

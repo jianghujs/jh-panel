@@ -39,6 +39,9 @@ function refreshTable() {
                 <th style="text-align: right;" width="280">操作</th></tr>\
             </thead>\
             <tbody class="plugin-table-body"></tbody>\
+            <tfoot>\
+              <span>共 <b class="project-count">0</b> 个项目</span>\
+            </tfoot>\
         </table>\
     </div>';
     
@@ -160,6 +163,7 @@ function renderTableData() {
                     </td>\
                 </tr>';
     }
+    $(".project-count").text(tmp.length);
     $(".plugin-table-body").html(tbody);
 }
 

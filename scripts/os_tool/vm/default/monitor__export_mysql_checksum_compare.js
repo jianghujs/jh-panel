@@ -179,7 +179,8 @@ function findDifferences(obj1 = {}, obj2 = {}, prefix = '') {
     if (typeof obj1[key] === 'object' && typeof obj2[key] === 'object') {
       diffs.push(...findDifferences(obj1[key], obj2[key], path));
     } else if (obj1[key] !== obj2[key]) {
-      diffs.push(path + `: ${obj1[key]} -> ${obj2[key]}`);
+      // diffs.push(path + `: ${obj1[key]} -> ${obj2[key]}`);
+      diffs.push(path);
     }
   });
 

@@ -129,7 +129,7 @@ if [ $choice == "y" ]; then
 
   
   # 同步文件
-  prompt "需要从目标服务器更新文件到本地吗？（默认n）[y/n]: " sync_file_choice "n"
+  prompt "需要从目标服务器更新文件到本地吗？（默认y）[y/n]: " sync_file_choice "y"
 
   if [ $sync_file_choice == "y" ]; then
     prerepre_online_opts+="- 同步文件\n"
@@ -149,8 +149,8 @@ if [ $choice == "y" ]; then
     prompt "输入需要同步的目录（多个用英文逗号隔开，默认为：/www/wwwroot,/www/wwwstorage,/www/backup）: " sync_file_dirs_input "/www/wwwroot,/www/wwwstorage,/www/backup"
     IFS=',' read -ra sync_file_dirs <<< "$sync_file_dirs_input"
 
-    # 提示"请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）:"
-    prompt "请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run,.git）: " ignore_dirs_input "node_modules,logs,run,.git"
+    # 提示"请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run）:"
+    prompt "请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run）: " ignore_dirs_input "node_modules,logs,run"
     IFS=',' read -ra ignore_dirs <<< "$ignore_dirs_input"
     
     for sync_file_dir in "${sync_file_dirs[@]}"; do

@@ -143,8 +143,7 @@ class crontab_api:
 
     # 参数校验
     def cronCheck(self, params):
-
-        if params['stype'] == 'site' or params['stype'] == 'database' or params['stype'] == 'logs':
+        if params.get('stype', '') and (params['stype'] == 'site' or params['stype'] == 'database' or params['stype'] == 'logs'):
             if params.get('saveAllDay', '') == '':
                 return False, '3天内保留份数不能为空!'
             if params.get('saveOther', '') == '':

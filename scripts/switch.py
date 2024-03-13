@@ -71,6 +71,52 @@ class switchTools:
         data['email']['enable'] = False
         mw.writeNotify(data)
         print("关闭邮件通知成功!")
+
+    def modifyCrontabCron(self, cron_config):
+        iname = cron_config.get('name', '')
+        cron_type = cron_config.get('type', '')
+        week = cron_config.get('week', '')
+        hour = cron_config.get('hour', '')
+        minute = cron_config.get('minute', '')
+        where1 = cron_config.get('where1', '')
+
+        if len(iname) < 1:
+            return mw.returnJson(False, '任务名称不能为空!')
+
+        params = {
+            'name': iname,
+            'type': cron_type,
+            'week': week,
+            'where1': where1,
+            'hour': hour,
+            'minute': minute
+        }
+
+        
+        is_check_pass, msg = crontabApi.cronCheck(params)
+        if not is_check_pass:
+            print(msg)
+            return
+
+        cuonConfig, get, name = crontabApi.getCrondCycle(params)
+
+        cronInfo = mw.M('crontab').where(
+            'name=?', (iname,)).field(crontabApi.field).find()
+
+        if not cronInfo:
+            return mw.returnJson(False, '任务不存在')
+        
+        sid = cronInfo['id']
+        cronInfo['type'] = get['type']
+        cronInfo['where1'] = get['where1']
+        cronInfo['where_hour'] = get['hour']
+        cronInfo['where_minute'] = get['minute']
+        
+        addData = mw.M('crontab').where('id=?', (sid,)).save('type,where1,where_hour,where_minute', (cronInfo['type'], cronInfo['where1'], cronInfo['where_hour'], cronInfo['where_minute']))
+        crontabApi.removeCrond(cronInfo['echo'])
+        crontabApi.syncToCrond(cronInfo)
+        print("修改计划任务[" + iname + "]成功!")
+
         
    
 if __name__ == "__main__":
@@ -87,3 +133,9 @@ if __name__ == "__main__":
       st.openEmailNotify()
     elif type == 'closeEmailNotify':
       st.closeEmailNotify()
+    elif type == 'modifyCrontabCron':
+      """
+      python3 /www/server/jh-panel/scripts/switch.py modifyCrontabCron '{"name":"[勿删]同步插件定时任务[113.197.36.162@wwwroot]","type":"day","hour":1,"minute":34}'
+      """
+      cron_config = json.loads(sys.argv[2])
+      st.modifyCrontabCron(cron_config)

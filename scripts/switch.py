@@ -6,6 +6,7 @@
 import sys
 import os
 import json
+import re
 import datetime
 
 if sys.platform != 'darwin':
@@ -74,14 +75,12 @@ class switchTools:
 
     def modifyCrontabCron(self, cron_config):
         iname = cron_config.get('name', '')
+        iname_reg_str = cron_config.get('name_reg', '').replace("[", "\\[").replace("]", "\\]")
         cron_type = cron_config.get('type', '')
         week = cron_config.get('week', '')
         hour = cron_config.get('hour', '')
         minute = cron_config.get('minute', '')
         where1 = cron_config.get('where1', '')
-
-        if len(iname) < 1:
-            return mw.returnJson(False, '任务名称不能为空!')
 
         params = {
             'name': iname,
@@ -99,12 +98,16 @@ class switchTools:
             return
 
         cuonConfig, get, name = crontabApi.getCrondCycle(params)
+        crontabList = mw.M('crontab').field(crontabApi.field).select()
+        cronInfo = None
+        iname_reg = re.compile("^" + iname_reg_str + "$")
+        for cron in crontabList:
+            if re.match(iname_reg, cron["name"]):
+              cronInfo = cron
 
-        cronInfo = mw.M('crontab').where(
-            'name=?', (iname,)).field(crontabApi.field).find()
-
-        if not cronInfo:
-            return mw.returnJson(False, '任务不存在')
+        if cronInfo is None:
+            print("计划任务【" + iname_reg_str + "】不存在")
+            return
         
         sid = cronInfo['id']
         cronInfo['type'] = get['type']

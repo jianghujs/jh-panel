@@ -3,6 +3,7 @@
 import time
 import random
 import os
+import re
 import json
 import re
 import sys
@@ -707,6 +708,12 @@ def lsyncdListFindName(slist, name):
             return (True, x)
     return (False, -1)
 
+def lsyncdListFindNameReg(slist, name_reg_str):
+    name_reg = re.compile("^" + name_reg_str + "$")
+    for x in range(len(slist)):
+        if re.match(name_reg, slist[x]["name"]):
+            return (True, x)
+    return (False, -1)
 
 def lsyncdList():
     data = getDefaultConf()

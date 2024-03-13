@@ -139,7 +139,7 @@ if __name__ == "__main__":
       st.closeEmailNotify()
     elif type == 'modifyCrontabCron':
       """
-      python3 /www/server/jh-panel/scripts/switch.py modifyCrontabCron '{"name":"[勿删]同步插件定时任务[113.197.36.162@wwwroot]","type":"day","hour":1,"minute":34}'
+      python3 /www/server/jh-panel/scripts/switch.py modifyCrontabCron '{"name_reg":"[ 勿删]同步插件定时任务[.*wwwroot]","type":"day","hour":1,"minute":20}'
       """
       cron_config = json.loads(sys.argv[2])
       st.modifyCrontabCron(cron_config)

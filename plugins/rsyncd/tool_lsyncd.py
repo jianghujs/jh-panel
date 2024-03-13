@@ -20,14 +20,14 @@ if mw.isAppleSystem():
 
 
 def lsyncdModifyCron(args):
-    name = args['name']
+    name_reg = args['name_reg']
     data = rsyncdApi.getDefaultConf()
     slist = data['send']["list"]
-    res = rsyncdApi.lsyncdListFindNameReg(slist, name)
+    res = rsyncdApi.lsyncdListFindNameReg(slist, name_reg)
     retdata = {}
 
     if not res[0]:
-      print("任务不存在")
+      print(f"任务{name_reg}不存在")
       return
   
     list_index = res[1]
@@ -48,7 +48,31 @@ def lsyncdModifyCron(args):
 
     print("修改成功")
 
+  
+def lsyncdAddExclude(args):
 
+    name_reg = args['name_reg']
+    exclude = args['exclude']
+
+    data = rsyncdApi.getDefaultConf()
+    slist = data['send']["list"]
+    res = rsyncdApi.lsyncdListFindNameReg(slist, name_reg)
+    if not res[0]:
+      print(f"任务{name_reg}不存在")
+      return
+    i = res[1]
+    info = slist[i]
+
+    exclude_list = info['exclude']
+    if exclude in exclude_list:
+        print(f"已经存在忽略项目{exclude}！")
+        return
+    exclude_list.append(exclude)
+
+    data['send']["list"][i]['exclude'] = exclude_list
+    rsyncdApi.setDefaultConf(data)
+    rsyncdApi.makeLsyncdConf(data)
+    print(f"添加忽略项{exclude}到{info['name']}成功")
 
 
 if __name__ == "__main__":
@@ -62,3 +86,9 @@ if __name__ == "__main__":
       """
       cron_config = json.loads(sys.argv[2])
       lsyncdModifyCron(cron_config)
+    elif type == 'lsyncdAddExclude':
+      """
+      python3 /www/server/jh-panel/plugins/rsyncd/tool_lsyncd.py lsyncdAddExclude '{"name_reg":".*wwwroot","exclude":"dababase3"}'
+      """
+      exclude_config = json.loads(sys.argv[2])
+      lsyncdAddExclude(exclude_config)

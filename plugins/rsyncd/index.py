@@ -1107,6 +1107,8 @@ def lsyncdAddExclude():
     info = slist[i]
 
     exclude_list = info['exclude']
+    if exclude in exclude_list:
+        return mw.returnJson(False, f"已经存在忽略项目{exclude}！")
     exclude_list.append(exclude)
 
     data['send']["list"][i]['exclude'] = exclude_list

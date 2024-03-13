@@ -110,6 +110,7 @@ class switchTools:
             return
         
         sid = cronInfo['id']
+        name = cronInfo['name']
         cronInfo['type'] = get['type']
         cronInfo['where1'] = get['where1']
         cronInfo['where_hour'] = get['hour']
@@ -118,7 +119,7 @@ class switchTools:
         addData = mw.M('crontab').where('id=?', (sid,)).save('type,where1,where_hour,where_minute', (cronInfo['type'], cronInfo['where1'], cronInfo['where_hour'], cronInfo['where_minute']))
         crontabApi.removeCrond(cronInfo['echo'])
         crontabApi.syncToCrond(cronInfo)
-        print("修改计划任务[" + iname + "]成功!")
+        print("修改计划任务【" + name + "】成功!")
 
         
    

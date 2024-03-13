@@ -373,6 +373,9 @@ class crontab_api:
             return mw.returnJson(True, '成功!', cronInfo)
         return mw.returnJson(False, name + ' 不存在')    
 
+    def getCrontab(self, name):
+        return mw.M('crontab').where('name=?', (name,)).field(self.field).find()
+        
     def startTaskApi(self):
         sid = request.form.get('id', '')
         echo = mw.M('crontab').where('id=?', (sid,)).getField('echo')

@@ -425,7 +425,8 @@ IP：{item.get('ip', '')}<br/>
 
         # xtrabackup
         xtrabackup_info = None
-        if os.path.exists('/www/server/xtrabackup/'):
+        xtrabackup_crontab = crontabApi.getCrontab('[勿删]xtrabackup-cron')
+        if xtrabackup_crontab and xtrabackup_crontab.get('status', 0) == 1 and os.path.exists('/www/server/xtrabackup/'):
             xtrabackup_ddb = mw.getDDB('/www/server/xtrabackup/data/')
             xtrabackup_history = xtrabackup_ddb.getAll('backup_history')
             # 初始化统计数据
@@ -476,7 +477,8 @@ IP：{item.get('ip', '')}<br/>
 
         # xtrabackup-inc
         xtrabackup_inc_info = None
-        if os.path.exists('/www/server/xtrabackup-inc/'):
+        xtrabackup_inc_crontab = crontabApi.getCrontab('[勿删]xtrabackup-inc增量备份')
+        if xtrabackup_inc_crontab and xtrabackup_inc_crontab.get('status', 0) == 1 and os.path.exists('/www/server/xtrabackup-inc/'):
             xtrabackup_inc_ddb = mw.getDDB('/www/server/xtrabackup-inc/data/')
             xtrabackup_inc_history = xtrabackup_inc_ddb.getAll('backup_history')
             # 全量备份相关
@@ -553,7 +555,8 @@ IP：{item.get('ip', '')}<br/>
         
         # mysql-dump
         mysql_dump_info = None
-        if os.path.exists('/www/server/mysql-apt/'):
+        mysql_dump_crontab = crontabApi.getCrontab('备份数据库[backupAll]')
+        if mysql_dump_crontab and mysql_dump_crontab.get('status', 0) == 1 and os.path.exists('/www/server/mysql-apt/'):
             start_time = str(self.__START_TIME).replace("-", '/')
             end_time = str(self.__END_TIME).replace("-", '/')
             start_timestamp = self.__START_TIMESTAMP
@@ -678,4 +681,8 @@ if __name__ == "__main__":
     type = sys.argv[1]
 
     if type == 'send':
+      try:
         report.sendReport()
+      except Exception as e:
+        print('发送服务器报告异常', e)
+        mw.notifyMessage(title='服务器异常通知', msg="发送服务器报告异常" + str(e), stype='面板监控', trigger_time=600)

@@ -266,13 +266,13 @@ if [ $choice == "y" ]; then
     echo "popd > /dev/null" >> $tmp_online_script_file
   fi
 
-  # 开启定时任务
-  echo "# 开启定时任务" >> $tmp_online_script_file
-  echo "echo \"|- 开启定时任务...\"" >> $tmp_online_script_file
-  echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份数据库[backupAll]" >> $tmp_online_script_file
-  echo "show_info \"|- 开启 备份数据库 定时任务完成✅\"" >> $tmp_online_script_file
-  echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-cron" >> $tmp_online_script_file
-  echo "show_info \"|- 开启 xtrabackup 定时任务完成✅\"" >> $tmp_online_script_file
+  # 调整计划任务
+  echo "# 调整计划任务" >> $tmp_online_script_file
+  echo "echo \"|- 调整计划任务...\"" >> $tmp_online_script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab 备份数据库[backupAll]" >> $tmp_online_script_file
+  echo "show_info \"|- 关闭 备份数据库 定时任务完成✅\"" >> $tmp_online_script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]xtrabackup-cron" >> $tmp_online_script_file
+  echo "show_info \"|- 关闭 xtrabackup 定时任务完成✅\"" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-inc全量备份" >> $tmp_online_script_file
   echo "show_info \"|- 开启 xtrabackup-inc全量备份 定时任务完成✅\"" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]xtrabackup-inc增量备份" >> $tmp_online_script_file

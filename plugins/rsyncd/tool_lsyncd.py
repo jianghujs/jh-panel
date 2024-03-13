@@ -57,6 +57,7 @@ if __name__ == "__main__":
     if type == 'lsyncdModifyCron':
       """
       python3 /www/server/jh-panel/plugins/rsyncd/tool_lsyncd.py lsyncdModifyCron '{"name":"192.168.3.72@test","period":"minute-n","hour":"3","minute":"4","minute-n":"5"}'
+      python3 /www/server/jh-panel/plugins/rsyncd/tool_lsyncd.py lsyncdModifyCron '{"name":".*test2","period":"minute-n","hour":"3","minute":"4","minute-n":"10"}'
       """
       cron_config = json.loads(sys.argv[2])
       lsyncdModifyCron(cron_config)

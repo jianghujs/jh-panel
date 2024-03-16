@@ -1820,10 +1820,15 @@ def setDbrunMode(version=''):
 
 
 def findBinlogDoDb():
-    conf = getConf()
-    con = mw.readFile(conf)
-    rep = r"binlog-do-db\s*?=\s*?(.*)"
-    dodb = re.findall(rep, con, re.M)
+    dodb = None
+    try:
+      conf = getConf()
+      con = mw.readFile(conf)
+      rep = r"binlog-do-db\s*?=\s*?(.*)"
+      dodb = re.findall(rep, con, re.M)
+    except Exception as e:
+      pass
+
     return dodb
 
 
@@ -1988,7 +1993,7 @@ def getMasterStatus(version=''):
         master_status = False
         if content.find('#log-bin') == -1 and content.find('log-bin') > 1:
             dodb = findBinlogDoDb()
-            if len(dodb) > 0:
+            if dodb and len(dodb) > 0:
                 master_status = True
 
         data = {}
@@ -1999,12 +2004,15 @@ def getMasterStatus(version=''):
         dlist = db.query('show slave status')
 
         # print(dlist[0])
-        if len(dlist) > 0 and (dlist[0]["Slave_IO_Running"] == 'Yes' or dlist[0]["Slave_SQL_Running"] == 'Yes'):
-            data['slave_status'] = True
+        try:
+          if len(dlist) > 0 and (dlist[0]["Slave_IO_Running"] == 'Yes' or dlist[0]["Slave_SQL_Running"] == 'Yes'):
+              data['slave_status'] = True
+        except Exception as e:
+            data['slave_status'] = False
 
         return mw.returnJson(master_status, '设置成功', data)
     except Exception as e:
-        return mw.returnJson(False, "数据库密码错误,在管理列表-点击【修复】!", 'pwd')
+        return mw.returnJson(False, "获取主从状态异常!" + str(e), 'pwd')
 
 
 def setMasterStatus(version=''):
@@ -2416,9 +2424,12 @@ def initSlaveStatus(version=''):
     gtid_purged = args.get('gtid_purged', '')
     
     db = pMysqlDb()
-    dlist = db.query('show slave status')
-    if len(dlist) > 0:
+    try:
+      dlist = db.query('show slave status')
+      if len(dlist) > 0:
         return mw.returnJson(False, '已经初始化好了zz...')
+    except Exception as e:
+        return mw.returnJson(False, '主从状态异常，请尝试手动修复主从状态...')
 
     conn = pSqliteDb('slave_id_rsa')
     data = conn.field('ip,port,id_rsa').find()

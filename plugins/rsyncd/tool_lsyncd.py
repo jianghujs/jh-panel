@@ -81,7 +81,6 @@ def updateLsyncdLogCutShell():
     if not cronInfo:
         print(f"{task_name}计划任务不存在")
         return
-    print("cronInfo", cronInfo)
     cronInfo['sbody'] = f"""
 #!/bin/bash
 timestamp=$(date +%Y%m%d_%H%M%S)

@@ -682,7 +682,6 @@ if __name__ == "__main__":
 
     if type == 'send':
       try:
-        f
         report.sendReport()
       except Exception as e:
         print('发送服务器报告异常', e)

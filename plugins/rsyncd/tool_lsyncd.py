@@ -74,6 +74,27 @@ def lsyncdAddExclude(args):
     rsyncdApi.makeLsyncdConf(data)
     print(f"添加忽略项{exclude}到{info['name']}成功")
 
+def updateLsyncdLogCutShell():
+    task_name = "[勿删]lsyncd实时日志切割"
+    cronInfo = mw.M('crontab').where(
+        'name=?', (task_name,)).field(crontabApi.field).find()
+    if not cronInfo:
+        print(f"{task_name}计划任务不存在")
+        return
+    print("cronInfo", cronInfo)
+    cronInfo['sbody'] = f"""
+#!/bin/bash
+timestamp=$(date +%Y%m%d_%H%M%S)
+cp /www/server/rsyncd/logs/lsyncd.status /www/server/rsyncd/logs/lsyncd_\${{timestamp}}.status
+mv /www/server/rsyncd/logs/lsyncd.log /www/server/rsyncd/logs/lsyncd_\${{timestamp}}.log
+
+python3 /www/server/jh-panel/scripts/clean.py /www/server/rsyncd/logs/ '{{"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}}'
+  """
+    addData = mw.M('crontab').where('id=?', (cronInfo['id'],)).save(
+        'sbody', (cronInfo['sbody'],))
+    crontabApi.removeCrond(cronInfo['echo'])
+    crontabApi.syncToCrond(cronInfo)
+    print(f"修改计划任务【{task_name}】成功!")
 
 if __name__ == "__main__":
     type = sys.argv[1]
@@ -92,3 +113,5 @@ if __name__ == "__main__":
       """
       exclude_config = json.loads(sys.argv[2])
       lsyncdAddExclude(exclude_config)
+    elif type == 'updateLsyncdLogCutShell':
+      updateLsyncdLogCutShell()

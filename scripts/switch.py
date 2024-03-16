@@ -139,7 +139,7 @@ class switchTools:
         name = cronInfo['name']
         cronInfo['sbody'] = params.get('sbody', '')
         print(cronInfo)
-        addData = mw.M('crontab').where('id=?', (sid,)).save('sbody,', (cronInfo['sbody'],))
+        addData = mw.M('crontab').where('id=?', (sid,)).save('sbody', (cronInfo['sbody'],))
         crontabApi.removeCrond(cronInfo['echo'])
         crontabApi.syncToCrond(cronInfo)
         print("修改计划任务【" + name + "】成功!")

@@ -121,6 +121,29 @@ class switchTools:
         crontabApi.syncToCrond(cronInfo)
         print("修改计划任务【" + name + "】成功!")
 
+    def modifyCrontabShell(self, params):
+        iname_reg_str = params.get('name_reg', '').replace("[", "\\[").replace("]", "\\]")
+        
+        crontabList = mw.M('crontab').field(crontabApi.field).select()
+        cronInfo = None
+        iname_reg = re.compile("^" + iname_reg_str + "$")
+        for cron in crontabList:
+            if re.match(iname_reg, cron["name"]):
+              cronInfo = cron
+
+        if cronInfo is None:
+            print("计划任务【" + iname_reg_str + "】不存在")
+            return
+        print(cronInfo)
+        sid = cronInfo['id']
+        name = cronInfo['name']
+        cronInfo['sbody'] = params.get('sbody', '')
+        print(cronInfo)
+        addData = mw.M('crontab').where('id=?', (sid,)).save('sbody,', (cronInfo['sbody'],))
+        crontabApi.removeCrond(cronInfo['echo'])
+        crontabApi.syncToCrond(cronInfo)
+        print("修改计划任务【" + name + "】成功!")
+
         
    
 if __name__ == "__main__":
@@ -143,3 +166,9 @@ if __name__ == "__main__":
       """
       cron_config = json.loads(sys.argv[2])
       st.modifyCrontabCron(cron_config)
+    elif type == 'modifyCrontabShell':
+      """
+      python3 /www/server/jh-panel/scripts/switch.py modifyCrontabShell '{"name_reg":"[勿删]lsyncd实时日志切割","sbody":"echo \"ok\""}'
+      """
+      params = json.loads(sys.argv[2])
+      st.modifyCrontabShell(params)

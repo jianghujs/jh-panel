@@ -990,7 +990,8 @@ var defaultLsyncdLogCutCron = {
   sBody: `
 #!/bin/bash
 timestamp=$(date +%Y%m%d_%H%M%S)
-cp /www/server/rsyncd/logs/lsyncd.log /www/server/rsyncd/logs/lsyncd_\${timestamp}.log
+cp /www/server/rsyncd/logs/lsyncd.status /www/server/rsyncd/logs/lsyncd_\${timestamp}.status
+mv /www/server/rsyncd/logs/lsyncd.log /www/server/rsyncd/logs/lsyncd_\${timestamp}.log
   `,
   backupTo: 'localhost' };
 var lsyncdLogCutCron = {...defaultLsyncdLogCutCron}

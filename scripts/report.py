@@ -257,7 +257,7 @@ class reportTools:
             if mysql_master_slave_info is not None:
                 if len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
                     for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
-                        if  (not (slave_status_item.get('error_msg', '') == '' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or int(slave_status_item.get('delay', '999')) > 0):  
+                        if  (not (slave_status_item.get('error_msg', '') == '' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or int(slave_status_item.get('delay', '999')) > 0):  
                             backup_summary_tips.append("MySQL主从同步")
                             break
             if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):

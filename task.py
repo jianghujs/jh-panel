@@ -394,7 +394,7 @@ def systemTask():
         print(str(ex))
         mw.writeFile('logs/sys_interrupt.pl', str(ex))
         
-        notify_msg = mw.generateCommonNotifyMessage("服务器监控异常：" + str(e))
+        notify_msg = mw.generateCommonNotifyMessage("服务器监控异常：" + str(ex))
         mw.notifyMessage(title='服务器异常通知', msg=notify_msg, stype='服务器监控', trigger_time=3600)
 
         restartMw()
@@ -637,7 +637,7 @@ def setDaemon(t):
     else:
         t.setDaemon(True)
     return t
-
+    
 if __name__ == "__main__":
     # 系统监控
     sysTask = threading.Thread(target=systemTask)

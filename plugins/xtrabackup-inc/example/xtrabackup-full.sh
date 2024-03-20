@@ -75,9 +75,9 @@ BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.backup_full.backup_compress')
 BACKUP_ZIP=$(echo "$backup_config" | jq -r '.backup_full.backup_zip')
 
 if [ $BACKUP_COMPRESS -eq 1 ];then
-    xtrabackup --backup --slave-info --gtid-info --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_full_$timestamp.log
+    xtrabackup --backup --slave-info --gtid-info --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH | tee -a $LOG_DIR/backup_full_$timestamp.log
 else
-    xtrabackup --backup --slave-info --gtid-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH &>> $LOG_DIR/backup_full_$timestamp.log
+    xtrabackup --backup --slave-info --gtid-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_BASE_PATH | tee -a $LOG_DIR/backup_full_$timestamp.log
 fi
 
 if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
@@ -85,13 +85,13 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
     rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/
     # 删除增量目录
     rm -rf $BACKUP_INC_PATH
-    echo "|- $timestamp 全量备份成功" >> /www/server/xtrabackup-inc/xtrabackup.log
+    echo "|- $timestamp 全量备份成功" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
     # 备份成功记录
     pushd /www/server/jh-panel > /dev/null  
     python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py backup_callback {backup_type:full}
     popd > /dev/null
 else
-    echo "|- $timestamp 全量备份失败" >> /www/server/xtrabackup-inc/xtrabackup.log
+    echo "|- $timestamp 全量备份失败" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
     # 恢复目录
     if [ -d "$BACKUP_BASE_PATH" ];then
         rm -rf $BACKUP_BASE_PATH

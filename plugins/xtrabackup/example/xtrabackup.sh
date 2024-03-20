@@ -31,9 +31,9 @@ popd > /dev/null
 BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.mysql.backup_compress')
 
 if [ $BACKUP_COMPRESS -eq 1 ];then
-    xtrabackup --backup --slave-info --gtid-info --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> $LOG_DIR/backup_$timestamp.log
+    xtrabackup --backup --slave-info --gtid-info --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH | tee -a $LOG_DIR/backup_$timestamp.log
 else
-    xtrabackup --backup --slave-info --gtid-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH &>> $LOG_DIR/backup_$timestamp.log
+    xtrabackup --backup --slave-info --gtid-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_PATH | tee -a $LOG_DIR/backup_$timestamp.log
 fi
 
 if [ $? -eq 0 ] && [ -d "$BACKUP_PATH/mysql" ];then

@@ -8,6 +8,7 @@ import os
 import json
 import datetime
 import re
+import traceback
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -257,7 +258,7 @@ class reportTools:
             if mysql_master_slave_info is not None:
                 if len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
                     for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
-                        if  (not (slave_status_item.get('error_msg', '') == '' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or int(slave_status_item.get('delay', '999')) > 0):  
+                        if  (not (slave_status_item.get('error_msg', '') == '' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or (item.get('delay', '-1') == 'None' or int(slave_status_item.get('delay', '999')) > 0)):  
                             backup_summary_tips.append("MySQL主从同步")
                             break
             if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
@@ -413,13 +414,14 @@ table tr td:nth-child(2) {
                       ''.join(f"""
 IP：{item.get('ip', '')}<br/>
 状态：<span style=\"color: {'auto' if (item.get('error_msg', '') == '' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('error_msg', '') == '' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
-延迟：<span style=\"color: {'auto' if (int(item.get('delay', '-1')) == 0) else 'orange'}\">{item.get('delay', '异常')}</span>
+延迟：<span style=\"color: {'auto' if (item.get('delay', '-1') != 'None' and int(item.get('delay', '-1')) == 0) else 'orange'}\">{item.get('delay', '异常')}</span>
 \n""" for item in slave_status)
                     )
                 })
             except Exception as e:
               slave_status = []
-              print('获取MySQL主从同步状态失败')
+              traceback.print_exc()
+              print('获取MySQL主从同步状态失败', e)
               pass
             
 

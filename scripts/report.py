@@ -258,7 +258,7 @@ class reportTools:
             if mysql_master_slave_info is not None:
                 if len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
                     for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
-                        if  (not (slave_status_item.get('error_msg', '') == '' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or (slave_status_item.get('delay', '-1') == 'None' or int(slave_status_item.get('delay', '999')) > 0)):  
+                        if  (not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or (slave_status_item.get('delay', '-1') == 'None' or int(slave_status_item.get('delay', '999')) > 0)):  
                             backup_summary_tips.append("MySQL主从同步")
                             break
             if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
@@ -413,7 +413,7 @@ table tr td:nth-child(2) {
                     """ % (
                       ''.join(f"""
 IP：{item.get('ip', '')}<br/>
-状态：<span style=\"color: {'auto' if (item.get('error_msg', '') == '' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('error_msg', '') == '' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
+状态：<span style=\"color: {'auto' if (item.get('error_msg', '') == '' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
 延迟：<span style=\"color: {'auto' if (item.get('delay', '-1') != 'None' and int(item.get('delay', '-1')) == 0) else 'orange'}\">{item.get('delay', '异常')}</span>
 \n""" for item in slave_status)
                     )
@@ -686,6 +686,6 @@ if __name__ == "__main__":
       try:
         report.sendReport()
       except Exception as e:
-        print('发送服务器报告异常：', e)
+        traceback.print_exc()
         notify_msg = mw.generateCommonNotifyMessage("发送服务器报告异常：" + str(e))
         mw.notifyMessage(title='服务器异常通知', msg=notify_msg, stype='服务器报告', trigger_time=600)

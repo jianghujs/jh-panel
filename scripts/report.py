@@ -413,7 +413,7 @@ table tr td:nth-child(2) {
                     """ % (
                       ''.join(f"""
 IP：{item.get('ip', '')}<br/>
-状态：<span style=\"color: {'auto' if (item.get('error_msg', '') == '' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
+状态：<span style=\"color: {'auto' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
 延迟：<span style=\"color: {'auto' if (item.get('delay', '-1') != 'None' and int(item.get('delay', '-1')) == 0) else 'orange'}\">{item.get('delay', '异常')}</span>
 \n""" for item in slave_status)
                     )

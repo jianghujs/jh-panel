@@ -84,8 +84,8 @@ def updateLsyncdLogCutShell():
     cronInfo['sbody'] = f"""
 #!/bin/bash
 timestamp=$(date +%Y%m%d_%H%M%S)
-cp /www/server/rsyncd/logs/lsyncd.status /www/server/rsyncd/logs/lsyncd_\${{timestamp}}.status
-mv /www/server/rsyncd/logs/lsyncd.log /www/server/rsyncd/logs/lsyncd_\${{timestamp}}.log
+cp /www/server/rsyncd/logs/lsyncd.status /www/server/rsyncd/logs/lsyncd_${{timestamp}}.status
+mv /www/server/rsyncd/logs/lsyncd.log /www/server/rsyncd/logs/lsyncd_${{timestamp}}.log
 
 python3 /www/server/jh-panel/scripts/clean.py /www/server/rsyncd/logs/ '{{"saveAllDay": "3", "saveOther": "1", "saveMaxDay": "30"}}'
   """

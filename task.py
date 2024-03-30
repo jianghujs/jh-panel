@@ -18,6 +18,7 @@ import json
 import time
 import threading
 import psutil
+import traceback
 
 if sys.version_info[0] == 2:
     reload(sys)
@@ -391,6 +392,7 @@ def systemTask():
             time.sleep(5)
             count += 1
     except Exception as ex:
+        traceback.print_exc()
         print(str(ex))
         mw.writeFile('logs/sys_interrupt.pl', str(ex))
         

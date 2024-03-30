@@ -233,7 +233,7 @@ def systemTask():
 
         sql = db.Sql().dbfile('system')
         csql = mw.readFile('data/sql/system.sql')
-        csql_list = csql.split(';')
+        csql_list = [sql.strip() for sql in csql.split(';') if sql.strip()]
         for index in range(len(csql_list)):
             sql.execute(csql_list[index], ())
 

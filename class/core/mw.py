@@ -1911,12 +1911,15 @@ def getLockData(lock_type):
 
 def updateLockData(lock_type):
     lock_file = getPanelTmp() + '/lock.json'
-    if not os.path.exists(lock_file):
-        writeFile(lock_file, '{}')
+    try:
+      if not os.path.exists(lock_file):
+          writeFile(lock_file, '{}')
 
-    lock_data = json.loads(readFile(lock_file))
-    lock_data[lock_type] = {'do_time': time.time()}
-    writeFile(lock_file, json.dumps(lock_data))
+      lock_data = json.loads(readFile(lock_file))
+      lock_data[lock_type] = {'do_time': time.time()}
+      writeFile(lock_file, json.dumps(lock_data))
+    except Exception as e:
+        writeFile(lock_file, '{}')
 
 def checkLockValid(lock_type, cycle_type = 'day'):
     lock_data = getLockData(lock_type)

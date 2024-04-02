@@ -276,7 +276,7 @@ check_and_install "zstd"
             filename = backup_path + "/db_" + name + "_" + \
                 time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".mydumper.tar.zst"
             random_str = mw.getRandomString(8).lower()
-            tmp_path = '/tmp/mydumper_' + random_str
+            tmp_path = '/tmp/mydumper/mydumper_' + random_str
             if os.path.exists(tmp_path):
                 mw.execShell('rm -rf ' + tmp_path)
             mw.execShell('mkdir -p ' + tmp_path)
@@ -284,7 +284,7 @@ check_and_install "zstd"
             mw.execShell('/usr/bin/mydumper -u root -p ' + mysql_root + ' -h 127.0.0.1 -P ' + port + ' -B ' + name + ' -o ' + tmp_path + '/' + name + ' --trx-consistency-only')
             mw.execShell('cd ' + tmp_path + ' && ' + 'tar -c ' + name + ' | zstd -o ' + filename)
             # 删除临时文件
-            # mw.execShell('rm -rf ' + tmp_path)
+            mw.execShell('rm -rf ' + tmp_path)
 
         # 检查备份情况并记录
         if not os.path.exists(filename):

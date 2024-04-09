@@ -54,7 +54,7 @@ Install_Docker()
 		fi
 		# sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$ARCH" -o /usr/local/bin/docker-compose
 		cp -r ./docker-compose-$(uname -s | tr '[:upper:]' '[:lower:]')-$ARCH /usr/local/bin/docker-compose
-		sudo chmod +x /usr/local/bin/docker-compose
+		chmod +x /usr/local/bin/docker-compose
 		docker-compose -v
 	fi
 

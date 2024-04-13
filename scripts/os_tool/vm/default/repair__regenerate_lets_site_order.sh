@@ -1,4 +1,6 @@
 #!/bin/bash
+source /www/server/jh-panel/scripts/util/apt.sh
+check_and_install "jq"
 
 # 获取异常网站
 pushd /www/server/jh-panel > /dev/null

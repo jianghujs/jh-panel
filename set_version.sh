@@ -33,4 +33,8 @@ git push
 git tag -a "$input_version" -m "$input_version"
 git push --tags
 
+# 提交到gitee
+git push gitee
+git push gitee --tags
+
 echo "版本升级并提交完成。"

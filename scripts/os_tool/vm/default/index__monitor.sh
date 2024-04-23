@@ -54,11 +54,12 @@ fi
 show_menu() {
     echo "==================vm os-tools=================="
     echo "请选择状态监测工具:"
-    echo "1. 进程占用分析（打印进程占用排名到文件）"
-    echo "2. 磁盘IO占用分析（打印磁盘IO占用排名到文件）"
-    echo "3. 磁盘IO测试（测试磁盘读写速度）"
-    echo "4. MySQL数据库Checksum分析（打印单个MySQL数据库所有表的cheksum值）"
-    echo "5. MySQL数据库Checksum分析（主备MySQL数据库cheksum值对比）"
+    echo "1. PS进程占用分析（打印进程信息到CVS文件）"
+    echo "2. TOP进程占用分析（每秒打印进程占用排名到TXT文件）"
+    echo "3. 磁盘IO占用分析（打印磁盘IO占用排名到文件）"
+    echo "4. 磁盘IO测试（测试磁盘读写速度）"
+    echo "5. MySQL数据库Checksum分析（打印单个MySQL数据库所有表的cheksum值）"
+    echo "6. MySQL数据库Checksum分析（主备MySQL数据库cheksum值对比）"
     echo "========================================================"
 }
 
@@ -72,18 +73,21 @@ choice=${choice:-"1"}
 # 根据用户的选择执行对应的操作
 case $choice in
 1)
-    download_and_run monitor__export_top_rank.sh
+    download_and_run monitor__export_processes.sh
     ;;
 2)
-    download_and_run monitor__export_iotop_rank.sh
+    download_and_run monitor__export_top_rank.sh
     ;;
 3)
-    download_and_run monitor__export_io_test.sh
+    download_and_run monitor__export_iotop_rank.sh
     ;;
 4)
-    download_and_run_node monitor__export_mysql_checksum.js
+    download_and_run monitor__export_io_test.sh
     ;;
 5)
+    download_and_run_node monitor__export_mysql_checksum.js
+    ;;
+6)
     download_and_run_node monitor__export_mysql_checksum_compare.js
     ;;
 esac

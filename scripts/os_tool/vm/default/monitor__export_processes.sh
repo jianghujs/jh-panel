@@ -2,8 +2,8 @@
 
 log_file=/tmp/processes_output.cvs
 
-read -p "是否需要将结果导出到cvs文件${log_file}？（默认n）[y/n]：" yn
-yn=${yn:-n}
+read -p "是否需要将结果导出到cvs文件${log_file}？（默认y）[y/n]：" yn
+yn=${yn:-y}
 case $yn in
     [Nn]* ) log_to_file=false;;
     * ) log_to_file=true;;

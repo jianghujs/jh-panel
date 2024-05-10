@@ -73,6 +73,70 @@ class switchTools:
         mw.writeNotify(data)
         print("关闭邮件通知成功!")
 
+    def addCrontab(self, cron_config):
+        sid = cron_config.get('id', '')
+        iname = cron_config.get('name', '')
+        iname_reg_str = cron_config.get('name_reg', '').replace("[", "\\[").replace("]", "\\]")
+        cron_type = cron_config.get('type', '')
+        week = cron_config.get('week', '')
+        hour = cron_config.get('hour', '')
+        minute = cron_config.get('minute', '')
+        where1 = cron_config.get('where1', '')
+        saveAllDay = cron_config.get('saveAllDay', '')
+        saveOther = cron_config.get('saveOther', '')
+        saveMaxDay = cron_config.get('saveMaxDay', '')
+        backup_to = cron_config.get('backup_to', '')
+        stype = cron_config.get('stype', '')
+        sname = cron_config.get('sname', '')
+        dumpType = cron_config.get('dumpType', '')
+        sbody = cron_config.get('sbody', '')
+
+        urladdress = cron_config.get('urladdress', '')
+        
+        if stype == 'database':
+          sbody = dumpType
+
+        if len(iname) < 1:
+            print("任务名称不能为空")
+            return
+
+        crontabList = mw.M('crontab').where('name=?', (iname,)).field('id').select()
+        if len(crontabList) > 0:
+            print("计划任务已经存在")
+            return
+        
+
+        params = {
+            'name': iname,
+            'type': cron_type,
+            'week': week,
+            'where1': where1,
+            'hour': hour,
+            'minute': minute,
+            'saveAllDay': saveAllDay,
+            'saveOther': saveOther,
+            'saveMaxDay': saveMaxDay,
+            'backup_to': backup_to,
+            'stype': stype,
+            'sname': sname,
+            'dumpType': dumpType,
+            'sbody': sbody,
+            'urladdress': urladdress,
+        }
+
+        is_check_pass, msg = crontabApi.cronCheck(params)
+        if not is_check_pass:
+            print(msg)
+            return
+
+        addData = crontabApi.add(params)
+        if addData > 0:
+            print("添加计划任务【" + iname + "】成功!")
+        else:
+            print("添加计划任务【" + iname + "】失败!")
+        
+    
+
     def modifyCrontabCron(self, cron_config):
         iname = cron_config.get('name', '')
         iname_reg_str = cron_config.get('name_reg', '').replace("[", "\\[").replace("]", "\\]")
@@ -160,6 +224,12 @@ if __name__ == "__main__":
       st.openEmailNotify()
     elif type == 'closeEmailNotify':
       st.closeEmailNotify()
+    elif type == 'addCrontab':
+      """
+      python3 /www/server/jh-panel/scripts/switch.py addCrontab '{"name":"测试111","type":"day","hour":1,"minute":20,"stype":"toShell","backup_to":"localhost","sbody":"echo \"ok\""}'
+      """
+      cron_config = json.loads(sys.argv[2])
+      st.addCrontab(cron_config)
     elif type == 'modifyCrontabCron':
       """
       python3 /www/server/jh-panel/scripts/switch.py modifyCrontabCron '{"name_reg":"[ 勿删]同步插件定时任务[.*wwwroot]","type":"day","hour":1,"minute":20}'

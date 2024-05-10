@@ -35,7 +35,7 @@ echo "5. （可选）恢复网站数据"
 echo "6. （可选）恢复插件数据"
 echo "7. ? 确认上线操作"
 echo "8. （可选）主从切换"
-echo "9. 启动xtrabackup增量备份、xtrabackup、mysqldump定时任务"
+echo "9. 启动xtrabackup增量备份、xtrabackup、mysqldump、续签Let's Encrypt证书定时任务"
 echo "10. 从authorized_keys删除同步公钥"
 echo "11. 启动rsyncd任务"
 echo "12. 启动Openresty"
@@ -285,6 +285,8 @@ if [ $choice == "y" ]; then
   echo "show_info \"|- 开启 lsyncd实时任务定时同步 定时任务完成✅\"" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]服务器报告" >> $tmp_online_script_file
   echo "show_info \"|- 开启 服务器报告 定时任务完成✅\"" >> $tmp_online_script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab \"[勿删]续签Let's Encrypt证书\"" >> $tmp_online_script_file
+  echo "show_info \"|- 开启 续签Let's Encrypt证书 定时任务完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
   echo "# 删除authorized_keys的同步公钥" >> $tmp_online_script_file
   STANDBY_SYNC_PUB_PATH="/root/.ssh/standby_sync.pub"

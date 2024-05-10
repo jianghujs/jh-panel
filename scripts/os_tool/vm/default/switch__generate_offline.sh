@@ -17,7 +17,7 @@ fi
 script_file="/tmp/offline.sh"
 echo "-----------------------"
 echo "即将生成服务器下线脚本到${script_file}，包含内容如下："
-echo "1. 关闭xtrabackup增量备份、xtrabackup、mysqldump定时任务"
+echo "1. 关闭xtrabackup增量备份、xtrabackup、mysqldump、续签Let's Encrypt证书定时任务"
 echo "2. 配置同步公钥到authorized_keys"
 echo "3. 关闭rsyncd任务"
 echo "4. 关闭邮件通知"
@@ -47,6 +47,8 @@ if [ $choice == "y" ]; then
   echo "show_info \"|- 关闭 lsyncd实时任务定时同步 定时任务完成✅\"" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]服务器报告" >> $script_file
   echo "show_info \"|- 关闭 服务器报告 定时任务完成✅\"" >> $script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab \"[勿删]续签Let's Encrypt证书\"" >> $script_file
+  echo "show_info \"|- 关闭 续签Let's Encrypt证书 定时任务完成✅\"" >> $script_file
   echo "" >> $script_file
   echo "# 配置同步公钥到authorized_keys" >> $script_file
   STANDBY_SYNC_PUB_PATH="/root/.ssh/standby_sync.pub"

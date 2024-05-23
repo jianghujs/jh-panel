@@ -603,6 +603,49 @@ def writeLog(stype, msg, args=()):
         return False
 
 
+def writeFileLog(msg, path=None, limit_size=50 * 1024 * 1024, save_limit=3):
+    log_file = getServerDir() + '/jh-panel/logs/debug.log'
+    if path != None:
+        log_file = path
+
+    if os.path.exists(log_file):
+        size = os.path.getsize(log_file)
+        if size > limit_size:
+            log_file_rename = log_file + "_" + \
+                time.strftime("%Y-%m-%d_%H%M%S") + '.log'
+            os.rename(log_file, log_file_rename)
+            logs = sorted(glob.glob(log_file + "_*"))
+            count = len(logs)
+            save_limit = count - save_limit
+            for i in range(count):
+                if i > save_limit:
+                    break
+                os.remove(logs[i])
+                # print('|---多余日志[' + logs[i] + ']已删除!')
+
+    f = open(log_file, 'ab+')
+    msg += "\n"
+    if __name__ == '__main__':
+        print(msg)
+    f.write(msg.encode('utf-8'))
+    f.close()
+    return True
+
+
+def writeDbLog(stype, msg, args=(), uid=1):
+    try:
+        import time
+        import db
+        import json
+        sql = db.Sql()
+        mdate = time.strftime('%Y-%m-%d %X', time.localtime())
+        wmsg = getInfo(msg, args)
+        data = (stype, wmsg, uid, mdate)
+        result = sql.table('logs').add('type,log,uid,addtime', data)
+        return True
+    except Exception as e:
+        return False
+
 def writeFile(filename, content, mode='w+'):
     # 写文件内容
     try:

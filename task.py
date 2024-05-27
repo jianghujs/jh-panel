@@ -365,6 +365,8 @@ def systemTask():
                             json.dumps(mysqlInfo.get('database_list', [])),
                             addtime
                         ))
+                        sql.table('database').where(
+                            "addtime<?", (deltime,)).delete()
                         mw.updateLockData(mysql_write_lock_data_key)
 
                     lpro = None

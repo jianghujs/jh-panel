@@ -217,7 +217,11 @@ class reportTools:
                             database['size']
                         )
                     })
-
+            else:
+                mysqlinfo_tips.append({
+                    "name": "MySQL",
+                    "desc": "<span style='color: red'>已停止</span>"
+                })
             # 生成概要信息
             summary_tips = []
             # 系统资源概要信息

@@ -854,13 +854,15 @@ class system_api:
         mysql_info = {
             "status": "stop"
         }
-
-        if os.path.exists('/www/server/mysql-apt/'):
-            mysql_info_result = mw.execShell('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_mysql_info')[0]
-            if mysql_info_result:
-                mysql_info_result = json.loads(mysql_info_result)
-                if mysql_info_result.get('status', False):
-                    mysql_info = mysql_info_result.get('data', {})
+        try:
+          if os.path.exists('/www/server/mysql-apt/'):
+              mysql_info_result = mw.execShell('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_mysql_info')[0]
+              if mysql_info_result:
+                  mysql_info_result = json.loads(mysql_info_result)
+                  if mysql_info_result.get('status', False):
+                      mysql_info = mysql_info_result.get('data', {})
+        except Exception as e:
+          pass
         return mysql_info
     
     def getXtrabackupInfo(self):

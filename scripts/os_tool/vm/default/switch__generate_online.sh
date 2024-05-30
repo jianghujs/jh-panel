@@ -288,6 +288,11 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab \"[勿删]续签Let's Encrypt证书\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 续签Let's Encrypt证书 定时任务完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
+  echo "# 调整监控" >> $tmp_online_script_file
+  echo "echo \"|- 调整监控...\"" >> $tmp_online_script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py setNotifyValue '{\"ssl_cert\":14}'" >> $tmp_online_script_file
+  echo "show_info \"|- 开启 SSL证书到期预提醒 完成✅\"" >> $tmp_online_script_file
+  echo "" >> $tmp_online_script_file
   echo "# 删除authorized_keys的同步公钥" >> $tmp_online_script_file
   STANDBY_SYNC_PUB_PATH="/root/.ssh/standby_sync.pub"
   AUTHORIZED_KEYS_PATH="/root/.ssh/authorized_keys"

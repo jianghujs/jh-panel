@@ -883,18 +883,16 @@ class system_api:
             mw.writeFile(control_notify_value_file, '{}')
         config_data = json.loads(mw.readFile(control_notify_value_file))
         return mw.returnData(True, 'ok', config_data)
-    
-    def setNotifyValueApi(self):
-        cpu = request.form.get('cpu', '')
-        memory = request.form.get('memory', '')
-        disk = request.form.get('disk', '')
-        ssl_cert = request.form.get('ssl_cert', '')
+
+    def setNotifyValue(self, notify_value):
+        cpu = notify_value.get('cpu', '')
+        memory = notify_value.get('memory', '')
+        disk = notify_value.get('disk', '')
+        ssl_cert = notify_value.get('ssl_cert', '')
 
         control_notify_value_file = 'data/control_notify_value.conf'
-        
         if not os.path.exists(control_notify_value_file):
             mw.writeFile(control_notify_value_file, '{}')
-        
         config_data = json.loads(mw.readFile(control_notify_value_file))
 
         if cpu != '':
@@ -905,8 +903,12 @@ class system_api:
             config_data['disk'] = int(disk)
         if ssl_cert != '':
             config_data['ssl_cert'] = int(ssl_cert)
-        
         mw.writeFile(control_notify_value_file, json.dumps(config_data))
+        return config_data
+  
+
+    def setNotifyValueApi(self):
+        self.setNotifyValue(request.form)
         return mw.returnJson(True, '设置成功!')
 
     def getReportCycleApi(self):

@@ -208,7 +208,9 @@ class switchTools:
         crontabApi.syncToCrond(cronInfo)
         print("修改计划任务【" + name + "】成功!")
 
-        
+    def setNotifyValue(self, params):
+        systemApi.setNotifyValue(params)
+        print("设置监控阈值完成!")  
    
 if __name__ == "__main__":
     st = switchTools()
@@ -242,3 +244,9 @@ if __name__ == "__main__":
       """
       params = json.loads(sys.argv[2])
       st.modifyCrontabShell(params)
+    elif type == 'setNotifyValue':
+      """
+      python3 /www/server/jh-panel/scripts/switch.py setNotifyValue '{"cpu":80,"memory":80,"disk":80,"ssl_cert":14}'
+      """
+      params = json.loads(sys.argv[2])
+      st.setNotifyValue(params)

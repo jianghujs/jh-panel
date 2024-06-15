@@ -148,7 +148,7 @@ def dockerOp(method):
     file = initDreplace()
 
     if not mw.isAppleSystem():
-        result = subprocess.run(["sudo", "systemctl", method, 'docker'])
+        result = subprocess.run(["systemctl", method, 'docker'])
         if result.returncode == 0:
             return 'ok'
         else:

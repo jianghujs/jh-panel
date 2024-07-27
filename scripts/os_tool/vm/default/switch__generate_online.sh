@@ -146,7 +146,7 @@ if [ $choice == "y" ]; then
     prompt "请输入线上服务器SSH端口(默认: 10022): " remote_port "10022"
     
     # 输入需要同步的目录（多个用英文逗号隔开，默认为：/www/wwwroot,/www/wwwstorage,/www/backup:"
-    prompt "输入需要同步的目录（多个用英文逗号隔开，默认为：/www/wwwroot,/www/wwwstorage,/www/backup）: " sync_file_dirs_input "/www/wwwroot,/www/wwwstorage,/www/backup"
+    prompt "输入需要同步的目录（多个用英文逗号隔开，默认为：/www/wwwroot,/www/wwwstorage）: " sync_file_dirs_input "/www/wwwroot,/www/wwwstorage"
     IFS=',' read -ra sync_file_dirs <<< "$sync_file_dirs_input"
 
     # 提示"请输入需要忽略的目录（多个用英文逗号隔开，默认为：node_modules,logs,run）:"

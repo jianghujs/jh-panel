@@ -91,7 +91,7 @@ case $choice in
 6)
     download_and_run_node monitor__export_mysql_checksum_compare.js
     ;;
-6)
+7)
     download_and_run_node monitor__export_diretory_size.js
     ;;
 esac

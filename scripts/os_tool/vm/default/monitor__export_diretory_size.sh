@@ -27,11 +27,11 @@ if $log_to_file ; then
         formatted_ctime=$(date -d @$ctime +"%Y-%m-%d %H:%M:%S")
         formatted_mtime=$(date -d @$mtime +"%Y-%m-%d %H:%M:%S")
         # 打印创建时间、修改时间、大小和文件名
-        echo "$ctime $size \"$file\" $formatted_ctime $formatted_mtime"
+        echo "\"$file\",$size,$formatted_ctime,$formatted_mtime"
       fi
-    done | sort -k1,1nr | awk -F ' ' '{OFS=","; print $3,$2,$4,$5}' >> $temp_log_file
+    done | sort -t, -k3,3nr >> $temp_log_file
 
-    # 将临时CSV文件转换为UTF-8编码并写入最终CSV文件
+    # 将临时CSV文件转换为GB2312编码并写入最终CSV文件
     iconv -f UTF-8 -t GB2312 $temp_log_file > $log_file
 
     # 删除临时文件
@@ -56,7 +56,7 @@ else
         formatted_ctime=$(date -d @$ctime +"%Y-%m-%d %H:%M:%S")
         formatted_mtime=$(date -d @$mtime +"%Y-%m-%d %H:%M:%S")
         # 打印创建时间、修改时间、大小和文件名
-        echo "$ctime $size \"$file\" $formatted_ctime $formatted_mtime"
+        echo "\"$file\",$size,$formatted_ctime,$formatted_mtime"
       fi
-    done | sort -k1,1nr | awk -F ' ' '{OFS=","; print $3,$2,$4,$5}'
+    done | sort -t, -k3,3nr
 fi

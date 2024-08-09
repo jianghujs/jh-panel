@@ -60,6 +60,7 @@ show_menu() {
     echo "4. 磁盘IO测试（测试磁盘读写速度）"
     echo "5. MySQL数据库Checksum分析（打印单个MySQL数据库所有表的cheksum值）"
     echo "6. MySQL数据库Checksum分析（主备MySQL数据库cheksum值对比）"
+    echo "7. 空间占用分析（打印当前目录下所有文件和文件夹的大小）"
     echo "========================================================"
 }
 
@@ -89,6 +90,9 @@ case $choice in
     ;;
 6)
     download_and_run_node monitor__export_mysql_checksum_compare.js
+    ;;
+6)
+    download_and_run_node monitor__export_diretory_size.js
     ;;
 esac
 

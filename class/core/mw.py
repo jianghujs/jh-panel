@@ -1985,10 +1985,12 @@ def checkLockValid(lock_type, cycle_type = 'day'):
 def notifyMessageTry(msg, msgtype='text', title='江湖面板通知', stype='common', trigger_time=300, is_write_log=True):
   try:
     lock_file = getPanelTmp() + '/notify_lock.json'
-    if not os.path.exists(lock_file):
-        writeFile(lock_file, '{}')
-
-    lock_data = json.loads(readFile(lock_file))
+    lock_data = {}
+    try:
+      lock_data = json.loads(readFile(lock_file))
+    except Exception as e:
+      writeFile(lock_file, '{}')
+    
     if stype in lock_data:
         diff_time = time.time() - lock_data[stype]['do_time']
         if diff_time >= trigger_time:

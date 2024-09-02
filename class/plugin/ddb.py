@@ -44,7 +44,10 @@ class DDB:
     def getAll(self, table):
         if not self.__Conn():
             return self.__DB_ERR
-        result = self.getDB(table).read()
+        try:
+          result = self.getDB(table).read()
+        except Exception as e:  
+          raise "DictDataBase文件读取错误"
         if result:
             return list(result.values())
         return []

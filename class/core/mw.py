@@ -1983,6 +1983,7 @@ def checkLockValid(lock_type, cycle_type = 'day'):
 
 @retry(max_retry=3, delay=3)
 def notifyMessageTry(msg, msgtype='text', title='江湖面板通知', stype='common', trigger_time=300, is_write_log=True):
+  try:
     lock_file = getPanelTmp() + '/notify_lock.json'
     if not os.path.exists(lock_file):
         writeFile(lock_file, '{}')
@@ -2027,6 +2028,9 @@ def notifyMessageTry(msg, msgtype='text', title='江湖面板通知', stype='com
             t['contentType'] = msgtype
             do_notify = emailNotifyMessage(t)
     return do_notify
+  except Exception as e:
+    print(e)
+    raise e
 
 
 # 发送消息通知

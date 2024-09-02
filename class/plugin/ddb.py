@@ -47,7 +47,8 @@ class DDB:
         try:
           result = self.getDB(table).read()
         except Exception as e:  
-          raise "DictDataBase文件读取错误"
+          raise Exception("DictDataBase文件读取错误")
+        
         if result:
             return list(result.values())
         return []

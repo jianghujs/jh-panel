@@ -2029,7 +2029,7 @@ def notifyMessageTry(msg, msgtype='text', title='江湖面板通知', stype='com
             do_notify = emailNotifyMessage(t)
     return do_notify
   except Exception as e:
-    print(e)
+    print(getTracebackInfo())
     raise e
 
 

@@ -45,8 +45,8 @@ if [ $choice == "y" ]; then
   echo "show_info \"|- 关闭 备份插件配置 定时任务完成✅\"" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]lsyncd实时任务定时同步" >> $script_file
   echo "show_info \"|- 关闭 lsyncd实时任务定时同步 定时任务完成✅\"" >> $script_file
-  echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]服务器报告" >> $script_file
-  echo "show_info \"|- 关闭 服务器报告 定时任务完成✅\"" >> $script_file
+  # echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]服务器报告" >> $script_file
+  # echo "show_info \"|- 关闭 服务器报告 定时任务完成✅\"" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab \"[勿删]续签Let's Encrypt证书\"" >> $script_file
   echo "show_info \"|- 关闭 续签Let's Encrypt证书 定时任务完成✅\"" >> $script_file
   echo "" >> $script_file

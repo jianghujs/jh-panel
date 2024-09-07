@@ -2447,9 +2447,12 @@ def initSlaveStatus(version=''):
 
         # todo 修复使用指定账号
         cmd = 'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py get_master_rep_slave_user_cmd {"username":"","db":""}'
+        print("cmd", cmd)
         stdin, stdout, stderr = ssh.exec_command(cmd)
         result = stdout.read()
+        print("result", result)
         result = result.decode('utf-8')
+        print("result", result)
         cmd_data = json.loads(result)
 
         if not cmd_data['status']:
@@ -2565,12 +2568,15 @@ def saveSlaveStatus(version=''):
 
     # 保存数据  
     slave_status_conn = pSqliteDb('slave_status')
-    # 判断是否存在指定的ip，如果存在则更新，不存在则新增
-    data = slave_status_conn.field('id').where('ip=?', (ip,)).select()
-    if len(data) > 0:
-        slave_status_conn.where('ip=?', (ip,)).save('user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
-    else:
-        slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
+    slave_status_conn.execute('DELETE FROM slave_status')
+    slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
+
+    # # 判断是否存在指定的ip，如果存在则更新，不存在则新增
+    # data = slave_status_conn.field('id').where('ip=?', (ip,)).select()
+    # if len(data) > 0:
+    #     slave_status_conn.where('ip=?', (ip,)).save('user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
+    # else:
+    #     slave_status_conn.add('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime', (ip, user, log_file, io_running, sql_running, delay, error_msg, ps, addtime))
   
     return mw.returnJson(True, '保存成功!')
     

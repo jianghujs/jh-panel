@@ -2447,12 +2447,12 @@ def initSlaveStatus(version=''):
 
         # todo 修复使用指定账号
         cmd = 'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py get_master_rep_slave_user_cmd {"username":"","db":""}'
-        print("cmd", cmd)
+        # print("cmd", cmd)
         stdin, stdout, stderr = ssh.exec_command(cmd)
         result = stdout.read()
-        print("result", result)
+        # print("result", result)
         result = result.decode('utf-8')
-        print("result", result)
+        # print("result", result)
         cmd_data = json.loads(result)
 
         if not cmd_data['status']:
@@ -2483,10 +2483,12 @@ def initSlaveStatus(version=''):
             cmd = cmd + " ,MASTER_LOG_FILE='" + log_file + \
                "',MASTER_LOG_POS=" + log_pos
         if gtid_purged != '':
+            # print("gtid集合：", gtid_purged)
             gtid_purged = gtid_purged.replace('：', ':')
             # print(gtid_purged)
             # 使用 reset master 清空 GTID_EXECUTED，否则 gtid_purged 设置会报错
             db.query("RESET MASTER")
+            db.query("RESET SLAVE ALL")
             db.query("SET GLOBAL gtid_purged='" + gtid_purged + "'")
         # print('cmd', cmd)
         db.query(cmd)

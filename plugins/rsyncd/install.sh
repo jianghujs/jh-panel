@@ -59,7 +59,7 @@ Install_rsyncd()
     # lsyncd日志文件清理配置
     LOGROTATE_CONFIG="/etc/logrotate.d/lsyncd"
     if [ ! -f "$LOGROTATE_CONFIG" ]; then
-        echo "/www/server/rsyncd/lsyncd.log {
+        echo "/www/server/rsyncd/logs/lsyncd.log {
             size 1G
             rotate 1
             missingok

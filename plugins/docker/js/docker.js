@@ -1507,7 +1507,7 @@ function openEditProject(id) {
             });
             codeMirror.focus();
             codeMirror.setSize("670px", height - 250);
-            handleProjectNameChange();
+            // handleProjectNameChange();
         },
         yes: async function(layers, index) {
             $("#composeFileContent").text(codeMirror.getValue());

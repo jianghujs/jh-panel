@@ -207,7 +207,7 @@ async function openEditItem(id) {
             </div>\
         </form>",
     });
-    await getNfsSharePath();
+    // await getNfsSharePath();
     $('#mountServerPath').val(editItem.mountServerPath);
     $('#mountName').val(editItem.name);
     $('#mountPath').val(editItem.mountPath);
@@ -262,8 +262,9 @@ async function getNfsSharePath() {
 
 function handleMountServerPathChange() {
     let mountServerPath = document.getElementById('mountServerPath').value;
-    document.getElementById('mountName').value = mountServerPath.split('/').pop();;
-    document.getElementById('mountPath').value = "/mnt" + mountServerPath;
+    let mountName = mountServerPath.split('/').pop();
+    document.getElementById('mountName').value = mountName;
+    document.getElementById('mountPath').value = "/mnt/" + mountName;
 }
 
 

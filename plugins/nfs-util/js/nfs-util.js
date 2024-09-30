@@ -109,9 +109,8 @@ function openCreateItem() {
             <div class='line'>\
                 <span class='tname'>共享目录</span>\
                 <div class='info-r c4'>\
-                <select id='mountServerPath' class='bt-input-text c5 mr5' name='mountServerPath' placeholder='请选择共享目录' style='width:458px' onchange='handleMountServerPathChange()'>\
-                    <option>无数据</option>\
-                </select>\
+                  <input id='mountServerPath' class='bt-input-text' name='mountServerPath' placeholder='请输入共享目录' style='width:458px' onchange='handleMountServerPathChange()' />\
+                  <div id='mountServerPathQuickFill' style='width:458px;padding: 5px; white-space: pre-wrap; word-wrap: break-word;'/>\
                 </div>\
             </div>\
             <div class='line'>\
@@ -179,9 +178,8 @@ async function openEditItem(id) {
             <div class='line'>\
                 <span class='tname'>共享目录</span>\
                 <div class='info-r c4'>\
-                <select id='mountServerPath' class='bt-input-text c5 mr5' name='mountServerPath' placeholder='请选择共享目录' style='width:458px' value='"+editItem.mountServerPath+"' onchange='handleMountServerPathChange'>\
-                    <option>无数据</option>\
-                </select>\
+                  <input id='mountServerPath' class='bt-input-text' type='text' name='mountServerPath' placeholder='请输入共享目录' style='width:458px' value='"+editItem.mountServerPath+"' onchange='handleMountServerPathChange'/>\
+                  <div id='mountServerPathQuickFill' style='width:458px;padding: 5px; white-space: pre-wrap; word-wrap: break-word;'/>\
                 </div>\
             </div>\
             <div class='line'>\
@@ -246,8 +244,16 @@ async function getNfsSharePath() {
     let rdata = $.parseJSON(data.data);
     if(rdata.status) {
         let list = rdata.data || [];
-        let options = list.map(item => '<option value="' + item.path + '">' + item.path + '</option>').join('');
-        $('#mountServerPath').html(options);
+        // let options = list.map(item => '<option value="' + item.path + '">' + item.path + '</option>').join('');
+        // $('#mountServerPath').html(options);
+
+        let quickFillHtml = '<span style="white-space: nowrap;">快捷填充：</span>' + list.map(item => '<a style="margin-right: 5px; color: #337ab7; cursor: pointer;">' + item.path + '</a>').join('');
+        $('#mountServerPathQuickFill').html(quickFillHtml);
+        $('#mountServerPathQuickFill a').click(function(){
+            $('#mountServerPath').val($(this).text());
+            handleMountServerPathChange();
+        });
+        
         handleMountServerPathChange();
     } else {
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });

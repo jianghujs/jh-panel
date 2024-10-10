@@ -611,6 +611,7 @@ def read_debounce_commands_pool():
         with open(debounce_commands_pool_file, 'r') as file:
             return json.load(file)
     except:
+        # 往文件写入[]
         write_debounce_commands_pool([])
         return []
     

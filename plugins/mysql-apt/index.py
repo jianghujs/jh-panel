@@ -1082,6 +1082,8 @@ def getMysqlInfo():
     pdb = pMysqlDb()
     database_list = pSqliteDb('databases').field(
         'id,pid,name,username,password,accept,rw,ps,addtime').select()
+    
+    # 计算数据库大小
     total_bytes = 0
     # startTime = time.time()
     for database in database_list:
@@ -1100,6 +1102,17 @@ def getMysqlInfo():
     mysql_info['total_bytes'] = total_bytes
     mysql_info['total_size'] = mw.toSize(total_bytes)
     mysql_info['database_list'] = database_list
+
+    # 主从状态
+    mysql_dir = getServerDir()
+    config_conn = mw.M('config').dbPos(mysql_dir, 'mysql')
+    check_table_query = f"SELECT name FROM sqlite_master WHERE type='table' AND name='slave_status';"
+    table_exist = config_conn.originExecute(check_table_query)
+    if table_exist.fetchone():
+      slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
+      slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()
+      slave_status_conn.close()
+    mysql_info['slave_status'] = slave_status
 
     # finishTime = time.time() - startTime
     # print("查询数据库大小用时[" + str(round(finishTime, 2)) + "]秒")

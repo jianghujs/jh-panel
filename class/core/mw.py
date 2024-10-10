@@ -2100,19 +2100,22 @@ def getControlNotifyConfig():
     control_notify_config['memory'] = control_notify_value_data['memory'] if 'memory' in control_notify_value_data else 80 
     control_notify_config['disk'] = control_notify_value_data['disk'] if 'disk' in control_notify_value_data else 80 
     control_notify_config['ssl_cert'] = control_notify_value_data['ssl_cert'] if 'ssl_cert' in control_notify_value_data else 14 
+    control_notify_config['mysql_slave_status_notice'] = control_notify_value_data['mysql_slave_status_notice'] if 'mysql_slave_status_notice' in control_notify_value_data else 0
+    control_notify_config['rsync_status_notice'] = control_notify_value_data['rsync_status_notice'] if 'rsync_status_notice' in control_notify_value_data else 0 
     return control_notify_config
 
 
-def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
+def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo):
     control_notify_pl = 'data/control_notify.pl'
 
     control_notify_config = getControlNotifyConfig()
     if control_notify_config['notifyStatus'] == 'open':
         # 推送需要的内容
         now_time = getDateFromNow()
+        now_timestamp = datetime.datetime.now().timestamp()
         now_day = now_time.split(' ')[0]
 
-        # writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\n')
+        writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\nMySql:' + str(mysqlInfo))
         cpu_percent = cpuInfo['used'] 
         mem_percent = cpuInfo['mem']
         network_up = networkInfo['up'] # MB
@@ -2159,6 +2162,20 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo):
                     if site_error_msg != '':
                         error_msg_arr.append(site_error_msg)
         
+        # MySQL从库状态
+        if (control_notify_config['mysql_slave_status_notice'] == 1):
+            slave_status = mysqlInfo.get('slave_status', None)
+            if slave_status is not None and len(slave_status) > 0:
+                for slave_status_item in slave_status:
+                    if  (
+                            not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > now_timestamp) 
+                            or (slave_status_item.get('delay', '-1') == 'None' 
+                            or int(slave_status_item.get('delay', '999')) > 0)
+                        ):  
+                        error_msg_arr.append('MySQL主从同步异常')
+
+                        
+
         # 发送异常报告
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')

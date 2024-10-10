@@ -317,9 +317,11 @@ def systemTask():
 
             # 网站
             siteInfo = sm.getSiteInfo()
-
+            
+            # mysql
+            mysqlInfo = sm.getMysqlInfo()
             # 报告
-            mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo)
+            mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo)
             
             # print diskInfo
             if count >= 12:

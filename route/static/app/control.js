@@ -983,6 +983,7 @@ function getload(b,e){
 
 function setNotifyValue() {
 	let data = $("#notifyValueForm").serialize()
+  debugger
 	$.post("/system/set_notify_value", data, function(rdata) {
 		if(rdata.status) {
 			layer.closeAll();
@@ -1002,12 +1003,24 @@ function openSetNotifyValue() {
 			layer.open({
 				type: 1,
 				area: "290px",
-				title: '配置异常阈值',
+				title: '异常通知配置',
 				closeBtn: 1,
 				shift: 5,
 				shadeClose: false,
 				content: "<form id='notifyValueForm' class='nitify-value-form bt-form pd20 pb70'>\
-					<div class='line'>\
+          <b>提醒开关：</b>\
+          <div class='line flex align-center'\
+						<em class='mr20'>MySQL主从同步</em>\
+            <div class='pl5 pt5' id='openMysqlSlaveStatusNoticeSwitch'></div>\
+          </div>\
+          <input type='number' name='mysql_slave_status_notice' value='" + (data.mysql_slave_status_notice) + "' style='display:none;'>\
+					<div class='line flex align-center'\
+						<em class='mr20'>Rsync服务</em>\
+            <div class='pl5 pt5' id='openRsyncStatusNoticeSwitch'></div>\
+          </div>\
+          <input type='number' name='rsync_status_notice' value='" + (data.rsync_status_notice) + "' style='display:none;'>\
+          <b>异常阈值：</b>\
+          <div class='line'>\
 						<span class='tname'>CPU</span>\
 						<div class='info-r plan_hms bt-input-text'>\
 							<span><input type='number' name='cpu' value='" + (data.cpu == null? 80: data.cpu) + "' maxlength='3' max='100' min='-1'></span>\
@@ -1040,8 +1053,17 @@ function openSetNotifyValue() {
 						<button type='button' class='btn btn-danger btn-sm' onclick=\"layer.closeAll()\">关闭</button>\
 						<button type='button' class='btn btn-success btn-sm' onclick=\"setNotifyValue()\">修改</button>\
 					</div>\
-				</form>"
-			})
+				</form>",
+
+			});
+
+      $("#openMysqlSlaveStatusNoticeSwitch").createRadioSwitch(data.mysql_slave_status_notice, (checked) => {
+        $("input[name='mysql_slave_status_notice']").val(checked? 1: 0);
+      });
+
+      $("#openRsyncStatusNoticeSwitch").createRadioSwitch(data.rsync_status_notice, (checked) => {
+        $("input[name='rsync_status_notice']").val(checked? 1: 0);
+      });
 		} else {
 			layer.msg(b.msg, {icon: 2});
 		}

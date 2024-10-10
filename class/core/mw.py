@@ -2174,7 +2174,13 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                         ):  
                         error_msg_arr.append('MySQL主从同步异常')
 
-                        
+        # Rsync状态
+        if (control_notify_config['rsync_status_notice'] == 1):
+            lsyncd_status_cmd = 'systemctl status lsyncd | grep loaded | grep "enabled;"'
+            lsyncd_status_data = execShell(lsyncd_status_cmd)
+            if lsyncd_status_data[0] == '':
+                error_msg_arr.append('实时同步异常')
+
 
         # 发送异常报告
         if (len(error_msg_arr) > 0):

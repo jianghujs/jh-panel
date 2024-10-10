@@ -325,6 +325,10 @@ if [ $choice == "y" ]; then
   echo "# 开启邮件通知" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openEmailNotify" >> $tmp_online_script_file
   echo "show_info \"|- 开启 邮件通知 完成✅\"" >> $tmp_online_script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py openMysqlSlaveNotify" >> $tmp_online_script_file
+  echo "show_info \"|- 开启 主从同步异常提醒 完成✅\"" >> $tmp_online_script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py openRsyncStatusNotify" >> $tmp_online_script_file
+  echo "show_info \"|- 开启 Rsync状态异常提醒 完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
   echo "popd > /dev/null" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file

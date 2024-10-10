@@ -2179,7 +2179,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             lsyncd_status_cmd = 'systemctl status lsyncd | grep loaded | grep "enabled;"'
             lsyncd_status_data = execShell(lsyncd_status_cmd)
             if lsyncd_status_data[0] == '':
-                error_msg_arr.append('实时同步异常')
+                error_msg_arr.append('Rsync实时同步异常')
 
 
         # 发送异常报告

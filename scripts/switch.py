@@ -73,6 +73,35 @@ class switchTools:
         mw.writeNotify(data)
         print("关闭邮件通知成功!")
 
+        
+    def closeMysqlSlaveNotify(self):
+        control_notify_value_file = 'data/control_notify_value.conf'
+        data = mw.getControlNotifyConfig()
+        data['mysql_slave_status_notice'] = 0
+        mw.writeFile(control_notify_value_file, json.dumps(data))
+        print("关闭主从同步异常提醒成功!")
+
+    def openMysqlSlaveNotify(self):
+        control_notify_value_file = 'data/control_notify_value.conf'
+        data = mw.getControlNotifyConfig()
+        data['mysql_slave_status_notice'] = 1
+        mw.writeFile(control_notify_value_file, json.dumps(data))
+        print("开启主从同步异常提醒成功!")
+
+    def closeRsyncStatusNotify(self):
+        control_notify_value_file = 'data/control_notify_value.conf'
+        data = mw.getControlNotifyConfig()
+        data['rsync_status_notice'] = 0
+        mw.writeFile(control_notify_value_file, json.dumps(data))
+        print("关闭Rsync状态异常提醒成功!")
+       
+    def openRsyncStatusNotify(self):
+        control_notify_value_file = 'data/control_notify_value.conf'
+        data = mw.getControlNotifyConfig()
+        data['rsync_status_notice'] = 1
+        mw.writeFile(control_notify_value_file, json.dumps(data))
+        print("开启Rsync状态异常提醒成功!")
+
     def addCrontab(self, cron_config):
         sid = cron_config.get('id', '')
         iname = cron_config.get('name', '')
@@ -226,6 +255,14 @@ if __name__ == "__main__":
       st.openEmailNotify()
     elif type == 'closeEmailNotify':
       st.closeEmailNotify()
+    elif type == 'closeMysqlSlaveNotify':
+      st.closeMysqlSlaveNotify()
+    elif type == 'openMysqlSlaveNotify':
+      st.openMysqlSlaveNotify()
+    elif type == 'closeRsyncStatusNotify':
+      st.closeRsyncStatusNotify()
+    elif type == 'openRsyncStatusNotify':
+      st.openRsyncStatusNotify()
     elif type == 'addCrontab':
       """
       python3 /www/server/jh-panel/scripts/switch.py addCrontab '{"name":"测试111","type":"day","hour":1,"minute":20,"stype":"toShell","backup_to":"localhost","sbody":"echo \"ok\""}'

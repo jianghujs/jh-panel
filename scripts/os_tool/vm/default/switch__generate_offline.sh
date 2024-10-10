@@ -78,6 +78,14 @@ if [ $choice == "y" ]; then
   # echo "python3 /www/server/jh-panel/scripts/switch.py closeEmailNotify" >> $script_file
   # echo "echo \"|- 关闭 邮件通知 完成✅\"" >> $script_file
   # echo "" >> $script_file
+  echo "# 关闭主从同步异常提醒" >> $script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py closeMysqlSlaveNotify" >> $script_file
+  echo "echo \"|- 关闭 关闭主从同步异常提醒 完成✅\"" >> $script_file
+  echo "" >> $script_file
+  echo "# 关闭Rsync状态异常提醒" >> $script_file
+  echo "python3 /www/server/jh-panel/scripts/switch.py closeRsyncStatusNotify" >> $script_file
+  echo "echo \"|- 关闭 关闭Rsync状态异常提醒 完成✅\"" >> $script_file
+  echo "" >> $script_file
   echo "popd > /dev/null" >> $script_file
   echo "" >> $script_file
   echo "echo \"=========================服务器下线完成✅=======================\"" >> $script_file

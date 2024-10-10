@@ -604,9 +604,16 @@ def restartPanelService():
 # --------------------------------------Debounce Commands Start   --------------------------------------------- #
 debounce_commands_pool_file = 'data/debounce_commands_pool.json'
 def read_debounce_commands_pool():
-    with open(debounce_commands_pool_file, 'r') as file:
-        return json.load(file)
-
+    if not os.path.exists(debounce_commands_pool_file):
+        write_debounce_commands_pool([])
+        return []
+    try:
+        with open(debounce_commands_pool_file, 'r') as file:
+            return json.load(file)
+    except:
+        write_debounce_commands_pool([])
+        return []
+    
 def write_debounce_commands_pool(debounce_commands_pool):
     with open(debounce_commands_pool_file, 'w') as file:
         json.dump(debounce_commands_pool, file)

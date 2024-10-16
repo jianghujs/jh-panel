@@ -2113,6 +2113,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         # 推送需要的内容
         now_time = getDateFromNow()
         now_timestamp = datetime.datetime.now().timestamp()
+        four_hours_ago_timestamp = now_timestamp - 4 * 60 * 60
         now_day = now_time.split(' ')[0]
 
         writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\nMySql:' + str(mysqlInfo))
@@ -2168,7 +2169,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             if slave_status is not None and len(slave_status) > 0:
                 for slave_status_item in slave_status:
                     if  (
-                            not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > now_timestamp) 
+                            not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > four_hours_ago_timestamp) 
                             or (slave_status_item.get('delay', '-1') == 'None' 
                             or int(slave_status_item.get('delay', '999')) > 0)
                         ):  

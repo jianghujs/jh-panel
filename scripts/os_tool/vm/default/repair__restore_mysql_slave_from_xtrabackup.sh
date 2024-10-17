@@ -1,4 +1,5 @@
 #!/bin/bash
+source /www/server/jh-panel/scripts/util/msg.sh
 
 # 检查/usr/bin/jq是否存在
 if ! [ -x "/usr/bin/jq" ]; then
@@ -12,6 +13,60 @@ if ! [ -x "/usr/bin/jq" ]; then
     fi
 fi
 
+
+prompt "需要在主服务器执行xtrabackup备份并将最新的xtrabackup文件同步到本地吗？（默认n）[y/n]: " host_backup_choice "n"
+
+if [ $host_backup_choice == "y" ]; then
+  # 获取主服务器IP
+  default_remote_ip=$(python3 /www/server/jh-panel/tools.py getStandbyIp)
+  remote_ip_tip="请输入主服务器IP"
+  if [ -n "$default_remote_ip" ]; then
+    remote_ip_tip+="（默认为：${default_remote_ip}）"
+  fi
+  prompt "$remote_ip_tip: " remote_ip $default_remote_ip
+  if [ -z "$remote_ip" ]; then
+    show_error "错误:未指定主服务器IP"
+    exit 1
+  fi
+
+  # 输入主服务器SSH端口
+  prompt "请输入主服务器SSH端口(默认: 10022): " remote_port "10022"
+
+  # 正在主服务器执行xtrabackup备份
+  echo "正在主服务器执行xtrabackup备份..."
+
+  # 在目标服务器执行以下脚本
+  xtrabackup_script=$(cat <<EOF
+  #!/bin/bash
+  export BACKUP_PATH=/www/backup/xtrabackup_data
+  export BACKUP_COMPRESS=0
+  set -x
+  bash /www/server/xtrabackup/xtrabackup.sh
+EOF
+  )
+
+  # 在目标服务器执行xtrabackup备份
+  ssh -p $remote_port root@$remote_ip "echo '$xtrabackup_script' > /tmp/xtrabackup.sh && chmod +x /tmp/xtrabackup.sh && /tmp/xtrabackup.sh"
+  if [ $? -ne 0 ]; then
+    show_error "错误:主服务器执行xtrabackup备份失败"
+    exit 1
+  fi
+  show_info "主服务器执行xtrabackup备份成功✅"
+  
+  # 同步主服务器最新的xtrabackup文件到本地
+  echo "正在同步主服务器最新的xtrabackup文件到本地..."
+  # 获取最新的xtrabackup文件
+  xtrabackup_file_path=$(ssh -p $remote_port root@$remote_ip "ls -t /www/backup/xtrabackup_data_history/xtrabackup_data*.zip | head -n 1")
+  if [ -z "$xtrabackup_file_path" ]; then
+    show_error "错误:未找到主服务器xtrabackup备份文件"
+    exit 1
+  fi
+  xtrabackup_file=$(basename $xtrabackup_file_path)
+  echo "最新的xtrabackup文件路径为：$xtrabackup_file_path"
+  echo "最新的xtrabackup文件为：$xtrabackup_file"
+  rsync -avz -e "ssh -p $remote_port" root@$remote_ip:$xtrabackup_file_path /www/backup/xtrabackup_data_history/
+  show_info "同步主服务器最新的xtrabackup文件到本地成功✅"
+fi
 
 # 当前系统如果存在/appdata/backup/xtrabackup_data_history则默认为/appdata/backup/xtrabackup_data_history否则为/www/backup/xtrabackup_data_history
 default_backup_dir="/www/backup/xtrabackup_data_history"

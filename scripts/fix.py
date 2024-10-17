@@ -6,6 +6,7 @@
 import sys
 import os
 import json
+import re
 import datetime
 
 if sys.platform != 'darwin':
@@ -132,7 +133,24 @@ class fixTools:
                 print("|- 创建%sSSL证书成功✅" % siteName)
                 siteApi.deploySsl(siteName, "lets")
                 print("|- 部署%sSSL证书成功✅" % siteName)
-   
+    
+    # 修复异常的网站.wellknown配置
+    def fixWebsiteWellknownConf(self):
+      website_conf_dir = '/www/server/web_conf/nginx/vhost'
+      for filename in os.listdir(website_conf_dir):
+          if filename.endswith('.conf'):
+              file_path = os.path.join(website_conf_dir, filename)
+              with open(file_path, 'r') as file:
+                  lines = file.readlines()
+              with open(file_path, 'w') as file:
+                  for line in lines:
+                      # 修改包含 .well-known 的行，将location到.wellknown之间的内容替换为location ^~/.well-known
+                      if '.well-known' in line:
+                          line = re.sub(r'location\s+[^{]+', 'location ^~ /.well-known', line)
+                      file.write(line)
+              print(f'|- 修复 {filename} wellknown配置成功！')
+
+      print("已修复全部wellknown配置✅")
     
 if __name__ == "__main__":
     fix = fixTools()
@@ -148,3 +166,12 @@ if __name__ == "__main__":
     elif type == 'regenerateLetsSiteOrder':
         params = json.loads(sys.argv[2])
         fix.regenerateLetsSiteOrder(params)
+    elif type == 'fixWebsiteWellknownConf':
+        """
+        修复异常的网站.wellknown配置
+        使用示例：
+        cd /www/server/jh-panel && python3 /www/server/jh-panel/scripts/fix.py fixWebsiteWellknowConf
+        """
+        fix.fixWebsiteWellknownConf()
+    else:
+        print("无效参数")

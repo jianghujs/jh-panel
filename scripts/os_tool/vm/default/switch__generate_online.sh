@@ -35,11 +35,14 @@ echo "5. （可选）恢复网站数据"
 echo "6. （可选）恢复插件数据"
 echo "7. ? 确认上线操作"
 echo "8. （可选）主从切换"
-echo "9. 启动xtrabackup增量备份、xtrabackup、mysqldump、续签Let's Encrypt证书定时任务"
-echo "10. 从authorized_keys删除同步公钥"
-echo "11. 启动rsyncd任务"
-echo "12. 启动Openresty"
-echo "13. 开启邮件通知"
+echo "9. 关闭xtrabackup增量备份、xtrabackup、mysqldump"
+echo "10. 开启备份网站配置、备份插件配置、lsyncd实时任务定时同步、续签Let's Encrypt证书定时任务"
+echo "11. 从authorized_keys删除同步公钥"
+echo "12. 启动rsyncd任务"
+echo "13. 启动Openresty"
+echo "14. 开启邮件通知"
+echo "15. 开启主从同步异常提醒"
+echo "16. 开启Rsync状态异常提醒"
 echo "-----------------------"
 prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 
@@ -325,8 +328,11 @@ if [ $choice == "y" ]; then
   echo "# 开启邮件通知" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openEmailNotify" >> $tmp_online_script_file
   echo "show_info \"|- 开启 邮件通知 完成✅\"" >> $tmp_online_script_file
+  
+  # 开启主从同步异常提醒
   echo "python3 /www/server/jh-panel/scripts/switch.py openMysqlSlaveNotify" >> $tmp_online_script_file
   echo "show_info \"|- 开启 主从同步异常提醒 完成✅\"" >> $tmp_online_script_file
+  # 开启Rsync状态异常提醒
   echo "python3 /www/server/jh-panel/scripts/switch.py openRsyncStatusNotify" >> $tmp_online_script_file
   echo "show_info \"|- 开启 Rsync状态异常提醒 完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file

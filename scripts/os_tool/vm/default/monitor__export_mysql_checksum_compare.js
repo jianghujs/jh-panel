@@ -261,7 +261,7 @@ async function checkConnection(connection) {
   let connectionAValid = await checkConnection( connectionA);
   let connectionBValid = await checkConnection(connectionB);
   if (!connectionAValid || !connectionBValid) {
-    console.error("|- 请检查数据库连接❌");
+    console.error("|- 连接数据库失败❌");
     process.exit(1);
   }
   

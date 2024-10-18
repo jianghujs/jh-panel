@@ -260,7 +260,7 @@ class reportTools:
             # 备份信息
             backup_summary_tips = []
             if mysql_master_slave_info is not None:
-                if len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
+                if mysql_master_slave_info.get('is_slave', False) is not True and len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
                     for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
                         if  (not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or (slave_status_item.get('delay', '-1') == 'None' or int(slave_status_item.get('delay', '999')) > 0)):  
                             backup_summary_tips.append("MySQL主从同步")
@@ -395,33 +395,40 @@ table tr td:nth-child(2) {
         backup_tips = []
 
         # mysql主从
-        mysql_master_slave_info = None
+        mysql_master_slave_info = {}
         mysql_dir = '/www/server/mysql-apt'
         if os.path.exists(mysql_dir + '/mysql.db'):
             slave_status = []
             try:
-              config_conn = mw.M('config').dbPos(mysql_dir, 'mysql')
-              check_table_query = f"SELECT name FROM sqlite_master WHERE type='table' AND name='slave_status';"
-              table_exist = config_conn.originExecute(check_table_query)
-              if table_exist.fetchone():
-                slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
-                slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()
-                slave_status_conn.close()
-                mysql_master_slave_info = {
-                    "slave_status_list": slave_status
-                }
-                backup_tips.append({
-                    "name": 'MySQL主从同步',
-                    "desc":"""
+              # 检查当前是否为从机
+              mysql_slave_list_data = mw.execShell(f"python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_list")
+              if mysql_slave_list_data[2] == 0:
+                  mysql_slave_list = json.loads(mysql_slave_list_data[0])['data']
+                  if len(mysql_slave_list) > 0:
+                      mysql_master_slave_info["is_slave"] = True
+              if mysql_master_slave_info.get("is_slave", False) is not True:
+                # 获取从机状态
+                config_conn = mw.M('config').dbPos(mysql_dir, 'mysql')
+                check_table_query = f"SELECT name FROM sqlite_master WHERE type='table' AND name='slave_status';"
+                table_exist = config_conn.originExecute(check_table_query)
+                if table_exist.fetchone():
+                  slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
+                  slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()
+                  slave_status_conn.close()
+                  mysql_master_slave_info["slave_status_list"] = slave_status
+                  
+                  backup_tips.append({
+                      "name": 'MySQL主从同步',
+                      "desc":"""
 %s
-                    """ % (
-                      ''.join(f"""
+                      """ % (
+                        ''.join(f"""
 IP：{item.get('ip', '')}<br/>
 状态：<span style=\"color: {'auto' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
 延迟：<span style=\"color: {'auto' if (item.get('delay', '-1') != 'None' and int(item.get('delay', '-1')) == 0) else 'orange'}\">{item.get('delay', '异常')}</span>
 \n""" for item in slave_status)
-                    )
-                })
+                      )
+                  })
             except Exception as e:
               slave_status = []
               traceback.print_exc()

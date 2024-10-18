@@ -224,6 +224,7 @@ class reportTools:
                 })
             # 生成概要信息
             summary_tips = []
+            error_tips = []
             # 系统资源概要信息
             sysinfo_summary_tips = []
             if cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value:
@@ -237,10 +238,13 @@ class reportTools:
                   disk_size_percent = int(disk['size'][3].replace('%', ''))
                   if disk_size_percent > disk_notify_value:
                       sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
+                      error_tips.append("磁盘（%s）" % disk['path'])
             if len(sysinfo_summary_tips) > 0:
                 summary_tips.append("<span style='color: red;'>" + "、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
+                error_tips.append("、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险')
             if lastMonitorTimestamp < self.__START_TIMESTAMP:
                 summary_tips.append("<span style='color: red;'>系统异常监控状态异常，异常情况通知可能不及时</span>")
+                error_tips.append("系统监控状态异常")
             
             # 网站概要信息
             siteinfo_summary_tips = []
@@ -257,6 +261,7 @@ class reportTools:
                         siteinfo_summary_tips.append(site_name)
             if len(siteinfo_summary_tips) > 0:
                 summary_tips.append( "<span style='color: red;'>" + "、".join(siteinfo_summary_tips) + '域名证书需要及时更新</span>')
+                error_tips.append("、".join(siteinfo_summary_tips) + '域名证书需要及时更新')
             # 备份信息
             backup_summary_tips = []
             if mysql_master_slave_info is not None:
@@ -264,6 +269,7 @@ class reportTools:
                     for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
                         if  (not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or (slave_status_item.get('delay', '-1') == 'None' or int(slave_status_item.get('delay', '999')) > 0)):  
                             backup_summary_tips.append("MySQL主从同步")
+                            error_tips.append("MySQL主从同步状态异常")
                             break
             if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
                 backup_summary_tips.append("Xtrabackup")
@@ -281,15 +287,15 @@ class reportTools:
                             backup_summary_tips.append(send_open_fixtime_item.get('name'))
             if len(backup_summary_tips) > 0:
                 summary_tips.append("<span style='color: red;'>" + "、".join(backup_summary_tips) + '备份状态异常</span>')
+                error_tips.append("、".join(backup_summary_tips) + '备份状态异常')
             # lsyncd实时同步延迟提示
             if rsyncd_info is not None and  len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_delays', 0) > 0:
                 summary_tips.append("<span style='color: orange;'>实时备份文件延迟%s个</span>" % rsyncd_info.get('realtime_delays', 0))
-
+                error_tips.append("实时备份文件延迟%s个" % rsyncd_info.get('realtime_delays', 0))
 
             # 无异常默认信息
             if len(summary_tips) == 0:
                 summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
-
 
             report_content = """
 <style>
@@ -389,6 +395,12 @@ table tr td:nth-child(2) {
                 stype='服务器报告', 
                 trigger_time=0
             )
+
+            # 单独发送一条异常提醒
+            if len(error_tips) > 0:
+                error_tips_msg = mw.generateCommonNotifyMessage('<br\>' + '<br\>'.join(error_tips) + '<br\>请注意！')
+                mw.notifyMessage(msg=error_tips_msg, msgtype="html", title="服务器异常通知", stype='服务器异常通知', trigger_time=0)
+
         return mw.returnJson(True, '设置成功!')
     
     def getBackupReport(self):

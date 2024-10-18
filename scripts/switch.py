@@ -33,6 +33,7 @@ crontabApi = crontab_api.crontab_api()
 class switchTools:
 
     def openCrontab(self, name):
+        raise Exception("测试报错")
         cronInfo = mw.M('crontab').where(
             'name=?', (name,)).field(crontabApi.field).find()
         if not cronInfo:

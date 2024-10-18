@@ -122,12 +122,12 @@ if [ $choice == "y" ]; then
   echo "# 关闭主从同步异常提醒" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py closeMysqlSlaveNotify" >> $script_file
   echo "check_and_continue \"关闭 主从同步异常提醒\"" >> $script_file
-  echo "echo \"|- 关闭 关闭主从同步异常提醒 完成✅\"" >> $script_file
+  echo "show_info \"|- 关闭 关闭主从同步异常提醒 完成✅\"" >> $script_file
   echo "" >> $script_file
   echo "# 关闭Rsync状态异常提醒" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py closeRsyncStatusNotify" >> $script_file
   echo "check_and_continue \"关闭 Rsync状态异常提醒\"" >> $script_file
-  echo "echo \"|- 关闭 关闭Rsync状态异常提醒 完成✅\"" >> $script_file
+  echo "show_info \"|- 关闭 关闭Rsync状态异常提醒 完成✅\"" >> $script_file
   echo "" >> $script_file
   echo "popd > /dev/null" >> $script_file
   echo "" >> $script_file

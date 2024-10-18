@@ -54,6 +54,22 @@ if [ $choice == "y" ]; then
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_merge_file
   echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
 
+  # 添加失败步骤相关
+  echo "FAILED_STEPS=()  # 用于记录失败的步骤" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "function check_and_continue() {" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "    if [ \$? -ne 0 ]; then" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "        FAILED_STEPS+=(\"\$1\")  # 记录失败的步骤" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "        prompt \"步骤 \033[1;31m\$1\033[0m 执行失败，是否继续执行后续步骤？（默认n）[y/n]: \" continue_choice \"n\"" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "        if [ \"\$continue_choice\" != \"y\" ]; then" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "            echo \"已选择停止执行后续步骤。\"" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "            echo \"失败的步骤：\$1\"" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "            exit 1" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "        fi" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "    fi" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "}" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+  echo "" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
+
   echo "log_file=\"/tmp/online.log\"" >> $tmp_prepare_script_file
   echo "echo \"\" > \$log_file" >> $tmp_prepare_script_file
   echo "" >> $tmp_prepare_script_file
@@ -100,6 +116,7 @@ if [ $choice == "y" ]; then
     recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | jq -r .data)
     popd > /dev/null
     echo "${recovery_script}" >> $tmp_prepare_script_file
+    echo "check_and_continue \"执行xtrabackup增量恢复\"" >> $tmp_prepare_script_file
     echo "show_info \"|- xtrabackup增量恢复完成✅\"" >> $tmp_prepare_script_file
     echo "" >> $tmp_prepare_script_file
   fi
@@ -115,6 +132,7 @@ if [ $choice == "y" ]; then
     echo "npm i" >> $tmp_prepare_script_file
     echo "node /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/monitor__export_mysql_checksum_compare.js" >> $tmp_prepare_script_file
     echo "popd > /dev/null" >> $tmp_prepare_script_file
+    echo "if [ \$? -ne 0 ]; then" >> $tmp_prepare_script_file
     echo "source /tmp/compare_checksum_diff" >> $tmp_prepare_script_file
     echo "if [[ -n \$checksum_diff ]]; then" >> $tmp_prepare_script_file
     echo "  checksum_diff=\$(echo \"\$checksum_diff\" | tr ',' '\n')" >> $tmp_prepare_script_file
@@ -126,7 +144,9 @@ if [ $choice == "y" ]; then
     echo "    exit 1" >> $tmp_prepare_script_file
     echo "  fi" >> $tmp_prepare_script_file
     echo "fi" >> $tmp_prepare_script_file
+    echo "check_and_continue \"检查主备服务器checksum\"" >> $tmp_prepare_script_file
     echo "show_info \"|- 主备服务器checksum检查完成✅\"" >> $tmp_prepare_script_file
+    echo "fi" >> $tmp_prepare_script_file
     echo "" >> $tmp_prepare_script_file
   fi
 
@@ -194,23 +214,28 @@ if [ $choice == "y" ]; then
     
     echo "pushd \$site_setting_restore_tmp > /dev/null" >> $tmp_prepare_script_file
     echo "python3 /www/server/jh-panel/scripts/migrate.py importSiteInfo \$(pwd)/site_info.json" >> $tmp_prepare_script_file
+    echo "check_and_continue \"导入站点数据\"" >> $tmp_prepare_script_file
     echo "echo \"导入站点数据完成✅!\"" >> $tmp_prepare_script_file
     
     echo "# 合并letsencrypt.json" >> $tmp_prepare_script_file
     echo "python3 /www/server/jh-panel/scripts/migrate.py importLetsencryptOrder \$(pwd)/letsencrypt.json" >> $tmp_prepare_script_file
+    echo "check_and_continue \"合并letsencrypt.json\"" >> $tmp_prepare_script_file
     echo "echo \"合并letsencrypt.json完成✅!\"" >> $tmp_prepare_script_file
 
     echo "# 解压合并当前目录下的web_conf.zip到/www/server/web_conf/" >> $tmp_prepare_script_file
     echo "unzip -o ./web_conf.zip -d /www/server/web_conf/ >> \$log_file" >> $tmp_prepare_script_file
+    echo "check_and_continue \"恢复网站配置完成\"" >> $tmp_prepare_script_file
     echo "echo \"恢复网站配置完成✅!\"" >> $tmp_prepare_script_file
 
     echo "# 重启openresty" >> $tmp_prepare_script_file
     echo "pushd /www/server/jh-panel > /dev/null" >> $tmp_prepare_script_file
     echo "python3 /www/server/jh-panel/plugins/openresty/index.py restart" >> $tmp_prepare_script_file
     echo "popd > /dev/null" >> $tmp_prepare_script_file
+    echo "check_and_continue \"重启openresty\"" >> $tmp_prepare_script_file
     echo "echo \"重启openresty完成✅!\"" >> $tmp_prepare_script_file
 
     echo "popd > /dev/null" >> $tmp_prepare_script_file
+    echo "check_and_continue \"恢复网站配置\"" >> $tmp_prepare_script_file
     echo "show_info \"|- 恢复网站配置✅\"" >> $tmp_prepare_script_file
     echo "" >> $tmp_prepare_script_file
   fi
@@ -246,6 +271,7 @@ if [ $choice == "y" ]; then
     echo "done" >> $tmp_prepare_script_file
 
     echo "popd > /dev/null" >> $tmp_prepare_script_file
+    echo "check_and_continue \"恢复插件配置\"" >> $tmp_prepare_script_file
     echo "show_info \"|- 恢复插件配置✅\"" >> $tmp_prepare_script_file
     echo "" >> $tmp_prepare_script_file
   fi
@@ -265,6 +291,7 @@ if [ $choice == "y" ]; then
     echo "export PATH=\"/www/server/nodejs/fnm:\$PATH\"" >> $tmp_online_script_file 
     echo "npm i" >> $tmp_online_script_file
     echo "node \"/www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/switch__mysql_master.js\"" >> $tmp_online_script_file
+    echo "check_and_continue \"将当前数据库提升为主\"" >> $tmp_online_script_file
     echo "echo \"|- 将当前数据库提升为主完成✅\"" >> $tmp_online_script_file
     echo "popd > /dev/null" >> $tmp_online_script_file
   fi
@@ -273,27 +300,46 @@ if [ $choice == "y" ]; then
   echo "# 调整计划任务" >> $tmp_online_script_file
   echo "echo \"|- 调整计划任务...\"" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab 备份数据库[backupAll]" >> $tmp_online_script_file
+  echo "check_and_continue \"关闭 备份数据库 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 关闭 备份数据库 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]xtrabackup-cron" >> $tmp_online_script_file
+  echo "check_and_continue \"关闭 xtrabackup 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 关闭 xtrabackup 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]xtrabackup-inc全量备份" >> $tmp_online_script_file
+  echo "check_and_continue \"关闭 xtrabackup-inc全量备份 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 关闭 xtrabackup-inc全量备份 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab [勿删]xtrabackup-inc增量备份" >> $tmp_online_script_file
+  echo "check_and_continue \"关闭 xtrabackup-inc增量备份 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 关闭 xtrabackup-inc增量备份 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份网站配置[backupAll]" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 备份网站配置 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 备份网站配置 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份插件配置[backupAll]" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 备份插件配置 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 备份插件配置 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]lsyncd实时任务定时同步" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 lsyncd实时任务定时同步 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 lsyncd实时任务定时同步 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab [勿删]服务器报告" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 服务器报告 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 服务器报告 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab \"[勿删]续签Let's Encrypt证书\"" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 续签Let's Encrypt证书 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 续签Let's Encrypt证书 定时任务完成✅\"" >> $tmp_online_script_file
+
   echo "" >> $tmp_online_script_file
   echo "# 调整监控" >> $tmp_online_script_file
   echo "echo \"|- 调整监控...\"" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py setNotifyValue '{\"ssl_cert\":14}'" >> $tmp_online_script_file
+  echo "check_and_continue \"调整监控\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 SSL证书到期预提醒 完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
   echo "# 删除authorized_keys的同步公钥" >> $tmp_online_script_file
@@ -313,6 +359,7 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch {names:\"$names\",status:enabled}" >> $tmp_online_script_file
   echo "systemctl restart lsyncd" >> $tmp_online_script_file
   popd > /dev/null
+  echo "check_and_continue \"启用 rsyncd任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 启用 rsyncd任务 完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
 
@@ -320,6 +367,7 @@ if [ $choice == "y" ]; then
   confirm_online_opts+="- 启用Openresty\n"
   echo "# 启用openresty" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/plugins/openresty/index.py start" >> $tmp_online_script_file
+  echo "check_and_continue \"启动 OpenResty\"" >> $tmp_online_script_file
   echo "show_info \"|- 启动 OpenResty’ 完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
 
@@ -327,13 +375,16 @@ if [ $choice == "y" ]; then
   confirm_online_opts+="- 开启邮件通知\n"
   echo "# 开启邮件通知" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openEmailNotify" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 邮件通知\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 邮件通知 完成✅\"" >> $tmp_online_script_file
   
   # 开启主从同步异常提醒
   echo "python3 /www/server/jh-panel/scripts/switch.py openMysqlSlaveNotify" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 主从同步异常提醒\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 主从同步异常提醒 完成✅\"" >> $tmp_online_script_file
   # 开启Rsync状态异常提醒
   echo "python3 /www/server/jh-panel/scripts/switch.py openRsyncStatusNotify" >> $tmp_online_script_file
+  echo "check_and_continue \"开启 Rsync状态异常提醒\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 Rsync状态异常提醒 完成✅\"" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
   echo "popd > /dev/null" >> $tmp_online_script_file
@@ -376,6 +427,19 @@ if [ $choice == "y" ]; then
   cat $tmp_merge_file > $script_file
 
   echo "echo \"=========================服务器上线完成✅=======================\"" >> $script_file
+  
+  echo "# 检查并输出所有失败的步骤" >> $script_file
+  echo "if [ \${#FAILED_STEPS[@]} -gt 0 ]; then" >> $script_file
+  echo "    echo -e \"\033[1;31m以下步骤执行失败：\033[0m\"" >> $script_file
+  echo "    for step in \"\${FAILED_STEPS[@]}\"; do" >> $script_file
+  echo "        echo -e \"- \033[1;31m\$step\033[0m\"" >> $script_file
+  echo "    done" >> $script_file
+  echo "    echo \"---------------\"" >> $script_file
+  echo "else" >> $script_file
+  echo "    echo \"所有步骤均成功执行✅ \"" >> $script_file
+  echo "fi" >> $script_file
+  echo "" >> $script_file
+
   echo "echo \"后续操作指引：\"" >> $script_file
   echo "echo \"1. 请检查项目运行情况\"" >> $script_file
   echo "echo \"2. 切换网站DNS\"" >> $script_file

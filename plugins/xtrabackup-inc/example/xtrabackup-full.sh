@@ -54,6 +54,7 @@ ulimit -n 65535
 # 备份目录
 BACKUP_BASE_PREV_PATH=$BACKUP_BASE_PATH.prev
 if [ -d "$BACKUP_BASE_PREV_PATH" ];then
+    lsof $BACKUP_BASE_PREV_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     rm -rf $BACKUP_BASE_PREV_PATH
 fi
 
@@ -84,6 +85,7 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
     # 预备增量恢复
     rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/
     # 删除增量目录
+    lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     rm -rf $BACKUP_INC_PATH
     echo "|- $timestamp 全量备份成功" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
     # 备份成功记录
@@ -94,6 +96,7 @@ else
     echo "|- $timestamp 全量备份失败" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
     # 恢复目录
     if [ -d "$BACKUP_BASE_PATH" ];then
+        lsof $BACKUP_BASE_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
         rm -rf $BACKUP_BASE_PATH
     fi
     if [ ! -d "$BACKUP_BASE_PATH" ] && [ -d "$BACKUP_BASE_PREV_PATH" ];then

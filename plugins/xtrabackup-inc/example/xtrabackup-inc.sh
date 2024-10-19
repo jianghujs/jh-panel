@@ -38,6 +38,7 @@ ulimit -n 65535
 # 备份目录
 BACKUP_INC_PREV_PATH=$BACKUP_INC_PATH.prev
 if [ -d "$BACKUP_INC_PREV_PATH" ];then
+    lsof $BACKUP_INC_PREV_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     rm -rf $BACKUP_INC_PREV_PATH
 fi
 if [ ! -d "$BACKUP_INC_PREV_PATH" ] && [ -d "$BACKUP_INC_PATH" ];then
@@ -77,6 +78,7 @@ else
     echo "|- $timestamp 增量备份失败" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
     # 恢复目录
     if [ -d "$BACKUP_INC_PATH" ];then
+        lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
         rm -rf $BACKUP_INC_PATH
     fi
     if [ ! -d "$BACKUP_INC_PATH" ] && [ -d "$BACKUP_INC_PREV_PATH" ];then

@@ -100,6 +100,7 @@ if [ $choice == "y" ]; then
   echo "  cat \"$STANDBY_SYNC_PUB_PATH\" >> $AUTHORIZED_KEYS_PATH" >> $script_file
   echo "fi" >> $script_file
   echo "" >> $script_file
+  
   echo "# 关闭rsyncd任务" >> $script_file
   pushd /www/server/jh-panel > /dev/null
   lsyncd_list=$(python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_list | jq -r .data | jq -r .list)
@@ -109,6 +110,12 @@ if [ $choice == "y" ]; then
   popd > /dev/null
   echo "check_and_continue \"关闭 rsyncd任务\"" >> $script_file
   echo "show_info \"|- 关闭 rsyncd任务 完成✅\"" >> $script_file
+
+  echo "# 清理rsync进程" >> $script_file
+  echo "ps aux | grep '/bin/[r]sync' | awk '{print \$2}' | xargs -r kill -9" >> $script_file
+  echo "check_and_continue \"清理 rsync进程\"" >> $script_file
+  echo "show_info \"|- 清理 rsync进程 完成✅\"" >> $script_file
+
   echo "" >> $script_file
   echo "# 关闭openresty" >> $script_file
   echo "python3 /www/server/jh-panel/plugins/openresty/index.py stop" >> $script_file

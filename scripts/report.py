@@ -712,3 +712,5 @@ if __name__ == "__main__":
         traceback.print_exc()
         notify_msg = mw.generateCommonNotifyMessage("发送服务器报告异常：" + str(e))
         mw.notifyMessage(title='服务器异常通知', msg=notify_msg, stype='服务器报告', trigger_time=600)
+    elif type == 'get_backup_report':
+      print(report.getBackupReport())

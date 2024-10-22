@@ -15,6 +15,7 @@ else
 fi
 
 script_file="/tmp/offline.sh"
+log_file="/tmp/offline.log"
 echo "-----------------------"
 echo "即将生成服务器下线脚本到${script_file}，包含内容如下："
 echo "1. 开启xtrabackup增量备份、xtrabackup、mysqldump"
@@ -165,5 +166,5 @@ if [ $choice == "y" ]; then
     echo "bash ${script_file}"
     exit 0
   fi
-  bash $script_file
+  bash $script_file | tee $log_file 
 fi

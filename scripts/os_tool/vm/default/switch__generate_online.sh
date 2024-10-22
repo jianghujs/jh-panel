@@ -16,6 +16,7 @@ tmp_prepare_script_file="/tmp/online__prepare.sh"
 tmp_online_script_file="/tmp/online__online.sh"
 tmp_merge_file="/tmp/online_merge.sh"
 script_file="/tmp/online.sh"
+log_file="/tmp/online.log"
 
 echo -ne "\033[1;31m提示：\033[0m 为减少服务中断时间，请确保\033[1m程序（JianghuJS、Docker）\033[0m和\033[1m配置\033[0m正确后执行上线操作，确定执行吗？（默认n）[y/n]: " 
 read check_choice
@@ -461,6 +462,6 @@ if [ $choice == "y" ]; then
     echo "bash ${script_file}"
     exit 0
   fi
-  bash $script_file
+  bash $script_file | tee $log_file 
   popd > /dev/null
 fi

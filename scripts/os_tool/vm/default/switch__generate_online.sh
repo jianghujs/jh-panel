@@ -50,10 +50,8 @@ prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 if [ $choice == "y" ]; then
   pushd /www/server/jh-panel > /dev/null
   # 清空文件并添加依赖
-  echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_prepare_script_file
-  echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_online_script_file
-  echo "source /www/server/jh-panel/scripts/util/msg.sh" > $tmp_merge_file
-  echo "source /www/server/jh-panel/scripts/util/msg.sh" > $script_file
+  echo "source /www/server/jh-panel/scripts/util/msg.sh" | tee $tmp_prepare_script_file $tmp_online_script_file $tmp_merge_file $script_file > /dev/null
+  echo "source /www/server/jh-panel/scripts/os_tool/tools.sh" | tee $tmp_prepare_script_file $tmp_online_script_file $tmp_merge_file $script_file > /dev/null
 
   # 添加失败步骤相关
   echo "FAILED_STEPS=()  # 用于记录失败的步骤" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
@@ -130,8 +128,7 @@ if [ $choice == "y" ]; then
     echo "# 检查主备服务器checksum" >> $tmp_prepare_script_file
     echo "echo \"|- 检查主备服务器checksum...\"" >> $tmp_prepare_script_file
     echo "pushd /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_prepare_script_file
-    echo "npm i" >> $tmp_prepare_script_file
-    echo "node /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/monitor__export_mysql_checksum_compare.js" >> $tmp_prepare_script_file
+    echo "download_and_run_node monitor__export_mysql_checksum_compare.js" >> $tmp_prepare_script_file
     echo "popd > /dev/null" >> $tmp_prepare_script_file
     echo "if [ \$? -ne 0 ]; then" >> $tmp_prepare_script_file
     echo "source /tmp/compare_checksum_diff" >> $tmp_prepare_script_file
@@ -290,8 +287,7 @@ if [ $choice == "y" ]; then
     echo "pushd /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_online_script_file
     echo "source /root/.bashrc" >> $tmp_online_script_file
     echo "export PATH=\"/www/server/nodejs/fnm:\$PATH\"" >> $tmp_online_script_file 
-    echo "npm i" >> $tmp_online_script_file
-    echo "node \"/www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/switch__mysql_master.js\"" >> $tmp_online_script_file
+    echo "download_and_run_node \"switch__mysql_master.js\"" >> $tmp_online_script_file
     echo "check_and_continue \"将当前数据库提升为主\"" >> $tmp_online_script_file
     echo "echo \"|- 将当前数据库提升为主完成✅\"" >> $tmp_online_script_file
     echo "popd > /dev/null" >> $tmp_online_script_file
@@ -393,6 +389,7 @@ if [ $choice == "y" ]; then
 
   echo "source /root/.bashrc" >> $tmp_merge_file
   echo "source /www/server/jh-panel/scripts/util/msg.sh" >> $tmp_merge_file
+  echo "source /www/server/jh-panel/scripts/os_tool/tools.sh" >> $tmp_merge_file
   
   # 确认预上线操作
   echo "# 确认预上线操作" >> $tmp_merge_file

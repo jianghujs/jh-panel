@@ -336,14 +336,14 @@ function recoveryIncHtml(){
             增量恢复：
         </div>
         <div class="mtb15 flex align-center">
-            <button class="btn btn-success btn-sm va0 mr20" onclick="openRecoveryBackup();">执行增量恢复</button>
+            <button class="btn btn-success btn-sm va0 mr20" onclick="openRecoveryLatestBackup();">执行增量恢复</button>
         </div>
     </div>`;
     $(".soft-man-con").html(con);
 }
 
 
-function openRecoveryBackup() {
+function openRecoveryLatestBackup() {
     myPost('get_recovery_backup_script','', function(data) {
 		let rdata = $.parseJSON(data.data);
         openEditCode({
@@ -373,4 +373,84 @@ function doTaskWithLock(name, content) {
         $("#openEditCodeCloseBtn").click();
         messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
     });
+}
+
+
+function backupListHtml(){
+  var con = `\
+  <div class="divtable">\
+      \
+      <div style="padding-top:5px;">存放目录: /www/backup/xtrabackup_inc_data_history</div>\
+      <table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">\
+          <thead>\
+              <th>
+                  备份文件
+              </th>\
+              <th> 文件大小</th>\
+              <th> 创建时间</th>\
+              <th style="text-align: right;" width="150">操作</th></tr>\
+          </thead>\
+          <tbody class="plugin-table-body"></tbody>\
+      </table>\
+  </div>`;
+  $(".soft-man-con").html(con);
+  
+  myPost('backup_list',{}, function(data){
+    let rdata = $.parseJSON(data.data);
+    console.log(rdata);
+    if (!rdata['status']){
+            layer.msg(rdata['msg'],{icon:2,time:2000,shade: [0.3, '#000']});
+            return;
+        }
+
+        var tbody = '';
+        var tmp = rdata['data'].sort((a, b) => b.createTime - a.createTime);
+        tableData = tmp;
+        for(var i=0;i<tmp.length;i++){
+            tbody += '<tr>\
+                        <td style="width: 120px;">'+tmp[i].filename+'</td>\
+                        <td style="width: 240px;' + (tmp[i].size < 1024? 'color: red;': '') + '">'+tmp[i].sizeTxt+(tmp[i].size < 1024? '（无效的备份文件）': '')+'</td>\
+                        <td style="width: 180px;">'+getFormatTime(tmp[i].createTime)+'</td>\
+                        <td style="text-align: right;width: 60px;">' + 
+                            '<a href="javascript:openRecoveryBackup(\''+tmp[i].filename+'\')" class="btlink">恢复</a> | ' +
+                            '<a href="javascript:doDeleteBackup(\''+tmp[i].filename+'\')" class="btlink">删除</a>' +
+                        '</td>\
+                    </tr>';
+        }
+        $(".plugin-table-body").html(tbody);
+  });
+}
+
+
+function openRecoveryBackup(filename) {
+  myPost('get_recovery_backup_script',{filename}, function(data) {
+    let rdata = $.parseJSON(data.data);
+        openEditCode({
+            title: '执行恢复',
+            content: rdata.data,
+            width: '640px',
+            height: '400px',
+            submitBtn: '执行',
+            onSubmit: (content) => {
+              safeMessage('<b style="color: red">【' + document.title + '】恢复确认警告！ </b>', '确定恢复当前系统数据库吗？确认后将清空当前数据库，请谨慎操作!', function() {
+                doTaskWithLock('增量恢复', content)
+              });
+            }
+        })
+    });
+}
+
+
+function doDeleteBackup(filename) {
+  safeMessage('确认删除备份文件', '确认后[' + filename + ']文件不可恢复，请谨慎操作！', function(){
+    myPost('do_delete_backup', {filename}, function(data){
+        var rdata = $.parseJSON(data.data);
+        if(!rdata.status) {
+            layer.msg(rdata.msg,{icon:2, time:2000});
+            return;
+        };
+        backupListHtml();
+        layer.msg(rdata.msg,{icon:1,time:2000,shade: [0.3, '#000']});
+    });
+  });
 }

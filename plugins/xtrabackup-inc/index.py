@@ -305,8 +305,63 @@ def doMysqlBackup():
     return mw.returnJson(True, execResult[0])
 
 
+def backupList():
+    result = []
+    history_path = '/www/backup/xtrabackup_inc_data_history'
+    # 循环目录下的第一层文件夹
+    for item in os.listdir(history_path):
+        if os.path.isdir(history_path + '/' + item):
+            size = mw.getDirSize(history_path + '/' + item)
+            backup = {}
+            backup['filename'] = item
+            backup['size'] = size
+            backup['sizeTxt'] = mw.toSize(size)
+            backup['createTime'] = os.path.getctime(history_path + '/' + item)
+            result.append(backup)
+    
+    return mw.returnJson(True, 'ok', result)
+
+
+def doDeleteBackup():
+    args = getArgs()
+    data = checkArgs(args, ['filename'])
+    if not data[0]:
+        return data[1]
+    filename = args['filename']
+    mw.execShell('rm -rf /www/backup/xtrabackup_inc_data_history/' + filename)
+    return mw.returnJson(True, '删除成功!')
+
 def getRecoveryBackupScript():
-    recoveryScript = f'echo "开始增量恢复..." \n{getBackupShellDefineValue()}\nset -x\n{mw.readFile(getIncRecoveryScriptFile())}'
+    args = getArgs()
+    data = checkArgs(args, ['filename'])
+    if not data[0]:
+        return data[1]
+    filename = args['filename']
+    filepath = '/www/backup/xtrabackup_inc_data_history/' + filename
+    basePath = filepath + '/base'
+    incPath = filepath + '/inc'
+
+    
+    # 获取的mysql目录
+    mysqlDir = ''
+    mysqlName = ''
+    if os.path.exists('/www/server/mysql-apt'):
+        mysqlDir = '/www/server/mysql-apt'
+        mysqlName = 'mysql-apt'
+    elif os.path.exists('/www/server/mysql'):
+        mysqlDir = '/www/server/mysql'
+        mysqlName = 'mysql'
+    else:
+        return mw.returnJson(False, '未检测到安装的mysql插件!')
+    recoveryScript = f"""
+echo "开始增量恢复..." 
+export BACKUP_BASE_PATH={basePath}
+export BACKUP_INC_PATH={incPath}
+export MYSQL_NAME={mysqlName}
+export MYSQL_DIR={mysqlDir}
+set -x
+{mw.readFile(getIncRecoveryScriptFile())}
+    """
     return mw.returnJson(True, 'ok', recoveryScript)
 
 
@@ -336,7 +391,7 @@ def doTaskWithLock():
 
     # mw.execShell("sh %(tempFilePath)s >> %(logFile)s" % {'tempFilePath': tempFilePath, 'logFile': log_file })
     mw.addAndTriggerTask(
-        name='执行Xtrabackup命令[' + name + ']',
+        name='执行Xtrabackup增量版命令[' + name + ']',
         execstr="sh %(tempFilePath)s >> %(logFile)s" % {
             'tempFilePath': tempFilePath, 'logFile': log_file}
     )
@@ -413,6 +468,10 @@ if __name__ == "__main__":
         print(setBackupConf())
     elif func == 'get_backup_path':
         print(getBackupPath())
+    elif func == 'backup_list':
+        print(backupList())
+    elif func == 'do_delete_backup':
+        print(doDeleteBackup())
     elif func == 'full_backup_script':
         print(getFullBackupScript())
     elif func == 'full_backup_cron_script':

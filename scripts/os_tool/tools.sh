@@ -27,13 +27,22 @@ download_and_run_node() {
     
     # echo "|- 正在运行  $script_path..."
     source /root/.bashrc
-    # 检查 node_modules 目录是否存在
-    if [ ! -d "node_modules" ]; then
-      echo "node_modules 不存在，正在运行 npm install..."
-      npm install
-    else
-      echo "node_modules 已存在，跳过 npm install。"
+
+    # 检查依赖是否安装
+    package_json_current_checksum=$(md5sum "package.json" | awk '{print $1}')
+    package_json_old_checksum=""
+    if [ -f "package.json.checksum" ]; then
+      package_json_old_checksum=$(cat "package.json.checksum")
     fi
+
+    if [ ! -d "node_modules" ] || [ "$package_json_current_checksum" != "$package_json_old_checksum" ]; then
+      echo "正在运行 npm install..."
+      npm install
+      echo $package_json_current_checksum > "package.json.checksum"
+    else
+      echo "跳过 npm install。"
+    fi
+
     node ${script_path} ${@:2}
     popd > /dev/null
 }

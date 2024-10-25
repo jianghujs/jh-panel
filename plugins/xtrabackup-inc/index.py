@@ -237,32 +237,46 @@ def testSetting():
             return mw.returnJson(False, '连接错误!')
     return mw.returnJson(True, '连接成功!')
 
-
-def getBaseBackupPathConf():
-    return getServerDir() + '/base-backup-path.conf'
-
+def getBackupPathConfig():
+    config = getConf()
+    path = '/www/backup/xtrabackup_inc_data'
+    if config.has_option('backup', 'path'):
+        path = config['backup']['path']
+    return path
 
 def getBaseBackupPath():
-    path = mw.readFile(getBaseBackupPathConf())
-    if (path == False):
-        path = '/www/backup/xtrabackup_data_base'
-    else:
-        path = path.strip()
-    return path
-
-
-def getIncBackupPathConf():
-    return getServerDir() + '/inc-backup-path.conf'
-
+    return getBackupPathConfig() + '/base'
 
 def getIncBackupPath():
-    path = mw.readFile(getIncBackupPathConf())
-    if (path == False):
-        path = '/www/backup/xtrabackup_data_incremental'
-    else:
-        path = path.strip()
-    return path
+    return getBackupPathConfig() + '/inc'
 
+def getBackupShellDefineValue():
+    # 获取的mysql目录
+    mysqlDir = ''
+    mysqlName = ''
+    if os.path.exists('/www/server/mysql-apt'):
+        mysqlDir = '/www/server/mysql-apt'
+        mysqlName = 'mysql-apt'
+    elif os.path.exists('/www/server/mysql'):
+        mysqlDir = '/www/server/mysql'
+        mysqlName = 'mysql'
+    else:
+        return mw.returnJson(False, '未检测到安装的mysql插件!')
+    
+    config = getConf()
+    backupZip = config['backup_inc']['backup_zip']
+    backupCompress = config['backup_full']['backup_compress']
+
+    return f"""
+export BACKUP_PATH={getBackupPathConfig()}
+export BACKUP_BASE_PATH={getBaseBackupPath()}
+export BACKUP_INC_PATH={getIncBackupPath()}
+export BACKUP_COMPRESS={backupCompress}
+export BACKUP_ZIP={backupZip}
+export LOCK_FILE_PATH={getLockFile()}
+export MYSQL_NAME={mysqlName}
+export MYSQL_DIR={mysqlDir}
+    """
 
 def doMysqlBackup():
     args = getArgs()
@@ -280,8 +294,6 @@ def doMysqlBackup():
     log_file = runLog()
     mw.execShell('echo $(date "+%Y-%m-%d %H:%M:%S") "备份开始" >> ' + log_file)
 
-    # sync the backup path to the backup script
-    # mw.execShell("BACKUP_PATH=%(backupPath)s sh %(tempFilePath)s >> %(logFile)s" % {'backupPath':getBackupPath(), 'tempFilePath': tempFilePath, 'logFile': log_file })
     mw.addAndTriggerTask(
         name='执行Xtrabackup命令[备份]',
         execstr='sh %(tempFilePath)s >> %(logFile)s' % {
@@ -290,31 +302,11 @@ def doMysqlBackup():
 
     execResult = mw.execShell("tail -n 1 " + log_file)
 
-    # if "备份成功" in execResult[0]:
-    #     return mw.returnJson(True, execResult[0])
-
-    # Tip: 兼容 老版本的 xtrabackup.sh; 未来可以删除
-    if os.path.exists(os.path.join(getBackupPath(), 'mysql')):
-        return mw.returnJson(True, '备份成功')
-
     return mw.returnJson(True, execResult[0])
 
 
 def getRecoveryBackupScript():
-
-    # 获取的mysql目录
-    mysqlDir = ''
-    mysqlName = ''
-    if os.path.exists('/www/server/mysql-apt'):
-        mysqlDir = '/www/server/mysql-apt'
-        mysqlName = 'mysql-apt'
-    elif os.path.exists('/www/server/mysql'):
-        mysqlDir = '/www/server/mysql'
-        mysqlName = 'mysql'
-    else:
-        return mw.returnJson(False, '未检测到安装的mysql插件!')
-    recoveryScript = 'echo "开始增量恢复..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nMYSQL_NAME=%(mysqlName)s\nMYSQL_DIR=%(mysqlDir)s\nset -x\n%(script)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'mysqlName': mysqlName, 'mysqlDir': mysqlDir, 'script': mw.readFile(getIncRecoveryScriptFile())}
+    recoveryScript = f'echo "开始增量恢复..." \n{getBackupShellDefineValue()}\nset -x\n{mw.readFile(getIncRecoveryScriptFile())}'
     return mw.returnJson(True, 'ok', recoveryScript)
 
 
@@ -358,101 +350,31 @@ def doTaskWithLock():
 
 
 def getBackupPath():
-    return mw.returnJson(True, 'ok',  {
-        "base": getBaseBackupPath(),
-        "inc": getIncBackupPath()
-    })
-
-
-def setBackupPath():
-    args = getArgs()
-    data = checkArgs(args, ['base', 'inc'])
-    if not data[0]:
-        return data[1]
-
-    base = args['base']
-    inc = args['inc']
-    mw.writeFile(getBaseBackupPathConf(), base)
-    mw.writeFile(getIncBackupPathConf(), inc)
-    return mw.returnJson(True, '修改成功!')
+    return mw.returnJson(True, 'ok',  getBackupPathConfig())
 
 
 def getFullBackupScript():
-    config = getConf()
-    backupCompress = config['backup_full']['backup_compress']
-
-    backupScript = 'echo "开始全量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nset -x\n %(script)s' % {
-        'baseBackupPath': getBaseBackupPath(), 
-        'incBackupPath': getIncBackupPath(), 
-        'script': mw.readFile(getFullScriptFile()),
-        'backupCompress': backupCompress
-        }
+    backupScript = f'echo "开始全量备份..." \n{getBackupShellDefineValue()}\nset -x\n {mw.readFile(getFullScriptFile())}'
     return mw.returnJson(True, 'ok',  backupScript)
 
 
 def getIncBackupScript():
-    config = getConf()
-    backupZip = config['backup_inc']['backup_zip']
-    backupCompress = config['backup_inc']['backup_compress']
-    
-    backupScript = 'echo "开始增量备份..." \nBACKUP_BASE_PATH=%(baseBackupPath)s\nBACKUP_INC_PATH=%(incBackupPath)s\nBACKUP_COMPRESS=%(backupCompress)s\nBACKUP_ZIP=%(backupZip)s\nset -x\n %(script)s' % {
-        'baseBackupPath': getBaseBackupPath(), 
-        'incBackupPath': getIncBackupPath(), 
-        'script': mw.readFile(getIncScriptFile()),
-        'backupCompress': backupCompress,
-        'backupZip': backupZip
-        }
+    backupScript = f'echo "开始增量备份..." \n{getBackupShellDefineValue()}\nset -x\n { mw.readFile(getIncScriptFile())}'
     return mw.returnJson(True, 'ok',  backupScript)
 
 
 def getFullBackupCronScript():
-    config = getConf()
-    backupCompress = config['backup_full']['backup_compress']
-
-    # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始全量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nexport BACKUP_COMPRESS=%(backupCompress)s\nset -x\n bash %(scriptFile)s' % {
-        'baseBackupPath': getBaseBackupPath(), 
-        'incBackupPath': getIncBackupPath(), 
-        'lockFilePath': getLockFile(), 
-        'scriptFile': getFullScriptFile(), 
-        'backupCompress': backupCompress
-        }
+    backupCronScript = f'echo "开始全量备份..." \n{getBackupShellDefineValue()}\nset -x\n bash {getFullScriptFile()}'
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 
 def getIncBackupCronScript():
-    config = getConf()
-    backupZip = config['backup_inc']['backup_zip']
-    backupCompress = config['backup_inc']['backup_compress']
-
-    # cron中直接执行脚本文件
-    backupCronScript = 'echo "开始增量备份..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nexport BACKUP_COMPRESS=%(backupCompress)s\nexport BACKUP_ZIP=%(backupZip)s\nset -x\n bash %(scriptFile)s' % {
-        'baseBackupPath': getBaseBackupPath(), 
-        'incBackupPath': getIncBackupPath(), 
-        'lockFilePath': getLockFile(), 
-        'scriptFile': getIncScriptFile(),
-        'backupCompress': backupCompress,
-        'backupZip': backupZip
-        }
+    backupCronScript = f'echo "开始增量备份..." \n{getBackupShellDefineValue()}\nset -x\n bash {getIncScriptFile()}' 
     return mw.returnJson(True, 'ok',  backupCronScript)
 
 def getIncRecoveryCronScript():
-    # 获取的mysql目录
-    mysqlDir = ''
-    mysqlName = ''
-    if os.path.exists('/www/server/mysql-apt'):
-        mysqlDir = '/www/server/mysql-apt'
-        mysqlName = 'mysql-apt'
-    elif os.path.exists('/www/server/mysql'):
-        mysqlDir = '/www/server/mysql'
-        mysqlName = 'mysql'
-    else:
-        return mw.returnJson(False, '未检测到安装的mysql插件!')
-    # cron中直接执行脚本文件
-    recoveryCronScript = 'echo "开始增量恢复..." \nexport BACKUP_BASE_PATH=%(baseBackupPath)s\nexport BACKUP_INC_PATH=%(incBackupPath)s\nexport MYSQL_NAME=%(mysqlName)s\nexport MYSQL_DIR=%(mysqlDir)s\nexport LOCK_FILE_PATH=%(lockFilePath)s\nbash %(scriptFile)s' % {
-        'baseBackupPath': getBaseBackupPath(), 'incBackupPath': getIncBackupPath(), 'mysqlName': mysqlName, 'mysqlDir': mysqlDir, 'lockFilePath': getLockFile(), 'scriptFile': getIncRecoveryScriptFile()}
+    recoveryCronScript = f'echo "开始增量恢复..." \n{getBackupShellDefineValue()}\nset -x\nbash {getIncRecoveryScriptFile()}' 
     return mw.returnJson(True, 'ok',  recoveryCronScript)
-
 
 def backupCallback():
     args = getArgs()
@@ -491,8 +413,6 @@ if __name__ == "__main__":
         print(setBackupConf())
     elif func == 'get_backup_path':
         print(getBackupPath())
-    elif func == 'set_backup_path':
-        print(setBackupPath())
     elif func == 'full_backup_script':
         print(getFullBackupScript())
     elif func == 'full_backup_cron_script':
@@ -501,8 +421,6 @@ if __name__ == "__main__":
         print(getIncBackupScript())
     elif func == 'inc_backup_cron_script':
         print(getIncBackupCronScript())
-    elif func == 'get_xtrabackup_cron':
-        print(getXtrabackupCron())
     elif func == 'get_setting':
         print(getSetting())
     elif func == 'change_setting':
@@ -511,14 +429,10 @@ if __name__ == "__main__":
         print(testSetting())
     elif func == 'do_mysql_backup':
         print(doMysqlBackup())
-    elif func == 'backup_list':
-        print(backupList())
     elif func == 'get_recovery_backup_script':
         print(getRecoveryBackupScript())
     elif func == 'get_inc_recovery_cron_script':
         print(getIncRecoveryCronScript())
-    elif func == 'do_delete_backup':
-        print(doDeleteBackup())
     elif func == 'do_task_with_lock':
         print(doTaskWithLock())
     elif func == 'backup_callback':

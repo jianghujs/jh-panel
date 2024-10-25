@@ -84,31 +84,19 @@ function setting(){
 
 function backupPath(){
     myPost('get_backup_path','',function(data){
-        data = JSON.parse(data.data)
+      data = JSON.parse(data.data);
         var con = '<div class="line ">\
                 <div class="info-r  ml0">\
-                    <span>全量目录：</span>\
-                    <input id="basedir" name="basedir" class="bt-input-text mr5 port" type="text" style="width:330px" value="'+(data.data.base || '/www/backup/xtrabackup_data_base')+'">\
-                    <span class="glyphicon cursor mr5 glyphicon-folder-open icon_datadir" onclick="changePath(\'basedir\')"></span>\
-                </div>\
-                <div class="info-r  ml0">\
-                    <span>增量目录：</span>\
-                    <input id="incdir" name="incdir" class="bt-input-text mr5 port" type="text" style="width:330px" value="'+(data.data.inc || '/www/backup/xtrabackup_data_incremental')+'">\
-                    <span class="glyphicon cursor mr5 glyphicon-folder-open icon_datadir" onclick="changePath(\'incdir\')"></span>\
-                </div>\
-                <div class="info-r  ml0">\
+                    <input id="backupPath" name="backupPath" class="bt-input-text mr5 port" type="text" style="width:330px" value="'+(data.data || '/www/backup/xtrabackup_inc_data')+'">\
+                    <span class="glyphicon cursor mr5 glyphicon-folder-open icon_datadir" onclick="changePath(\'backupPath\')"></span>\
                     <button id="btn_change_path" name="btn_change_path" class="btn btn-success btn-sm mr5 ml5 btn_change_port">保存</button>\
                 </div>\
             </div>';
         $(".soft-man-con").html(con);
 
         $('#btn_change_path').click(function(){
-            var basedir = $("input[name='basedir']").val();
-            var incdir = $("input[name='incdir']").val();
-            myPost('set_backup_path','base='+basedir+'&inc='+incdir,function(data){
-                var rdata = $.parseJSON(data.data);
-                layer.msg(rdata.msg,{icon:rdata.status ? 1 : 5,time:2000,shade: [0.3, '#000']});
-            });
+            let backupPath = $("input[name='backupPath']").val();
+            setXtrabackupConfig('backup', 'path', backupPath);
         });
     });
 }

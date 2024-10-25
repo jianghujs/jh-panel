@@ -34,19 +34,9 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 # 临时设置系统的打开文件数量上限
 ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
-
-# 备份目录
-BACKUP_INC_PREV_PATH=$BACKUP_INC_PATH.prev
-if [ -d "$BACKUP_INC_PREV_PATH" ];then
-    lsof $BACKUP_INC_PREV_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
-    rm -rf $BACKUP_INC_PREV_PATH
-fi
-if [ ! -d "$BACKUP_INC_PREV_PATH" ] && [ -d "$BACKUP_INC_PATH" ];then
-    mv $BACKUP_INC_PATH $BACKUP_INC_PREV_PATH
-    echo "|- 备份增量目录到${BACKUP_INC_PREV_PATH}完成"
-fi
-
+rm -rf $BACKUP_INC_PATH
 mkdir -p $BACKUP_INC_PATH
+HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
@@ -69,6 +59,13 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_INC_PATH/mysql" ];then
         # 原地zip压缩并删除其他文件
         cd $BACKUP_INC_PATH && zip -q -r $BACKUP_INC_PATH.zip ./* && rm -rf $BACKUP_INC_PATH/* && mv $BACKUP_INC_PATH.zip $BACKUP_INC_PATH/
     fi
+
+    mkdir -p $HISTORY_DIR
+
+    # 复制备份目录到历史目录
+    cp -r $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$timestamp
+    
+
     echo "|- $timestamp 增量备份成功" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
     # 备份成功记录
     pushd /www/server/jh-panel > /dev/null  
@@ -76,15 +73,6 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_INC_PATH/mysql" ];then
     popd > /dev/null
 else
     echo "|- $timestamp 增量备份失败" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
-    # 恢复目录
-    if [ -d "$BACKUP_INC_PATH" ];then
-        lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
-        rm -rf $BACKUP_INC_PATH
-    fi
-    if [ ! -d "$BACKUP_INC_PATH" ] && [ -d "$BACKUP_INC_PREV_PATH" ];then
-        cp -r $BACKUP_INC_PREV_PATH $BACKUP_INC_PATH
-        echo "|- 恢复增量目录内容完成"
-    fi
 fi
 
 # 解锁

@@ -50,20 +50,9 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 # 临时设置系统的打开文件数量上限
 ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
-
-# 备份目录
-BACKUP_BASE_PREV_PATH=$BACKUP_BASE_PATH.prev
-if [ -d "$BACKUP_BASE_PREV_PATH" ];then
-    lsof $BACKUP_BASE_PREV_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
-    rm -rf $BACKUP_BASE_PREV_PATH
-fi
-
-if [ ! -d "$BACKUP_BASE_PREV_PATH" ] && [ -d "$BACKUP_BASE_PATH" ];then
-    mv $BACKUP_BASE_PATH $BACKUP_BASE_PREV_PATH
-    echo "|- 备份全量目录到${BACKUP_BASE_PREV_PATH}完成"
-fi
-
+rm -rf $BACKUP_BASE_PATH
 mkdir -p $BACKUP_BASE_PATH
+HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
@@ -82,27 +71,26 @@ else
 fi
 
 if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
-    # 预备增量恢复
-    rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/
+
     # 删除增量目录
     lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     rm -rf $BACKUP_INC_PATH
+    mkdir -p $HISTORY_DIR
+
+    # 复制备份目录到历史目录
+    cp -r $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$timestamp
+    
+
+    # 预备增量恢复
+    rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/
     echo "|- $timestamp 全量备份成功" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
+
     # 备份成功记录
     pushd /www/server/jh-panel > /dev/null  
     python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py backup_callback {backup_type:full}
     popd > /dev/null
 else
     echo "|- $timestamp 全量备份失败" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
-    # 恢复目录
-    if [ -d "$BACKUP_BASE_PATH" ];then
-        lsof $BACKUP_BASE_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
-        rm -rf $BACKUP_BASE_PATH
-    fi
-    if [ ! -d "$BACKUP_BASE_PATH" ] && [ -d "$BACKUP_BASE_PREV_PATH" ];then
-        cp -r $BACKUP_BASE_PREV_PATH $BACKUP_BASE_PATH
-        echo "|- 恢复全量目录内容完成"
-    fi
 fi
 
 # 解锁

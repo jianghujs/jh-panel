@@ -178,6 +178,22 @@ function backupIncHtml(){
             </div>
         </div>
     </div>
+
+    <div class="retention-rules safe container-fluid mt10" style="overflow: hidden;">
+        <div class="flex align-center">
+            保留规则：
+        </div>
+        <div class="flex align-center mtb15">
+            <div class="plan_hms pull-left mr20 bt-input-text">
+                <span><input id="saveAllDayInput" type="number" name="saveAllDay" maxlength="4" max="100" min="1"></span>
+                <span class="name" style="width: 160px;">天内全部保留，其余只保留</span>
+                <span><input id="saveOtherInput" type="number" name="saveOther" maxlength="4" max="100" min="1"></span>
+                <span class="name" style="width: 90px;">份，最长保留</span>
+                <span><input id="saveMaxDayInput" type="number" name="saveMaxDay" maxlength="4" max="100" min="1"></span>
+                <span class="name">天</span>
+            </div>
+        </div>
+    </div>
     `;
 
     $(".soft-man-con").html(con);
@@ -191,6 +207,15 @@ function backupIncHtml(){
     
     $("#xtrabackupIncCronDetail .open-cron-selecter-layer").click(() => {
         openCronSelectorLayer(xtrabackupIncCron, {yes: addOrUpdateXtrabackupIncCron});
+    });
+
+    $(".retention-rules input").on('input', function() {
+        const saveAllDay = $(".retention-rules input[name='saveAllDay']").val();
+        const saveOther = $(".retention-rules input[name='saveOther']").val();
+        const saveMaxDay = $(".retention-rules input[name='saveMaxDay']").val();
+        setXtrabackupConfig('backup', 'save_all_day', saveAllDay);
+        setXtrabackupConfig('backup', 'save_other', saveOther);
+        setXtrabackupConfig('backup', 'save_max_day', saveMaxDay);
     });
 }
 
@@ -220,13 +245,16 @@ function getXtrabackupConfig() {
       $("#openXtrabackupFullCompressSwitch").createRadioSwitch(config.backup_full.backup_compress == 1, (checked) => {
           setXtrabackupConfig('backup_full', 'backup_compress', checked ? 1 : 0);
       });
-
       $("#openXtrabackupIncZipSwitch").createRadioSwitch(config.backup_inc.backup_zip == 1, (checked) => {
           setXtrabackupConfig('backup_inc', 'backup_zip', checked ? 1 : 0);
       });
       $("#openXtrabackupIncCompressSwitch").createRadioSwitch(config.backup_inc.backup_compress == 1, (checked) => {
           setXtrabackupConfig('backup_inc', 'backup_compress', checked ? 1 : 0);
       });
+      
+      $(".retention-rules input[name='saveAllDay']").val((config.backup || {}).save_all_day || 1);
+      $(".retention-rules input[name='saveOther']").val((config.backup || {}).save_other || 1);
+      $(".retention-rules input[name='saveMaxDay']").val((config.backup || {}).save_max_day || 3);
   });
 }
 

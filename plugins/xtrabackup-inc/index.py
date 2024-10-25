@@ -18,7 +18,6 @@ app_debug = False
 if mw.isAppleSystem():
     app_debug = True
 
-
 def getPluginName():
     return 'xtrabackup-inc'
 
@@ -264,13 +263,29 @@ def getBackupShellDefineValue():
         return mw.returnJson(False, '未检测到安装的mysql插件!')
     
     config = getConf()
-    backupZip = config['backup_inc']['backup_zip']
-    backupCompress = config['backup_full']['backup_compress']
+    saveAllDay = ""
+    saveOther = ""
+    saveMaxDay = ""
+    backupZip = ""
+    backupCompress = ""
+    if config.has_option('backup', 'save_all_day'):
+        saveAllDay = config['backup']['save_all_day']
+    if config.has_option('backup', 'save_other'):
+        saveOther = config['backup']['save_other']
+    if config.has_option('backup', 'save_max_day'):
+        saveMaxDay = config['backup']['save_max_day']
+    if config.has_option('backup_inc', 'backup_zip'):
+        backupZip = config['backup_inc']['backup_zip']
+    if config.has_option('backup_full', 'backup_compress'):
+        backupCompress = config['backup_full']['backup_compress']
 
     return f"""
 export BACKUP_PATH={getBackupPathConfig()}
 export BACKUP_BASE_PATH={getBaseBackupPath()}
 export BACKUP_INC_PATH={getIncBackupPath()}
+export SAVE_ALL_DAY={saveAllDay}
+export SAVE_OTHER={saveOther}
+export SAVE_MAX_DAY={saveMaxDay}
 export BACKUP_COMPRESS={backupCompress}
 export BACKUP_ZIP={backupZip}
 export LOCK_FILE_PATH={getLockFile()}

@@ -10,6 +10,10 @@ def cleanPath(path, save, pattern):
     if not os.path.exists(path):
         print("|---[" + path + "]不存在")
         return
+    # 防止误删根目录
+    if path == '/':
+        print("|---不能清理根目录")
+        return
 
     print("|---开始清理过期文件")
     print("|---清理目录:", path)

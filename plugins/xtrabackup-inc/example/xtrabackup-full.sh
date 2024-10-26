@@ -50,9 +50,15 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 # 临时设置系统的打开文件数量上限
 ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
-rm -rf $BACKUP_BASE_PATH
-mkdir -p $BACKUP_BASE_PATH
+
 HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
+
+# 移动BACKUP_BASE_PATH到历史版本
+if [ -d "$BACKUP_BASE_PATH" ];then
+    mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_${timestamp}
+fi
+
+mkdir -p $BACKUP_BASE_PATH
 LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
@@ -76,10 +82,6 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
     lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     rm -rf $BACKUP_INC_PATH
     mkdir -p $HISTORY_DIR
-
-    # 复制备份目录到历史目录
-    cp -r $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$timestamp
-    
 
     # 预备增量恢复
     rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/

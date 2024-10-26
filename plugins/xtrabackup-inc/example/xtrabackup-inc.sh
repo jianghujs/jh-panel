@@ -34,9 +34,11 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 # 临时设置系统的打开文件数量上限
 ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
-rm -rf $BACKUP_INC_PATH
+
+# 备份增量版本
+mv $BACKUP_INC_PATH $BACKUP_PATH/inc_$timestamp
+
 mkdir -p $BACKUP_INC_PATH
-HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then
     mkdir -p $LOG_DIR
@@ -60,12 +62,6 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_INC_PATH/mysql" ];then
         cd $BACKUP_INC_PATH && zip -q -r $BACKUP_INC_PATH.zip ./* && rm -rf $BACKUP_INC_PATH/* && mv $BACKUP_INC_PATH.zip $BACKUP_INC_PATH/
     fi
 
-    mkdir -p $HISTORY_DIR
-
-    # 复制备份目录到历史目录
-    cp -r $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$timestamp
-    
-
     echo "|- $timestamp 增量备份成功" | tee -a /www/server/xtrabackup-inc/xtrabackup.log
     # 备份成功记录
     pushd /www/server/jh-panel > /dev/null  
@@ -79,9 +75,3 @@ fi
 rm -f $LOCK_FILE_PATH
 
 python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR/
-
-# 删除历史备份
-export SAVE_ALL_DAY=${SAVE_ALL_DAY:-1}
-export SAVE_OTHER=${SAVE_OTHER:-1}
-export SAVE_MAX_DAY=${SAVE_MAX_DAY:-3}
-python3 /www/server/jh-panel/scripts/clean.py $HISTORY_DIR/  "{\"saveAllDay\": \"$SAVE_ALL_DAY\", \"saveOther\": \"$SAVE_OTHER\", \"saveMaxDay\": \"$SAVE_MAX_DAY\"}"

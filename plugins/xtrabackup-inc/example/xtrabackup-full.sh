@@ -59,7 +59,8 @@ HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 
 # 移动BACKUP_BASE_PATH到历史版本
 if [ -d "$BACKUP_BASE_PATH" ];then
-    mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_${timestamp}
+    BACKUP_BASE_PATH_CREATE_TIME=$(stat -c %W $BACKUP_BASE_PATH)
+    mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$(date -d @$BACKUP_BASE_PATH_CREATE_TIME +%Y%m%d_%H%M%S)
 fi
 
 mkdir -p $BACKUP_BASE_PATH

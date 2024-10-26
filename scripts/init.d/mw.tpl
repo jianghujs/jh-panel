@@ -31,10 +31,10 @@ fi
 
 mw_start_panel()
 {
-    isStart=`ps -ef|grep 'gunicorn -c setting.py app:app $ssl_param ' |grep -v grep|awk '{print $2}'`;
+    isStart=`ps -ef|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app $ssl_param ' |grep -v grep|awk '{print $2}'`;
     if [ "$isStart" == '' ];then
         echo -e "starting jh-panel... \c"
-        cd $mw_path &&  gunicorn -c setting.py app:app $ssl_param ;
+        cd $mw_path &&  gunicorn -c /www/server/jh-panel/setting.py app:app $ssl_param ;
         port=$(cat ${mw_path}/data/port.pl)
         isStart=""
         while [[ "$isStart" == "" ]];
@@ -99,7 +99,7 @@ mw_stop_task()
     fi
 
     echo -e "stopping jh-tasks... \c";
-    pids=$(ps aux | grep 'task.py'|grep -v grep|awk '{print $2}')
+    pids=$(ps aux | grep '/www/server/jh-panel/task.py'|grep -v grep|awk '{print $2}')
     arr=($pids)
     for p in ${arr[@]}
     do
@@ -111,7 +111,7 @@ mw_stop_task()
 mw_stop_panel()
 {
     echo -e "stopping jh-panel... \c";
-    arr=`ps aux|grep 'gunicorn -c setting.py app:app'|grep -v grep|awk '{print $2}'`;
+    arr=`ps aux|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app'|grep -v grep|awk '{print $2}'`;
     for p in ${arr[@]}
     do
         kill -9 $p &>/dev/null
@@ -132,14 +132,14 @@ mw_stop()
 
 mw_status()
 {
-    isStart=$(ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}');
+    isStart=$(ps aux|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}');
     if [ "$isStart" != '' ];then
         echo -e "\033[32mmw (pid $(echo $isStart)) already running\033[0m"
     else
         echo -e "\033[31mmw not running\033[0m"
     fi
     
-    isStart=$(ps aux |grep 'task.py'|grep -v grep|awk '{print $2}')
+    isStart=$(ps aux |grep '/www/server/jh-panel/task.py'|grep -v grep|awk '{print $2}')
     if [ "$isStart" != '' ];then
         echo -e "\033[32mmw-task (pid $isStart) already running\033[0m"
     else
@@ -150,17 +150,17 @@ mw_status()
 
 mw_reload()
 {
-	isStart=$(ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}');
+	isStart=$(ps aux|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}');
     
     if [ "$isStart" != '' ];then
     	echo -e "reload mw... \c";
-	    arr=`ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}'`;
+	    arr=`ps aux|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}'`;
 		for p in ${arr[@]}
         do
                 kill -9 $p
         done
-        cd $mw_path && gunicorn -c setting.py app:app $ssl_param 
-        isStart=`ps aux|grep 'gunicorn -c setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}'`;
+        cd $mw_path && gunicorn -c /www/server/jh-panel/setting.py app:app $ssl_param 
+        isStart=`ps aux|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app $ssl_param '|grep -v grep|awk '{print $2}'`;
         if [ "$isStart" == '' ];then
             echo -e "\033[31mfailed\033[0m"
             echo '------------------------------------------------------'
@@ -233,13 +233,13 @@ mw_close_admin_path(){
 
 mw_force_kill()
 {
-    PLIST=`ps -ef|grep app:app |grep -v grep|awk '{print $2}'`
+    PLIST=`ps -ef|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app' |grep -v grep|awk '{print $2}'`
     for i in $PLIST
     do
         kill -9 $i
     done
 
-    pids=`ps -ef|grep task.py | grep -v grep |awk '{print $2}'`
+    pids=`ps -ef|grep /www/server/jh-panel/task.py | grep -v grep |awk '{print $2}'`
     arr=($pids)
     for p in ${arr[@]}
     do

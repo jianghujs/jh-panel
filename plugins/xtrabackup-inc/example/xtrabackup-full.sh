@@ -1,5 +1,10 @@
 #!/bin/bash
 
+
+export BACKUP_PATH=${BACKUP_PATH:-/www/backup/xtrabackup_inc_data}
+export BACKUP_BASE_PATH=${BACKUP_BASE_PATH:-/www/backup/xtrabackup_inc_data/base}
+export BACKUP_INC_PATH=${BACKUP_INC_PATH:-/www/backup/xtrabackup_inc_data/inc}
+
 # 检查/usr/bin/jq是否存在
 if ! [ -x "/usr/bin/jq" ]; then
     echo "/usr/bin/jq不存在，正在尝试自动安装..."
@@ -50,7 +55,6 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 # 临时设置系统的打开文件数量上限
 ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
-
 HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 
 # 移动BACKUP_BASE_PATH到历史版本

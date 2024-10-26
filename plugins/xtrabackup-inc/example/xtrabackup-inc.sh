@@ -1,5 +1,10 @@
 #!/bin/bash
 
+
+export BACKUP_PATH=${BACKUP_PATH:-/www/backup/xtrabackup_inc_data}
+export BACKUP_BASE_PATH=${BACKUP_BASE_PATH:-/www/backup/xtrabackup_inc_data/base}
+export BACKUP_INC_PATH=${BACKUP_INC_PATH:-/www/backup/xtrabackup_inc_data/inc}
+
 # 检查/usr/bin/jq是否存在
 if ! [ -x "/usr/bin/jq" ]; then
     echo "/usr/bin/jq不存在，正在尝试自动安装..."

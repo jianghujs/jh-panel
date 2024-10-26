@@ -64,12 +64,12 @@ mw_start_panel()
 
 mw_start_task()
 {
-    isStart=$(ps aux |grep 'task.py'|grep -v grep|awk '{print $2}')
+    isStart=$(ps aux |grep '/www/server/jh-panel/task.py'|grep -v grep|awk '{print $2}')
     if [ "$isStart" == '' ];then
         echo -e "starting jh-tasks... \c"
-        cd $mw_path && python3 task.py >> ${mw_path}/logs/task.log 2>&1 &
+        cd $mw_path && python3 /www/server/jh-panel/task.py >> ${mw_path}/logs/task.log 2>&1 &
         sleep 0.3
-        isStart=$(ps aux |grep 'task.py'|grep -v grep|awk '{print $2}')
+        isStart=$(ps aux |grep '/www/server/jh-panel/task.py'|grep -v grep|awk '{print $2}')
         if [ "$isStart" == '' ];then
             echo -e "\033[31mfailed\033[0m"
             echo '------------------------------------------------------'

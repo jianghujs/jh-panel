@@ -4,6 +4,11 @@
 export BACKUP_PATH=${BACKUP_PATH:-/www/backup/xtrabackup_inc_data}
 export BACKUP_BASE_PATH=${BACKUP_BASE_PATH:-/www/backup/xtrabackup_inc_data/base}
 export BACKUP_INC_PATH=${BACKUP_INC_PATH:-/www/backup/xtrabackup_inc_data/inc}
+export BACKUP_COMPRESS=${BACKUP_COMPRESS:-0}
+export BACKUP_ZIP=${BACKUP_ZIP:-0}
+export LOCK_FILE_PATH=${LOCK_FILE_PATH:-/www/server/xtrabackup-inc/inc_task_lock}
+export MYSQL_NAME=${MYSQL_NAME:-mysql-apt}
+export MYSQL_DIR=${MYSQL_DIR:-/www/server/mysql-apt}
 
 # 检查/usr/bin/jq是否存在
 if ! [ -x "/usr/bin/jq" ]; then

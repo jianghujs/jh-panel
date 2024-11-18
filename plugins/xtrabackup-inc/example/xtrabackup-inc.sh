@@ -37,6 +37,8 @@ if [ -e $LOCK_FILE_PATH ]; then
     fi
 fi
 
+sleep 1
+
 # 加锁
 echo $(date +%s) > $LOCK_FILE_PATH
 

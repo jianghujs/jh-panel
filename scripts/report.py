@@ -295,9 +295,13 @@ class reportTools:
             summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
 
         report_data = {
+            "title": mw.getConfig('title'),
+            "ip": mw.getHostAddr(),
             "report_time": str(datetime.datetime.now()),
             "start_time": str(self.__START_TIME),
             "end_time": str(self.__END_TIME),
+            "start_date": str(self.__START_DATE),
+            "end_date": str(self.__END_DATE),
 
             "sysinfo_tips": sysinfo_tips,
 

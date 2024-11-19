@@ -73,229 +73,270 @@ class reportTools:
             "overCount": overCount
         }
 
-
-    # 生成并发送服务器报告
-    def sendReport(self):
+    # 获取报告数据
+    def getReportData(self):
+        # 检查数据结构
         sql = db.Sql().dbfile('system')
         csql = mw.readFile('data/sql/system.sql')
         csql_list = csql.split(';')
         for index in range(len(csql_list)):
             sql.execute(csql_list[index], ())
 
+        control_notify_config = mw.getControlNotifyConfig()
+
+        # 监控阈值
+        cpu_notify_value = control_notify_config['cpu']
+        mem_notify_value = control_notify_config['memory']
+        disk_notify_value = control_notify_config['disk']
+        ssl_cert_notify_value = control_notify_config['ssl_cert']
+
+        # cpu(pro)、内存(mem)
+        sysinfo_tips = []
+        cpuIoData = sql.table('cpuio').where("addtime>=? AND addtime<=?", (self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,mem,addtime').order('id asc').select()
+        cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
+        memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
+        sysinfo_tips.append({
+            "name": "CPU",
+            "desc": f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(cpuAnalyzeResult.get("overCount", 0))}次</span>') if (cpu_notify_value != -1 and cpuAnalyzeResult.get('overCount', 0) > 0) else '')
+        })
+        sysinfo_tips.append({
+            "name": "内存",
+            "desc": f"平均使用率<span style='color: {'red' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value) else ('orange' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8)) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                ((f'，<span style="color: red">异常（使用率超过{str(mem_notify_value)}%）{str(memAnalyzeResult.get("overCount", 0))}次</span>') if (mem_notify_value != -1 and memAnalyzeResult.get('overCount', 0) > 0) else '')
+        })
+
+        # 负载：资源使用率(pro)
+        loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
+        loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
+        sysinfo_tips.append({
+            "name": "资源使用率",
+            "desc": f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(loadAverageAnalyzeResult.get('average', 0), 2)}%</span>" +\
+                ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(loadAverageAnalyzeResult.get("overCount", 0))}次</span>') if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('overCount', 0) > 0) else '')
+        })
+
+        # 磁盘
+        diskInfo = systemApi.getDiskInfo()
+        for disk in diskInfo:
+            disk_size_percent = int(disk['size'][3].replace('%', ''))
+            sysinfo_tips.append({
+                "name": "磁盘（%s）" % disk['path'],
+                "desc": f"已使用<span style='color: {'red' if (disk_notify_value != -1 and disk_size_percent > disk_notify_value) else ('orange' if (disk_notify_value != -1 and disk_size_percent > (disk_notify_value*0.8)) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
+            })
+
+        # 最后监控时间
+        lastMonitorRecord = mw.M('cpuio').dbfile('system').field('id,pro,mem,addtime').order('id desc').limit("0,1").select()
+        lastMonitorTimestamp = lastMonitorRecord[0]['addtime'] if len(lastMonitorRecord) > 0 else None
+        sysinfo_tips.append({
+            "name": "最后监控时间",
+            "desc": f"<span style='color: {'red' if lastMonitorTimestamp < self.__START_TIMESTAMP else 'auto'}'>{mw.toTime(lastMonitorTimestamp)}</span>"
+        })
+
+        # 备份相关
+        mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
+
+        # 网站
+        siteinfo_tips = []
+        siteInfo = systemApi.getSiteInfo()
+        for site in siteInfo['site_list']:
+            site_name = site['name']
+            status = '<span>运行中</span>' if site['status'] == '1' else '<span style="color: orange">已停止</span>'
+            cert_status = '未配置'
+
+            # 证书
+            cert_data = site['cert_data']
+            ssl_type = site['ssl_type']
+            if cert_data is not None:
+                cert_not_after = cert_data.get('notAfter', '0000-00-00')
+                cert_endtime = int(cert_data.get('endtime', 0))
+                site_error_msg = ''
+                if cert_endtime < 0:
+                    cert_status = '%s到期，已过期<span style="color: red">%s</span>天' % (cert_not_after, str(cert_endtime))
+                else:
+                    cert_status = '将于%s到期，还有%s天%s到期' % (
+                        cert_not_after,
+                        (f"<span style='color: {'red' if cert_endtime < 3 else ('orange' if cert_endtime < ssl_cert_notify_value  else 'auto')}'>{cert_endtime}</span>"), 
+                        ('，到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
+                    )
+            siteinfo_tips.append({
+                "name": site_name,
+                "desc": "%s（SSL证书%s）" % (
+                    status,
+                    cert_status
+                )
+            })
+
+        # JianghuJS管理器
+        jianghujsinfo_tips = []
+        jianghujs_Info = systemApi.getJianghujsInfo()
+        if(jianghujs_Info['status'] == 'start'):
+            project_list = jianghujs_Info['project_list']
+            for project in project_list:
+                jianghujsinfo_tips.append({
+                    "name": project['name'],
+                    "desc": "%s" % (
+                        '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: orange">已停止</span>'
+                    )
+                })
+
+        # Docker管理器
+        dockerinfo_tips = []
+        docker_Info = systemApi.getDockerInfo()
+        if(docker_Info['status'] == 'start'):
+            project_list = docker_Info['project_list']
+            for project in project_list:
+                dockerinfo_tips.append({
+                    "name": project['name'],
+                    "desc": "%s" % (
+                        '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
+                    )
+                })
+
+        # 数据库表 
+        mysqlinfo_tips = []
+        mysql_info = systemApi.getMysqlInfo()
+        # 开始的数据库情况
+        start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (0, self.__START_TIMESTAMP)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
+        start_database_list = '[]'
+        if len(start_mysql_info) > 0:
+            start_database_list = start_mysql_info[0].get('list', '[]')
+        start_database_list_dict = {item.get('name', ''): item for item in json.loads(start_database_list)}
+        
+        if(mysql_info['status'] == 'start'):
+            database_list = mysql_info['database_list']
+            for database in database_list:
+                start_database = start_database_list_dict.get(database.get('name', ''), {})
+                size_change = database.get('size_bytes', 0) - start_database.get('size_bytes', 0)
+                mysqlinfo_tips.append({
+                    "name": database['name'],
+                    "desc": "变化：%s<br/>总大小：%s" % (
+                        (('<span style="color: green">+%s</span>' if size_change > 0 else '<span>%s</span>') % mw.toSize(size_change)),
+                        database['size']
+                    )
+                })
+        else:
+            mysqlinfo_tips.append({
+                "name": "MySQL",
+                "desc": "<span style='color: red'>已停止</span>"
+            })
+        # 生成概要信息
+        summary_tips = []
+        error_tips = []
+        # 系统资源概要信息
+        sysinfo_summary_tips = []
+        if cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value:
+            sysinfo_summary_tips.append("CPU")
+        if mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value:
+            sysinfo_summary_tips.append("内存")
+        if cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value:
+            sysinfo_summary_tips.append("资源使用率")
+        if disk_notify_value != -1:
+          for disk in diskInfo:
+              disk_size_percent = int(disk['size'][3].replace('%', ''))
+              if disk_size_percent > disk_notify_value:
+                  sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
+                  error_tips.append("磁盘（%s）" % disk['path'])
+        if len(sysinfo_summary_tips) > 0:
+            summary_tips.append("<span style='color: red;'>" + "、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
+            error_tips.append("、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险')
+        if lastMonitorTimestamp < self.__START_TIMESTAMP:
+            summary_tips.append("<span style='color: red;'>系统异常监控状态异常，异常情况通知可能不及时</span>")
+            error_tips.append("系统监控状态异常")
+        
+        # 网站概要信息
+        siteinfo_summary_tips = []
+        for site in siteInfo['site_list']:
+            site_name = site['name']
+            cert_data = site['cert_data']
+            ssl_type = site['ssl_type']
+            site_status = site['status']
+            if site['status'] == '1' and cert_data is not None:
+                cert_not_after = cert_data.get('notAfter', '0000-00-00')
+                cert_endtime = int(cert_data.get('endtime', 0))
+                site_error_msg = ''
+                if not (ssl_type == 'lets' or ssl_type == 'acme') and cert_endtime < ssl_cert_notify_value:
+                    siteinfo_summary_tips.append(site_name)
+        if len(siteinfo_summary_tips) > 0:
+            summary_tips.append( "<span style='color: red;'>" + "、".join(siteinfo_summary_tips) + '域名证书需要及时更新</span>')
+            error_tips.append("、".join(siteinfo_summary_tips) + '域名证书需要及时更新')
+        # 备份信息
+        backup_summary_tips = []
+        if mysql_master_slave_info is not None:
+            if mysql_master_slave_info.get('is_slave', False) is not True and len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
+                for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
+                    if  (not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or (slave_status_item.get('delay', '-1') == 'None' or int(slave_status_item.get('delay', '999')) > 0)):  
+                        backup_summary_tips.append("MySQL主从同步")
+                        error_tips.append("MySQL主从同步状态异常")
+                        break
+        if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
+            backup_summary_tips.append("Xtrabackup")
+        if xtrabackup_inc_info is not None and (xtrabackup_inc_info.get('full_last_backup_time', '') is None or xtrabackup_inc_info.get('inc_last_backup_time', '') is None or xtrabackup_inc_info.get('full_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or xtrabackup_inc_info.get('inc_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
+            backup_summary_tips.append("Xtrabackup增量")
+        if mysql_dump_info is not None and (mysql_dump_info.get('last_backup_time', '') is None or mysql_dump_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or mysql_dump_info.get('count_in_timeframe', 0) == 0):
+            backup_summary_tips.append("MySQL Dump")
+        if rsyncd_info is not None:
+            if len(rsyncd_info.get('send_open_realtime_list', [])) > 0:
+                if rsyncd_info.get('last_realtime_sync_date', None) is None or rsyncd_info.get('last_realtime_sync_date', None).timestamp() < self.__START_TIMESTAMP:
+                    backup_summary_tips.append("实时备份")
+            if len(rsyncd_info.get('send_open_fixtime_list', [])) > 0:
+                for send_open_fixtime_item in rsyncd_info.get('send_open_fixtime_list', []):
+                    if send_open_fixtime_item.get('last_sync_at', None) == None or send_open_fixtime_item.get('last_sync_at', None) < mw.toTime(self.__START_TIMESTAMP):
+                        backup_summary_tips.append(send_open_fixtime_item.get('name'))
+        if len(backup_summary_tips) > 0:
+            summary_tips.append("<span style='color: red;'>" + "、".join(backup_summary_tips) + '备份状态异常</span>')
+            error_tips.append("、".join(backup_summary_tips) + '备份状态异常')
+        # lsyncd实时同步延迟提示
+        if rsyncd_info is not None and  len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_delays', 0) > 0:
+            summary_tips.append("<span style='color: orange;'>实时备份文件延迟%s个</span>" % rsyncd_info.get('realtime_delays', 0))
+            error_tips.append("实时备份文件延迟%s个" % rsyncd_info.get('realtime_delays', 0))
+
+        # 无异常默认信息
+        if len(summary_tips) == 0:
+            summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
+
+        report_data = {
+            "start_time": str(self.__START_TIME),
+            "end_time": str(self.__END_TIME),
+
+            "sysinfo_tips": sysinfo_tips,
+
+            # 备份相关
+            "mysql_master_slave_info": mysql_master_slave_info,
+            "xtrabackup_info": xtrabackup_info,
+            "xtrabackup_inc_info": xtrabackup_inc_info,
+            "mysql_dump_info": mysql_dump_info,
+            "rsyncd_info": rsyncd_info,
+            "backup_tips": backup_tips,
+
+            "siteinfo_tips": siteinfo_tips,
+            "jianghujsinfo_tips": jianghujsinfo_tips,
+            "dockerinfo_tips": dockerinfo_tips,
+            "mysqlinfo_tips": mysqlinfo_tips,
+            "summary_tips": summary_tips,
+            "error_tips": error_tips
+        }
+
+        mw.writeFileLog(json.dumps(report_data), 'logs/report.log')
+
+        return report_data
+
+    # 生成并发送服务器报告
+    def sendReport(self):
+
         print("报表：%s-%s" % (self.__START_TIME, self.__END_TIME))
 
         control_notify_config = mw.getControlNotifyConfig()
         if control_notify_config['notifyStatus'] == 'open':
 
-            # 监控阈值
-            cpu_notify_value = control_notify_config['cpu']
-            mem_notify_value = control_notify_config['memory']
-            disk_notify_value = control_notify_config['disk']
-            ssl_cert_notify_value = control_notify_config['ssl_cert']
-
-            # cpu(pro)、内存(mem)
-            sysinfo_tips = []
-            cpuIoData = mw.M('cpuio').dbfile('system') .where("addtime>=? AND addtime<=?", (self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,mem,addtime').order('id asc') .select()
-            cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
-            memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
-            sysinfo_tips.append({
-                "name": "CPU",
-                "desc": f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(cpuAnalyzeResult.get("overCount", 0))}次</span>') if (cpu_notify_value != -1 and cpuAnalyzeResult.get('overCount', 0) > 0) else '')
-            })
-            sysinfo_tips.append({
-                "name": "内存",
-                "desc": f"平均使用率<span style='color: {'red' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value) else ('orange' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8)) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                    ((f'，<span style="color: red">异常（使用率超过{str(mem_notify_value)}%）{str(memAnalyzeResult.get("overCount", 0))}次</span>') if (mem_notify_value != -1 and memAnalyzeResult.get('overCount', 0) > 0) else '')
-            })
-
-            # 负载：资源使用率(pro)
-            loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
-            loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
-            sysinfo_tips.append({
-                "name": "资源使用率",
-                "desc": f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(loadAverageAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                    ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(loadAverageAnalyzeResult.get("overCount", 0))}次</span>') if (cpu_notify_value != -1 and loadAverageAnalyzeResult.get('overCount', 0) > 0) else '')
-            })
-
-            # 磁盘
-            diskInfo = systemApi.getDiskInfo()
-            for disk in diskInfo:
-                disk_size_percent = int(disk['size'][3].replace('%', ''))
-                sysinfo_tips.append({
-                    "name": "磁盘（%s）" % disk['path'],
-                    "desc": f"已使用<span style='color: {'red' if (disk_notify_value != -1 and disk_size_percent > disk_notify_value) else ('orange' if (disk_notify_value != -1 and disk_size_percent > (disk_notify_value*0.8)) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
-                })
-
-            # 最后监控时间
-            lastMonitorRecord = mw.M('cpuio').dbfile('system').field('id,pro,mem,addtime').order('id desc').limit("0,1").select()
-            lastMonitorTimestamp = lastMonitorRecord[0]['addtime'] if len(lastMonitorRecord) > 0 else None
-            sysinfo_tips.append({
-                "name": "最后监控时间",
-                "desc": f"<span style='color: {'red' if lastMonitorTimestamp < self.__START_TIMESTAMP else 'auto'}'>{mw.toTime(lastMonitorTimestamp)}</span>"
-            })
-
-            # 备份相关
-            mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
-
-            # 网站
-            siteinfo_tips = []
-            siteInfo = systemApi.getSiteInfo()
-            for site in siteInfo['site_list']:
-                site_name = site['name']
-                status = '<span>运行中</span>' if site['status'] == '1' else '<span style="color: orange">已停止</span>'
-                cert_status = '未配置'
-
-                # 证书
-                cert_data = site['cert_data']
-                ssl_type = site['ssl_type']
-                if cert_data is not None:
-                    cert_not_after = cert_data.get('notAfter', '0000-00-00')
-                    cert_endtime = int(cert_data.get('endtime', 0))
-                    site_error_msg = ''
-                    if cert_endtime < 0:
-                        cert_status = '%s到期，已过期<span style="color: red">%s</span>天' % (cert_not_after, str(cert_endtime))
-                    else:
-                        cert_status = '将于%s到期，还有%s天%s到期' % (
-                            cert_not_after,
-                            (f"<span style='color: {'red' if cert_endtime < 3 else ('orange' if cert_endtime < ssl_cert_notify_value  else 'auto')}'>{cert_endtime}</span>"), 
-                            ('，到期后将自动续签' if ssl_type == 'lets' or ssl_type == 'acme' else '')
-                        )
-                siteinfo_tips.append({
-                    "name": site_name,
-                    "desc": "%s（SSL证书%s）" % (
-                        status,
-                        cert_status
-                    )
-                })
-
-            # JianghuJS管理器
-            jianghujsinfo_tips = []
-            jianghujs_Info = systemApi.getJianghujsInfo()
-            if(jianghujs_Info['status'] == 'start'):
-                project_list = jianghujs_Info['project_list']
-                for project in project_list:
-                    jianghujsinfo_tips.append({
-                        "name": project['name'],
-                        "desc": "%s" % (
-                            '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: orange">已停止</span>'
-                        )
-                    })
-
-            # Docker管理器
-            dockerinfo_tips = []
-            docker_Info = systemApi.getDockerInfo()
-            if(docker_Info['status'] == 'start'):
-                project_list = docker_Info['project_list']
-                for project in project_list:
-                    dockerinfo_tips.append({
-                        "name": project['name'],
-                        "desc": "%s" % (
-                            '<span>已启动</span>' if project['status'] == 'start' else '<span style="color: red">已停止</span>'
-                        )
-                    })
-
-            # 数据库表 
-            mysqlinfo_tips = []
-            mysql_info = systemApi.getMysqlInfo()
-            # 开始的数据库情况
-            start_mysql_info = mw.M('database').dbfile('system').where("addtime>=? AND addtime<=?", (0, self.__START_TIMESTAMP)).field('id,total_size,total_bytes,list,addtime').order('id desc').limit('0,1').select()
-            start_database_list = '[]'
-            if len(start_mysql_info) > 0:
-                start_database_list = start_mysql_info[0].get('list', '[]')
-            start_database_list_dict = {item.get('name', ''): item for item in json.loads(start_database_list)}
-            
-            if(mysql_info['status'] == 'start'):
-                database_list = mysql_info['database_list']
-                for database in database_list:
-                    start_database = start_database_list_dict.get(database.get('name', ''), {})
-                    size_change = database.get('size_bytes', 0) - start_database.get('size_bytes', 0)
-                    mysqlinfo_tips.append({
-                        "name": database['name'],
-                        "desc": "变化：%s<br/>总大小：%s" % (
-                            (('<span style="color: green">+%s</span>' if size_change > 0 else '<span>%s</span>') % mw.toSize(size_change)),
-                            database['size']
-                        )
-                    })
-            else:
-                mysqlinfo_tips.append({
-                    "name": "MySQL",
-                    "desc": "<span style='color: red'>已停止</span>"
-                })
-            # 生成概要信息
-            summary_tips = []
-            error_tips = []
-            # 系统资源概要信息
-            sysinfo_summary_tips = []
-            if cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value:
-                sysinfo_summary_tips.append("CPU")
-            if mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value:
-                sysinfo_summary_tips.append("内存")
-            if cpu_notify_value != -1 and loadAverageAnalyzeResult.get('average', 0) > cpu_notify_value:
-                sysinfo_summary_tips.append("资源使用率")
-            if disk_notify_value != -1:
-              for disk in diskInfo:
-                  disk_size_percent = int(disk['size'][3].replace('%', ''))
-                  if disk_size_percent > disk_notify_value:
-                      sysinfo_summary_tips.append("磁盘（%s）" % disk['path'])
-                      error_tips.append("磁盘（%s）" % disk['path'])
-            if len(sysinfo_summary_tips) > 0:
-                summary_tips.append("<span style='color: red;'>" + "、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险</span>')
-                error_tips.append("、".join(sysinfo_summary_tips) + '平均使用率过高，有服务中断停机风险')
-            if lastMonitorTimestamp < self.__START_TIMESTAMP:
-                summary_tips.append("<span style='color: red;'>系统异常监控状态异常，异常情况通知可能不及时</span>")
-                error_tips.append("系统监控状态异常")
-            
-            # 网站概要信息
-            siteinfo_summary_tips = []
-            for site in siteInfo['site_list']:
-                site_name = site['name']
-                cert_data = site['cert_data']
-                ssl_type = site['ssl_type']
-                site_status = site['status']
-                if site['status'] == '1' and cert_data is not None:
-                    cert_not_after = cert_data.get('notAfter', '0000-00-00')
-                    cert_endtime = int(cert_data.get('endtime', 0))
-                    site_error_msg = ''
-                    if not (ssl_type == 'lets' or ssl_type == 'acme') and cert_endtime < ssl_cert_notify_value:
-                        siteinfo_summary_tips.append(site_name)
-            if len(siteinfo_summary_tips) > 0:
-                summary_tips.append( "<span style='color: red;'>" + "、".join(siteinfo_summary_tips) + '域名证书需要及时更新</span>')
-                error_tips.append("、".join(siteinfo_summary_tips) + '域名证书需要及时更新')
-            # 备份信息
-            backup_summary_tips = []
-            if mysql_master_slave_info is not None:
-                if mysql_master_slave_info.get('is_slave', False) is not True and len(mysql_master_slave_info.get('slave_status_list', [])) > 0:
-                    for slave_status_item in mysql_master_slave_info.get('slave_status_list', []):
-                        if  (not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) or (slave_status_item.get('delay', '-1') == 'None' or int(slave_status_item.get('delay', '999')) > 0)):  
-                            backup_summary_tips.append("MySQL主从同步")
-                            error_tips.append("MySQL主从同步状态异常")
-                            break
-            if xtrabackup_info is not None and (xtrabackup_info.get('last_backup_time', '') is None or xtrabackup_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
-                backup_summary_tips.append("Xtrabackup")
-            if xtrabackup_inc_info is not None and (xtrabackup_inc_info.get('full_last_backup_time', '') is None or xtrabackup_inc_info.get('inc_last_backup_time', '') is None or xtrabackup_inc_info.get('full_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or xtrabackup_inc_info.get('inc_last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP)):
-                backup_summary_tips.append("Xtrabackup增量")
-            if mysql_dump_info is not None and (mysql_dump_info.get('last_backup_time', '') is None or mysql_dump_info.get('last_backup_time', '') < mw.toTime(self.__START_TIMESTAMP) or mysql_dump_info.get('count_in_timeframe', 0) == 0):
-                backup_summary_tips.append("MySQL Dump")
-            if rsyncd_info is not None:
-                if len(rsyncd_info.get('send_open_realtime_list', [])) > 0:
-                    if rsyncd_info.get('last_realtime_sync_date', None) is None or rsyncd_info.get('last_realtime_sync_date', None).timestamp() < self.__START_TIMESTAMP:
-                        backup_summary_tips.append("实时备份")
-                if len(rsyncd_info.get('send_open_fixtime_list', [])) > 0:
-                    for send_open_fixtime_item in rsyncd_info.get('send_open_fixtime_list', []):
-                        if send_open_fixtime_item.get('last_sync_at', None) == None or send_open_fixtime_item.get('last_sync_at', None) < mw.toTime(self.__START_TIMESTAMP):
-                            backup_summary_tips.append(send_open_fixtime_item.get('name'))
-            if len(backup_summary_tips) > 0:
-                summary_tips.append("<span style='color: red;'>" + "、".join(backup_summary_tips) + '备份状态异常</span>')
-                error_tips.append("、".join(backup_summary_tips) + '备份状态异常')
-            # lsyncd实时同步延迟提示
-            if rsyncd_info is not None and  len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_delays', 0) > 0:
-                summary_tips.append("<span style='color: orange;'>实时备份文件延迟%s个</span>" % rsyncd_info.get('realtime_delays', 0))
-                error_tips.append("实时备份文件延迟%s个" % rsyncd_info.get('realtime_delays', 0))
-
-            # 无异常默认信息
-            if len(summary_tips) == 0:
-                summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
+            report_data = self.getReportData()
+            sysinfo_tips = report_data.get('sysinfo_tips', [])
+            backup_tips = report_data.get('backup_tips', [])
+            siteinfo_tips = report_data.get('siteinfo_tips', [])
+            jianghujsinfo_tips = report_data.get('jianghujsinfo_tips', [])
+            dockerinfo_tips = report_data.get('dockerinfo_tips', [])
+            mysqlinfo_tips = report_data.get('mysqlinfo_tips', [])
+            summary_tips = report_data.get('summary_tips', [])
+            error_tips = report_data.get('error_tips', [])
 
             report_content = """
 <style>

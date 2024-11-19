@@ -294,10 +294,12 @@ class reportTools:
         if len(summary_tips) == 0:
             summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
 
+
+        # 获取当前时间格式化后的字符串
         report_data = {
             "title": mw.getConfig('title'),
             "ip": mw.getHostAddr(),
-            "report_time": str(datetime.datetime.now()),
+            "report_time": str(mw.getDateFromNow()),
             "start_time": str(self.__START_TIME),
             "end_time": str(self.__END_TIME),
             "start_date": str(self.__START_DATE),

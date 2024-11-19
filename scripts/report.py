@@ -295,6 +295,7 @@ class reportTools:
             summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
 
         report_data = {
+            "report_time": str(datetime.datetime.now()),
             "start_time": str(self.__START_TIME),
             "end_time": str(self.__END_TIME),
 

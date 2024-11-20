@@ -6,7 +6,7 @@
 import sys
 import os
 import json
-import datetime
+from datetime import datetime
 import re
 import traceback
 
@@ -43,16 +43,16 @@ class reportTools:
     __END_DATE = None
 
     def __init__(self):
-        now = datetime.datetime.now()
+        now = datetime.now()
         start = mw.getReportCycleStartTime(now)
-        # start = datetime.datetime.fromtimestamp(1700314320)
+        # start = datetime.fromtimestamp(1700314320)
         end = now
         self.__START_TIMESTAMP = int(start.timestamp())
         self.__END_TIMESTAMP = int(end.timestamp())
-        self.__START_TIME = datetime.datetime.fromtimestamp(self.__START_TIMESTAMP)
-        self.__END_TIME = datetime.datetime.fromtimestamp(self.__END_TIMESTAMP)
-        self.__START_DATE = datetime.datetime.fromtimestamp(self.__START_TIMESTAMP).date()
-        self.__END_DATE = datetime.datetime.fromtimestamp(self.__END_TIMESTAMP).date()
+        self.__START_TIME = datetime.fromtimestamp(self.__START_TIMESTAMP)
+        self.__END_TIME = datetime.fromtimestamp(self.__END_TIMESTAMP)
+        self.__START_DATE = datetime.fromtimestamp(self.__START_TIMESTAMP).date()
+        self.__END_DATE = datetime.fromtimestamp(self.__END_TIMESTAMP).date()
 
     def analyzeMonitorData(self, data, key, over):
         """ 
@@ -720,8 +720,8 @@ IP：{item.get('ip', '')}<br/>
                 last_sync_match = re.search(r"Lsyncd status report at ([\w\s:]+).*Sync", real_time_status_file)
                 if last_sync_match:
                     last_realtime_sync_date_str = last_sync_match.group(1).replace('\n', '')
-                    last_realtime_sync_date = datetime.datetime.strptime(last_realtime_sync_date_str, "%a %b %d %H:%M:%S %Y")
-                    last_realtime_sync_timestamp = datetime.datetime.timestamp(last_realtime_sync_date)
+                    last_realtime_sync_date = datetime.strptime(last_realtime_sync_date_str, "%a %b %d %H:%M:%S %Y")
+                    last_realtime_sync_timestamp = datetime.timestamp(last_realtime_sync_date)
                 realtime_delays_match = re.search(r"There are ([\d.]+) delays", real_time_status_file)
                 if realtime_delays_match:
                     realtime_delays = int(realtime_delays_match.group(1))

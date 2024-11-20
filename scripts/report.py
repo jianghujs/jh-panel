@@ -28,6 +28,10 @@ systemApi = system_api.system_api()
 siteApi = site_api.site_api()
 crontabApi = crontab_api.crontab_api()
 
+def json_serializer(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()  # 将 datetime 对象转换为 ISO 8601 格式的字符串
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 class reportTools:
 
@@ -72,6 +76,11 @@ class reportTools:
             "average": total / len(data) if data else 0,
             "overCount": overCount
         }
+
+    def writeReportLog(self, report_data):
+        json_data = json.dumps(report_data, default=json_serializer)
+        mw.writeFileLog(json_data, 'logs/report.log')
+
 
     # 获取报告数据
     def getReportData(self):
@@ -323,7 +332,7 @@ class reportTools:
             "error_tips": error_tips
         }
 
-        mw.writeFileLog(json.dumps(report_data), 'logs/report.log')
+        self.writeReportLog(report_data)
 
         return report_data
 

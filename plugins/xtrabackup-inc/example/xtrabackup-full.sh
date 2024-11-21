@@ -89,9 +89,12 @@ fi
 if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
 
     # 删除增量目录
-    lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
-    rm -rf $BACKUP_INC_PATH
-    mkdir -p $HISTORY_DIR
+    if [ -d "$BACKUP_INC_PATH" ];then
+        echo "删除增量目录..."
+        lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
+        rm -rf $BACKUP_INC_PATH
+        echo "删除增量目录完成✅"
+    fi
 
     # 预备增量恢复
     rsync -a --delete $BACKUP_BASE_PATH/ /www/backup/xtrabackup_data_restore/

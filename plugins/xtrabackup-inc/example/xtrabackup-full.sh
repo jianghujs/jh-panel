@@ -59,13 +59,19 @@ ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
 HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 
-# 移动BACKUP_BASE_PATH到历史版本
-if [ -d "$BACKUP_BASE_PATH" ];then
+# 移动BACKUP_PATH到历史版本
+if [ -d "$BACKUP_PATH" ];then
     echo "正在备份历史目录..."
     lsof $BACKUP_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     BACKUP_PATH_CREATE_TIME=$(cat $BACKUP_PATH/.create_time)
     mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$BACKUP_PATH_CREATE_TIME
     echo "备份历史目录完成✅"
+fi
+
+# 如果上一步报错了，停止后面的操作
+if [ $? -ne 0 ];then
+    echo "备份历史目录失败，请手动操作"
+    exit 1
 fi
 
 sleep 1

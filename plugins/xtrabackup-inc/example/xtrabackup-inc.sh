@@ -68,7 +68,7 @@ else
     xtrabackup --backup --slave-info --gtid-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_INC_PATH --incremental-basedir=$BACKUP_BASE_PATH  2>&1 | tee -a $LOG_DIR/backup_inc_$timestamp.log
 fi
 
-if [ $? -eq 0 ] && [ -d "$BACKUP_INC_PATH/mysql" ];then
+if [ $? -eq 0 ] && [ -f "$BACKUP_INC_PATH/xtrabackup_info" ];then
     if [ $BACKUP_ZIP -eq 1 ];then
         # 原地zip压缩并删除其他文件
         cd $BACKUP_INC_PATH && zip -q -r $BACKUP_INC_PATH.zip ./* && rm -rf $BACKUP_INC_PATH/* && mv $BACKUP_INC_PATH.zip $BACKUP_INC_PATH/

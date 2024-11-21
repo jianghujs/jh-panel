@@ -61,13 +61,13 @@ HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 if [ -d "$BACKUP_BASE_PATH" ];then
     echo "正在备份历史目录..."
     lsof $BACKUP_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
-    BACKUP_BASE_PATH_CREATE_TIME=$(cat $BACKUP_BASE_PATH/.create_time)
-    mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$BACKUP_BASE_PATH_CREATE_TIME
+    BACKUP_PATH_CREATE_TIME=$(cat $BACKUP_PATH/.create_time)
+    mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$BACKUP_PATH_CREATE_TIME
     echo "备份历史目录完成✅"
 fi
 
 mkdir -p $BACKUP_BASE_PATH
-echo $timestamp > $BACKUP_BASE_PATH/.create_time
+echo $timestamp > $BACKUP_PATH/.create_time
 
 LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then

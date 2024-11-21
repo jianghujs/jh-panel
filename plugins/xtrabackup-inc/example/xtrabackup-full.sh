@@ -68,6 +68,8 @@ if [ -d "$BACKUP_BASE_PATH" ];then
     echo "备份历史目录完成✅"
 fi
 
+sleep 1
+
 mkdir -p $BACKUP_BASE_PATH
 echo $timestamp > $BACKUP_PATH/.create_time
 

@@ -48,6 +48,7 @@ ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
 
 # 备份增量版本
+lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
 mv $BACKUP_INC_PATH $BACKUP_PATH/inc_$timestamp
 
 mkdir -p $BACKUP_INC_PATH

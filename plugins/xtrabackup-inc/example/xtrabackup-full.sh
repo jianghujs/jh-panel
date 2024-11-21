@@ -60,6 +60,7 @@ HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 # 移动BACKUP_BASE_PATH到历史版本
 if [ -d "$BACKUP_BASE_PATH" ];then
     echo "正在备份历史目录..."
+    lsof $BACKUP_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     BACKUP_BASE_PATH_CREATE_TIME=$(stat -c %W $BACKUP_BASE_PATH)
     mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$(date -d @$BACKUP_BASE_PATH_CREATE_TIME +%Y%m%d_%H%M%S)
     echo "备份历史目录完成✅"

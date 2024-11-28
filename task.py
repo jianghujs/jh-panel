@@ -265,7 +265,7 @@ def systemTask():
                 tmp['mem'] = sm.getMemUsed()
                 cpuInfo = tmp
 
-            # TODO 不太理解，这里如果出现cpuInfo未清理的情况下会导致cpu信息一直停留在高位
+            # 在记录到数据库之前，取区间的最大数值
             if cpuInfo['used'] < tmp['used']:
                 tmp['mem'] = sm.getMemUsed()
                 cpuInfo = tmp

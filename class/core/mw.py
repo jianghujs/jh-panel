@@ -1830,8 +1830,66 @@ def getAllVms():
     result = subprocess.run(['VBoxManage', 'list', 'vms'], stdout=subprocess.PIPE)
     return result.stdout.decode('utf-8')
 
-
+def getCurrentCpuUsageAndRank():
+    """获取当前CPU使用率和TOP10进程"""
+    # 获取当前CPU使用率
+    cmd = "top -bn1 | grep 'Cpu(s)' | awk '{print $2}'"
+    result = execShell(cmd)[0]
+    try:
+        current_usage = round(float(result.strip()), 2)
+    except:
+        current_usage = 0
+        
+    # 获取CPU TOP10进程
+    cmd = "ps -eo comm,%cpu --sort=-%cpu | head -n 11 | tail -n 10"
+    result = execShell(cmd)[0]
+    process_list = []
+    for line in result.strip().split('\n'):
+        if not line.strip(): continue
+        parts = line.strip().split()
+        if len(parts) >= 2:
+            try:
+                process_list.append({
+                    'name': parts[0],
+                    'average_usage': float(parts[-1])
+                })
+            except: continue
+            
+    return {
+        'current_usage': current_usage,
+        'top_processes': process_list
+    }
     
+def getCurrentMemUsageAndRank():
+    """获取当前内存使用率和TOP10进程"""
+    # 获取当前内存使用率
+    cmd = "free | grep Mem | awk '{print $3/$2 * 100}'"
+    result = execShell(cmd)[0]
+    try:
+        current_usage = round(float(result.strip()), 2)
+    except:
+        current_usage = 0
+        
+    # 获取内存 TOP10进程
+    cmd = "ps -eo comm,%mem --sort=-%mem | head -n 11 | tail -n 10"
+    result = execShell(cmd)[0]
+    process_list = []
+    for line in result.strip().split('\n'):
+        if not line.strip(): continue
+        parts = line.strip().split()
+        if len(parts) >= 2:
+            try:
+                process_list.append({
+                    'name': parts[0],
+                    'average_usage': float(parts[-1])
+                })
+            except: continue
+            
+    return {
+        'current_usage': current_usage,
+        'top_processes': process_list
+    }
+
 ##################### notify  start #########################################
 
 
@@ -2127,10 +2185,18 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         error_msg_arr = []
         # CPU
         if (control_notify_config['cpu'] != -1) and (cpu_percent > control_notify_config['cpu']):
-            error_msg_arr.append('CPU负载过高[' + str(cpu_percent) + '%' + ']')
+            # 获取CPU占用前5的进程
+            top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"%s %.1f%%\\n\", $11, $3}'"
+            top_processes = execShell(top_cmd)[0].strip()
+            process_list = '\n'.join(['  - ' + line for line in top_processes.split('\n') if line.strip()])
+            error_msg_arr.append('CPU负载过高[{}%]\nCPU占用TOP5进程：\n{}'.format(cpu_percent, process_list))
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
-            error_msg_arr.append('内存负载过高[' + str(mem_percent) + '%' + ']')
+            # 获取内存占用前5的进程
+            mem_cmd = "ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf \"%s %.1f%%\\n\", $11, $4}'"
+            mem_processes = execShell(mem_cmd)[0].strip()
+            process_list = '\n'.join(['  - ' + line for line in mem_processes.split('\n') if line.strip()])
+            error_msg_arr.append('内存负载过高[{}%]\n内存占用TOP5进程：\n{}'.format(mem_percent, process_list))
         # 磁盘容量
         if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
             for disk in disk_list:

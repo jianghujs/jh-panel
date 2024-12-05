@@ -13,10 +13,8 @@ import traceback
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
 
-
 chdir = os.getcwd()
 sys.path.append(chdir + '/class/core')
-
 
 import mw
 import db
@@ -81,7 +79,6 @@ class reportTools:
         json_data = json.dumps(report_data, default=json_serializer)
         mw.writeFileLog(json_data, 'logs/report.log')
 
-
     # 获取报告数据
     def getReportData(self):
         # 检查数据结构
@@ -104,15 +101,31 @@ class reportTools:
         cpuIoData = sql.table('cpuio').where("addtime>=? AND addtime<=?", (self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,mem,addtime').order('id asc').select()
         cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
         memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
+        
+        # CPU信息
+        current_cpu_usage_and_rank = mw.getCurrentCpuUsageAndRank()
+        cpu_desc = f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>"
+        cpu_desc += f"<br/>当前CPU使用率：<span style='color: {'red' if (cpu_notify_value != -1 and current_cpu_usage_and_rank['current_usage'] > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and current_cpu_usage_and_rank['current_usage'] > (cpu_notify_value * 0.8)) else 'auto')}'>{current_cpu_usage_and_rank['current_usage']}%</span>"
+        if cpu_notify_value != -1 and cpuAnalyzeResult.get('overCount', 0) > 0:
+            cpu_desc += f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(cpuAnalyzeResult.get("overCount", 0))}次</span>'
+        if current_cpu_usage_and_rank['top_processes']:
+            cpu_desc += "<br/>当前CPU使用率TOP10：<br/>" + "<br/>".join([f"{i+1}. {item['name']}: {item['average_usage']}%" for i, item in enumerate(current_cpu_usage_and_rank['top_processes'])])
         sysinfo_tips.append({
             "name": "CPU",
-            "desc": f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                ((f'，<span style="color: red">异常（使用率超过{str(cpu_notify_value)}%）{str(cpuAnalyzeResult.get("overCount", 0))}次</span>') if (cpu_notify_value != -1 and cpuAnalyzeResult.get('overCount', 0) > 0) else '')
+            "desc": cpu_desc
         })
+
+        # 内存信息
+        current_mem_usage_and_rank = mw.getCurrentMemUsageAndRank()
+        mem_desc = f"平均使用率<span style='color: {'red' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value) else ('orange' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8)) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>"
+        mem_desc += f"<br/>当前内存使用率：<span style='color: {'red' if (mem_notify_value != -1 and current_mem_usage_and_rank['current_usage'] > mem_notify_value) else ('orange' if (mem_notify_value != -1 and current_mem_usage_and_rank['current_usage'] > (mem_notify_value * 0.8)) else 'auto')}'>{current_mem_usage_and_rank['current_usage']}%</span>"
+        if mem_notify_value != -1 and memAnalyzeResult.get('overCount', 0) > 0:
+            mem_desc += f'，<span style="color: red">异常（使用率超过{str(mem_notify_value)}%）{str(memAnalyzeResult.get("overCount", 0))}次</span>'
+        if current_mem_usage_and_rank['top_processes']:
+            mem_desc += "<br/>当前内存使用率TOP10：<br/>" + "<br/>".join([f"{i+1}. {item['name']}: {item['average_usage']}%" for i, item in enumerate(current_mem_usage_and_rank['top_processes'])])
         sysinfo_tips.append({
             "name": "内存",
-            "desc": f"平均使用率<span style='color: {'red' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value) else ('orange' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8)) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>" +\
-                ((f'，<span style="color: red">异常（使用率超过{str(mem_notify_value)}%）{str(memAnalyzeResult.get("overCount", 0))}次</span>') if (mem_notify_value != -1 and memAnalyzeResult.get('overCount', 0) > 0) else '')
+            "desc": mem_desc
         })
 
         # 负载：资源使用率(pro)

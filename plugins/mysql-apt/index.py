@@ -1108,6 +1108,7 @@ def getMysqlInfo():
     config_conn = mw.M('config').dbPos(mysql_dir, 'mysql')
     check_table_query = f"SELECT name FROM sqlite_master WHERE type='table' AND name='slave_status';"
     table_exist = config_conn.originExecute(check_table_query)
+    slave_status = None
     if table_exist.fetchone():
       slave_status_conn = mw.M('slave_status').dbPos(mysql_dir, 'mysql')
       slave_status = slave_status_conn.field('ip,user,log_file,io_running,sql_running,delay,error_msg,ps,addtime').select()

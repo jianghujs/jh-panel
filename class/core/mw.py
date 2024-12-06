@@ -835,10 +835,6 @@ def aesDecrypt(data, key='ABCDEFGHIJKLMNOP', vi='0102030405060708'):
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
     from cryptography.hazmat.backends import default_backend
 
-    from cryptography.hazmat.primitives import padding
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-    from cryptography.hazmat.backends import default_backend
-
     if not isinstance(data, bytes):
         data = data.encode()
 
@@ -873,7 +869,7 @@ def aesEncrypt_Crypto(data, key, vi):
     from Crypto.Cipher import AES
     cryptor = AES.new(key.encode('utf8'), AES.MODE_CBC, vi.encode('utf8'))
     # 判断是否含有中文
-    zhmodel = re.compile(u'[\u4e00-\u9fff]')
+    zhmodel = re.compile(u"[\u4e00-\u9fff]")
     match = zhmodel.search(data)
     if match == None:
         # 无中文时
@@ -904,7 +900,7 @@ def aesDecrypt_Crypto(data, key, vi):
     cipher = AES.new(key.encode('utf8'), AES.MODE_CBC, vi.encode('utf8'))
     text_decrypted = cipher.decrypt(encodebytes)
     # 判断是否含有中文
-    zhmodel = re.compile(u'[\u4e00-\u9fff]')
+    zhmodel = re.compile(u"[\u4e00-\u9fff]")
     match = zhmodel.search(text_decrypted)
     if match == False:
         # 无中文时补位
@@ -1841,7 +1837,7 @@ def getCurrentCpuUsageAndRank():
         current_usage = 0
         
     # 获取CPU TOP10进程
-    cmd = "ps -eo comm,%cpu --sort=-%cpu | head -n 11 | tail -n 10"
+    cmd = "ps aux --sort=-%cpu | head -n 11 | tail -n 10"
     result = execShell(cmd)[0]
     process_list = []
     for line in result.strip().split('\n'):
@@ -1871,7 +1867,7 @@ def getCurrentMemUsageAndRank():
         current_usage = 0
         
     # 获取内存 TOP10进程
-    cmd = "ps -eo comm,%mem --sort=-%mem | head -n 11 | tail -n 10"
+    cmd = "ps aux --sort=-%mem | head -n 11 | tail -n 10"
     result = execShell(cmd)[0]
     process_list = []
     for line in result.strip().split('\n'):
@@ -2190,6 +2186,17 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             top_processes = execShell(top_cmd)[0].strip()
             process_list = '\n'.join(['  - ' + line for line in top_processes.split('\n') if line.strip()])
             error_msg_arr.append('CPU负载过高[{}%]\nCPU占用TOP5进程：\n{}'.format(cpu_percent, process_list))
+            
+            # 保存所有进程信息到日志文件
+            now = datetime.datetime.now()
+            log_file = 'logs/{}_cpu_notify_dump.log'.format(now.strftime('%Y%m%d'))
+            all_processes_cmd = "ps aux --sort=-%cpu | awk '{printf \"%s\\t%.1f%%\\t%.1f%%\\t%s\\n\", $11, $3, $4, $0}'"
+            all_processes = execShell(all_processes_cmd)[0]
+            writeFile(log_file, '时间: {}\nCPU使用率: {}%\n\n进程名称\tCPU使用率\t内存使用率\t详细信息\n{}'.format(
+                now.strftime('%Y-%m-%d %H:%M:%S'),
+                cpu_percent,
+                all_processes
+            ))
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
             # 获取内存占用前5的进程
@@ -2247,7 +2254,6 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             lsyncd_status_data = execShell(lsyncd_status_cmd)
             if lsyncd_status_data[0] == '':
                 error_msg_arr.append('Rsync实时同步异常')
-
 
         # 发送异常报告
         if (len(error_msg_arr) > 0):

@@ -18,7 +18,10 @@ prompt "需要在主服务器执行xtrabackup备份并将最新的xtrabackup文�
 
 if [ $host_backup_choice == "y" ]; then
   # 获取主服务器IP
+  
+  pushd /www/server/jh-panel > /dev/null
   default_remote_ip=$(python3 /www/server/jh-panel/tools.py getStandbyIp)
+  popd > /dev/null
   remote_ip_tip="请输入主服务器IP"
   if [ -n "$default_remote_ip" ]; then
     remote_ip_tip+="（默认为：${default_remote_ip}）"
@@ -149,17 +152,18 @@ fi
 
 # 使用binlog_file和binlog_pos恢复从库
 echo "正在恢复从库..."
-pushd /www/server/jh-panel > /dev/null
 
 # gtid_purged_arg参数处理
 gtid_purged_arg=${gtid_purged//:/：}
 gtid_purged_arg=${gtid_purged_arg// /}
 gtid_purged_arg=${gtid_purged_arg//$'\n'/}
 
+pushd /www/server/jh-panel > /dev/null
 # init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {log_file:${log_file},log_pos:${log_pos},gtid_purged:${gtid_purged})
 init_slave_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged_arg}})
 # python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status {gtid_purged:${gtid_purged_arg}}
 popd > /dev/null
+
 init_slave_status=$(echo $init_slave_result | jq -r '.status')
 init_slave_msg=$(echo $init_slave_result | jq -r '.msg')
 if [ $init_slave_status == "true" ]

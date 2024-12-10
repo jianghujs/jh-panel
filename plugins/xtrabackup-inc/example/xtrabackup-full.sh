@@ -64,6 +64,7 @@ if [ -d "$BACKUP_PATH" ];then
     echo "正在备份历史目录..."
     lsof $BACKUP_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     BACKUP_PATH_CREATE_TIME=$(cat $BACKUP_PATH/.create_time)
+    mkdir -p $HISTORY_DIR
     mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$BACKUP_PATH_CREATE_TIME
     echo "备份历史目录完成✅"
 fi

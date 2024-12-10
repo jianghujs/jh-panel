@@ -2189,7 +2189,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             
             # 保存所有进程信息到日志文件
             now = datetime.datetime.now()
-            log_file = 'logs/{}_cpu_notify_dump.log'.format(now.strftime('%Y%m%d'))
+            log_file = 'logs/{}_cpu_notify_dump.log'.format(now.strftime('%Y%m%d%H%M%S'))
             all_processes_cmd = "ps aux --sort=-%cpu | awk '{printf \"%s\\t%.1f%%\\t%.1f%%\\t%s\\n\", $11, $3, $4, $0}'"
             all_processes = execShell(all_processes_cmd)[0]
             writeFile(log_file, '时间: {}\nCPU使用率: {}%\n\n进程名称\tCPU使用率\t内存使用率\t详细信息\n{}'.format(

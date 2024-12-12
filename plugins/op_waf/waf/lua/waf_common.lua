@@ -122,7 +122,7 @@ end
 
 function _M.initDB(self)
     local path = log_dir .. "/waf.db"
-    db, err = sqlite3.open(path)
+    local db, err = sqlite3.open(path)
 
     if err then
         self:D("initDB err:"..tostring(err))
@@ -206,8 +206,9 @@ function _M.D(self, msg)
 
     local _msg = ''
     if type(msg) == 'table' then
+        _msg = _msg.."args->\n"
         for key, val in pairs(msg) do
-            _msg = tostring( key)..':'.."\n"
+            _msg = _msg..tostring(key)..':'..tostring(val).."\n"
         end
     elseif type(msg) == 'string' then
         _msg = msg
@@ -216,7 +217,6 @@ function _M.D(self, msg)
     else
         _msg = msg
     end
-
 
     local fp = io.open(waf_root.."/debug.log", "ab")
     if fp == nil then
@@ -276,6 +276,16 @@ end
 function _M.setParams( self, params )
     self.params = params
 end
+
+function _M.count_size(data)
+    local count=0
+    if type(data)~="table" then return count end 
+    for k,v in pairs(data) 
+    do
+        count=count+1
+    end 
+    return count
+end 
 
 
 function _M.is_min(self, ip1, ip2)
@@ -360,7 +370,9 @@ end
 
 function _M.return_html(self, status, html)
     ngx.header.content_type = "text/html"
+    ngx.header.Cache_Control = "no-cache"
     status = tonumber(status)
+
     -- self:D("return_html:"..tostring(status))
     if status == 200 then
         ngx.say(html)
@@ -369,7 +381,7 @@ function _M.return_html(self, status, html)
 end
 
 function _M.read_file_body(self, filename)
-    fp = io.open(filename, 'r')
+    local fp = io.open(filename, 'r')
     if fp == nil then
         return nil
     end
@@ -696,14 +708,6 @@ end
 
 function _M.get_real_ip(self, server_name)
     local client_ip = "unknown"
-    local client_ip = "unknown"
-
-    _M.D('ngx.var.proxy_protocol_addr', ngx.var.proxy_protocol_addr)
-    -- proxy_protocol_addr 优先级最高
-    if not ngx.re.match(ngx.var.proxy_protocol_addr,"\\d+\\.\\d+\\.\\d+\\.\\d+") == nil and self:is_ipaddr(ngx.var.proxy_protocol_addr) then
-        return ngx.var.proxy_protocol_addr
-    end
-
     local site_config = self.site_config
     if site_config[server_name] then
         if site_config[server_name]['cdn'] then
@@ -828,6 +832,5 @@ end
 function _M.t(self)
     ngx.say(',,,')
 end
-
 
 return _M

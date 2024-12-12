@@ -1,5 +1,9 @@
 # coding:utf-8
 
+'''
+cd /Users/midoks/Desktop/mwdev/server/mdserver-web/plugins/op_waf && bash install.sh install 0.3.2
+python3 /Users/midoks/Desktop/mwdev/server/mdserver-web/plugins/op_waf/index.py reload
+'''
 import sys
 import io
 import os
@@ -36,11 +40,11 @@ def getArgs():
 
     if args_len == 1:
         t = args[0].strip('{').strip('}')
-        t = t.split(':')
+        t = t.split(':', 1)
         tmp[t[0]] = t[1]
     elif args_len > 1:
         for i in range(len(args)):
-            t = args[i].split(':')
+            t = args[i].split(':', 1)
             tmp[t[0]] = t[1]
 
     return tmp
@@ -73,6 +77,10 @@ def getConf():
     return path
 
 
+def dstWafConfPath():
+    return mw.getServerDir() + "/web_conf/nginx/vhost/opwaf.conf"
+
+
 def pSqliteDb(dbname='logs'):
     name = "waf"
     db_dir = getServerDir() + '/logs/'
@@ -97,10 +105,9 @@ def pSqliteDb(dbname='logs'):
     return conn
 
 
-def initDomainInfo():
+def initDomainInfo(conf_reload=False):
     data = []
     path_domains = getJsonPath('domains')
-
     _list = mw.M('sites').field('id,name,path').where(
         'status=?', ('1',)).order('id desc').select()
 
@@ -122,11 +129,12 @@ def initDomainInfo():
     mw.writeFile(path_domains, cjson)
 
 
-def initSiteInfo():
+def initSiteInfo(conf_reload=False):
     data = []
+
+    path_site = getJsonPath('site')
     path_domains = getJsonPath('domains')
     path_config = getJsonPath('config')
-    path_site = getJsonPath('site')
 
     config_contents = mw.readFile(path_config)
     config_contents = json.loads(config_contents)
@@ -136,6 +144,8 @@ def initSiteInfo():
 
     try:
         site_contents = mw.readFile(path_site)
+        if not site_contents:
+            site_contents = "{}"
     except Exception as e:
         site_contents = "{}"
 
@@ -192,10 +202,11 @@ def initSiteInfo():
     mw.writeFile(path_site, cjson)
 
 
-def initTotalInfo():
+def initTotalInfo(conf_reload=False):
     data = []
-    path_domains = getJsonPath('domains')
+
     path_total = getJsonPath('total')
+    path_domains = getJsonPath('domains')
 
     domain_contents = mw.readFile(path_domains)
     domain_contents = json.loads(domain_contents)
@@ -230,10 +241,6 @@ def initTotalInfo():
     mw.writeFile(path_total, cjson)
 
 
-def dstWafConf():
-    return mw.getServerDir() + "/web_conf/nginx/vhost/opwaf.conf"
-
-
 def contentReplace(content):
     service_path = mw.getServerDir()
     waf_root = getServerDir()
@@ -242,121 +249,245 @@ def contentReplace(content):
     content = content.replace('{$SERVER_PATH}', service_path)
     content = content.replace('{$WAF_PATH}', waf_path)
     content = content.replace('{$WAF_ROOT}', waf_root)
+
+    if mw.isAppleSystem():
+        content = content.replace('{$MMDB_FILE_SUFFIX}', 'dylib')
+    else:
+        content = content.replace('{$MMDB_FILE_SUFFIX}', 'so')
+
     return content
 
 
-def autoMakeLuaConfSingle(file):
-    # path = getPluginDir() + "/waf/rule/" + file + ".json"
+def autoMakeLuaConfSingle(file, conf_reload=False):
     path = getServerDir() + "/waf/rule/" + file + ".json"
-    to_path = getServerDir() + "/waf/conf/rule_" + file + ".lua"
+    dst_path = getServerDir() + "/waf/conf/rule_" + file + ".lua"
+    if not os.path.exists(dst_path) or conf_reload:
+        content = mw.readFile(path)
+        # print(content)
+        content = json.loads(content)
+        listToLuaFile(dst_path, content)
+
+
+def autoCpImport(file):
+    path = getPluginDir() + "/waf/" + file + ".json"
+    dst_path = getServerDir() + "/waf/" + file + ".json"
     content = mw.readFile(path)
-    # print(content)
-    content = json.loads(content)
-    listToLuaFile(to_path, content)
+    mw.writeFile(dst_path, content)
 
 
-def autoMakeLuaImportSingle(file):
+def autoMakeLuaImportSingle(file, conf_reload=False):
     path = getServerDir() + "/waf/" + file + ".json"
-    to_path = getServerDir() + "/waf/conf/waf_" + file + ".lua"
-    content = mw.readFile(path)
-    # print(content)
-    content = json.loads(content)
-    listToLuaFile(to_path, content)
+    dst_path = getServerDir() + "/waf/conf/waf_" + file + ".lua"
+    if not os.path.exists(dst_path) or conf_reload:
+        content = mw.readFile(path)
+        # print(content)
+        content = json.loads(content)
+        listToLuaFile(dst_path, content)
 
 
-def autoMakeLuaHtmlSingle(file):
+def autoMakeLuaHtmlSingle(file, conf_reload=False):
     path = getServerDir() + "/waf/html/" + file + ".html"
-    to_path = getServerDir() + "/waf/html/html_" + file + ".lua"
+    dst_path = getServerDir() + "/waf/html/html_" + file + ".lua"
+    if not os.path.exists(dst_path) or conf_reload:
+        content = mw.readFile(path)
+        htmlToLuaFile(dst_path, content)
+
+
+def autoCpHtml(file):
+    path = getPluginDir() + "/waf/html/" + file + ".html"
+    dst_path = getServerDir() + "/waf/html/" + file + ".html"
     content = mw.readFile(path)
-    htmlToLuaFile(to_path, content)
+    mw.writeFile(dst_path, content)
 
 
-def autoMakeLuaConf():
+def autoMakeLuaConf(conf_reload=False, cp_reload=False):
     conf_list = ['args', 'cookie', 'ip_black', 'ip_white',
                  'ipv6_black', 'post', 'scan_black', 'url',
                  'url_white', 'user_agent']
     for x in conf_list:
-        autoMakeLuaConfSingle(x)
+        autoMakeLuaConfSingle(x, conf_reload)
 
-    import_list = ['config', 'site', 'domains']
+    import_list = ['config', 'site', 'domains', 'area_limit']
     for x in import_list:
-        autoMakeLuaImportSingle(x)
+        autoMakeLuaImportSingle(x, conf_reload)
 
     html_list = ['get', 'post', 'safe_js', 'user_agent', 'cookie', 'other']
     for x in html_list:
-        autoMakeLuaHtmlSingle(x)
+        if cp_reload:
+            autoCpHtml(x)
+        autoMakeLuaHtmlSingle(x, conf_reload)
 
 
-def initDefaultInfo():
+def initDefaultInfo(conf_reload=False):
     path = getServerDir()
-    djson = path + "/waf/domains.json"
-    default_json = path + "/waf/default.json"
-    if os.path.exists(djson):
-        content = mw.readFile(djson)
-        content = json.loads(content)
+    dst_path = path + "/waf/default.pl"
+    default_site = ''
+    if os.path.exists(dst_path):
+        return True
+    source_path = path + "/waf/domains.json"
+    content = mw.readFile(source_path)
+    content = json.loads(content)
 
-        ddata = {}
-        dlist = []
-        for i in content:
-            dlist.append(i["name"])
+    ddata = {}
+    dlist = []
+    for i in content:
+        dlist.append(i["name"])
 
-        dlist.append('unset')
-        ddata["list"] = dlist
-        if len(ddata["list"]) < 1:
-            ddata["default"] = "unset"
-        else:
-            ddata["default"] = dlist[0]
+    dlist.append('unset')
+    ddata["list"] = dlist
+    if len(ddata["list"]) < 1:
+        default_site = "unset"
+    else:
+        default_site = dlist[0]
 
-        mw.writeFile(default_json, json.dumps(ddata))
+    mw.writeFile(dst_path, default_site)
 
 
-def autoMakeConfig():
+def getSiteListData():
     path = getServerDir()
+    source_path = path + "/waf/domains.json"
+    dst_path = path + "/waf/default.pl"
 
-    initDomainInfo()
-    initSiteInfo()
-    initTotalInfo()
-    autoMakeLuaConf()
+    content = mw.readFile(source_path)
+    content = json.loads(content)
+    dlist = []
+    for i in content:
+        dlist.append(i["name"])
+    dlist.append('unset')
+
+    default_site = mw.readFile(dst_path)
+
+    data = {}
+    data['list'] = dlist
+    data['default'] = default_site
+    return data
 
 
-def restartWeb():
-    autoMakeConfig()
+def setDefaultSite(name):
+    path = getServerDir()
+    dst_path = path + "/waf/default.pl"
+    mw.writeFile(dst_path, name)
+    return mw.returnJson(True, 'OK')
+
+
+def getDefaultSite():
+    data = getSiteListData()
+    return mw.returnJson(True, 'OK', data)
+
+
+def getCountry():
+    data = ['中国大陆以外的地区(包括[中国特别行政区:港,澳,台])', '中国大陆(不包括[中国特别行政区:港,澳,台])', '中国香港', '中国澳门', '中国台湾',
+            '美国', '日本', '英国', '德国', '韩国', '法国', '巴西', '加拿大', '意大利', '澳大利亚', '荷兰', '俄罗斯', '印度', '瑞典', '西班牙', '墨西哥',
+            '比利时', '南非', '波兰', '瑞士', '阿根廷', '印度尼西亚', '埃及', '哥伦比亚', '土耳其', '越南', '挪威', '芬兰', '丹麦', '乌克兰', '奥地利',
+            '伊朗', '智利', '罗马尼亚', '捷克', '泰国', '沙特阿拉伯', '以色列', '新西兰', '委内瑞拉', '摩洛哥', '马来西亚', '葡萄牙', '爱尔兰', '新加坡',
+            '欧洲联盟', '匈牙利', '希腊', '菲律宾', '巴基斯坦', '保加利亚', '肯尼亚', '阿拉伯联合酋长国', '阿尔及利亚', '塞舌尔', '突尼斯', '秘鲁', '哈萨克斯坦',
+            '斯洛伐克', '斯洛文尼亚', '厄瓜多尔', '哥斯达黎加', '乌拉圭', '立陶宛', '塞尔维亚', '尼日利亚', '克罗地亚', '科威特', '巴拿马', '毛里求斯', '白俄罗斯',
+            '拉脱维亚', '多米尼加', '卢森堡', '爱沙尼亚', '苏丹', '格鲁吉亚', '安哥拉', '玻利维亚', '赞比亚', '孟加拉国', '巴拉圭', '波多黎各', '坦桑尼亚',
+            '塞浦路斯', '摩尔多瓦', '阿曼', '冰岛', '叙利亚', '卡塔尔', '波黑', '加纳', '阿塞拜疆', '马其顿', '约旦', '萨尔瓦多', '伊拉克', '亚美尼亚', '马耳他',
+            '危地马拉', '巴勒斯坦', '斯里兰卡', '特立尼达和多巴哥', '黎巴嫩', '尼泊尔', '纳米比亚', '巴林', '洪都拉斯', '莫桑比克', '尼加拉瓜', '卢旺达', '加蓬',
+            '阿尔巴尼亚', '利比亚', '吉尔吉斯坦', '柬埔寨', '古巴', '喀麦隆', '乌干达', '塞内加尔', '乌兹别克斯坦', '黑山', '关岛', '牙买加', '蒙古', '文莱',
+            '英属维尔京群岛', '留尼旺', '库拉索岛', '科特迪瓦', '开曼群岛', '巴巴多斯', '马达加斯加', '伯利兹', '新喀里多尼亚', '海地', '马拉维', '斐济', '巴哈马',
+            '博茨瓦纳', '扎伊尔', '阿富汗', '莱索托', '百慕大', '埃塞俄比亚', '美属维尔京群岛', '列支敦士登', '津巴布韦', '直布罗陀', '苏里南', '马里', '也门',
+            '老挝', '塔吉克斯坦', '安提瓜和巴布达', '贝宁', '法属玻利尼西亚', '圣基茨和尼维斯', '圭亚那', '布基纳法索', '马尔代夫', '泽西岛', '摩纳哥', '巴布亚新几内亚',
+            '刚果', '塞拉利昂', '吉布提', '斯威士兰', '缅甸', '毛里塔尼亚', '法罗群岛', '尼日尔', '安道尔', '阿鲁巴', '布隆迪', '圣马力诺', '利比里亚',
+            '冈比亚', '不丹', '几内亚', '圣文森特岛', '荷兰加勒比区', '圣马丁', '多哥', '格陵兰', '佛得角', '马恩岛', '索马里', '法属圭亚那', '西萨摩亚',
+            '土库曼斯坦', '瓜德罗普', '马里亚那群岛', '瓦努阿图', '马提尼克', '赤道几内亚', '南苏丹', '梵蒂冈', '格林纳达', '所罗门群岛', '特克斯和凯科斯群岛', '多米尼克',
+            '乍得', '汤加', '瑙鲁', '圣多美和普林西比', '安圭拉岛', '法属圣马丁', '图瓦卢', '库克群岛', '密克罗尼西亚联邦', '根西岛', '东帝汶', '中非',
+            '几内亚比绍', '帕劳', '美属萨摩亚', '厄立特里亚', '科摩罗', '圣皮埃尔和密克隆', '瓦利斯和富图纳', '英属印度洋领地', '托克劳', '马绍尔群岛', '基里巴斯',
+            '纽埃', '诺福克岛', '蒙特塞拉特岛', '朝鲜', '马约特', '圣卢西亚', '圣巴泰勒米岛']
+    return mw.returnJson(True, 'ok', data)
+
+
+def autoMakeConfig(conf_reload=False, cp_reload=False):
+    initDomainInfo(conf_reload)
+    initSiteInfo(conf_reload)
+    initTotalInfo(conf_reload)
+    autoMakeLuaConf(conf_reload, cp_reload)
+    initDefaultInfo(conf_reload)
+
+
+def setConfRestartWeb():
+    autoMakeConfig(True, False)
     mw.opWeb('stop')
     mw.opWeb('start')
 
 
-def makeDstLua():
+def restartWeb():
+    mw.opWeb('stop')
+    mw.opWeb('start')
+
+
+def makeOpDstRunLua(conf_reload=False):
     root_init_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_by_lua_file'
     root_worker_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_worker_by_lua_file'
     root_access_dir = mw.getServerDir() + '/web_conf/nginx/lua/access_by_lua_file'
     path = getServerDir()
     path_tpl = getPluginDir()
 
-    waf_common_tpl = path_tpl + "/waf/lua/waf_common.lua"
     waf_common_dst = path + "/waf/lua/waf_common.lua"
-    content = mw.readFile(waf_common_tpl)
-    content = contentReplace(content)
-    mw.writeFile(waf_common_dst, content)
+    if not os.path.exists(waf_common_dst) or conf_reload:
+        waf_common_tpl = path_tpl + "/waf/lua/waf_common.lua"
+        content = mw.readFile(waf_common_tpl)
+        content = contentReplace(content)
+        mw.writeFile(waf_common_dst, content)
 
-    waf_init_tpl = path_tpl + "/waf/lua/init_preload.lua"
     waf_init_dst = root_init_dir + "/waf_init_preload.lua"
-    content = mw.readFile(waf_init_tpl)
-    content = contentReplace(content)
-    mw.writeFile(waf_init_dst, content)
+    if not os.path.exists(waf_init_dst) or conf_reload:
+        waf_init_tpl = path_tpl + "/waf/lua/init_preload.lua"
+        content = mw.readFile(waf_init_tpl)
+        content = contentReplace(content)
+        mw.writeFile(waf_init_dst, content)
 
-    init_worker_tpl = path_tpl + "/waf/lua/init_worker.lua"
     init_worker_dst = root_worker_dir + '/opwaf_init_worker.lua'
-    content = mw.readFile(init_worker_tpl)
-    content = contentReplace(content)
-    mw.writeFile(init_worker_dst, content)
+    if not os.path.exists(init_worker_dst) or conf_reload:
+        init_worker_tpl = path_tpl + "/waf/lua/init_worker.lua"
+        content = mw.readFile(init_worker_tpl)
+        content = contentReplace(content)
+        mw.writeFile(init_worker_dst, content)
 
-    access_file_tpl = path_tpl + "/waf/lua/init.lua"
     access_file_dst = root_access_dir + '/opwaf_init.lua'
-    content = mw.readFile(access_file_tpl)
-    content = contentReplace(content)
-    mw.writeFile(access_file_dst, content)
+    if not os.path.exists(access_file_dst) or conf_reload:
+        access_file_tpl = path_tpl + "/waf/lua/init.lua"
+        access_file_dst_s = path + "/waf/lua/init.lua"
+        content = mw.readFile(access_file_tpl)
+        content = contentReplace(content)
+        mw.writeFile(access_file_dst, content)
+        mw.writeFile(access_file_dst_s, content)
+
+    waf_mmdb_dst = path + "/waf/lua/waf_maxminddb.lua"
+    if not os.path.exists(waf_mmdb_dst) or conf_reload:
+        waf_mmdb_tpl = path_tpl + "/waf/lua/waf_maxminddb.lua"
+        content = mw.readFile(waf_mmdb_tpl)
+        content = contentReplace(content)
+        mw.writeFile(waf_mmdb_dst, content)
 
     mw.opLuaMakeAll()
+    return True
+
+
+def makeOpDstStopLua():
+    root_init_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_by_lua_file'
+    root_worker_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_worker_by_lua_file'
+    root_access_dir = mw.getServerDir() + '/web_conf/nginx/lua/access_by_lua_file'
+
+    waf_init_dst = root_init_dir + "/waf_init_preload.lua"
+    if os.path.exists(waf_init_dst):
+        os.remove(waf_init_dst)
+
+    init_worker_dst = root_worker_dir + '/opwaf_init_worker.lua'
+    if os.path.exists(init_worker_dst):
+        os.remove(init_worker_dst)
+
+    access_file_dst = root_access_dir + '/opwaf_init.lua'
+    if os.path.exists(access_file_dst):
+        os.remove(access_file_dst)
+
+    wafconf = dstWafConfPath()
+    if os.path.exists(wafconf):
+        os.remove(wafconf)
+
+    mw.opLuaMakeAll()
+    return True
 
 
 def initDreplace():
@@ -377,30 +508,25 @@ def initDreplace():
     config = path + '/waf/config.json'
     content = mw.readFile(config)
     content = json.loads(content)
-
-    wfDir = path + "/waf/html"
-    content['reqfile_path'] = wfDir
+    content['reqfile_path'] = path + "/waf/html"
     mw.writeFile(config, mw.getJson(content))
 
-    makeDstLua()
+    makeOpDstRunLua()
 
-    waf_conf = dstWafConf()
+    waf_conf = dstWafConfPath()
     if not os.path.exists(waf_conf):
         waf_tpl = getPluginDir() + "/conf/luawaf.conf"
         content = mw.readFile(waf_tpl)
         content = contentReplace(content)
         mw.writeFile(waf_conf, content)
 
-    initDomainInfo()
-    initSiteInfo()
-    initTotalInfo()
-    autoMakeLuaConf()
-    initDefaultInfo()
+    autoMakeConfig(True, False)
 
     pSqliteDb()
 
     if not mw.isAppleSystem():
         mw.execShell("chown -R www:www " + path)
+    return path
 
 
 def status():
@@ -408,7 +534,7 @@ def status():
     if not os.path.exists(path):
         return 'stop'
 
-    waf_conf = dstWafConf()
+    waf_conf = dstWafConfPath()
     if not os.path.exists(waf_conf):
         return 'stop'
     return 'start'
@@ -425,30 +551,11 @@ def start():
 
 
 def stop():
-    root_init_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_by_lua_file'
-    root_worker_dir = mw.getServerDir() + '/web_conf/nginx/lua/init_worker_by_lua_file'
-    root_access_dir = mw.getServerDir() + '/web_conf/nginx/lua/access_by_lua_file'
 
-    waf_init_dst = root_init_dir + "/waf_init_preload.lua"
-    if os.path.exists(waf_init_dst):
-        os.remove(waf_init_dst)
-
-    init_worker_dst = root_worker_dir + '/opwaf_init_worker.lua'
-    if os.path.exists(init_worker_dst):
-        os.remove(init_worker_dst)
-
-    access_file_dst = root_access_dir + '/opwaf_init.lua'
-    if os.path.exists(access_file_dst):
-        os.remove(access_file_dst)
-
-    wafconf = dstWafConf()
-    if os.path.exists(wafconf):
-        os.remove(wafconf)
+    makeOpDstStopLua()
 
     import tool_task
     tool_task.removeBgTask()
-
-    mw.opLuaMakeAll()
 
     restartWeb()
     return 'ok'
@@ -460,16 +567,22 @@ def restart():
 
 
 def reload():
-    stop()
+    mw.opWeb('stop')
 
-    makeDstLua()
+    makeOpDstRunLua(True)
+    autoMakeConfig(True, False)
 
-    errlog = mw.getServerDir() + "/openresty/nginx/logs/error.log"
-    mw.execShell('rm -rf ' + errlog)
+    elog = mw.getServerDir() + "/openresty/nginx/logs/error.log"
+    if os.path.exists(elog):
+        mw.execShell('rm -rf ' + elog)
 
-    start()
+    mw.opWeb('start')
+    return 'ok'
 
-    restartWeb()
+def reload_hook():
+    s = status()
+    if s == 'start':
+        return reload()
     return 'ok'
 
 
@@ -519,7 +632,8 @@ def addRule():
 
     cjson = mw.getJson(content)
     mw.writeFile(fpath, cjson)
-    restartWeb()
+
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', content)
 
 
@@ -541,7 +655,8 @@ def removeRule():
 
     cjson = mw.getJson(content)
     mw.writeFile(fpath, cjson)
-    restartWeb()
+
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', content)
 
 
@@ -566,7 +681,8 @@ def setRuleState():
 
     cjson = mw.getJson(content)
     mw.writeFile(fpath, cjson)
-    restartWeb()
+
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', content)
 
 
@@ -597,7 +713,8 @@ def modifyRule():
 
     cjson = mw.getJson(content)
     mw.writeFile(fpath, cjson)
-    restartWeb()
+
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', content)
 
 
@@ -638,7 +755,8 @@ def addSiteRule():
 
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
-    restartWeb()
+
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -674,7 +792,7 @@ def addIpWhite():
 
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -696,7 +814,7 @@ def removeIpWhite():
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -733,7 +851,7 @@ def addIpBlack():
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -755,7 +873,7 @@ def removeIpBlack():
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -774,7 +892,7 @@ def setIpv6Black():
 
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -794,7 +912,7 @@ def delIpv6Black():
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -818,7 +936,7 @@ def removeSiteRule():
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -839,7 +957,7 @@ def setObjStatus():
     cjson = mw.getJson(cobj)
     mw.writeFile(conf, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -853,19 +971,24 @@ def setRetry():
     conf = getJsonPath('config')
     content = mw.readFile(conf)
     cobj = json.loads(content)
-
-    cobj['retry'] = args
-
+    
+    ## 修复数据类型错误
+    tmp = args
+    tmp['retry'] = int(tmp['retry'])
+    tmp['retry_time'] = int(tmp['retry_time'])
+    tmp['retry_cycle'] = int(tmp['retry_cycle'])
+    
+    cobj['retry'] = tmp
     cjson = mw.getJson(cobj)
     mw.writeFile(conf, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', [])
 
 
 def setSafeVerify():
     args = getArgs()
-    data = checkArgs(args, ['auto', 'time', 'cpu'])
+    data = checkArgs(args, ['auto', 'time', 'cpu', 'mode'])
     if not data[0]:
         return data[1]
 
@@ -875,6 +998,7 @@ def setSafeVerify():
 
     cobj['safe_verify']['time'] = args['time']
     cobj['safe_verify']['cpu'] = int(args['cpu'])
+    cobj['safe_verify']['mode'] = args['mode']
 
     if args['auto'] == '0':
         cobj['safe_verify']['auto'] = False
@@ -884,7 +1008,7 @@ def setSafeVerify():
     cjson = mw.getJson(cobj)
     mw.writeFile(conf, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', [])
 
 
@@ -915,7 +1039,7 @@ def setCcConf():
     cjson = mw.getJson(cobj)
     mw.writeFile(conf, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', [])
 
 
@@ -933,7 +1057,7 @@ def saveScanRule():
     cjson = mw.getJson(args)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!', [])
 
 
@@ -973,26 +1097,6 @@ def getSiteConfig():
     return mw.returnJson(True, 'ok!', content)
 
 
-def getSiteListData():
-    path = getServerDir() + "/waf/default.json"
-    data = mw.readFile(path)
-    return json.loads(data)
-
-
-def setDefaultSite(name):
-    path = getServerDir() + "/waf/default.json"
-    data = mw.readFile(path)
-    data = json.loads(data)
-    data['default'] = name
-    mw.writeFile(path, json.dumps(data))
-    return mw.returnJson(True, 'OK')
-
-
-def getDefaultSite():
-    data = getSiteListData()
-    return mw.returnJson(True, 'OK', data)
-
-
 def getSiteConfigByName():
     args = getArgs()
     data = checkArgs(args, ['siteName'])
@@ -1027,7 +1131,7 @@ def addSiteCdnHeader():
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '添加成功!')
 
 
@@ -1048,7 +1152,7 @@ def removeSiteCdnHeader():
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
 
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '删除成功!')
 
 
@@ -1102,6 +1206,8 @@ def getLogsList():
     page_size = int(args['page_size'])
     domain = args['site']
     tojs = args['tojs']
+
+    setDefaultSite(domain)
 
     conn = pSqliteDb('logs')
 
@@ -1172,7 +1278,7 @@ def setObjOpen():
 
     cjson = mw.getJson(cobj)
     mw.writeFile(conf, cjson)
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -1202,7 +1308,7 @@ def setSiteObjOpen():
 
     cjson = mw.getJson(content)
     mw.writeFile(path, cjson)
-    restartWeb()
+    setConfRestartWeb()
     return mw.returnJson(True, '设置成功!')
 
 
@@ -1214,6 +1320,142 @@ def getWafSrceen():
 def getWafConf():
     conf = getJsonPath('config')
     return mw.readFile(conf)
+
+
+def areaLimitSwitch():
+    args = getArgs()
+    data = checkArgs(args, ['area_limit'])
+    if not data[0]:
+        return data[1]
+
+    path_config = getJsonPath('config')
+
+    config_contents = mw.readFile(path_config)
+    config_contents = json.loads(config_contents)
+
+    msg = '关闭成功!'
+    if args['area_limit'] == 'on':
+        msg = '开启成功!'
+        config_contents['area_limit'] = True
+    else:
+        config_contents['area_limit'] = False
+
+    mw.writeFile(path_config, json.dumps(config_contents))
+
+    autoMakeConfig(True, True)
+    restart()
+    return mw.returnJson(True, msg)
+
+
+def getAreaLimit():
+    conf = getJsonPath('area_limit')
+    if not os.path.exists(conf):
+        mw.writeFile(conf, '[]')
+
+    d = mw.readFile(conf)
+    data = json.loads(d)
+    return mw.returnJson(True, 'ok!', data)
+
+
+def delAreaLimit():
+    args = getArgs()
+    data = checkArgs(args, ['site', 'types', 'region'])
+    if not data[0]:
+        return data[1]
+
+    type_list = ["refuse", "accept"]
+    if not args['types'] in type_list:
+        return mw.returnJson(False, '输入的类型错误!')
+
+    region_l = args['region'].split(",")
+    site_l = args['site'].split(",")
+
+    paramMode = {}
+    for i in region_l:
+        if not i:
+            continue
+        i = i.strip()
+        if not i in paramMode:
+            paramMode[i] = "1"
+
+    sitesMode = {}
+    for i in site_l:
+        i = i.strip()
+        if not i:
+            continue
+
+        if not i in sitesMode:
+            sitesMode[i] = "1"
+
+    if len(paramMode) == 0:
+        return mw.returnJson(False, '输入的请求类型错误!')
+    if len(sitesMode) == 0:
+        return mw.returnJson(False, '输入的站点错误!')
+
+    conf = getJsonPath('area_limit')
+    t_data = json.loads(mw.readFile(conf))
+
+    data = {"site": sitesMode, "types": args['types'], "region": paramMode}
+    if not data in t_data:
+        return mw.returnJson(False, '不存在!')
+
+    t_data.remove(data)
+    mw.writeFile(conf, json.dumps(t_data))
+
+    setConfRestartWeb()
+    return mw.returnJson(True, '删除成功!')
+
+
+def addAreaLimit():
+    args = getArgs()
+    data = checkArgs(args, ['site', 'types', 'region'])
+    if not data[0]:
+        return data[1]
+
+    type_list = ["refuse", "accept"]
+    if not args['types'] in type_list:
+        return mw.returnJson(False, '输入的类型错误!')
+
+    region_l = args['region'].split(",")
+    site_l = args['site'].split(",")
+
+    paramMode = {}
+    for i in region_l:
+        if not i:
+            continue
+        i = i.strip()
+        if not i in paramMode:
+            paramMode[i] = "1"
+
+    if '海外' in paramMode and '中国' in paramMode:
+        return mw.returnJson(False, '不允许设置【中国大陆】和【中国大陆以外地区】一同开启地区限制!')
+
+    sitesMode = {}
+    for i in site_l:
+        i = i.strip()
+        if not i:
+            continue
+
+        if not i in sitesMode:
+            sitesMode[i] = "1"
+
+    if len(paramMode) == 0:
+        return mw.returnJson(False, '输入的请求类型错误!')
+    if len(sitesMode) == 0:
+        return mw.returnJson(False, '输入的站点错误!')
+
+    conf = getJsonPath('area_limit')
+    t_data = json.loads(mw.readFile(conf))
+
+    data = {"site": sitesMode, "types": args['types'], "region": paramMode}
+    if data in t_data:
+        return mw.returnJson(False, '已存在!')
+
+    t_data.insert(0, data)
+    mw.writeFile(conf, json.dumps(t_data))
+
+    setConfRestartWeb()
+    return mw.returnJson(True, '添加成功!')
 
 
 def cleanDropIp():
@@ -1228,13 +1470,13 @@ def testRun():
     # if not data[0]:
     #     return data[1]
 
-    conf_json = getServerDir() + "/waf/default.json"
-    data = mw.readFile(conf_json)
-    pdata = json.loads(data)
-    default_site = pdata['default']
-
+    default_path = getServerDir() + "/waf/default.pl"
+    default_site = mw.readFile(default_path)
     url = "http://" + default_site + '/?t=../etc/passwd'
     returnData = mw.httpGet(url, 10)
+
+    # url = "https://" + default_site + '/?t=../etc/passwd'
+    # returnData = mw.httpGet(url, 3)
     return mw.returnJson(True, '测试运行成功!', returnData)
 
 
@@ -1311,6 +1553,8 @@ if __name__ == "__main__":
         print(getSiteConfig())
     elif func == 'get_default_site':
         print(getDefaultSite())
+    elif func == 'get_country':
+        print(getCountry())
     elif func == 'get_site_config_byname':
         print(getSiteConfigByName())
     elif func == 'add_site_cdn_header':
@@ -1329,8 +1573,14 @@ if __name__ == "__main__":
         print(getWafSrceen())
     elif func == 'waf_conf':
         print(getWafConf())
-    elif func == 'waf_site':
-        print(getWafSite())
+    elif func == 'area_limit_switch':
+        print(areaLimitSwitch())
+    elif func == 'get_area_limit':
+        print(getAreaLimit())
+    elif func == 'add_area_limit':
+        print(addAreaLimit())
+    elif func == 'del_area_limit':
+        print(delAreaLimit())
     elif func == 'clean_drop_ip':
         print(cleanDropIp())
     elif func == 'test_run':

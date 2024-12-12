@@ -35,10 +35,10 @@ local cookie_rules = require "rule_cookie"
 local url_rules = require "rule_url"
 local url_white_rules = require "rule_url_white"
 
+local waf_area_limit = require "waf_area_limit"
 
 -- local server_name = string.gsub(C:get_sn(config_domains),'_','.')
 local server_name = C:get_sn(config_domains)
-
 local function initParams()
     local data = {}
     data['server_name'] = server_name
@@ -53,10 +53,12 @@ local function initParams()
     data['user_agent'] = data['request_header']['user-agent']
     data['cookie'] = ngx.var.http_cookie
     data['time'] = ngx.time()
+
     return data
 end
 
 local params = initParams()
+-- C:D(C:to_json(params))
 C:setParams(params)
 
 local cpu_percent = ngx.shared.waf_limit:get("cpu_usage")
@@ -307,13 +309,15 @@ local function is_open_waf_cc_increase()
     end
 
     -- C:D("waf config:"..json.encode(config))
-    if cpu_percent >= config['safe_verify']['cpu'] then
-        return true
-    end
-
-    if site_config[server_name] and site_config[server_name]['safe_verify']['open'] then
-        if cpu_percent >= site_config[server_name]['safe_verify']['cpu'] then
+    if config['safe_verify']['auto'] then
+        if cpu_percent >= config['safe_verify']['cpu'] then
             return true
+        end
+
+        if site_config[server_name] and site_config[server_name]['safe_verify']['open'] then
+            if cpu_percent >= site_config[server_name]['safe_verify']['cpu'] then
+                return true
+            end
         end
     end
 
@@ -343,18 +347,47 @@ local function waf_cc_increase()
     local make_uri_str = "?token="..make_token
     local make_uri = "/"..make_uri_str
 
+    -- C:D("token:"..tostring(params['uri_request_args']['token']))
     if params['uri_request_args']['token'] then
+        ngx.header.content_type = "application/json"
         local args_token = params['uri_request_args']['token']
         if args_token == make_token then
-            ngx.shared.waf_limit:set(cache_token, 1, config['safe_verify']['time'])
+            ngx.shared.waf_limit:set(cache_token, 1, tonumber(config['safe_verify']['time']))
             local data = get_return_state(0, "ok")
             ngx.say(json.encode(data))
             ngx.exit(200)
         end
+        local data = get_return_state(0, "unset")
+        ngx.say(json.encode(data))
+        ngx.exit(200)
     end    
 
-    local cc_html = ngx.re.gsub(cc_safe_js_html, "{uri}", make_uri_str)
-    C:return_html(200, cc_html)
+    if not config['safe_verify']['mode'] then return false end
+
+    -- C:D(C:to_json(params['uri_request_args']))
+    if config['safe_verify']['mode'] == 'url' then
+        local page = 'safe_verify_'..cache_token
+        local request_uri = params['request_uri']
+        local to_url = '/?'..page..'&f='..request_uri
+
+        local cache_url_key = cache_token..':url'
+        local cache_url_val = ngx.shared.waf_limit:get(cache_url_key)
+
+        if params['uri_request_args'][page] then
+            local cc_html = ngx.re.gsub(cc_safe_js_html, "{uri}", make_uri_str)
+            return C:return_html(200, cc_html)
+        end
+
+        if not cache_url_val then
+            ngx.shared.waf_limit:set(cache_url_key, request_uri,30)
+            return ngx.redirect(to_url)
+        end
+    end
+
+    if config['safe_verify']['mode'] == 'local' then
+        local cc_html = ngx.re.gsub(cc_safe_js_html, "{uri}", make_uri_str)
+        C:return_html(200, cc_html)
+    end
 end
 
 
@@ -520,53 +553,168 @@ local function waf_cookie()
     return false
 end
 
+local geo=nil 
+local waf_country=""
 
-function waf()
+local function initmaxminddb()
+    if geo==nil then 
+        maxminddb ,geo = pcall(function() return  require 'waf_maxminddb' end)
+        if not maxminddb then
+            C:D("debug waf error on :"..tostring(geo))
+            return nil
+        end
+    end
+    if type(geo)=='number' then return nil end
+    local ok2,data=pcall(function()
+        if not geo.initted() then
+            geo.init("{$WAF_ROOT}/GeoLite2-City.mmdb")
+        end
+    end )
+    if not ok2 then
+        geo=nil
+    end
+end
+
+
+local function  get_ip_country(ip)
+    initmaxminddb()
+    if type(geo)=='number' then return "2" end
+    if geo==nil then return "2" end 
+    if geo.lookup==nil then return "2" end 
+    local res,err=geo.lookup(ip or ngx.var.remote_addr)
+    if not res then
+        return "2"
+    else
+        -- C:D("res:"..tostring(res))
+        return res
+    end
+end
+
+local function get_country()
+    local ip = params['ip']
+    local ip_local = ngx.shared.waf_limit:get("get_country"..ip)
+    if ip_local then 
+        return ip_local
+    end
+    local ip_postion=get_ip_country(ip)
+    if ip_postion=="2" then return false end 
+    if ip_postion["country"]==nil then return false end 
+    if ip_postion["country"]["names"]==nil then return false end 
+    if ip_postion["country"]["names"]["zh-CN"]==nil then return false end 
+    ngx.shared.waf_limit:set("get_country"..ip,ip_postion["country"]["names"]["zh-CN"],3600)
+    return ip_postion["country"]["names"]["zh-CN"]
+end 
+
+local function area_limit(overall_country, server_name, status)
+
+    if not status then
+        return false
+    end
+
+    if overall_country and overall_country~="" and C:count_size(waf_area_limit)>=1 then
+        for k, val in pairs(waf_area_limit) do
+            -- C:D(tostring(k)..':'..tostring(val['site']['allsite']) ..':'.. tostring(val['site']['allsite'] == '1') ..':'.. tostring(val['site']['allsite']))
+            if val['site']['allsite'] and val['site']['allsite'] == '1' and val['types'] == 'refuse' then
+                for rk, reg_val in pairs(val['region']) do
+                    if rk == overall_country then
+                        ngx.exit(403)
+                        return true
+                    end
+                end
+            end
+
+            if val['site'][server_name] and val['site'][server_name] == '1' and val['types'] == 'refuse' then
+                for rk, reg_val in pairs(val['region']) do
+                    if rk == overall_country then
+                        ngx.exit(403)
+                        return true
+                    end
+                end
+            end
+
+            if val['site']['allsite'] and val['site']['allsite'] == '1' and val['types'] == 'accept' then
+                for rk, reg_val in pairs(val['region']) do
+                    if rk == overall_country then
+                        return false
+                    end
+                end
+                ngx.exit(403)
+                return true
+            end
+
+            if val['site'][server_name] and val['site'][server_name] == '1' and val['types'] == 'accept' then
+                for rk, reg_val in pairs(val['region']) do
+                    if rk == overall_country then
+                        return false
+                    end
+                end
+                ngx.exit(403)
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function run_app_waf()
     min_route()
     -- C:D("min_route")
-    -- white ip
-    if waf_ip_white() then return true end
-    -- C:D("waf_ip_white")
-
-    -- url white
-    if waf_url_white() then return true end
-    -- C:D("waf_url_white")
-
-    -- black ip
-    if waf_ip_black() then return true end
-    -- C:D("waf_ip_black")
-
-    -- 封禁ip返回
-    if waf_drop_ip() then return true end
-    -- C:D("waf_drop_ip")
-
-    -- ua check
-    if waf_user_agent() then return true end
-    -- C:D("waf_user_agent")
-    if waf_url() then return true end
-    -- C:D("waf_url")
-
-    -- cc setting
-    if waf_cc_increase() then return true end
-    -- C:D("waf_cc_increase")
-    if waf_cc() then return true end
-    -- C:D("waf_cc")
-
-    -- cookie检查
-    if waf_cookie() then return true end
-    -- C:D("waf_cookie")
-    
-    -- args参数拦截
-    if waf_get_args() then return true end
-    -- C:D("waf_get_args")
-
-    -- 扫描软件禁止
-    if waf_scan_black() then return true end
-    -- C:D("waf_scan_black")
-    if waf_post() then return true end
-    -- C:D("waf_post")
 
     if site_config[server_name] and site_config[server_name]['open'] then
+        
+
+        -- white ip
+        if waf_ip_white() then return true end
+        -- C:D("waf_ip_white")
+
+
+        -- url white
+        if waf_url_white() then return true end
+        -- C:D("waf_url_white")
+
+        -- black ip
+        if waf_ip_black() then return true end
+        -- C:D("waf_ip_black")
+
+        -- 封禁ip返回
+        if waf_drop_ip() then return true end
+        -- C:D("waf_drop_ip")
+
+        -- country limit
+        if config['area_limit'] then
+            local waf_country = get_country()
+            if waf_country then
+                if area_limit(waf_country, server_name, site_config[server_name]['open']) then return true end
+            end
+        end
+
+        -- ua check
+        if waf_user_agent() then return true end
+        -- C:D("waf_user_agent")
+        if waf_url() then return true end
+        -- C:D("waf_url")
+
+        -- cc setting
+        if waf_cc_increase() then return true end
+        -- C:D("waf_cc_increase")
+        if waf_cc() then return true end
+        -- C:D("waf_cc")
+
+        -- cookie检查
+        if waf_cookie() then return true end
+        -- C:D("waf_cookie")
+        
+        -- args参数拦截
+        if waf_get_args() then return true end
+        -- C:D("waf_get_args")
+
+        -- 扫描软件禁止
+        if waf_scan_black() then return true end
+        -- C:D("waf_scan_black")
+        if waf_post() then return true end
+        -- C:D("waf_post")
+        --------------------------------------------------------
+        --------------------------------------------------------
         if X_Forwarded() then return true end
         -- C:D("X_Forwarded")
         if post_X_Forwarded() then return true end
@@ -575,6 +723,26 @@ function waf()
         -- C:D("url_ext")
         if post_data() then return true end 
         -- C:D("post_data")
+    end
+end
+
+
+local waf_run_status = nil
+function waf()
+    if waf_run_status then
+        run_app_waf()
+    else
+        local ok,waf_err=pcall(function()
+            run_app_waf()
+        end)
+
+        if waf_err ~= nil then
+            C:D("----waf error-----"..tostring(waf_err))
+        end
+
+        if ok then
+            waf_run_status = true
+        end
     end
 end
 

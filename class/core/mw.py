@@ -2162,6 +2162,7 @@ def getControlNotifyConfig():
 def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo):
     control_notify_pl = 'data/control_notify.pl'
 
+
     control_notify_config = getControlNotifyConfig()
     if control_notify_config['notifyStatus'] == 'open':
         # 推送需要的内容
@@ -2181,15 +2182,24 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         error_msg_arr = []
         # CPU
         if (control_notify_config['cpu'] != -1) and (cpu_percent > control_notify_config['cpu']):
-            # 获取CPU占用前5的进程
-            top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"%s %.1f%%\\n\", $11, $3}'"
-            top_processes = execShell(top_cmd)[0].strip()
-            process_list = '\n'.join(['  - ' + line for line in top_processes.split('\n') if line.strip()])
-            error_msg_arr.append('CPU负载过高[{}%]\nCPU占用TOP5进程：\n{}'.format(cpu_percent, process_list))
             
-            # 保存所有进程信息到日志文件
             now = datetime.datetime.now()
             log_file = 'logs/{}_cpu_notify_dump.log'.format(now.strftime('%Y%m%d%H%M%S'))
+
+            # 获取CPU占用前5的进程
+            top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $3, $4}'"
+            cpu_rank_content = execShell(top_cmd)[0].strip()
+            cpu_rank_header = """
+    <tr style="background-color: #f2f2f2">
+        <td>进程名称</td>
+        <td width="45px">CPU占用</td>
+        <td width="50px">内存占用</td>
+    </tr>
+"""
+            cpu_rank_html = generateCommonTableMsg(cpu_rank_header, cpu_rank_content)
+            error_msg_arr.append('<p>CPU负载过高[{}%]</p><p>CPU占用TOP5进程：\n{}</p><p style="color: #efefef; font-size: 14px;">详情查看{}</p>'.format(cpu_percent, cpu_rank_html, log_file))
+            
+            # 保存所有进程信息到日志文件
             all_processes_cmd = "ps aux --sort=-%cpu | awk '{printf \"%s\\t%.1f%%\\t%.1f%%\\t%s\\n\", $11, $3, $4, $0}'"
             all_processes = execShell(all_processes_cmd)[0]
             writeFile(log_file, '时间: {}\nCPU使用率: {}%\n\n进程名称\tCPU使用率\t内存使用率\t详细信息\n{}'.format(
@@ -2199,11 +2209,31 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             ))
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
-            # 获取内存占用前5的进程
-            mem_cmd = "ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf \"%s %.1f%%\\n\", $11, $4}'"
-            mem_processes = execShell(mem_cmd)[0].strip()
-            process_list = '\n'.join(['  - ' + line for line in mem_processes.split('\n') if line.strip()])
-            error_msg_arr.append('内存负载过高[{}%]\n内存占用TOP5进程：\n{}'.format(mem_percent, process_list))
+            now = datetime.datetime.now()
+            log_file = 'logs/{}_memory_notify_dump.log'.format(now.strftime('%Y%m%d%H%M%S'))
+            
+            # 获取内存占用前5的进程，显示完整命令行
+            mem_cmd = "ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $4, $3}'"
+            mem_rank_content = execShell(mem_cmd)[0].strip()
+            mem_rank_header = """
+    <tr style="background-color: #f2f2f2">
+        <td>进程名称</td>
+        <td width="45px">内存占用</td>
+        <td width="50px">CPU占用</td>
+    </tr>
+"""
+            mem_rank_html = generateCommonTableMsg(mem_rank_header, mem_rank_content)
+            error_msg_arr.append("<p>内存负载过高[" + str(mem_percent) + "%]</p>\n<p>内存占用TOP5进程：</p>\n" + mem_rank_html + "\n<p  style='color: #efefef; font-size: 14px;'>详情查看{}</p>".format(log_file))
+
+            # 保存所有进程信息到日志文件
+            all_processes_cmd = "ps aux --sort=-%mem | awk '{printf \"%s\\t%.1f%%\\t%.1f%%\\n\", $11, $4, $3, $0}'"
+            all_processes = execShell(all_processes_cmd)[0]
+            
+            writeFile(log_file, '时间: {}\nCPU使用率: {}%\n\n进程名称\tCPU使用率\t内存使用率\n{}'.format(
+                now.strftime('%Y-%m-%d %H:%M:%S'),
+                mem_percent,
+                all_processes
+            ))
         # 磁盘容量
         if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
             for disk in disk_list:
@@ -2257,10 +2287,59 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
 
         # 发送异常报告
         if (len(error_msg_arr) > 0):
-            notify_msg = generateCommonNotifyMessage('\n'.join(error_msg_arr) + '\n请注意!')
-            notifyMessage(title='服务器异常通知', msg=notify_msg, stype='面板监控', trigger_time=600)
+            notify_msg = generateCommonNotifyMessage('<br/>- '.join(error_msg_arr) + '<br/>请注意!')
+            notifyMessage(title='服务器异常通知', msg=notify_msg, msgtype="html", stype='面板监控', trigger_time=600)
             updateLockData(site_ssl_lock_data_key)
 
+def generateCommonTableMsg(header_list, content_list):
+    # 如果header_list是字符串数组，则转为对象数组，width设置为auto
+    for header in header_list:
+        if isinstance(header, str):
+            header = {'name': header, 'width': 'auto'}
+        else:
+            header['width'] = header.get('width', 'auto')
+
+    # 生成头部的html
+    header_html = ''
+    if isinstance(header_list, str):
+        header_html = header_list
+    else:
+        for header in header_list:
+            header_html += f'<td width="{header["width"]}">{header["name"]}</td>'
+
+    content_html = ''
+    if isinstance(content_list, str):
+        content_html = content_list
+    else:
+        # 生成内容的html
+        content_html = ''
+        for content in content_list:
+            content_html += '<tr>'
+            for header in header_list:
+                content_html += f'<td>{content[header["name"]]}</td>'
+            content_html += '</tr>'
+
+    table_style = """
+<style>
+table {
+    border: 1px solid #999;
+    border-spacing: 1px;
+    width: 100%;
+    margin: 10px 0;
+}
+table tr td {
+    padding: 5px;
+    line-height: 20px;
+}
+</style>
+"""
+    table_header = f"""
+    <tr style="background-color: #f2f2f2">
+        {header_html}
+    </tr>
+"""
+
+    return table_style + '<table style="width:100%"><tbody>' + table_header + content_html + '</tbody></table>'
 
 def getBackupPluginList():
   return [

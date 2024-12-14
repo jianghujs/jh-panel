@@ -2164,10 +2164,6 @@ def getControlNotifyConfig():
 def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo):
     control_notify_pl = 'data/control_notify.pl'
 
-    log_dir = 'logs/notify'
-    if not os.path.exists(log_dir):
-        execShell('mkdir -p ' + log_dir)
-
     control_notify_config = getControlNotifyConfig()
     if control_notify_config['notifyStatus'] == 'open':
         # 推送需要的内容
@@ -2188,9 +2184,6 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         # CPU
         if (control_notify_config['cpu'] != -1) and (cpu_percent > control_notify_config['cpu']):
             
-            now = datetime.datetime.now()
-            log_file = '{}/{}_cpu_notify_dump.log'.format(log_dir, now.strftime('%Y%m%d%H%M%S'))
-
             # 获取CPU占用前5的进程
             top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $3, $4}'"
             cpu_rank_content = execShell(top_cmd)[0].strip()
@@ -2202,22 +2195,10 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
     </tr>
 """
             cpu_rank_html = generateCommonTableMsg(cpu_rank_header, cpu_rank_content)
-            error_msg_arr.append('<p>CPU负载过高[{}%]</p><p>CPU占用TOP5进程：\n{}</p><p style="color: #efefef; font-size: 14px;">详情查看{}</p>'.format(cpu_percent, cpu_rank_html, log_file))
-            
-            # 保存所有进程信息到日志文件
-            all_processes_cmd = "ps aux --sort=-%cpu | awk '{printf \"%s\\t%.1f%%\\t%.1f%%\\t%s\\n\", $11, $3, $4, $0}'"
-            all_processes = execShell(all_processes_cmd)[0]
-            writeFile(log_file, '时间: {}\nCPU使用率: {}%\n\n进程名称\tCPU使用率\t内存使用率\t详细信息\n{}'.format(
-                now.strftime('%Y-%m-%d %H:%M:%S'),
-                cpu_percent,
-                all_processes
-            ))
+            error_msg_arr.append('<p>CPU负载过高[{}%]</p><p>CPU占用TOP5进程：\n{}</p>'.format(cpu_percent, cpu_rank_html))
             
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
-            now = datetime.datetime.now()
-            log_file = '{}/{}_memory_notify_dump.log'.format(log_dir, now.strftime('%Y%m%d%H%M%S'))
-            
             # 获取内存占用前5的进程，显示完整命令行
             mem_cmd = "ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $4, $3}'"
             mem_rank_content = execShell(mem_cmd)[0].strip()
@@ -2229,17 +2210,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
     </tr>
 """
             mem_rank_html = generateCommonTableMsg(mem_rank_header, mem_rank_content)
-            error_msg_arr.append("<p>内存负载过高[" + str(mem_percent) + "%]</p>\n<p>内存占用TOP5进程：</p>\n" + mem_rank_html + "\n<p  style='color: #efefef; font-size: 14px;'>详情查看{}</p>".format(log_file))
-
-            # 保存所有进程信息到日志文件
-            all_processes_cmd = "ps aux --sort=-%mem | awk '{printf \"%s\\t%.1f%%\\t%.1f%%\\n\", $11, $4, $3, $0}'"
-            all_processes = execShell(all_processes_cmd)[0]
-            
-            writeFile(log_file, '时间: {}\nCPU使用率: {}%\n\n进程名称\tCPU使用率\t内存使用率\n{}'.format(
-                now.strftime('%Y-%m-%d %H:%M:%S'),
-                mem_percent,
-                all_processes
-            ))
+            error_msg_arr.append("<p>内存负载过高[" + str(mem_percent) + "%]</p>\n<p>内存占用TOP5进程：</p>\n" + mem_rank_html)
             
         # 磁盘容量
         if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
@@ -2291,19 +2262,11 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             lsyncd_status_data = execShell(lsyncd_status_cmd)
             if lsyncd_status_data[0] == '':
                 error_msg_arr.append('Rsync实时同步异常')
-
         # 发送异常报告
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('<br/>- '.join(error_msg_arr) + '<br/>请注意!')
             notifyMessage(title='服务器异常通知', msg=notify_msg, msgtype="html", stype='面板监控', trigger_time=600)
             updateLockData(site_ssl_lock_data_key)
-
-        # 定时清理日志文件
-        log_save = {"saveAllDay": "3", "saveOther": "0", "saveMaxDay": "3"}
-        clear_log_data_key = '面板日志清理'
-        if (checkLockValid(clear_log_data_key, 'day_start')):
-            clean_tool.cleanPath(log_dir, log_save, "*")
-            updateLockData(clear_log_data_key)
 
 def generateCommonTableMsg(header_list, content_list):
     # 如果header_list是字符串数组，则转为对象数组，width设置为auto

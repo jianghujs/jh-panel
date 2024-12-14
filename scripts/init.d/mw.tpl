@@ -111,7 +111,7 @@ mw_stop_task()
 mw_stop_panel()
 {
     echo -e "stopping jh-panel... \c";
-    arr=`ps aux|grep 'gunicorn -c /www/server/jh-panel/setting.py app:app'|grep -v grep|awk '{print $2}'`;
+    arr=`ps aux | grep -E 'gunicorn -c /www/server/jh-panel/setting.py app:app|/www/server/jh-panel/bin/gunicorn' | grep -v grep | awk '{print $2}'`;
     for p in ${arr[@]}
     do
         kill -9 $p &>/dev/null

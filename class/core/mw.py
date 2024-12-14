@@ -31,6 +31,8 @@ import tempfile
 sys.path.append(os.getcwd() + "/class/plugin")
 from retry_tool import retry
 
+import clean_tool
+
 
 def execShell(cmdstring, cwd=None, timeout=None, shell=True, useTmpFile=False):
 
@@ -2162,6 +2164,10 @@ def getControlNotifyConfig():
 def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo):
     control_notify_pl = 'data/control_notify.pl'
 
+    log_dir = 'logs/notify'
+    log_save = {"saveAllDay": "3", "saveOther": "0", "saveMaxDay": "3"}
+    if not os.path.exists(log_dir):
+        execShell('mkdir -p ' + log_dir)
 
     control_notify_config = getControlNotifyConfig()
     if control_notify_config['notifyStatus'] == 'open':
@@ -2184,7 +2190,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         if (control_notify_config['cpu'] != -1) and (cpu_percent > control_notify_config['cpu']):
             
             now = datetime.datetime.now()
-            log_file = 'logs/{}_cpu_notify_dump.log'.format(now.strftime('%Y%m%d%H%M%S'))
+            log_file = '{}/{}_cpu_notify_dump.log'.format(log_dir, now.strftime('%Y%m%d%H%M%S'))
 
             # 获取CPU占用前5的进程
             top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $3, $4}'"
@@ -2207,10 +2213,12 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                 cpu_percent,
                 all_processes
             ))
+            
+            clean_tool.cleanPath(log_dir, log_save, "*_cpu_notify_dump.log")
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
             now = datetime.datetime.now()
-            log_file = 'logs/{}_memory_notify_dump.log'.format(now.strftime('%Y%m%d%H%M%S'))
+            log_file = '{}/{}_memory_notify_dump.log'.format(log_dir, now.strftime('%Y%m%d%H%M%S'))
             
             # 获取内存占用前5的进程，显示完整命令行
             mem_cmd = "ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $4, $3}'"
@@ -2234,6 +2242,8 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                 mem_percent,
                 all_processes
             ))
+            
+            clean_tool.cleanPath(log_dir, log_save, "*_memory_notify_dump.log")
         # 磁盘容量
         if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
             for disk in disk_list:

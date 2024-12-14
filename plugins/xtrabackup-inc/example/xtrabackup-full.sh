@@ -62,7 +62,9 @@ HISTORY_DIR="/www/backup/xtrabackup_inc_data_history"
 # 移动BACKUP_PATH到历史版本
 if [ -d "$BACKUP_PATH" ];then
     echo "正在备份历史目录..."
-    lsof $BACKUP_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
+    
+    # 清理占用路径的进程，可能会卡死，暂时注销
+    # lsof $BACKUP_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
     BACKUP_PATH_CREATE_TIME=$(cat $BACKUP_PATH/.create_time)
     mkdir -p $HISTORY_DIR
     mv $BACKUP_PATH $HISTORY_DIR/xtrabackup_inc_data_$BACKUP_PATH_CREATE_TIME
@@ -102,7 +104,9 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
     # 删除增量目录
     if [ -d "$BACKUP_INC_PATH" ];then
         echo "删除增量目录..."
-        lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
+        
+        # 清理占用路径的进程，可能会卡死，暂时注销
+        # lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
         rm -rf $BACKUP_INC_PATH
         echo "删除增量目录完成✅"
     fi

@@ -49,7 +49,10 @@ xtrabackup --prepare --apply-log-only --target-dir=$BACKUP_RESTORE_PATH &>> $LOG
 # 合并增量内容
 if [ -d "$BACKUP_INC_PATH" ];then
     TEMP_INC_PATH=/www/backup/xtrabackup_data_restore_inc
-    lsof $TEMP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
+    
+    # 清理占用路径的进程，可能会卡死，暂时注销
+    # lsof $TEMP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
+    
     rm -rf $TEMP_INC_PATH
     mkdir -p $TEMP_INC_PATH
 

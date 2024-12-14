@@ -242,7 +242,7 @@ def systemTask():
         used = count = 0
         reloadNum = 0
         network_up = network_down = diskio_1 = diskio_2 = networkInfo = cpuInfo = diskInfo = None
-
+        now = time.time()
         while True:
             if not os.path.exists(filename):
                 time.sleep(10)
@@ -323,10 +323,12 @@ def systemTask():
             # 报告
             mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo)
             
-            # print diskInfo
+            # 打印格式化为yyyymmddhhmmss后的当前时间和count
+            print(time.strftime('%Y%m%d%H%M%S', time.localtime()), count)
             if count >= 12:
+                print(f'{now} start write db')
                 try:
-                    addtime = int(time.time())
+                    addtime = int(now)
                     deltime = addtime - (day * 86400)
 
                     data = (cpuInfo['used'], cpuInfo['mem'], addtime)

@@ -2165,7 +2165,6 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
     control_notify_pl = 'data/control_notify.pl'
 
     log_dir = 'logs/notify'
-    log_save = {"saveAllDay": "3", "saveOther": "0", "saveMaxDay": "3"}
     if not os.path.exists(log_dir):
         execShell('mkdir -p ' + log_dir)
 
@@ -2214,7 +2213,6 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                 all_processes
             ))
             
-            clean_tool.cleanPath(log_dir, log_save, "*_cpu_notify_dump.log")
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
             now = datetime.datetime.now()
@@ -2243,7 +2241,6 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                 all_processes
             ))
             
-            clean_tool.cleanPath(log_dir, log_save, "*_memory_notify_dump.log")
         # 磁盘容量
         if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
             for disk in disk_list:
@@ -2300,6 +2297,13 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             notify_msg = generateCommonNotifyMessage('<br/>- '.join(error_msg_arr) + '<br/>请注意!')
             notifyMessage(title='服务器异常通知', msg=notify_msg, msgtype="html", stype='面板监控', trigger_time=600)
             updateLockData(site_ssl_lock_data_key)
+
+        # 定时清理日志文件
+        log_save = {"saveAllDay": "3", "saveOther": "0", "saveMaxDay": "3"}
+        clear_log_data_key = '面板日志清理'
+        if (checkLockValid(clear_log_data_key, 'day_start')):
+            clean_tool.cleanPath(log_dir, log_save, "*")
+            updateLockData(clear_log_data_key)
 
 def generateCommonTableMsg(header_list, content_list):
     # 如果header_list是字符串数组，则转为对象数组，width设置为auto

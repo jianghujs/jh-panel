@@ -165,26 +165,43 @@ def runTask():
             taskArr = sql.table('tasks').where("status=?", ('0',)).field(
                 'id,type,execstr').order("id asc").select()
             for value in taskArr:
-                start = int(time.time())
-                if not sql.table('tasks').where("id=?", (value['id'],)).count():
+                try:
+                    start = int(time.time())
+                    # 再次检查任务是否存在
+                    if not sql.table('tasks').where("id=?", (value['id'],)).count():
+                        continue
+                    
+                    sql.table('tasks').where("id=?", (value['id'],)).save(
+                        'status,start', ('-1', start))
+                    
+                    # 执行具体任务
+                    if value['type'] == 'download':
+                        argv = value['execstr'].split('|mw|')
+                        downloadFile(argv[0], argv[1])
+                    elif value['type'] == 'execshell':
+                        execStatus = execShell(value['execstr'])
+                    
+                    # 任务完成后再次检查任务是否存在
+                    if sql.table('tasks').where("id=?", (value['id'],)).count():
+                        end = int(time.time())
+                        sql.table('tasks').where("id=?", (value['id'],)).save(
+                            'status,end', ('1', end))
+                except Exception as e:
+                    print("Task execution error: " + str(e))
+                    # 如果任务仍然存在，将其标记为失败
+                    if sql.table('tasks').where("id=?", (value['id'],)).count():
+                        sql.table('tasks').where("id=?", (value['id'],)).save(
+                            'status,end,execstr', ('1', int(time.time()), 'ERROR: ' + str(e)))
                     continue
-                sql.table('tasks').where("id=?", (value['id'],)).save(
-                    'status,start', ('-1', start))
-                if value['type'] == 'download':
-                    argv = value['execstr'].split('|mw|')
-                    downloadFile(argv[0], argv[1])
-                elif value['type'] == 'execshell':
-                    execStatus = execShell(value['execstr'])
-                end = int(time.time())
-                sql.table('tasks').where("id=?", (value['id'],)).save(
-                    'status,end', ('1', end))
 
-                if(sql.table('tasks').where("status=?", ('0')).count() < 1):
-                    os.system('rm -f ' + isTask)
+            # 检查是否还有待执行的任务
+            if(sql.table('tasks').where("status=?", ('0')).count() < 1):
+                if os.path.exists(isTask):
+                    os.remove(isTask)
 
             sql.close()
     except Exception as e:
-        print(str(e))
+        print("Task manager error: " + str(e))
 
     # 站点过期检查
     siteEdate()

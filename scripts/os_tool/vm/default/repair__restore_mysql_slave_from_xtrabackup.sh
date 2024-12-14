@@ -49,7 +49,7 @@ EOF
   )
 
   # 在目标服务器执行xtrabackup备份
-  ssh -p $remote_port root@$remote_ip "echo '$xtrabackup_script' > /tmp/xtrabackup.sh && chmod +x /tmp/xtrabackup.sh && /tmp/xtrabackup.sh"
+  ssh -p $remote_port root@$remote_ip "echo '$xtrabackup_script' > /tmp/xtrabackup.sh && chmod +x /tmp/xtrabackup.sh && /tmp/xtrabackup.sh > /tmp/xtrabackup.log 2>&1"
   if [ $? -ne 0 ]; then
     show_error "错误:主服务器执行xtrabackup备份失败"
     exit 1

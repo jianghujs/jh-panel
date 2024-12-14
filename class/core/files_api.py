@@ -827,24 +827,47 @@ class files_api:
             return mw.returnJson(False, '文件解压失败!')
 
     def delete(self, path):
-
+        path = os.path.abspath(os.path.realpath(path))
         if not os.path.exists(path):
             return mw.returnJson(False, '指定文件不存在!')
 
         # 检查是否为.user.ini
-        if path.find('.user.ini') >= 0:
+        if '.user.ini' in path:
             mw.execShell("which chattr && chattr -i '" + path + "'")
 
+        # 检查路径安全性
+        if not self.checkDir(path):
+            return mw.returnJson(False, '该文件或目录不能被删除!')
+
         try:
+            # Check if recycle bin is enabled
             if os.path.exists('data/recycle_bin.pl'):
                 if self.mvRecycleBin(path):
                     return mw.returnJson(True, '已将文件移动到回收站!')
-            os.remove(path)
-            mw.writeLog('文件管理', mw.getInfo(
-                '删除文件[{1}]成功!', (path)))
-            return mw.returnJson(True, '删除文件成功!')
-        except:
-            return mw.returnJson(False, '删除文件失败!')
+
+            # Escape special characters in path
+            escaped_path = path.replace("'", "'\\''").replace(";", "\\;").replace("&", "\\&")
+            
+            # Prepare deletion command based on path type
+            if os.path.isdir(path):
+                cmd = f"nohup nice -n 19 rm -rf '{escaped_path}' > /dev/null 2>&1 & echo $!"
+            else:
+                cmd = f"nohup nice -n 19 rm -f '{escaped_path}' > /dev/null 2>&1 & echo $!"
+            
+            # Execute deletion command
+            result = mw.execShell(cmd)
+            
+            # Log the operation
+            log_msg = f"已执行删除[{path}]务"
+            if result[0].strip():
+                log_msg += f" [PID: {result[0].strip()}]"
+            mw.writeLog('文件管理', log_msg)
+            
+            return mw.returnJson(True, '删除任务已执行!')
+        except Exception as e:
+            error_msg = str(e)
+            mw.writeLog('文件管理', f"删除文件[{path}]失败: {error_msg}")
+            return mw.returnJson(False, f'删除文件失败: {error_msg}')
 
     def getAccess(self, filename):
         data = {}

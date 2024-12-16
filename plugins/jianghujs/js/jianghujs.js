@@ -618,7 +618,7 @@ function projectStartBatch() {
     projectScriptExcute('start', checkedIds.join(','))
 }
 
-function projectStartBatch() {
+function projectRestartBatch() {
     var list = $('.plugin-table-body input[type="checkbox"].check:checked');
     checkedIds = list.toArray().map(o => o.value)
     projectScriptExcute('restart', checkedIds.join(','))

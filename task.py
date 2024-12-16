@@ -158,59 +158,47 @@ def writeLogs(logMsg):
 def runTask():
     global isTask
     try:
-        if not os.path.exists(isTask):
-            return
-
-        sql = db.Sql()
-        try:
-            # 重置所有未完成的任务状态
-            sql.table('tasks').where("status=?", ('-1',)).setField('status', '0')
-            
-            while True:
-                # 检查是否还有任务文件
-                if not os.path.exists(isTask):
-                    break
-
-                # 获取待执行的任务
-                taskArr = sql.table('tasks').where("status=?", ('0',)).field(
-                    'id,type,execstr').order("id asc").select()
-                
-                if not taskArr:
-                    # 如果没有待执行的任务，删除任务标记文件并退出
-                    if os.path.exists(isTask):
-                        os.remove(isTask)
-                    break
-
-                for task in taskArr:
-                    # 再次检查任务是否存在（可能已被删除）
-                    if not sql.table('tasks').where("id=?", (task['id'],)).count():
-                        continue
-
-                    # 更新任务开始状态和时间
+        if os.path.exists(isTask):
+            sql = db.Sql()
+            sql.table('tasks').where(
+                "status=?", ('-1',)).setField('status', '0')
+            taskArr = sql.table('tasks').where("status=?", ('0',)).field(
+                'id,type,execstr').order("id asc").select()
+            for value in taskArr:
+                try:
                     start = int(time.time())
-                    sql.table('tasks').where("id=?", (task['id'],)).save(
+                    # 再次检查任务是否存在
+                    if not sql.table('tasks').where("id=?", (value['id'],)).count():
+                        continue
+                    
+                    sql.table('tasks').where("id=?", (value['id'],)).save(
                         'status,start', ('-1', start))
+                    
+                    # 执行具体任务
+                    if value['type'] == 'download':
+                        argv = value['execstr'].split('|mw|')
+                        downloadFile(argv[0], argv[1])
+                    elif value['type'] == 'execshell':
+                        execStatus = execShell(value['execstr'])
+                    
+                    # 任务完成后再次检查任务是否存在
+                    if sql.table('tasks').where("id=?", (value['id'],)).count():
+                        end = int(time.time())
+                        sql.table('tasks').where("id=?", (value['id'],)).save(
+                            'status,end', ('1', end))
+                except Exception as e:
+                    print("Task execution error: " + str(e))
+                    # 如果任务仍然存在，将其标记为失败
+                    if sql.table('tasks').where("id=?", (value['id'],)).count():
+                        sql.table('tasks').where("id=?", (value['id'],)).save(
+                            'status,end,execstr', ('1', int(time.time()), 'ERROR: ' + str(e)))
+                    continue
 
-                    try:
-                        # 执行具体任务
-                        if task['type'] == 'download':
-                            argv = task['execstr'].split('|mw|')
-                            downloadFile(argv[0], argv[1])
-                        elif task['type'] == 'execshell':
-                            execStatus = execShell(task['execstr'])
+            # 检查是否还有待执行的任务
+            if(sql.table('tasks').where("status=?", ('0')).count() < 1):
+                if os.path.exists(isTask):
+                    os.remove(isTask)
 
-                        # 任务完成后再次检查任务是否存在
-                        if sql.table('tasks').where("id=?", (task['id'],)).count():
-                            end = int(time.time())
-                            sql.table('tasks').where("id=?", (task['id'],)).save(
-                                'status,end', ('1', end))
-                    except Exception as e:
-                        print("Task execution error: " + str(e))
-                        # 如果任务仍然存在，将其标记为失败
-                        if sql.table('tasks').where("id=?", (task['id'],)).count():
-                            sql.table('tasks').where("id=?", (task['id'],)).save(
-                                'status,end,execstr', ('1', int(time.time()), 'ERROR: ' + str(e)))
-        finally:
             sql.close()
     except Exception as e:
         print("Task manager error: " + str(e))

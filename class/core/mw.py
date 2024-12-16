@@ -788,6 +788,40 @@ def deDoubleCrypt(key, strings):
         writeFileLog(getTracebackInfo())
         return strings
 
+# 检查敏感目录
+def checkDir(path):
+    # path = str(path, encoding='utf-8')
+    path = path.replace('//', '/')
+    if path[-1:] == '/':
+        path = path[:-1]
+
+    nDirs = ('',
+                '/',
+                '/*',
+                '/www',
+                '/root',
+                '/boot',
+                '/bin',
+                '/etc',
+                '/home',
+                '/dev',
+                '/sbin',
+                '/var',
+                '/usr',
+                '/tmp',
+                '/sys',
+                '/proc',
+                '/media',
+                '/mnt',
+                '/opt',
+                '/lib',
+                '/srv',
+                '/selinux',
+                '/www/server',
+                getRootDir())
+
+    return not path in nDirs
+
 
 def aesEncrypt(data, key='ABCDEFGHIJKLMNOP', vi='0102030405060708'):
     # aes加密

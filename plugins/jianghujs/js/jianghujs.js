@@ -21,7 +21,7 @@ function refreshTable() {
                 <button class="btn btn-success btn-sm va0" onclick="openDeployItem();">部署项目</button>\
                 <button class="btn btn-default btn-sm va0" onclick="openCreateItem();">导入项目</button>\
                 <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectStartBatch();">批量启动</button>\
-                <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectRestartBatch();">批量重启</button>\
+                <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectReloadBatch();">批量重启</button>\
                 <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectStopBatch();">批量停止</button>\
                 <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectEnableStartBatch();">批量开启自启</button>\
                 <button class="btn btn-default btn-sm va0" batch="false" style="display: none;" onclick="projectDisableStartBatch();">批量取消自启</button>\
@@ -618,10 +618,10 @@ function projectStartBatch() {
     projectScriptExcute('start', checkedIds.join(','))
 }
 
-function projectRestartBatch() {
+function projectReloadBatch() {
     var list = $('.plugin-table-body input[type="checkbox"].check:checked');
     checkedIds = list.toArray().map(o => o.value)
-    projectScriptExcute('restart', checkedIds.join(','))
+    projectScriptExcute('reload', checkedIds.join(','))
 }
 
 function projectStopBatch() {

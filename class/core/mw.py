@@ -2219,7 +2219,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         if (control_notify_config['cpu'] != -1) and (cpu_percent > control_notify_config['cpu']):
             
             # 获取CPU占用前5的进程
-            top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $3, $4}'"
+            top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"<tr><td>%s %s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $14, $3, $4}'"
             cpu_rank_content = execShell(top_cmd)[0].strip()
             cpu_rank_header = """
     <tr style="background-color: #f2f2f2">
@@ -2234,7 +2234,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
             # 获取内存占用前5的进程，显示完整命令行
-            mem_cmd = "ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf \"<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $4, $3}'"
+            mem_cmd = "ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf \"<tr><td>%s %s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $14, $4, $3}'"
             mem_rank_content = execShell(mem_cmd)[0].strip()
             mem_rank_header = """
     <tr style="background-color: #f2f2f2">

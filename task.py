@@ -259,8 +259,10 @@ def systemTask():
         used = count = 0
         reloadNum = 0
         network_up = network_down = diskio_1 = diskio_2 = networkInfo = cpuInfo = diskInfo = None
-        now = time.time()
+        
         while True:
+            now = time.time()
+               
             if not os.path.exists(filename):
                 time.sleep(10)
                 continue

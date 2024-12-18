@@ -262,7 +262,8 @@ def systemTask():
         
         while True:
             now = time.time()
-               
+            now_formated = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
+
             if not os.path.exists(filename):
                 time.sleep(10)
                 continue
@@ -343,9 +344,9 @@ def systemTask():
             mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo)
             
             # 打印格式化为yyyymmddhhmmss后的当前时间和count
-            print(time.strftime('%Y%m%d%H%M%S', time.localtime()), count)
+            print('time:', now_formated, ' count:', count)
             if count >= 12:
-                print(f'{now} start write db')
+                print(f'{now_formated} start write db')
                 try:
                     addtime = int(now)
                     deltime = addtime - (day * 86400)
@@ -353,6 +354,7 @@ def systemTask():
                     data = (cpuInfo['used'], cpuInfo['mem'], addtime)
                     sql.table('cpuio').add('pro,mem,addtime', data)
                     sql.table('cpuio').where("addtime<?", (deltime,)).delete()
+                    print('| save cpuio (%s) done!' % (cpuInfo['used']))
 
                     data = (networkInfo['up'] / 5, networkInfo['down'] / 5, networkInfo['upTotal'], networkInfo[
                         'downTotal'], networkInfo['downPackets'], networkInfo['upPackets'], addtime)
@@ -360,6 +362,8 @@ def systemTask():
                         'up,down,total_up,total_down,down_packets,up_packets,addtime', data)
                     sql.table('network').where(
                         "addtime<?", (deltime,)).delete()
+                    print('| save network (up:%s down:%s) done!' % (networkInfo['up'], networkInfo['down']))
+
                     # if os.path.exists('/proc/diskstats'):
                     data = (diskInfo['read_count'], diskInfo['write_count'], diskInfo['read_bytes'], diskInfo[
                         'write_bytes'], diskInfo['read_time'], diskInfo['write_time'], addtime)
@@ -367,6 +371,7 @@ def systemTask():
                         'read_count,write_count,read_bytes,write_bytes,read_time,write_time,addtime', data)
                     sql.table('diskio').where(
                         "addtime<?", (deltime,)).delete()
+                    print('| save diskio (read_bytes:%s write_bytes:%s) done!' % (diskInfo['read_bytes'], diskInfo['write_bytes']))
                    
                     # LoadAverage
                     load_average = sm.getLoadAverage()
@@ -376,6 +381,7 @@ def systemTask():
                         lpro = 100
                     sql.table('load_average').add('pro,one,five,fifteen,addtime', (lpro, load_average[
                         'one'], load_average['five'], load_average['fifteen'], addtime))
+                    print('| save load_average (%s) done!' % (lpro))
 
                     # Database
                     mysql_write_lock_data_key = 'MySQL信息写入面板数据库任务'
@@ -399,6 +405,7 @@ def systemTask():
                     diskInfo = None
                     count = 0
                     reloadNum += 1
+                    print("| write db done!")
                     if reloadNum > 1440:
                         reloadNum = 0
                         mw.writeFile('logs/sys_interrupt.pl',

@@ -147,7 +147,7 @@ class reportTools:
             })
 
         # 最后监控时间
-        lastMonitorRecord = mw.M('cpuio').dbfile('system').field('id,pro,mem,addtime').order('id desc').limit("0,1").select()
+        lastMonitorRecord = mw.M('cpuio').dbfile('system').field('id,pro,mem,addtime').order('addtime desc').limit("0,1").select()
         lastMonitorTimestamp = lastMonitorRecord[0]['addtime'] if len(lastMonitorRecord) > 0 else None
         sysinfo_tips.append({
             "name": "最后监控时间",

@@ -100,6 +100,8 @@ else
 fi
 
 if [ $? -eq 0 ] && [ -d "$BACKUP_BASE_PATH/mysql" ];then
+    # 配置权限
+    chmod 644 $BACKUP_BASE_PATH/xtrabackup_checkpoints
 
     # 删除增量目录
     if [ -d "$BACKUP_INC_PATH" ];then

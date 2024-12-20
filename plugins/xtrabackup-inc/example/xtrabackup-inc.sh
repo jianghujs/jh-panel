@@ -50,8 +50,9 @@ ulimit -n 65535
 # 备份增量版本
 # 清理占用路径的进程，可能会卡死，暂时注销
 # lsof $BACKUP_INC_PATH | awk 'NR>1 {print $2}' | xargs -r kill -9
-mv $BACKUP_INC_PATH $BACKUP_PATH/inc_$timestamp
-
+if [ -d $BACKUP_PATH/inc ];then
+    mv $BACKUP_INC_PATH $BACKUP_PATH/inc_$timestamp
+fi
 mkdir -p $BACKUP_INC_PATH
 LOG_DIR="/www/server/xtrabackup-inc/logs"
 if [ ! -d "$LOG_DIR" ];then
@@ -88,4 +89,8 @@ fi
 # 解锁
 rm -f $LOCK_FILE_PATH
 
+# 删除历史备份
+export SAVE_ALL_DAY=${SAVE_ALL_DAY:-3}
+export SAVE_OTHER=${SAVE_OTHER:-0}
+export SAVE_MAX_DAY=${SAVE_MAX_DAY:-3}
 python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR "{\"saveAllDay\": \"$SAVE_ALL_DAY\", \"saveOther\": \"$SAVE_OTHER\", \"saveMaxDay\": \"$SAVE_MAX_DAY\"}" "backup_*.log"

@@ -88,4 +88,4 @@ fi
 # 解锁
 rm -f $LOCK_FILE_PATH
 
-python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR/
+python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR "{\"saveAllDay\": \"$SAVE_ALL_DAY\", \"saveOther\": \"$SAVE_OTHER\", \"saveMaxDay\": \"$SAVE_MAX_DAY\"}" "backup_*.log"

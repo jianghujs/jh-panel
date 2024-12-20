@@ -126,10 +126,11 @@ fi
 # 解锁
 rm -f $LOCK_FILE_PATH
 
-python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR/
 
 # 删除历史备份
 export SAVE_ALL_DAY=${SAVE_ALL_DAY:-3}
 export SAVE_OTHER=${SAVE_OTHER:-0}
 export SAVE_MAX_DAY=${SAVE_MAX_DAY:-3}
+
+python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR "{\"saveAllDay\": \"$SAVE_ALL_DAY\", \"saveOther\": \"$SAVE_OTHER\", \"saveMaxDay\": \"$SAVE_MAX_DAY\"}" "backup_*.log"
 python3 /www/server/jh-panel/scripts/clean.py $HISTORY_DIR  "{\"saveAllDay\": \"$SAVE_ALL_DAY\", \"saveOther\": \"$SAVE_OTHER\", \"saveMaxDay\": \"$SAVE_MAX_DAY\"}" "xtrabackup_inc_data_*" --dir --date-pattern '.*_(\d{8})_.*$'

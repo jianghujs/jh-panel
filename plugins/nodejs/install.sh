@@ -71,6 +71,7 @@ Uninstall_nodejs()
 	sed -i '/#fnm env/d' $bashrcFile
 	sed -i '/#fnm env/d' $profileFile
 	rm -rf $installPath
+	rm -rf /run/user/0/fnm_multishells
 	source $bashrcFile
 	echo "卸载完成" > $install_tmp
 }

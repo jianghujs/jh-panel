@@ -1,6 +1,16 @@
 #!/bin/bash
 
 
+# 在23:00到次日01:00之间不执行，防止与增量备份冲突
+current_hour=$(date +"%H")
+current_time=$(date +"%Y-%m-%d %H:%M:%S")
+echo "当前时间是：$current_time"
+if [ "$current_hour" -ge 23 ] || [ "$current_hour" -lt 1 ]; then
+  echo "当前时间在23:00到次日01:00之间，程序退出。"
+  exit 0
+fi
+
+
 export BACKUP_PATH=${BACKUP_PATH:-/www/backup/xtrabackup_inc_data}
 export BACKUP_BASE_PATH=${BACKUP_BASE_PATH:-/www/backup/xtrabackup_inc_data/base}
 export BACKUP_INC_PATH=${BACKUP_INC_PATH:-/www/backup/xtrabackup_inc_data/inc}

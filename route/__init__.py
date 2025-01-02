@@ -526,6 +526,13 @@ def index(reqClass=None, reqAction=None, reqData=None):
 
     return publicObject(newInstance, reqAction)
 
+
+@app.route('/pub/<reqAction>', methods=['POST', 'GET'])
+def get_pub_key(reqClass=None, reqAction=None, reqData=None):
+    eval_str = "__import__('pub_api').pub_api()"
+    newInstance = eval(eval_str)
+    return publicObject(newInstance, reqAction)
+
 ##################### ssh  start ###########################
 session_ssh_dict = {}
 from gevent import monkey

@@ -500,6 +500,11 @@ def index(reqClass=None, reqAction=None, reqData=None):
 
             return render_template('login.html', data=data)
 
+        # 站点登录页
+        if reqClass == 'site_login':
+            return render_template('site_login.html', data=data)
+            
+
         if ainfo[0]:
             return admin_safe_path(ainfo[1], reqClass, data, pageFile)
 

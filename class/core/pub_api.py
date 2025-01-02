@@ -25,8 +25,7 @@ class pub_api:
         site_id = '1'
 
         login_cache_count = 5
-        # login_cache_limit = mw.cache.get('site_login_cache_limit')
-        login_cache_limit = None
+        login_cache_limit = session.get('site_login_cache_limit_' + site_id, 0)
 
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -45,7 +44,6 @@ class pub_api:
                 # mw.cache.set('site_login_cache_limit', login_cache_limit, timeout=10000)
                 code_msg = mw.getInfo("验证码错误,您还可以尝试[{1}]次!", (str(
                     login_cache_count - login_cache_limit)))
-                mw.writeLog('站点用户登录', code_msg)
                 return mw.returnJson(False, code_msg)
 
         # 假设站点用户信息以类似的方式存储
@@ -66,12 +64,11 @@ class pub_api:
 
             if login_cache_limit >= login_cache_count:
                 return mw.returnJson(False, '登录尝试过多，已暂时锁定!')
-
-            # mw.cache.set('site_login_cache_limit', login_cache_limit, timeout=10000)
-            mw.writeLog('站点用户登录', mw.getInfo(msg))
+            
+            session['site_login_cache_limit_' + site_id] = login_cache_limit
             return mw.returnJson(False, mw.getInfo("用户名或密码错误,您还可以尝试[{1}]次!", (str(login_cache_count - login_cache_limit))))
 
-        # mw.cache.delete('site_login_cache_limit')
+        session['site_login_cache_limit_' + site_id] = None
         session['site_login_' + site_id] = True
         session['site_username_' + site_id] = username
         session['site_id_' + site_id] = site_id

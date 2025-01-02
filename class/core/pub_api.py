@@ -33,7 +33,6 @@ class pub_api:
         code = request.form.get('code', '').strip()
 
         if 'code' in session:
-            print("code", session['code'], mw.md5(code))
             if session['code'] != mw.md5(code.lower()):
                 if login_cache_limit is None:
                     login_cache_limit = 1
@@ -58,8 +57,6 @@ class pub_api:
         user_match = next((user for user in auth_users if user['username'] == username and user['password'] == mw.md5(password)), None)
 
         if not user_match:
-            print("username", username)
-            print("remote_addr", request.remote_addr)
             msg = "<a style='color: red'>密码错误</a>,帐号:{0},登录IP:{1}".format(username, request.remote_addr)
 
             if login_cache_limit is None:
@@ -86,7 +83,6 @@ class pub_api:
         site_id = '1'
         site_login_key = 'site_login_' + site_id
 
-        print("session_site_login   ", session)
         if site_login_key in session and session[site_login_key]:
-            return "true"
-        return "false"
+            return ("success", 200)
+        return ("error", 401)

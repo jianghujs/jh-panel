@@ -1,16 +1,5 @@
 #!/bin/bash
 
-
-# 在23:00到次日01:00之间不执行，防止与增量备份冲突
-current_hour=$(date +"%H")
-current_time=$(date +"%Y-%m-%d %H:%M:%S")
-echo "当前时间是：$current_time"
-if [ "$current_hour" -ge 23 ] || [ "$current_hour" -lt 1 ]; then
-  echo "当前时间在23:00到次日01:00之间，程序退出。"
-  exit 0
-fi
-
-
 export BACKUP_PATH=${BACKUP_PATH:-/www/backup/xtrabackup_inc_data}
 export BACKUP_BASE_PATH=${BACKUP_BASE_PATH:-/www/backup/xtrabackup_inc_data/base}
 export BACKUP_INC_PATH=${BACKUP_INC_PATH:-/www/backup/xtrabackup_inc_data/inc}
@@ -19,6 +8,26 @@ export BACKUP_ZIP=${BACKUP_ZIP:-0}
 export LOCK_FILE_PATH=${LOCK_FILE_PATH:-/www/server/xtrabackup-inc/inc_task_lock}
 export MYSQL_NAME=${MYSQL_NAME:-mysql-apt}
 export MYSQL_DIR=${MYSQL_DIR:-/www/server/mysql-apt}
+
+
+timestamp=$(date +%Y%m%d_%H%M%S)
+# 临时设置系统的打开文件数量上限
+ulimit -n 65535
+
+LOG_DIR="/www/server/xtrabackup-inc/logs"
+if [ ! -d "$LOG_DIR" ];then
+    mkdir -p $LOG_DIR
+fi
+LOG_FILE="$LOG_DIR/backup_inc_$timestamp.log"
+
+# 在23:00到次日01:00之间不执行，防止与增量备份冲突
+current_hour=$(date +"%H")
+current_time=$(date +"%Y-%m-%d %H:%M:%S")
+echo "当前时间是：$current_time" | tee -a $LOG_FILE
+if [ "$current_hour" -ge 23 ] || [ "$current_hour" -lt 1 ]; then
+  echo "当前时间在23:00到次日01:00之间，程序退出。" | tee -a $LOG_FILE
+  exit 0
+fi
 
 # 检查/usr/bin/jq是否存在
 if ! [ -x "/usr/bin/jq" ]; then
@@ -52,9 +61,6 @@ sleep 1
 # 加锁
 echo $(date +%s) > $LOCK_FILE_PATH
 
-timestamp=$(date +%Y%m%d_%H%M%S)
-# 临时设置系统的打开文件数量上限
-ulimit -n 65535
 # BACKUP_PATH 是在 控制面板 -> Xtrabackup -> mysql备份目录 设置的目录，不要在此文件修改
 
 # 备份增量版本
@@ -64,10 +70,6 @@ if [ -d $BACKUP_PATH/inc ];then
     mv $BACKUP_INC_PATH $BACKUP_PATH/inc_$timestamp
 fi
 mkdir -p $BACKUP_INC_PATH
-LOG_DIR="/www/server/xtrabackup-inc/logs"
-if [ ! -d "$LOG_DIR" ];then
-    mkdir -p $LOG_DIR
-fi
 
 pushd /www/server/jh-panel > /dev/null  
 backup_config=$(python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py conf)
@@ -76,9 +78,9 @@ BACKUP_COMPRESS=$(echo "$backup_config" | jq -r '.backup_inc.backup_compress')
 BACKUP_ZIP=$(echo "$backup_config" | jq -r '.backup_inc.backup_zip')
 
 if [ $BACKUP_COMPRESS -eq 1 ];then
-    xtrabackup --backup --slave-info --gtid-info --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_INC_PATH --incremental-basedir=$BACKUP_BASE_PATH  2>&1 | tee -a $LOG_DIR/backup_inc_$timestamp.log
+    xtrabackup --backup --slave-info --gtid-info --compress --compress-threads=4 --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_INC_PATH --incremental-basedir=$BACKUP_BASE_PATH  2>&1 | tee -a $LOG_FILE
 else
-    xtrabackup --backup --slave-info --gtid-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_INC_PATH --incremental-basedir=$BACKUP_BASE_PATH  2>&1 | tee -a $LOG_DIR/backup_inc_$timestamp.log
+    xtrabackup --backup --slave-info --gtid-info --user=root  --port=33067 --password=123456 --target-dir=$BACKUP_INC_PATH --incremental-basedir=$BACKUP_BASE_PATH  2>&1 | tee -a $LOG_FILE
 fi
 
 if [ $? -eq 0 ] && [ -f "$BACKUP_INC_PATH/xtrabackup_info" ];then

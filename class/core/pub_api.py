@@ -81,7 +81,7 @@ class pub_api:
         site_domain = request.host.replace('.', '_')
         site_login_key = 'site_login__' + site_domain
 
-        print("当前session", session)
+        # print("当前session", session)
 
         if site_login_key in session and session[site_login_key]:
             return ("success", 200)

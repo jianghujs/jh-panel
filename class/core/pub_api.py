@@ -39,10 +39,13 @@ class pub_api:
                 else:
                     login_cache_limit = int(login_cache_limit) + 1
 
-                if login_cache_limit >= login_cache_count:
+                login_cache_limit_timeout = session.get('site_login_cache_limit_timeout__' + site_domain, 0)
+                if login_cache_limit >= login_cache_count and login_cache_limit_timeout > int(time.time()):
                     return mw.returnJson(False, '登录尝试过多，已暂时锁定!')
-
+                
                 # mw.cache.set('site_login_cache_limit', login_cache_limit, timeout=10000)
+                session['site_login_cache_limit__' + site_domain] = login_cache_limit
+                session['site_login_cache_limit_timeout__' + site_domain] = int(time.time()) + 10000
                 code_msg = mw.getInfo("验证码错误,您还可以尝试[{1}]次!", (str(
                     login_cache_count - login_cache_limit)))
                 return mw.returnJson(False, code_msg)
@@ -70,6 +73,7 @@ class pub_api:
             return mw.returnJson(False, mw.getInfo("用户名或密码错误,您还可以尝试[{1}]次!", (str(login_cache_count - login_cache_limit))))
 
         session['site_login_cache_limit__' + site_domain] = None
+        session['site_login_cache_limit_timeout__' + site_domain] = None
         session['site_login__' + site_domain] = True
         session['site_username__' + site_domain] = username
         session['site_id__' + site_domain] = site_domain

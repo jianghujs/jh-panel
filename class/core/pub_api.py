@@ -54,6 +54,7 @@ class pub_api:
         site_info = mw.M('sites').where("name=?", (site_name,)).field('auth_users').find()
         # print("site_info", site_info)
         auth_users = json.loads(site_info['auth_users']) if site_info['auth_users'] else []
+        # auth_users = [{"username": "admin", "password": "a41d89cecd11b2586c65ae1c6edb2145"}]
 
         user_match = next((user for user in auth_users if user['username'] == username and user['password'] == mw.md5(password)), None)
 

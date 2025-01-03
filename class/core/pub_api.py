@@ -23,7 +23,6 @@ class pub_api:
 
     def doSiteLoginApi(self):
         site_domain = request.host.replace('.', '_')
-        print("site_domain", site_domain)
 
         login_cache_count = 5
         login_cache_limit = session.get('site_login_cache_limit__' + site_domain, 0)

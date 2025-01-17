@@ -58,16 +58,16 @@ case $choice in
     download_and_run_node backup__import_mysql_database_all.js
     ;;
 3)
-    download_and_run_bash backup__dump_mysql_database_mydumper.sh
+    download_and_run backup__dump_mysql_database_mydumper.sh
     ;;
 4)
-    download_and_run_bash backup__import_mysql_database_myloader.sh
+    download_and_run backup__import_mysql_database_myloader.sh
     ;;
 5)
-    download_and_run_bash backup__restore_site_setting.sh
+    download_and_run backup__restore_site_setting.sh
     ;;
 6)
-    download_and_run_bash backup__restore_plugin_setting.sh
+    download_and_run backup__restore_plugin_setting.sh
     ;;
 esac
 

@@ -49,9 +49,12 @@ prompt "确认生成吗？（默认y）[y/n]: " choice "y"
 
 if [ $choice == "y" ]; then
   pushd /www/server/jh-panel > /dev/null
-  # 清空文件并添加依赖
-  echo "source /www/server/jh-panel/scripts/util/msg.sh" | tee $tmp_prepare_script_file $tmp_online_script_file $tmp_merge_file $script_file > /dev/null
-  echo "source /www/server/jh-panel/scripts/os_tool/tools.sh" | tee $tmp_prepare_script_file $tmp_online_script_file $tmp_merge_file $script_file > /dev/null
+  # 清空文件
+  echo "" > $tmp_prepare_script_file
+  echo "" > $tmp_online_script_file
+  echo "" > $tmp_merge_file
+  echo "" > $script_file
+
 
   # 添加失败步骤相关
   echo "FAILED_STEPS=()  # 用于记录失败的步骤" | tee -a $tmp_prepare_script_file $tmp_online_script_file > /dev/null
@@ -386,10 +389,6 @@ if [ $choice == "y" ]; then
   echo "" >> $tmp_online_script_file
   echo "popd > /dev/null" >> $tmp_online_script_file
   echo "" >> $tmp_online_script_file
-
-  echo "source /root/.bashrc" >> $tmp_merge_file
-  echo "source /www/server/jh-panel/scripts/util/msg.sh" >> $tmp_merge_file
-  echo "source /www/server/jh-panel/scripts/os_tool/tools.sh" >> $tmp_merge_file
   
   # 确认预上线操作
   echo "# 确认预上线操作" >> $tmp_merge_file
@@ -423,6 +422,26 @@ if [ $choice == "y" ]; then
 
   # 合并文件
   cat $tmp_merge_file > $script_file
+
+  common_source_content="
+source /www/server/jh-panel/scripts/util/msg.sh
+source /www/server/jh-panel/scripts/os_tool/tools.sh
+export USE_PANEL_SCRIPT=$USE_PANEL_SCRIPT
+export SCRIPT_BASE=$SCRIPT_BASE
+export URLBase=$URLBase
+  "
+  tmp1_prepare_script_file=$(mktemp)
+  tmp1_online_script_file=$(mktemp)
+  tmp1_script_file=$(mktemp)
+  echo "$common_source_content" > $tmp1_prepare_script_file
+  echo "$common_source_content" > $tmp1_online_script_file
+  echo "$common_source_content" > $tmp1_script_file
+  cat $tmp_prepare_script_file >> $tmp1_prepare_script_file
+  cat $tmp_online_script_file >> $tmp1_online_script_file
+  cat $script_file >> $tmp1_script_file
+  mv $tmp1_prepare_script_file $tmp_prepare_script_file
+  mv $tmp1_online_script_file $tmp_online_script_file
+  mv $tmp1_script_file $script_file
 
   echo "echo \"=========================服务器上线完成✅=======================\"" >> $script_file
   

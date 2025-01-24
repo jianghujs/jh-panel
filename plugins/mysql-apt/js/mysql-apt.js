@@ -1872,7 +1872,7 @@ function addSlaveSSH(ip=''){
             shift: 5,
             shadeClose: true,
             btn:["确认","取消"],
-            content: "<form class='bt-form pd20'>\
+            content: "<form class='add_slave_ssh_form bt-form pd20'>\
                 <div class='line'><span class='tname'>IP</span><div class='info-r'><input name='ip' class='bt-input-text mr5' type='text' style='width:330px;' value='"+ip+"'></div></div>\
                 <div class='line'><span class='tname'>端口</span><div class='info-r'><input name='port' class='bt-input-text mr5' type='number' style='width:330px;' value='"+port+"'></div></div>\
                 <div class='line'><span class='tname'>同步账户[DB]</span><div class='info-r'><input name='db_user'  placeholder='为空则取第一个!' class='bt-input-text mr5' type='text' style='width:330px;' value='"+db_user+"'></div></div>\
@@ -1886,10 +1886,10 @@ function addSlaveSSH(ip=''){
                 $('textarea[name="id_rsa"]').html(id_rsa);
             },
             yes:async function(index){
-                var ip = $('input[name="ip"]').val();
-                var port = $('input[name="port"]').val();
-                var db_user = $('input[name="db_user"]').val();
-                var id_rsa = $('textarea[name="id_rsa"]').val();
+                var ip = $('.add_slave_ssh_form input[name="ip"]').val();
+                var port = $('.add_slave_ssh_form input[name="port"]').val();
+                var db_user = $('.add_slave_ssh_form input[name="db_user"]').val();
+                var id_rsa = $('.add_slave_ssh_form textarea[name="id_rsa"]').val();
 
                 var data = {ip:ip,port:port,id_rsa:id_rsa,db_user:db_user};
                 let testResult = JSON.parse((await myPost('test_ssh', data)).data)

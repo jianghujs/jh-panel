@@ -48,4 +48,10 @@ if [ $? -eq 0 ] && [ -d "$BACKUP_PATH/mysql" ];then
 else
     echo "备份失败 $timestamp"
 fi
-python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR/
+
+
+export SAVE_ALL_DAY=${SAVE_ALL_DAY:-3}
+export SAVE_OTHER=${SAVE_OTHER:-0}
+export SAVE_MAX_DAY=${SAVE_MAX_DAY:-3}
+python3 /www/server/jh-panel/scripts/clean.py $LOG_DIR "{\"saveAllDay\": \"$SAVE_ALL_DAY\", \"saveOther\": \"$SAVE_OTHER\", \"saveMaxDay\": \"$SAVE_MAX_DAY\"}" "backup_*.log"
+

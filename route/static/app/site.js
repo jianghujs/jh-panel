@@ -1,3 +1,5 @@
+var currentSiteId = null;
+
 /**
  * 取回网站数据列表
  * @param {Number} page   当前页
@@ -422,6 +424,85 @@ function pathSafe(id){
 			$(".user_pw").hide();
 		},'json');
 	}
+}
+
+
+//身份认证
+function siteAuth(){
+	id = currentSiteId;
+	var siteAuthHtml = `\
+	<div class="mtb15 flex align-center">
+		<div class="mr20 ss-text pull-left">
+			<em>启用身份认证</em>
+			<div class='ssh-item' id="openSiteAuthSwitch"></div>
+		</div>
+	</div>
+	<div class="divtable">
+		<form id="addSiteAuthUserForm">
+			<input type="text" class="bt-input-text mr5" style="width: 117px;" name="username" placeholder="用户名" />
+			<input type="text" class="bt-input-text mr5" style="width: 117px;" name="password" placeholder="密码" />
+			<input type="text" class="bt-input-text mr5" name="remark" placeholder="备注/说明" />
+			<button id="toAccept" onclick="addSiteAuthUser();" class="btn btn-default btn-sm va0" type="button">添加账号</button>
+		</form>
+		<table class="table table-hover" style="margin-top: 10px; max-height: 380px; overflow: auto;">
+			<thead>
+				<th>用户名</th>
+				<th>创建时间</th>
+				<th style="text-align: right;" width="150">操作</th></tr>
+			</thead>
+			<tbody class="site-auth-table-body"></tbody>
+		</table>
+	</div>
+	`;
+
+	$("#webedit-con").html(siteAuthHtml);
+
+	$.post('/site/get_site_auth_info','&id='+id, function(data){
+		if (!data['status']) {
+			layer.msg(data['msg'], {icon:2});
+			return;
+		}
+		let auth_enabled = data['data']['auth_enabled'] == 1;
+		let auth_users = data['data']['auth_users'] || [];
+		$("#openSiteAuthSwitch").createRadioSwitch(auth_enabled, (checked) => {
+			var loadT = layer.msg("正在设置中...",{icon:16,time:10000,shade: [0.3, '#000']});
+			$.post('/site/switch_site_auth','id='+id, function(rdata){
+				layer.close(loadT);
+				layer.msg(rdata.msg,{icon:rdata.status?1:2});
+			},'json');
+		});
+		let auth_users_html = '';
+		for (let i = 0; i < auth_users.length; i++) {
+			auth_users_html += `<tr>
+				<td>${auth_users[i]['username']}</td>
+				<td>${auth_users[i]['time']}</td>
+				<td style="text-align: right;"><a href="javascript:void(0);" class="btn btn-danger btn-xs" onclick="deleteSiteAuthUser('${auth_users[i]['id']}')">删除</a></td>
+			</tr>`;
+		}
+		$('.site-auth-table-body').html(auth_users_html);
+	});
+
+}
+
+// 添加身份认证用户
+function addSiteAuthUser() {
+	var addSiteAuthUserForm = $("#addSiteAuthUserForm").serialize();
+	var loadT = layer.msg("正在添加中...",{icon:16,time:10000,shade: [0.3, '#000']});
+	$.post('/site/add_site_auth_user',addSiteAuthUserForm + '&id='+currentSiteId, function(rdata){
+		layer.close(loadT);
+		layer.msg(rdata.msg,{icon:rdata.status?1:2});
+		siteAuth();
+	},'json');
+}
+
+// 删除身份认证用户
+function deleteSiteAuthUser(id) {
+	var loadT = layer.msg("正在删除中...",{icon:16,time:10000,shade: [0.3, '#000']});
+	$.post('/site/delete_site_auth_user','id=' + currentSiteId + '&user_id='+id, function(rdata){
+		layer.close(loadT);
+		layer.msg(rdata.msg,{icon:rdata.status?1:2});
+		siteAuth();
+	},'json');
 }
 
 //设置访问密码
@@ -1043,6 +1124,7 @@ function setIndexList(id){
 /*站点修改*/
 function webEdit(id,website,endTime,addtime,event){
 	event && event.preventDefault();
+	currentSiteId = id;
 	
 	layer.open({
 		type: 1,
@@ -1055,6 +1137,7 @@ function webEdit(id,website,endTime,addtime,event){
 				<p class='bgw'  onclick=\"domainEdit(" + id + ",'" + website + "')\">"+lan.site.domain_man+"</p>\
 				<p onclick='dirBinding("+id+")' title='子目录绑定'>子目录绑定</p>\
 				<p onclick='webPathEdit("+id+")' title='网站目录'>网站目录</p>\
+				<p onclick='siteAuth("+id+")' title='身份认证'>身份认证</p>\
 				<p onclick='limitNet("+id+")' title='流量限制'>流量限制</p>\
 				<p onclick=\"rewrite('"+website+"')\" title='伪静态'>伪静态</p>\
 				<p onclick='setIndexEdit("+id+")' title='默认文档'>默认文档</p>\

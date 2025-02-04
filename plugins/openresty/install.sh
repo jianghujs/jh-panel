@@ -95,6 +95,10 @@ Install_openresty()
 		cd ${rootPath} && python3 ${rootPath}/plugins/openresty/index.py start
 		cd ${rootPath} && python3 ${rootPath}/plugins/openresty/index.py initd_install
 		rm -rf $openrestyDir
+
+		# 复制配置文件
+		cp -r ${rootPath}/plugins/openresty/conf/site_auth.conf $serverPath/openresty/nginx/conf/site_auth.conf
+
     fi
 	echo '安装完成' > $install_tmp
 }

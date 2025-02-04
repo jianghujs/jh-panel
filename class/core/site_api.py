@@ -20,6 +20,7 @@ import mw
 import re
 import json
 import shutil
+import traceback    
 
 
 from flask import request
@@ -583,6 +584,7 @@ class site_api:
     def deleteSslApi(self):
         site_name = request.form.get('site_name', '')
         ssl_type = request.form.get('ssl_type', '')
+
         self.deleteSsl(site_name, ssl_type)
         # mw.restartWeb()
         return mw.returnJson(True, '删除成功')
@@ -763,7 +765,7 @@ class site_api:
         key_path = path + '/privkey.pem'  # 生成证书路径
 
         if not os.path.exists(path):
-            os.makedirs(path)
+            mw.execShell('mkdir -p ' + path)
 
         if ssl_type == 'lets':
             ssl_lets_dir = self.sslLetsDir + '/' + site_name
@@ -776,6 +778,7 @@ class site_api:
                 mw.buildSoftLink(lets_csrpath, csr_path, True)
                 mw.buildSoftLink(lets_keypath, key_path, True)
                 mw.execShell('echo "lets" > "' + path + '/README"')
+
         elif ssl_type == 'acme':
             ssl_acme_dir = mw.getAcmeDir() + '/' + site_name
             acme_csrpath = ssl_acme_dir + '/fullchain.cer'
@@ -918,7 +921,6 @@ class site_api:
         result = self.setSslConf(siteName)
         if not result['status']:
             return mw.getJson(result)
-
         result['csr'] = mw.readFile(src_csrpath)
         result['key'] = mw.readFile(src_keypath)
         return mw.returnJson(data['status'], data['msg'], result)
@@ -1255,8 +1257,7 @@ class site_api:
             if not mw.checkPort(domain_port):
                 return mw.returnJson(False, '端口范围不合法!')
 
-            opid = mw.M('domain').where(
-                "name=? AND (port=? OR pid=?)", (domain, domain_port, pid)).getField('pid')
+            opid = mw.M('domain').where("name=? AND (port=? OR pid=?)", (domain, domain_port, pid)).getField('pid')
             if opid:
                 if mw.M('sites').where('id=?', (opid,)).count():
                     return mw.returnJson(False, '指定域名已绑定过!')
@@ -1715,7 +1716,7 @@ class site_api:
             _return = "return {} {}; ".format(redirect_type, _to)
             file_content = _if + "{\r\n    " + _return + "\r\n}"
 
-        _id = mw.md5("{}+{}".format(file_content, _siteName))
+        _id = mw.md5("{}+{}+{}".format(file_content, _siteName))
 
         # 防止规则重复
         for item in data:
@@ -1755,7 +1756,8 @@ class site_api:
                     break
             # write database
             mw.writeFile(data_path, json.dumps(data))
-            # data is empty ,should stop
+
+            # data is empty,should stop
             if len(data) == 0:
                 self.operateRedirectConf(_siteName, 'stop')
             # remove conf file
@@ -1763,6 +1765,8 @@ class site_api:
                 "rm -rf {}/{}.conf".format(self.getRedirectPath(_siteName), _id))
         except:
             return mw.returnJson(False, "删除失败!")
+
+        mw.restartWeb()
         return mw.returnJson(True, "删除成功!")
 
     # 操作 反向代理配置
@@ -2108,6 +2112,7 @@ location ^~ {from} {\n\
     def getSiteRunPath(self, mid):
         siteName = mw.M('sites').where('id=?', (mid,)).getField('name')
         sitePath = mw.M('sites').where('id=?', (mid,)).getField('path')
+
         path = sitePath
 
         filename = self.getHostConf(siteName)
@@ -2162,8 +2167,7 @@ location ^~ {from} {\n\
         return mw.getServerDir() + '/openresty/nginx/conf/nginx.conf'
 
     def getDomain(self, pid):
-        _list = mw.M('domain').where("pid=?", (pid,)).field(
-            'id,pid,name,port,addtime').select()
+        _list = mw.M('domain').where("pid=?", (pid,)).field('id,pid,name,port,addtime').select()
         return mw.getJson(_list)
 
     def getLogs(self, siteName):
@@ -2232,7 +2236,7 @@ location ^~ {from} {\n\
             mw.writeFile(file, conf)
 
         mw.writeLog('TYPE_SITE', 'SITE_INDEX_SUCCESS', (siteName, index_l))
-        return mw.returnJson(True,  '设置成功!')
+        return mw.returnJson(True, '设置成功!')
 
     def getLimitNet(self, sid):
         siteName = mw.M('sites').where("id=?", (sid,)).getField('name')
@@ -2703,3 +2707,134 @@ location ^~ {from} {\n\
         import time
         return time.strftime('%Y-%m-%d', time.strptime(sdate, '%b %d %H:%M:%S %Y %Z'))
     # ssl相关方法 end
+
+    # 获取站点身份认证信息
+    def getSiteAuthInfoApi(self):
+        id = request.form.get('id', '')
+        siteInfo = mw.M('sites').where('id=?', (id,)).field('name,auth_enabled,auth_users').find()
+
+        # 解析身份认证用户
+        try:
+            auth_users = json.loads(siteInfo['auth_users']) 
+            # 处理列表数据
+            for i in auth_users:
+                try:
+                    del i['password']
+                    if 'time' in i:
+                        i['time'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(i['time']))
+                    else:
+                        i['time'] = time.strftime('%Y-%m-%d %H:%M:%S', time.time())
+                except Exception as e:
+                    traceback.print_exc()
+        except Exception as e:
+            traceback.print_exc()
+            auth_users = []
+
+        siteInfo['auth_users'] = auth_users
+
+        if not siteInfo:
+            return mw.returnData(False, '站点不存在!')
+        return mw.returnData(True, '获取成功!', siteInfo)
+    
+    # 切换站点身份认证
+    def switchSiteAuthApi(self):
+        id = request.form.get('id', '')
+        siteInfo = mw.M('sites').where('id=?', (id,)).field('name,auth_enabled,auth_users').find()
+        if not siteInfo:
+            return mw.returnData(False, '站点不存在!')
+
+        siteName = siteInfo['name']
+        auth_enabled = siteInfo['auth_enabled'] == 1
+        new_auth_enabled = not auth_enabled
+        # 处理Nginx配置
+        if siteName == 'phpmyadmin':
+            configFile = self.getHostConf('phpmyadmin')
+        else:
+            configFile = self.getHostConf(siteName)
+        print('配置文件', configFile)
+        print('是否开启', new_auth_enabled)
+        conf = mw.readFile(configFile)
+        if conf:
+            if not new_auth_enabled:
+                # 关闭认证,删除配置
+                rep = r"\s*#SITE_AUTH_START(\n|.)*#SITE_AUTH_START\n?"
+                conf = re.sub(rep, '', conf)
+            else:
+                rep = '#error_page   404   /404.html;'
+                if conf.find(rep) == -1:
+                    rep = '#error_page 404/404.html;'
+                data = '''
+    
+    #SITE_AUTH_START
+    location / {
+        index index.html;
+        
+        auth_request /site_auth/check;
+        error_page 401 = /site_auth/login;
+    }
+
+    include /www/server/openresty/nginx/conf/site_auth.conf;
+    #SITE_AUTH_START
+    \
+                '''
+                conf = conf.replace(rep, rep + data)
+                
+            print("写入", configFile)
+            print("写入内容", conf)
+            mw.writeFile(configFile, conf)
+        
+        mw.M('sites').where('id=?', (id,)).setField('auth_enabled', 1 if new_auth_enabled else 0)
+
+        mw.restartWeb()
+        return mw.returnData(True, '操作成功!')
+
+    # 添加站点身份认证用户
+    def addSiteAuthUserApi(self):
+        id = request.form.get('id', '')
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        remark = request.form.get('remark', '')
+
+        siteInfo = mw.M('sites').where('id=?', (id,)).field('name,auth_users').find()
+        if not siteInfo:
+            return mw.returnData(False, '站点不存在!')
+        try:
+            auth_users = json.loads(siteInfo['auth_users']) 
+        except Exception as e:
+            auth_users = []
+
+        if username in auth_users:
+            return mw.returnData(False, '用户名已存在!')
+        auth_user = {
+            'id': mw.getUniqueId(),
+            'username': username,
+            'password': mw.md5(password),
+            'remark': remark,
+            'time': int(time.time())
+        }
+        auth_users.append(auth_user)
+        
+        mw.M('sites').where('id=?', (id,)).setField('auth_users', json.dumps(auth_users))
+        return mw.returnData(True, '添加成功!')
+    
+    # 删除站点身份认证用户
+    def deleteSiteAuthUserApi(self):
+        id = request.form.get('id', '')
+        user_id = request.form.get('user_id', '')
+        siteInfo = mw.M('sites').where('id=?', (id,)).field('name,auth_users').find()
+        if not siteInfo:
+            return mw.returnData(False, '站点不存在!')
+        auth_users = siteInfo['auth_users']
+
+        try:
+            auth_users = json.loads(siteInfo['auth_users']) 
+        except Exception as e:
+            auth_users = []
+
+        for i in auth_users:
+            if i.get('id', '') == user_id:
+                auth_users.remove(i)
+                break
+        
+        mw.M('sites').where('id=?', (id,)).setField('auth_users', json.dumps(auth_users))
+        return mw.returnData(True, '删除成功!')

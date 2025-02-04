@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS `sites` (
   `index` TEXT,
   `type_id` INTEGER,
   `ps` TEXT,
+  `auth_enabled` INTEGER,
+  `auth_users` TEXT,
   `edate` TEXT,
   `addtime` TEXT
 );

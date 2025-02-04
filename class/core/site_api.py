@@ -72,6 +72,16 @@ class site_api:
         if not os.path.exists(self.sslLetsDir):
             mw.execShell("mkdir -p " + self.sslLetsDir +
                          " && chmod -R 755 " + self.sslLetsDir)
+        
+        # 兼容旧版本，检查并添加auth_enabled和auth_users字段
+        sites_db = mw.M('sites')
+        sites_columns = sites_db.originExecute("PRAGMA table_info(sites)").fetchall()
+        auth_enabled_exists = any(column[1] == 'auth_enabled' for column in sites_columns)
+        auth_users_exists = any(column[1] == 'auth_users' for column in sites_columns)
+        if not auth_enabled_exists:
+            sites_db.originExecute("ALTER TABLE sites ADD COLUMN auth_enabled varchar(50) DEFAULT '0'")
+        if not auth_users_exists:
+            sites_db.originExecute("ALTER TABLE sites ADD COLUMN auth_users varchar(50) DEFAULT ''")
 
     def openrestyReload(self):
         data = mw.execShell("/www/server/openresty/bin/openresty -s reload")

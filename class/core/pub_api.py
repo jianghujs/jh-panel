@@ -52,11 +52,11 @@ class pub_api:
 
         # 假设站点用户信息以类似的方式存储
         site_info = mw.M('sites').where("name=?", (site_name,)).field('auth_users').find()
-        print("site_info", site_info)
-        # auth_users = json.loads(site_info['auth_users']) if site_info['auth_users'] else []
-        auth_users = [{"username": "admin", "password": "a41d89cecd11b2586c65ae1c6edb2145"}]
+        # print("site_info", site_info)
+        auth_users = json.loads(site_info['auth_users']) if site_info['auth_users'] else []
+        # auth_users = [{"username": "admin", "password": "a41d89cecd11b2586c65ae1c6edb2145"}]
 
-        user_match = next((user for user in auth_users if user['username'] == username and user['password'] == mw.md5(password)), None)
+        user_match = next((user for user in auth_users if user.get('username', '') == username and user.get('password', '') == mw.md5(password + user.get('salt', ''))), None)
 
         if not user_match:
             msg = "<a style='color: red'>密码错误</a>,帐号:{0},登录IP:{1}".format(username, request.remote_addr)
@@ -82,7 +82,7 @@ class pub_api:
         return mw.returnJson(True, '登录成功,正在跳转...')
 
     def checkSiteLoginApi(self):
-        print("当前session", session)
+        # print("当前session", session)
 
         site_name = request.host
         site_key = site_name.replace('.', '_')
@@ -90,9 +90,9 @@ class pub_api:
 
         # 未开启身份认证自动调整
         site_info = mw.M('sites').where("name=?", (site_name,)).field('auth_enabled').find()
-        print("site_info", site_info)
-        # auth_enabled = site_info['auth_enabled']
-        auth_enabled = True
+        # print("site_info", site_info)
+        auth_enabled = site_info.get('auth_enabled', 0) == 1
+        # auth_enabled = True
         if not auth_enabled:
             return ("success", 200)
 

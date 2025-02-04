@@ -2751,7 +2751,7 @@ location ^~ {from} {\n\
             configFile = self.getHostConf('phpmyadmin')
         else:
             configFile = self.getHostConf(siteName)
-            
+
         conf = mw.readFile(configFile)
         if conf:
             if not new_auth_enabled:
@@ -2802,10 +2802,15 @@ location ^~ {from} {\n\
 
         if username in auth_users:
             return mw.returnData(False, '用户名已存在!')
+
+        salt = mw.getRandomString(12)
+        password = mw.md5(password + salt)
+        
         auth_user = {
             'id': mw.getUniqueId(),
             'username': username,
-            'password': mw.md5(password),
+            'password': password,
+            'salt': salt,
             'remark': remark,
             'time': int(time.time())
         }

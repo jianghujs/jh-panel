@@ -22,7 +22,7 @@ Install_pm2()
 
 	curl -o- http://npmjs.org/install.sh | bash
 	
-	if [ "$OSNAME" == 'debian' ] && [ "$OSNAME" == 'ubuntu' ];then
+	if [ "$OSNAME" == 'debian' ] || [ "$OSNAME" == 'ubuntu' ];then
 		apt install -y nodejs
 		apt install -y npm
 		npm install pm2 -g

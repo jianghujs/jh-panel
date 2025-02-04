@@ -112,18 +112,17 @@ def pm2GetList():
         for app in appList:
             if not app:
                 continue
-
             tmp2 = app.strip().split()
             appInfo = {}
-            appInfo['name'] = tmp2[0]
-            appInfo['id'] = tmp2[1]
-            appInfo['mode'] = tmp2[3]
-            appInfo['pid'] = tmp2[4]
-            appInfo['status'] = tmp2[5]
-            appInfo['restart'] = tmp2[6]
-            appInfo['uptime'] = tmp2[7]
-            appInfo['cpu'] = tmp2[8]
-            appInfo['mem'] = tmp2[9] + ' ' + tmp2[10]
+            appInfo['id'] = tmp2[0]
+            appInfo['name'] = tmp2[1]
+            appInfo['mode'] = tmp2[4]
+            appInfo['pid'] = tmp2[5]
+            appInfo['uptime'] = tmp2[6]
+            appInfo['restart'] = tmp2[7]
+            appInfo['status'] = tmp2[8]
+            appInfo['cpu'] = tmp2[9]
+            appInfo['mem'] = tmp2[10]
             appInfo['user'] = tmp2[11]
             appInfo['watching'] = tmp2[12]
             appInfo['port'] = 'OFF'

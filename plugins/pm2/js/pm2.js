@@ -46,7 +46,6 @@ function pm2List() {
 					<thead>\
 						<tr><th>名称</th>\
 						<th>模式</th>\
-						<th>端口</th>\
 						<th>状态</th>\
 						<th>重启</th>\
 						<th>时间</th>\
@@ -88,7 +87,6 @@ function pm2List() {
             tbody += '<tr>\
                         <td>'+tmp[i].name+'</td>\
                         <td>'+tmp[i].mode+'</td>\
-                        <td>'+tmp[i].port+'</td>\
                         <td>'+status+'</td>\
                         <td>'+tmp[i].restart+'</td>\
                         <td>'+tmp[i].uptime+'</td>\

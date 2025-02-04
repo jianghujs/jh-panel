@@ -2751,8 +2751,7 @@ location ^~ {from} {\n\
             configFile = self.getHostConf('phpmyadmin')
         else:
             configFile = self.getHostConf(siteName)
-        print('配置文件', configFile)
-        print('是否开启', new_auth_enabled)
+            
         conf = mw.readFile(configFile)
         if conf:
             if not new_auth_enabled:
@@ -2779,8 +2778,6 @@ location ^~ {from} {\n\
                 '''
                 conf = conf.replace(rep, rep + data)
                 
-            print("写入", configFile)
-            print("写入内容", conf)
             mw.writeFile(configFile, conf)
         
         mw.M('sites').where('id=?', (id,)).setField('auth_enabled', 1 if new_auth_enabled else 0)

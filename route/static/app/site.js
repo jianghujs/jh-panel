@@ -476,7 +476,7 @@ function siteAuth(){
 			auth_users_html += `<tr>
 				<td>${auth_users[i]['username']}</td>
 				<td>${auth_users[i]['time']}</td>
-				<td style="text-align: right;"><a href="javascript:void(0);" class="btn btn-danger btn-xs" onclick="deleteSiteAuthUser('${auth_users[i]['id']}')">删除</a></td>
+				<td style="text-align: right;"><a href="javascript:void(0);" class="btn btn-danger btn-xs" onclick="deleteSiteAuthUser('${auth_users[i]['id']}','${auth_users[i]['username']}')">删除</a></td>
 			</tr>`;
 		}
 		$('.site-auth-table-body').html(auth_users_html);
@@ -487,22 +487,24 @@ function siteAuth(){
 // 添加身份认证用户
 function addSiteAuthUser() {
 	var addSiteAuthUserForm = $("#addSiteAuthUserForm").serialize();
-	var loadT = layer.msg("正在添加中...",{icon:16,time:10000,shade: [0.3, '#000']});
-	$.post('/site/add_site_auth_user',addSiteAuthUserForm + '&id='+currentSiteId, function(rdata){
-		layer.close(loadT);
-		layer.msg(rdata.msg,{icon:rdata.status?1:2});
-		siteAuth();
-	},'json');
+		var loadT = layer.msg("正在添加中...",{icon:16,time:10000,shade: [0.3, '#000']});
+		$.post('/site/add_site_auth_user',addSiteAuthUserForm + '&id='+currentSiteId, function(rdata){
+			layer.close(loadT);
+			layer.msg(rdata.msg,{icon:rdata.status?1:2});
+			siteAuth();
+		},'json');
 }
 
 // 删除身份认证用户
-function deleteSiteAuthUser(id) {
-	var loadT = layer.msg("正在删除中...",{icon:16,time:10000,shade: [0.3, '#000']});
-	$.post('/site/delete_site_auth_user','id=' + currentSiteId + '&user_id='+id, function(rdata){
-		layer.close(loadT);
-		layer.msg(rdata.msg,{icon:rdata.status?1:2});
-		siteAuth();
-	},'json');
+function deleteSiteAuthUser(id, username) {
+	safeMessage('确认删除', '确认删除用户[' + username + ']吗?', function(){ 
+		var loadT = layer.msg("正在删除中...",{icon:16,time:10000,shade: [0.3, '#000']});
+		$.post('/site/delete_site_auth_user','id=' + currentSiteId + '&user_id='+id, function(rdata){
+			layer.close(loadT);
+			layer.msg(rdata.msg,{icon:rdata.status?1:2});
+			siteAuth();
+		},'json');
+	});
 }
 
 //设置访问密码

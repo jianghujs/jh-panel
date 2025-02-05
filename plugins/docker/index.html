@@ -36,8 +36,8 @@
 	<div class='plugin_version'></div>
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
-            <p class="bgw" onclick="projectList();">项目列表</p>
-			<p onclick="dockerConList();">容器列表</p>
+            <p onclick="projectList();">项目列表</p>
+			<p class="bgw" onclick="dockerConList();">容器列表</p>
 			<p onclick="dockerImageList();">镜像列表</p>
             <p onclick="dockerImageOutput();">镜像导出</p>
             <p onclick="dockerIpList();">IP地址池</p>            
@@ -54,7 +54,7 @@
 resetPluginWinWidth(1200);
 $.getScript( "/plugins/file?name=docker&f=js/docker.js", function(){
 	// pluginService('docker', $('.plugin_version').attr('version'));
-    projectList()
+    dockerConList()
 });
 </script>
 

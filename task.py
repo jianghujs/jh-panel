@@ -419,6 +419,7 @@ def systemTask():
                     diskInfo = None
                     print(str(ex))
                     mw.writeFile('logs/sys_interrupt.pl', str(ex))
+                    mw.writeFileLog(str(ex), 'logs/task_error.log')
 
             del(tmp)
             time.sleep(5)
@@ -426,10 +427,9 @@ def systemTask():
     except Exception as ex:
         traceback.print_exc()
         print(str(ex))
-        mw.writeFile('logs/sys_interrupt.pl', str(ex))
+        mw.writeFile('logs/sys_interrupt.pl', str(ex), 'a+')
         
         notify_msg = mw.generateCommonNotifyMessage("服务器监控异常：" + str(ex) + "\n" + str(traceback.format_exc()))
-        mw.writeFile('logs/notify.log', str(notify_msg))
         mw.notifyMessage(title='服务器异常通知', msg=notify_msg, stype='服务器监控', trigger_time=3600)
 
         restartMw()

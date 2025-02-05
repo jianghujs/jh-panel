@@ -2300,7 +2300,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('<br/>- '.join(error_msg_arr) + '<br/>请注意!')
             notifyMessage(title='服务器异常通知', msg=notify_msg, msgtype="html", stype='面板监控', trigger_time=600)
-            writeFile('logs/notify.log', str(notify_msg))
+            writeFileLog(str(notify_msg), 'logs/notify.log')
             updateLockData(site_ssl_lock_data_key)
 
 def generateCommonTableMsg(header_list, content_list):

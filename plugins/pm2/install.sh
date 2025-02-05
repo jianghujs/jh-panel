@@ -20,18 +20,18 @@ Install_pm2()
 	echo '正在安装脚本文件...' > $install_tmp
 
 
-	curl -o- http://npmjs.org/install.sh | bash
+	# curl -o- http://npmjs.org/install.sh | bash
 	
 	if [ "$OSNAME" == 'debian' ] || [ "$OSNAME" == 'ubuntu' ];then
-		apt install -y nodejs
-		apt install -y npm
+		# apt install -y nodejs
+		# apt install -y npm
 		npm install pm2 -g
 	else 
-		yum install -y nodejs
+		# yum install -y nodejs
 		npm install pm2 -g
 	fi
 	
-	curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
+	# curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
 
 	mkdir -p $serverPath/pm2
 	echo '1.0' > $serverPath/pm2/version.pl

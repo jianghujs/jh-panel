@@ -230,9 +230,18 @@ def conList():
     clist = c.containers.list(all=True)
     conList = []
     for con in clist:
-        tmp = con.attrs
-        tmp['Created'] = utc_to_local(tmp['Created'].split('.')[0])
-        conList.append(tmp)
+        try:
+            tmp = con.attrs
+            tmp['Created'] = utc_to_local(tmp['Created'].split('.')[0])
+            if tmp['State']['Running']:
+                tmp['StartedAt'] = utc_to_local(tmp['State']['StartedAt'].split('.')[0])
+                tmp['RunningTime'] = time.time() - tmp['StartedAt']
+            else:
+                tmp['StartedAt'] = 0
+                tmp['RunningTime'] = 0
+            conList.append(tmp)
+        except:
+            pass
     return conList
 
 

@@ -209,6 +209,7 @@ function dockerConListRender() {
     dPost('con_list', '', {}, function(rdata) {
         var rdata = $.parseJSON(rdata.data);
         console.log(rdata);
+        
         if (!rdata.status) {
             layer.msg(rdata.msg, { icon: 2, time: 2000 });
             return;
@@ -230,12 +231,24 @@ function dockerConListRender() {
             op += '<a href="javascript:;" onclick="execCon(\'' + rlist[i]['Config']['Hostname'] + '\')" class="btlink">终端</a> | ';
             op += '<a href="javascript:;" onclick="logsCon(\'' + rlist[i]['Id'] + '\')" class="btlink">日志</a> | ';
             op += '<a href="javascript:;" onclick="deleteCon(\'' + rlist[i]['Config']['Hostname'] + '\')" class="btlink">删除</a>';
-
+            debugger
             list += '<tr>';
             list += '<td style="max-width: 110px;overflow-wrap: break-word;">' + rlist[i]['Name'].substring(1) + '</td>';
-            list += '<td style="max-width: 260px;overflow-wrap: break-word;">' + rlist[i]['Config']['Image'] + '</td>';
+            list += '<td style="max-width: 200px;overflow-wrap: break-word;">' + rlist[i]['Config']['Image'] + '</td>';
             list += '<td style="max-width: 130px">' + getFormatTime(rlist[i]['Created']) + '</td>';
-
+            list += '<td style="max-width: 130px">' + (rlist[i]['StartedAt']? getFormatTime(rlist[i]['StartedAt']): '') + '</td>';
+            var runningTime = rlist[i]['RunningTime'];
+            var unit = 's';
+            if (runningTime > 60) {
+                runningTime = runningTime / 60;
+                unit = 'm';
+                if (runningTime > 60) {
+                    runningTime = runningTime / 60;
+                    unit = 'h';
+                }
+            }
+            list += '<td style="max-width: 130px">' + (runningTime? runningTime.toFixed(1) + unit: '') + '</td>';
+            list += '<td style="max-width: 130px">' + rlist[i]['RestartCount'] + '</td>';
 
             if (docker_status == 'start') {
                 list += '<td style="cursor:pointer;min-width: 50px" align="center" onclick="stopCon(\'' + rlist[i]['Config']['Hostname'] + '\')">' + status + '</td>';
@@ -514,6 +527,9 @@ function dockerConList() {
                     <th>名称</th>\
                     <th>镜像</th>\
                     <th>创建时间</th>\
+                    <th>启动时间</th>\
+                    <th>运行时长</th>\
+                    <th>重启次数</th>\
                     <th class="text-center">状态</th>\
                     <th style="text-align:right;">操作</th></tr></thead>\
                     <tbody></tbody></table>\

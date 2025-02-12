@@ -80,6 +80,10 @@ def pm2NVMDir():
 __SR = '''#!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
+if [ -e "/www/server/nodejs/fnm" ];then
+  export PATH="/www/server/nodejs/fnm:$PATH"
+  eval "$(fnm env --use-on-cd --shell bash)"
+fi
 export HOME=%s
 source %s/nvm.sh && ''' % (rootDir(), pm2NVMDir())
 __path = getServerDir() + '/list'
@@ -97,7 +101,7 @@ def pm2Log():
 
 def pm2GetList():
     try:
-        tmp = mw.execShell("pm2 list|grep -v 'pm2 show'")
+        tmp = mw.execShell(__SR + "pm2 list|grep -v 'pm2 show'")
         t2 = tmp[0].replace("│", "").replace("└", "").replace(
             "─", "").replace("┴", "").replace("┘", "").strip().split("┤")
         if len(t2) == 1:

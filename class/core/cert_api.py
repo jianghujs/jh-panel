@@ -1331,7 +1331,7 @@ fullchain.pem       粘贴到证书输入框
                 if end_time > new_time:
                     continue  # 未到期
                 try:
-                    if not cert_init['issuer'] in ['R3', "Let's Encrypt"] and cert_init['issuer'].find("Let's Encrypt") == -1:
+                    if not cert_init['issuer'].startswith('R') and cert_init['issuer'].find("Let's Encrypt") == -1:
                         continue  # 非同品牌证书
                 except:
                     continue
@@ -1573,7 +1573,7 @@ fullchain.pem       粘贴到证书输入框
                                 cert_data = mw.getCertName(csr_path)
                                 if cert_data:
                                     cert_issuer = cert_data.get('issuer', '')
-                                    if cert_issuer == 'R3':
+                                    if cert_issuer.startswith('R'):
                                         cent_valid = True
                     if not cent_valid:
                         writeLog("|-跳过已更换证书的域名: {}".format(self.__config['orders'][i]['domains']))

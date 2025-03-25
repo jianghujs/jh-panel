@@ -388,11 +388,13 @@ class system_api:
         cuts = ['/mnt/cdrom', '/boot', '/boot/efi', '/dev',
                 '/dev/shm', '/zroot', '/run/lock', '/run', '/run/shm', '/run/user']
         for tmp in temp1:
-            n += 1
-            inodes = tempInodes1[n - 1].split()
+            if not tmp:  # Skip empty lines
+                continue
+            
             disk = tmp.split()
             if len(disk) < 5:
                 continue
+            
             if disk[1].find('M') != -1:
                 continue
             if disk[1].find('K') != -1:
@@ -401,11 +403,31 @@ class system_api:
                 continue
             if disk[5] in cuts:
                 continue
+            
+            # Safely get inodes info
+            inodes = []
+            try:
+                if n < len(tempInodes1):
+                    inodes_line = tempInodes1[n].strip()
+                    if inodes_line:
+                        inodes = inodes_line.split()
+            except:
+                # If there's any issue getting inodes info, use placeholder values
+                inodes = ['', '', '', '0%']
+            
+            n += 1
+            
             arr = {}
             arr['path'] = disk[5]
             tmp1 = [disk[1], disk[2], disk[3], disk[4]]
             arr['size'] = tmp1
-            arr['inodes'] = [inodes[1], inodes[2], inodes[3], inodes[4]]
+            
+            # Make sure we have enough inodes data
+            if len(inodes) >= 5:  
+                arr['inodes'] = [inodes[1], inodes[2], inodes[3], inodes[4]]
+            else:
+                arr['inodes'] = ['0', '0', '0', '0%']
+            
             diskInfo.append(arr)
         return diskInfo
 

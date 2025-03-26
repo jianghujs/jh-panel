@@ -384,6 +384,11 @@ class system_api:
         tempInodes = mw.execShell(
             "df -i -P|grep '/'|grep -v tmpfs | grep -v devfs")[0]
         tempInodes1 = tempInodes.split('\n')
+        
+        # TODO 调试分区和Inode长度不一致问题
+        if len(temp1) != len(tempInodes1):
+            now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            mw.writeFile('logs/disk_info_error.log', now + " - Inode Length Error：\n" + "- temp:\n" + str(temp) + "\n" + "- tempInodes:\n" + str(tempInodes) + "\n" + "- temp1:\n" + str(temp1) + "\n" + "- tempInodes1:\n" + str(tempInodes1) + "\n" + "- temp1.len:\n" + str(len(temp1)) + "\n" + "- tempInodes1.len:\n" + str(len(tempInodes1)) + "\n###########", 'a+')
 
         diskInfo = []
         n = 0

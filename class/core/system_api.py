@@ -378,11 +378,11 @@ class system_api:
     def getDiskInfo2(self):
         # 取磁盘分区信息
         temp = mw.execShell(
-            "df -h -P|grep '/'|grep -v tmpfs | grep -v devfs")[0]
+            "df -h -P|grep '/'|grep -v tmpfs | grep -v devfs | grep -v overlay")[0]
         temp1 = temp.split('\n')
 
         tempInodes = mw.execShell(
-            "df -i -P|grep '/'|grep -v tmpfs | grep -v devfs")[0]
+            "df -i -P|grep '/'|grep -v tmpfs | grep -v devfs | grep -v overlay")[0]
         tempInodes1 = tempInodes.split('\n')
         
         # TODO 调试分区和Inode长度不一致问题

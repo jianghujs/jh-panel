@@ -2251,6 +2251,8 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         # 磁盘容量
         if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
             for disk in disk_list:
+                if not disk['path'] == '/':
+                    continue
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
 
                 if disk_size_percent > control_notify_config['disk']:

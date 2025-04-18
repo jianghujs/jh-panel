@@ -28,3 +28,5 @@ apt update -y && apt install -y wget && wget -O install.sh https://gitee.com/jia
 - 重命名: 
     - `mv /www/server/mdserver-web /www/server/jh-panel`
     - `cd /www/server/jh-panel && git pull && bash /www/server/jh-panel/scripts/update.sh`
+
+

@@ -2168,7 +2168,7 @@ def getMasterRepSlaveUserCmd(version):
 
     mstatus = db.query('show master status')
     if len(mstatus) == 0:
-        return mw.returnJson(False, '未开启!')
+        return mw.returnJson(False, '未开启binlog日志!')
 
     mode = recognizeDbMode()
 

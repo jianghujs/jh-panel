@@ -2634,13 +2634,20 @@ location ^~ {from} {\n\
                 return mw.returnData(True, 'SSL开启成功!')
 
             conf = conf.replace('#error_page 404/404.html;', sslStr)
-
-            rep = "listen\s+([0-9]+)\s*[default_server]*;"
+            rep = "listen\s+([0-9]+)(\s*[default_server]*|\s+proxy_protocol)*;"
             tmp = re.findall(rep, conf)
             if not mw.inArray(tmp, '443'):
                 listen = re.search(rep, conf).group()
-                http_ssl = "\n\tlisten 443 ssl http2;"
-                http_ssl = http_ssl + "\n\tlisten [::]:443 ssl http2;"
+                
+                # 提取原始配置中的附加选项
+                additional_config = ""
+                if listen.find('default_server') != -1:
+                    additional_config += " default_server"
+                if listen.find('proxy_protocol') != -1:
+                    additional_config += " proxy_protocol"
+                
+                http_ssl = "\n\tlisten 443 ssl http2" + additional_config + ";"
+                http_ssl = http_ssl + "\n\tlisten [::]:443 ssl http2" + additional_config + ";"
                 conf = conf.replace(listen, listen + http_ssl)
 
             mw.backFile(file)

@@ -2197,7 +2197,7 @@ def getControlNotifyConfig():
     return control_notify_config
 
 
-def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo):
+def generateMonitorReportAndNotify(cpuInfo, cpuioList, networkInfo, diskInfo, siteInfo, mysqlInfo):
     control_notify_pl = 'data/control_notify.pl'
 
     control_notify_config = getControlNotifyConfig()
@@ -2208,13 +2208,16 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         four_hours_ago_timestamp = now_timestamp - 4 * 60 * 60
         now_day = now_time.split(' ')[0]
 
-        writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\nMySql:' + str(mysqlInfo))
-        cpu_percent = cpuInfo['used'] 
+        # cpu_percent = cpuInfo['used'] 
+        cpu_percent = sum([item['pro'] for item in cpuioList]) / len(cpuioList)
         mem_percent = cpuInfo['mem']
         network_up = networkInfo['up'] # MB
         network_down = networkInfo['down'] # MB
         disk_list = diskInfo['disk_list']
         site_list = siteInfo['site_list']
+
+        # writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + str(cpuioList) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\nMySql:' + str(mysqlInfo))
+        
         
         error_msg_arr = []
         # CPU

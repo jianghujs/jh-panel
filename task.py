@@ -341,8 +341,12 @@ def systemTask():
                 
                 # mysql
                 mysqlInfo = sm.getMysqlInfo()
+
+                # 查询过去3条cpuio记录
+                cpuioList = mw.M('cpuio').dbfile('system').field('pro').order("addtime desc").limit('0,3').select()
+                
                 # 报告
-                mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo)
+                mw.generateMonitorReportAndNotify(cpuInfo, cpuioList, networkInfo, diskInfo, siteInfo, mysqlInfo)
                 
                 # 打印格式化为yyyymmddhhmmss后的当前时间和count
                 print('time:', now_formated, ' count:', count)

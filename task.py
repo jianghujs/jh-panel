@@ -279,6 +279,14 @@ def systemTask():
                     day = 30
 
                 tmp = {}
+                # 取当前CPU Io，改为3秒平均值
+                cpu_percent_list = []
+                for _ in range(3):
+                    cpu_percent_list.append(psutil.cpu_percent(interval=1))
+                avg_cpu_percent = sum(cpu_percent_list) / len(cpu_percent_list)
+                tmp['used'] = avg_cpu_percent
+
+
                 # 取当前CPU Io
                 tmp['used'] = psutil.cpu_percent(interval=1)
 
@@ -343,10 +351,10 @@ def systemTask():
                 mysqlInfo = sm.getMysqlInfo()
 
                 # 查询过去3条cpuio记录
-                cpuioList = mw.M('cpuio').dbfile('system').field('pro').order("addtime desc").limit('0,3').select()
+                # cpuioList = mw.M('cpuio').dbfile('system').field('pro,addtime').order("addtime desc").limit('0,3').select()
                 
                 # 报告
-                mw.generateMonitorReportAndNotify(cpuInfo, cpuioList, networkInfo, diskInfo, siteInfo, mysqlInfo)
+                mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo)
                 
                 # 打印格式化为yyyymmddhhmmss后的当前时间和count
                 print('time:', now_formated, ' count:', count)

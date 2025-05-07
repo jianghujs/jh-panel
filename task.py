@@ -279,7 +279,10 @@ def systemTask():
                     day = 30
 
                 tmp = {}
-                # 取当前CPU Io，改为3秒平均值
+                
+                # 取当前CPU Io
+                # tmp['used'] = psutil.cpu_percent(interval=1)
+
                 cpu_percent_list = []
                 for _ in range(3):
                     cpu_percent_list.append(psutil.cpu_percent(interval=1))
@@ -287,8 +290,6 @@ def systemTask():
                 tmp['used'] = avg_cpu_percent
 
 
-                # 取当前CPU Io
-                tmp['used'] = psutil.cpu_percent(interval=1)
 
                 if not cpuInfo:
                     tmp['mem'] = sm.getMemUsed()

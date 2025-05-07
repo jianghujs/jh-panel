@@ -2215,7 +2215,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         disk_list = diskInfo['disk_list']
         site_list = siteInfo['site_list']
 
-        # writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + str(cpuioList) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\nMySql:' + str(mysqlInfo))
+        # writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\nMySql:' + str(mysqlInfo))
         
         
         error_msg_arr = []

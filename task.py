@@ -365,7 +365,7 @@ def systemTask():
                 
                 # 打印格式化为yyyymmddhhmmss后的当前时间和count
                 print('time:', now_formated, ' count:', count)
-                if count >= 0:
+                if count >= 12:
                     print(f'{now_formated} start write db')
                     try:
                         addtime = int(now)

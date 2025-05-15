@@ -261,14 +261,6 @@ def systemTask():
             reloadNum = 0
             network_up = network_down = diskio_1 = diskio_2 = networkInfo = cpuInfo = diskInfo = None
             
-            # 需要监控的目录列表
-            monitor_dirs = [
-                '/www/server/mysql-apt/data',
-                '/www/wwwstorage',
-                '/var/log',
-                '/www/wwwlogs'
-            ]
-            
             while True:
                 now = time.time()
                 now_formated = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
@@ -362,6 +354,12 @@ def systemTask():
                 # 查询过去3条cpuio记录
                 # cpuioList = mw.M('cpuio').dbfile('system').field('pro,addtime').order("addtime desc").limit('0,3').select()
                 
+                # 收集磁盘使用情况
+                disk_usage = mw.getDiskUsage()
+
+                # 收集目录大小信息
+                dir_sizes = mw.collectDirectorySizes()
+
                 # 报告
                 mw.generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo)
                 
@@ -420,30 +418,26 @@ def systemTask():
                                 "addtime<?", (deltime,)).delete()
                             mw.updateLockData(mysql_write_lock_data_key)
                         
-                        # 目录占用收集
-                        directory_write_lock_data_key = '目录占用信息写入面板数据库任务'
-                        if not mw.checkLockValid(directory_write_lock_data_key, 'day_start'):
-                            # 确保directory_size表存在
-                            mw.ensureTableExists('system', 'directory_size')
-                            
-                            # 收集目录大小信息
-                            for dir_path in monitor_dirs:
-                                if os.path.exists(dir_path):
-                                    try:
-                                        # 获取目录大小
-                                        cmd = f"du -sb {dir_path} | cut -f1"
-                                        result = mw.execShell(cmd)
-                                        if result[0]:
-                                            dir_size = int(result[0].strip())
-                                            # 写入数据库
-                                            sql.table('directory_size').add('path,size,addtime', (dir_path, dir_size, addtime))
-                                            print(f'| save directory_size ({dir_path}: {mw.toSize(dir_size)}) done!')
-                                    except Exception as e:
-                                        print(f"获取目录 {dir_path} 大小失败: {str(e)}")
-                            
-                            # 删除过期数据
-                            sql.table('directory_size').where("addtime<?", (deltime,)).delete()
-                            mw.updateLockData(directory_write_lock_data_key)
+                        # 磁盘使用情况
+                        mw.ensureTableExists('system', 'disk_usage')
+                        for disk_info in disk_usage:
+                            sql.table('disk_usage').add('path,total,used,free,percent,addtime', (
+                                disk_info['path'],
+                                disk_info['total'],
+                                disk_info['used'],
+                                disk_info['free'],
+                                disk_info['percent'],
+                                addtime
+                            ))
+                            print(f'| save disk_usage ({disk_info["path"]}: {mw.toSize(disk_info["used"])}/{mw.toSize(disk_info["total"])} {disk_info["percent"]}%) done!')
+                        sql.table('disk_usage').where("addtime<?", (deltime,)).delete()
+
+                        # 目录占用
+                        mw.ensureTableExists('system', 'directory_size')
+                        for dir_info in dir_sizes:
+                            sql.table('directory_size').add('path,size,addtime', (dir_info['path'], dir_info['size'], addtime))
+                            print(f'| save directory_size ({dir_info["path"]}: {mw.toSize(dir_info["size"])}) done!')
+                        sql.table('directory_size').where("addtime<?", (deltime,)).delete()
 
                         lpro = None
                         load_average = None

@@ -47,6 +47,16 @@ CREATE TABLE IF NOT EXISTS `load_average` (
 CREATE TABLE IF NOT EXISTS `directory_size` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `path` TEXT,
-  `size` INTEGER,
+  `size` INTEGER DEFAULT 0,
+  `addtime` INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS `disk_usage` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `path` TEXT,
+  `total` INTEGER DEFAULT 0,
+  `used` INTEGER DEFAULT 0,
+  `free` INTEGER DEFAULT 0,
+  `percent` REAL DEFAULT 0,
   `addtime` INTEGER
 );

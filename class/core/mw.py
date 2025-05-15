@@ -172,6 +172,14 @@ def getAcmeDir():
         acme = '/.acme.sh'
     return acme
 
+def getMonitorDirs():
+    return [
+        '/var/log',
+        '/www/server/mysql-apt/data',
+        '/www/wwwstorage',
+        '/www/wwwlogs'
+    ]
+    
 
 def triggerTask():
     isTask = getRunDir() + '/tmp/panelTask.pl'
@@ -2401,3 +2409,71 @@ def getBackupPluginList():
     { "name": 'jianghujs', "path": "/www/server/jianghujs", "ps": 'JianghuJS管理器项目数据' },
     { "name": 'docker', "path": "/www/server/docker", "ps": 'Docker管理器项目数据' }
   ]
+
+
+
+def getDirectorySize(dir_path):
+    """
+    获取指定目录的大小（字节）
+    @param dir_path 目录路径
+    @return 目录大小（字节）
+    """
+    try:
+        # 获取目录大小
+        cmd = f"du -sb {dir_path} | cut -f1"
+        result = execShell(cmd)
+        if result[0]:
+            return int(result[0].strip())
+        return 0
+    except Exception as e:
+        writeFileLog(f"获取目录 {dir_path} 大小失败: {str(e)}")
+        return 0
+
+def collectDirectorySizes():
+    """
+    收集多个目录的大小信息
+    @return 目录大小信息列表 [{path, size}, ...]
+    """
+    monitor_dirs = getMonitorDirs()
+    result = []
+    for dir_path in monitor_dirs:
+        if os.path.exists(dir_path):
+            size = getDirectorySize(dir_path)
+            if size > 0:
+                result.append({
+                    'path': dir_path,
+                    'size': size
+                })
+    return result
+
+def getDiskUsage():
+    """
+    获取磁盘使用情况
+    @return 磁盘使用情况列表 [{path, total, used, free, percent}, ...]
+    """
+    try:
+        import psutil
+        disk_partitions = psutil.disk_partitions()
+        result = []
+        
+        for partition in disk_partitions:
+            # 跳过特殊文件系统
+            if partition.fstype in ['tmpfs', 'devtmpfs', 'devfs', 'iso9660', 'overlay']:
+                continue
+                
+            try:
+                usage = psutil.disk_usage(partition.mountpoint)
+                result.append({
+                    'path': partition.mountpoint,
+                    'total': usage.total,
+                    'used': usage.used,
+                    'free': usage.free,
+                    'percent': usage.percent
+                })
+            except Exception as e:
+                writeFileLog(f"获取磁盘 {partition.mountpoint} 使用情况失败: {str(e)}")
+                
+        return result
+    except Exception as e:
+        writeFileLog(f"获取磁盘使用情况失败: {str(e)}")
+        return []

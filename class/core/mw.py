@@ -1858,6 +1858,44 @@ def getDDB(db_dir):
     import ddb
     return ddb.DDB(db_dir)
 
+def ensureTableExists(db_file = 'system', table_name = 'directory_size'):
+    '''
+    确保table_name表存在
+    '''
+    try:
+        if not os.path.exists(db_file):
+            return False
+        if not os.path.exists(table_name):
+            return False
+
+        # 检查表是否存在
+        sql = db.Sql().dbfile(db_file)
+        
+        # 使用execute方法检查表是否存在
+        check_sql = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';"
+        result = sql.execute(check_sql)
+        
+        if result == 0:  # 表不存在
+            # 从数据库文件中，查找对应表的创建SQL语句
+            sql_file_path = f'data/sql/{db_file}.sql'
+            if os.path.exists(sql_file_path):
+                # 查找表的创建SQL语句
+                with open(sql_file_path, 'r') as f:
+                    sql_content = f.read()
+                    # 匹配CREATE TABLE到分号的完整语句
+                    pattern = f"CREATE TABLE IF NOT EXISTS `{table_name}`[^;]*;"
+                    match = re.search(pattern, sql_content)
+                    if match:
+                        create_table_sql = match.group(0)
+                        sql.execute(create_table_sql)
+                        print(f"表{table_name}创建成功")
+                        return True
+        return False
+    except Exception as e:
+        print(f"确保表{table_name}存在时出错:", str(e))
+        return False
+
+
 def getAllVms():
     result = subprocess.run(['VBoxManage', 'list', 'vms'], stdout=subprocess.PIPE)
     return result.stdout.decode('utf-8')

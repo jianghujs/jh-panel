@@ -43,3 +43,10 @@ CREATE TABLE IF NOT EXISTS `load_average` (
   `fifteen` REAL,
   `addtime` INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS `directory_size` (
+  `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+  `path` TEXT,
+  `size` INTEGER,
+  `addtime` INTEGER
+);

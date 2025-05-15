@@ -261,6 +261,14 @@ def systemTask():
             reloadNum = 0
             network_up = network_down = diskio_1 = diskio_2 = networkInfo = cpuInfo = diskInfo = None
             
+            # 需要监控的目录列表
+            monitor_dirs = [
+                '/www/server/mysql-apt/data',
+                '/www/wwwstorage',
+                '/var/log',
+                '/www/wwwlogs'
+            ]
+            
             while True:
                 now = time.time()
                 now_formated = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now))
@@ -359,7 +367,7 @@ def systemTask():
                 
                 # 打印格式化为yyyymmddhhmmss后的当前时间和count
                 print('time:', now_formated, ' count:', count)
-                if count >= 12:
+                if count >= 0:
                     print(f'{now_formated} start write db')
                     try:
                         addtime = int(now)
@@ -411,6 +419,31 @@ def systemTask():
                             sql.table('database').where(
                                 "addtime<?", (deltime,)).delete()
                             mw.updateLockData(mysql_write_lock_data_key)
+                        
+                        # 目录占用收集
+                        directory_write_lock_data_key = '目录占用信息写入面板数据库任务'
+                        if not mw.checkLockValid(directory_write_lock_data_key, 'day_start'):
+                            # 确保directory_size表存在
+                            mw.ensureTableExists('system', 'directory_size')
+                            
+                            # 收集目录大小信息
+                            for dir_path in monitor_dirs:
+                                if os.path.exists(dir_path):
+                                    try:
+                                        # 获取目录大小
+                                        cmd = f"du -sb {dir_path} | cut -f1"
+                                        result = mw.execShell(cmd)
+                                        if result[0]:
+                                            dir_size = int(result[0].strip())
+                                            # 写入数据库
+                                            sql.table('directory_size').add('path,size,addtime', (dir_path, dir_size, addtime))
+                                            print(f'| save directory_size ({dir_path}: {mw.toSize(dir_size)}) done!')
+                                    except Exception as e:
+                                        print(f"获取目录 {dir_path} 大小失败: {str(e)}")
+                            
+                            # 删除过期数据
+                            sql.table('directory_size').where("addtime<?", (deltime,)).delete()
+                            mw.updateLockData(directory_write_lock_data_key)
 
                         lpro = None
                         load_average = None

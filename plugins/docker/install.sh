@@ -32,8 +32,20 @@ Install_Docker()
 	mkdir -p $serverPath/source
 
 	if [ ! -d  $serverPath/docker ];then
+    # 在线安装
 		curl -fsSL https://get.docker.com | bash
-		mkdir -p $serverPath/docker
+
+    # 安装失败，则离线安装
+    if [ "$?" != "0" ];then
+      dpkg -i   containerd.io-bullseye-amd64.deb \
+        docker-ce-bullseye-amd64.deb \
+        docker-ce-cli-bullseye-amd64.deb \
+        docker-buildx-plugin-bullseye-amd64.deb 
+
+      apt-get install -f
+    fi
+
+		# mkdir -p $serverPath/docker
 	fi
 
 	pip install docker

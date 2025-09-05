@@ -19,10 +19,15 @@ if $log_to_file ; then
 fi
 
 while true; do
+    # 获取当前时间
+    current_time=$(date '+%Y-%m-%d %H:%M:%S')
+    
     if $log_to_file ; then
+        echo "=== $current_time ===" | tee -a $log_file
         top -b -n 1 | head -n $(($log_line_num + 6)) | tail -n $log_line_num | tee -a $log_file
         echo "" | tee -a $log_file
     else
+        echo "=== $current_time ==="
         top -b -n 1 | head -n $(($log_line_num + 6)) | tail -n $log_line_num
         echo ""
     fi

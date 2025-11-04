@@ -14,9 +14,10 @@ if ! [ -x "/usr/bin/jq" ]; then
 fi
 
 
-prompt "需要在主服务器执行xtrabackup备份并将最新的xtrabackup文件同步到本地吗？（默认n）[y/n]: " host_backup_choice "n"
+prompt "是否需要在主服务器执行xtrabackup备份？（默认n）[y/n]: " execute_backup_choice "n"
 
-if [ $host_backup_choice == "y" ]; then
+# 第一步：在主服务器执行xtrabackup备份
+if [ $execute_backup_choice == "y" ]; then
   # 获取主服务器IP
   
   pushd /www/server/jh-panel > /dev/null
@@ -55,7 +56,32 @@ EOF
     exit 1
   fi
   show_info "主服务器执行xtrabackup备份成功✅"
-  
+fi
+
+prompt "是否需要将最新的xtrabackup文件同步到本地？（默认n）[y/n]: " sync_backup_choice "n"
+
+# 第二步：同步主服务器最新的xtrabackup文件到本地
+if [ $sync_backup_choice == "y" ]; then
+  # 如果第一步没有执行，需要重新获取主服务器信息
+  if [ $execute_backup_choice != "y" ]; then
+    # 获取主服务器IP
+    pushd /www/server/jh-panel > /dev/null
+    default_remote_ip=$(python3 /www/server/jh-panel/tools.py getStandbyIp)
+    popd > /dev/null
+    remote_ip_tip="请输入主服务器IP"
+    if [ -n "$default_remote_ip" ]; then
+      remote_ip_tip+="（默认为：${default_remote_ip}）"
+    fi
+    prompt "$remote_ip_tip: " remote_ip $default_remote_ip
+    if [ -z "$remote_ip" ]; then
+      show_error "错误:未指定主服务器IP"
+      exit 1
+    fi
+
+    # 输入主服务器SSH端口
+    prompt "请输入主服务器SSH端口(默认: 10022): " remote_port "10022"
+  fi
+
   # 同步主服务器最新的xtrabackup文件到本地
   echo "正在同步主服务器最新的xtrabackup文件到本地..."
   # 获取最新的xtrabackup文件

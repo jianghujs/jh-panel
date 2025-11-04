@@ -371,7 +371,7 @@ fi
             response = urllib.request.urlopen(req, timeout=timeout)
             return response
         except Exception as ex:
-            raise Exception("requestsPost: {}".format(str(ex)))
+            raise Exception("requestsPost: {}".format(str(ex.read().decode())))
 
     def getRequestJson(self, response):
         try:

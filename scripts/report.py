@@ -469,7 +469,7 @@ table tr td:nth-child(2) {
             # 单独发送一条异常提醒
             if len(error_tips) > 0:
                 error_tips_msg = mw.generateCommonNotifyMessage('<br\>' + '<br\>'.join(error_tips) + '<br\>请注意！')
-                mw.notifyMessage(msg=error_tips_msg, msgtype="html", title="服务器异常通知", stype='服务器异常通知', trigger_time=0)
+                mw.notifyMessage(msg=error_tips_msg, msgtype="html", title="服务器异常通知：{} {}".format(mw.getConfig('title'), mw.getDateFromNow()), stype='服务器异常通知', trigger_time=0)
 
         return mw.returnJson(True, '设置成功!')
     
@@ -781,7 +781,7 @@ if __name__ == "__main__":
       except Exception as e:
         traceback.print_exc()
         notify_msg = mw.generateCommonNotifyMessage("发送服务器报告异常：" + str(e))
-        mw.notifyMessage(title='服务器异常通知', msg=notify_msg, stype='服务器报告', trigger_time=600)
+        mw.notifyMessage(title='服务器异常通知：{} {}'.format(mw.getConfig('title'), mw.getDateFromNow()), msg=notify_msg, stype='服务器报告', trigger_time=600)
     elif type == 'get_report_data':
       report_data = report.getReportData()
       print(report_data)

@@ -469,9 +469,9 @@ def systemTask():
 
             traceback.print_exc()
             mw.writeFile('logs/sys_interrupt.pl', str(ex), 'a+')
-            
+
             notify_msg = mw.generateCommonNotifyMessage("服务器监控异常：" + str(ex) + "\n" + str(traceback.format_exc()))
-            mw.notifyMessage(title='服务器异常通知', msg=notify_msg, stype='服务器监控', trigger_time=3600)
+            mw.notifyMessage(title='服务器异常通知：{} {}'.format(mw.getConfig('title'), mw.getDateFromNow()), msg=notify_msg, stype='服务器监控', trigger_time=3600)
 
             restartMw()
 

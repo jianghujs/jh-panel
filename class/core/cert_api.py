@@ -1617,6 +1617,11 @@ fullchain.pem       粘贴到证书输入框
                 cert = self.renewCertTo(self.__config['orders'][index]['domains'], self.__config[
                     'orders'][index]['auth_type'], self.__config['orders'][index]['auth_to'], index)
                 self.clearAuthFile(index)
+
+                # 多证书续签时添加延时，避免触发 API 速率限制
+                if len(order_index) > 1 and n < len(order_index):
+                    writeLog("|-等待 30 秒后处理下一张证书...")
+                    time.sleep(30)
             return cert
         except Exception as ex:
             ex = str(ex)

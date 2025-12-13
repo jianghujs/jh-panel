@@ -7,7 +7,7 @@ LOG_FILE="{$SERVER_PATH}/keepalived/keepalived.log"
 MYSQL_HOST="localhost"
 MYSQL_PORT='33067'
 MYSQL_USER='root'
-MYSQL_PASS="123456"
+MYSQL_PASSWORD='123456'
 TIMEOUT=3
 MYSQL_BIN='{$SERVER_PATH}/mysql-apt/bin/usr/bin/mysql'
 MYSQL_SOCKET='{$SERVER_PATH}/mysql-apt/mysql.sock'
@@ -105,7 +105,7 @@ check_mysql_service() {
     fi
 
     local result
-    result=$(timeout $TIMEOUT "$MYSQL_BIN" --socket="$MYSQL_SOCKET" -u"$MYSQL_USER" -p"$MYSQL_PASS" -e "SELECT 1" 2>&1)
+    result=$(timeout $TIMEOUT "$MYSQL_BIN" --socket="$MYSQL_SOCKET" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1" 2>&1)
     if [ $? -ne 0 ]; then
         log "MySQL socket连接失败: $result"
         return 1
@@ -127,7 +127,7 @@ check_mysql_port() {
 # 预读取复制状态，供后续检查使用
 load_slave_status() {
     local result rc
-    result=$(timeout $TIMEOUT "$MYSQL_BIN" -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASS" -e "SHOW SLAVE STATUS\\G" 2>&1)
+    result=$(timeout $TIMEOUT "$MYSQL_BIN" -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SHOW SLAVE STATUS\\G" 2>&1)
     rc=$?
     if [ $rc -ne 0 ]; then
         log "读取复制状态失败: $result"
@@ -146,7 +146,7 @@ load_slave_status() {
 # 检查是否处于只读模式
 check_mysql_writable() {
     local result read_only super_read_only
-    result=$(timeout $TIMEOUT "$MYSQL_BIN" -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASS" -N -B -e "SELECT @@GLOBAL.read_only, @@GLOBAL.super_read_only")
+    result=$(timeout $TIMEOUT "$MYSQL_BIN" -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -N -B -e "SELECT @@GLOBAL.read_only, @@GLOBAL.super_read_only")
     if [ $? -ne 0 ]; then
         log "读取read_only状态失败: $result"
         return 1
@@ -171,7 +171,7 @@ check_mysql_writable() {
 # 检查MySQL连接和简单查询
 check_mysql_connect() {
     local result
-    result=$(timeout $TIMEOUT "$MYSQL_BIN" -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASS" -e "SELECT 1" 2>&1)
+    result=$(timeout $TIMEOUT "$MYSQL_BIN" -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1" 2>&1)
     if [ $? -ne 0 ]; then
         log "MySQL连接失败: $result"
         return 1

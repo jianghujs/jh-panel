@@ -169,6 +169,10 @@ def getPromotionScriptPath():
     return getServerDir() + '/scripts/promote_slave_to_master.sh'
 
 
+def getCheckMysqlScriptPath():
+    return getServerDir() + '/scripts/chk_mysql.sh'
+
+
 def shellQuote(value):
     if value is None:
         value = ''
@@ -244,18 +248,15 @@ def detectMysqlInstance():
     return None
 
 
-def syncPromotionScriptCredentials():
-    script_path = getPromotionScriptPath()
-    if not os.path.exists(script_path):
-        return
-
+def syncMysqlScriptsCredentials():
     mysql_info = detectMysqlInstance()
     if not mysql_info:
         return
 
-    content = mw.readFile(script_path)
-    if not content:
-        return
+    script_paths = [
+        getPromotionScriptPath(),
+        getCheckMysqlScriptPath()
+    ]
 
     replacements = {
         'MYSQL_BIN': mysql_info['client_bin'],
@@ -265,17 +266,25 @@ def syncPromotionScriptCredentials():
         'MYSQL_SOCKET': mysql_info['socket']
     }
 
-    changed = False
-    for key, value in replacements.items():
-        new_line = key + '=' + shellQuote(value)
-        pattern = r'^' + key + r'=.*$'
-        content, count = re.subn(pattern, new_line, content, flags=re.M)
-        if count > 0:
-            changed = True
+    for script_path in script_paths:
+        if not os.path.exists(script_path):
+            continue
 
-    if changed:
-        mw.writeFile(script_path, content)
-    mw.execShell('chmod +x ' + script_path)
+        content = mw.readFile(script_path)
+        if not content:
+            continue
+
+        changed = False
+        for key, value in replacements.items():
+            new_line = key + '=' + shellQuote(value)
+            pattern = r'^' + key + r'=.*$'
+            content, count = re.subn(pattern, new_line, content, flags=re.M)
+            if count > 0:
+                changed = True
+
+        if changed:
+            mw.writeFile(script_path, content)
+        mw.execShell('chmod +x ' + script_path)
 
 def initDreplace():
 
@@ -308,9 +317,9 @@ def initDreplace():
         mw.writeFile(dst_conf, content)
         mw.writeFile(dst_conf_init, 'ok')
 
-    # 复制检查脚本并同步MySQL提升脚本
+    # 复制检查脚本并同步MySQL信息
     copyScripts()
-    syncPromotionScriptCredentials()
+    syncMysqlScriptsCredentials()
 
     # systemd
     systemDir = mw.systemdCfgDir()

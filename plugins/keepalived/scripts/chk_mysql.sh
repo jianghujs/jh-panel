@@ -2,7 +2,7 @@
 
 # 计划任务,恢复后,可自动拉起keepalived
 # bash {$SERVER_PATH}/keepalived/scripts/chk_mysql.sh
-
+# TODO 端口需要可配置
 counter=$(netstat -na|grep "LISTEN"|grep "3306"|wc -l)
 data_time=`date +'%Y-%m-%d %H:%M:%S'`
 

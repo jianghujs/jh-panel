@@ -145,19 +145,137 @@ def copyScripts():
     dst_scripts_path = getServerDir() + '/scripts'
     if not os.path.exists(dst_scripts_path):
         mw.execShell('mkdir -p ' + dst_scripts_path)
-        olist = os.listdir(src_scripts_path)
-        for o in range(len(olist)):
-            src_file = src_scripts_path+'/'+olist[o]
-            dst_file = dst_scripts_path+'/'+olist[o]
 
-            content = mw.readFile(src_file)
-            content = contentReplace(content)
-            mw.writeFile(dst_file, content)
+    copied = False
+    olist = os.listdir(src_scripts_path)
+    for o in range(len(olist)):
+        src_file = src_scripts_path + '/' + olist[o]
+        dst_file = dst_scripts_path + '/' + olist[o]
 
-            cmd = 'chmod +x ' + dst_file
-            mw.execShell(cmd)
-        return True
-    return False
+        if os.path.exists(dst_file):
+            continue
+
+        content = mw.readFile(src_file)
+        content = contentReplace(content)
+        mw.writeFile(dst_file, content)
+
+        cmd = 'chmod +x ' + dst_file
+        mw.execShell(cmd)
+        copied = True
+    return copied
+
+
+def getPromotionScriptPath():
+    return getServerDir() + '/scripts/promote_slave_to_master.sh'
+
+
+def shellQuote(value):
+    if value is None:
+        value = ''
+    return "'" + str(value).replace("'", "'\"'\"'") + "'"
+
+
+def parseMysqlConfValue(content, key):
+    rep = r'^\s*' + re.escape(key) + r'\s*=\s*(.+)$'
+    matches = re.findall(rep, content, re.M)
+    if not matches:
+        return ''
+    return matches[-1].strip()
+
+
+def detectMysqlInstance():
+    server_path = mw.getServerDir()
+    mysql_plugins = [
+        {
+            'name': 'mysql-apt',
+            'path': server_path + '/mysql-apt',
+            'client_bin': '/bin/usr/bin/mysql'
+        },
+        {
+            'name': 'mysql-yum',
+            'path': server_path + '/mysql-yum',
+            'client_bin': '/bin/usr/bin/mysql'
+        },
+        {
+            'name': 'mysql',
+            'path': server_path + '/mysql',
+            'client_bin': '/bin/mysql'
+        },
+        {
+            'name': 'mariadb',
+            'path': server_path + '/mariadb',
+            'client_bin': '/bin/mysql'
+        }
+    ]
+
+    for plugin in mysql_plugins:
+        base_path = plugin['path']
+        conf = base_path + '/etc/my.cnf'
+        if not os.path.exists(conf):
+            continue
+
+        content = mw.readFile(conf)
+        if not content:
+            continue
+
+        port = parseMysqlConfValue(content, 'port')
+        socket_file = parseMysqlConfValue(content, 'socket')
+
+        password = ''
+        try:
+            password = mw.M('config').dbPos(base_path, 'mysql').where(
+                'id=?', (1,)).getField('mysql_root')
+            if password is None:
+                password = ''
+        except Exception:
+            password = ''
+
+        client_bin = base_path + plugin['client_bin']
+        if not os.path.exists(client_bin):
+            client_bin = 'mysql'
+
+        return {
+            'user': 'root',
+            'password': password,
+            'port': port if port else '3306',
+            'socket': socket_file if socket_file else '',
+            'client_bin': client_bin
+        }
+    return None
+
+
+def syncPromotionScriptCredentials():
+    script_path = getPromotionScriptPath()
+    if not os.path.exists(script_path):
+        return
+
+    mysql_info = detectMysqlInstance()
+    if not mysql_info:
+        return
+
+    content = mw.readFile(script_path)
+    if not content:
+        return
+
+    replacements = {
+        'MYSQL_BIN': mysql_info['client_bin'],
+        'MYSQL_USER': mysql_info['user'],
+        'MYSQL_PASSWORD': mysql_info['password'],
+        'MYSQL_PORT': mysql_info['port'],
+        'MYSQL_SOCKET': mysql_info['socket']
+    }
+
+    changed = False
+    for key, value in replacements.items():
+        new_line = key + '=' + shellQuote(value)
+        pattern = r'^' + key + r'=.*$'
+        content, count = re.subn(pattern, new_line, content, flags=re.M)
+        if count > 0:
+            changed = True
+
+    if changed:
+        mw.writeFile(script_path, content)
+    mw.execShell('chmod +x ' + script_path)
 
 def initDreplace():
 
@@ -190,8 +308,9 @@ def initDreplace():
         mw.writeFile(dst_conf, content)
         mw.writeFile(dst_conf_init, 'ok')
 
-    # 复制检查脚本
+    # 复制检查脚本并同步MySQL提升脚本
     copyScripts()
+    syncPromotionScriptCredentials()
 
     # systemd
     systemDir = mw.systemdCfgDir()

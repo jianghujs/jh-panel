@@ -141,3 +141,144 @@ function submitConf(version) {
     });
 }
 
+function keepalivedEscapeHtml(value){
+    if(value === undefined || value === null) return '';
+    return String(value)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+}
+
+function keepalivedParsePayload(payload){
+    if(typeof payload === 'string'){
+        try{
+            return JSON.parse(payload);
+        }catch(e){
+            return null;
+        }
+    }
+    return payload || null;
+}
+
+function keepalivedVrrpPanel(version){
+    kpPost('get_vrrp_form', version, {}, function(res){
+        var resData = keepalivedParsePayload(res.data);
+        var formData = resData.data;
+        if(!formData){
+            layer.msg('解析配置失败，请稍后重试。', {icon:2});
+            return;
+        }
+        var checked = formData.unicast_enabled ? 'checked' : '';
+        var html = '<div class="bt-form">\
+            <div class="line">\
+                <span class="tname">网络接口</span>\
+                <div class="info-r"><input class="bt-input-text" name="kp_interface" style="width:270px" value="' + keepalivedEscapeHtml(formData.interface) + '" placeholder="示例：eth0" /></div>\
+            </div>\
+            <div class="line">\
+                <span class="tname">目标虚拟IP</span>\
+                <div class="info-r"><input class="bt-input-text" name="kp_virtual_ip" style="width:270px" value="' + keepalivedEscapeHtml(formData.virtual_ipaddress) + '" placeholder="示例：192.168.1.10/24" /></div>\
+            </div>\
+            <div class="line">\
+                <span class="tname">单播模式</span>\
+                <div class="info-r">\
+                    <label class="mr10"><input type="checkbox" class="keepalived-unicast-toggle" ' + checked + ' /> 启用</label>\
+                </div>\
+            </div>\
+            <div class="line keepalived-unicast-group">\
+                <span class="tname">本地IP</span>\
+                <div class="info-r"><input class="bt-input-text" name="kp_unicast_src" style="width:270px" value="' + keepalivedEscapeHtml(formData.unicast_src_ip) + '" placeholder="单播源IP，示例：192.168.1.110" /></div>\
+            </div>\
+            <div class="line keepalived-unicast-group">\
+                <span class="tname">对端IP</span>\
+                <div class="info-r"><textarea name="kp_unicast_peer_list" class="bt-input-text" style="width:270px;height:96px" placeholder="每行一个对端IP，示例：192.168.1.210">' + keepalivedEscapeHtml(formData.unicast_peer_list) + '</textarea>\
+                    <div class="c9" style="margin-top:5px">支持多个IP，使用换行分隔。</div>\
+                </div>\
+            </div>\
+            <div class="line">\
+                <span class="tname">优先级</span>\
+                <div class="info-r"><input class="bt-input-text" name="kp_priority" style="width:270px" value="' + keepalivedEscapeHtml(formData.priority) + '" placeholder="示例：100" /></div>\
+            </div>\
+            <div class="line">\
+                <span class="tname">连接验证码</span>\
+                <div class="info-r"><input class="bt-input-text" name="kp_auth_pass" style="width:270px" value="' + keepalivedEscapeHtml(formData.auth_pass) + '" placeholder="示例：1111" /></div>\
+            </div>\
+            <div class="line">\
+                <span class="tname"></span>\
+                <div class="info-r">\
+                    <button class="btn btn-sm mr10" onclick="keepalivedVrrpPanel(\'' + version + '\')">刷新</button>\
+                    <button class="btn btn-success btn-sm" onclick="keepalivedSaveVrrp(\'' + version + '\')">保存</button>\
+                </div>\
+            </div>\
+        </div>';
+        $(".soft-man-con").html(html);
+        keepalivedSyncUnicastState();
+        $('.keepalived-unicast-toggle').change(function(){
+            keepalivedSyncUnicastState();
+        });
+    });
+}
+
+function keepalivedSyncUnicastState(){
+    var enabled = $('.keepalived-unicast-toggle').is(':checked');
+    var group = $('.keepalived-unicast-group');
+    group.find('input,textarea').prop('disabled', !enabled);
+    if(enabled){
+        group.removeClass('disabled');
+    }else{
+        group.addClass('disabled');
+    }
+}
+
+function keepalivedSaveVrrp(version){
+    var iface = $.trim($("input[name='kp_interface']").val());
+    var vip = $.trim($("input[name='kp_virtual_ip']").val());
+    var priority = $.trim($("input[name='kp_priority']").val());
+    var authPass = $.trim($("input[name='kp_auth_pass']").val());
+    var unicastEnabled = $('.keepalived-unicast-toggle').is(':checked');
+    var srcIp = $.trim($("input[name='kp_unicast_src']").val());
+    var peerList = $.trim($("textarea[name='kp_unicast_peer_list']").val());
+
+    if(iface === ''){
+        layer.msg('请填写网络接口名称', {icon:2});
+        return;
+    }
+    if(vip === ''){
+        layer.msg('请填写目标虚拟IP', {icon:2});
+        return;
+    }
+    if(priority === '' || !/^[0-9]+$/.test(priority)){
+        layer.msg('优先级必须为正整数', {icon:2});
+        return;
+    }
+    if(authPass === ''){
+        layer.msg('请填写连接验证码', {icon:2});
+        return;
+    }
+    if(unicastEnabled){
+        if(srcIp === ''){
+            layer.msg('启用单播时需要填写本地IP', {icon:2});
+            return;
+        }
+        if(peerList === ''){
+            layer.msg('启用单播时需要至少一个对端IP', {icon:2});
+            return;
+        }
+    }
+    var postData = {
+        interface: iface,
+        virtual_ipaddress: vip,
+        priority: priority,
+        auth_pass: authPass,
+        unicast_enabled: unicastEnabled ? '1' : '0',
+        unicast_src_ip: srcIp,
+        unicast_peer_list: peerList
+    };
+    kpPost('save_vrrp_form', version, postData, function(res){
+        layer.msg(res.msg, {icon:1});
+        setTimeout(function(){
+            keepalivedVrrpPanel(version);
+        }, 500);
+    });
+}

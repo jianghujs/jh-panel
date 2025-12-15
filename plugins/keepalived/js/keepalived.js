@@ -309,7 +309,7 @@ function keepalivedStatusPanel(version){
             <div class="keepalived-status-buttons">\
                 <button class="btn btn-sm ' + startStopClass + '" style="' + startStopStyle + '" onclick="keepalivedServiceControl(\'' + (data.service_status === 'start' ? 'stop' : 'start') + '\', \'' + version + '\')">' + (data.service_status === 'start' ? '停止' : '启动') + '</button>\
                 <button class="btn btn-default btn-sm" onclick="keepalivedServiceControl(\'restart\', \'' + version + '\')">重启</button>\
-                <button class="btn btn-default btn-sm" onclick="pluginLogs(\'keepalived\',\'\',\'run_log\')">服务日志</button>\
+                <button class="btn btn-default btn-sm" onclick="keepalivedServiceLog()">服务日志</button>\
                 <button class="btn btn-default btn-sm" onclick="keepalivedShowVipStatus(\'' + version + '\')">VIP 状态</button>\
             </div>\
         </div>';
@@ -335,6 +335,12 @@ function keepalivedServiceControl(action, version){
     } else {
         perform();
     }
+}
+
+function keepalivedServiceLog(){
+    var logPath = '/www/server/keepalived/keepalived.log';
+    var cmd = 'tail -f ' + logPath;
+    execScriptAndShowLog('正在获取 Keepalived 日志...', cmd);
 }
 
 function keepalivedShowVipStatus(version){

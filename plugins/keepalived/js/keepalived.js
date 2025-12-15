@@ -319,12 +319,22 @@ function keepalivedStatusPanel(version){
 
 function keepalivedServiceControl(action, version){
     var alias = action === 'restart' ? '重启' : (action === 'stop' ? '停止' : '启动');
-    kpPost(action, version, {}, function(res){
-        layer.msg(res.msg || (alias + '成功'), {icon:1});
-        setTimeout(function(){
-            keepalivedStatusPanel(version);
-        }, 800);
-    });
+    var perform = function(){
+        kpPost(action, version, {}, function(res){
+            layer.msg(res.msg || (alias + '成功'), {icon:1});
+            setTimeout(function(){
+                keepalivedStatusPanel(version);
+            }, 800);
+        });
+    };
+    if(action === 'stop'){
+        layer.confirm('确认要停止 Keepalived 服务吗？', {title:'确认操作',icon:0}, function(index){
+            layer.close(index);
+            perform();
+        });
+    } else {
+        perform();
+    }
 }
 
 function keepalivedShowVipStatus(version){

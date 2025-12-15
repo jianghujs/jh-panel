@@ -12,7 +12,7 @@ import mw
 PLUGIN_PATH = os.path.dirname(__file__)
 if PLUGIN_PATH not in sys.path:
     sys.path.append(PLUGIN_PATH)
-import config_util
+import config_util as kp_util
 
 app_debug = False
 if mw.isAppleSystem():
@@ -188,6 +188,62 @@ def saveVrrpForm():
 
     mw.writeFile(conf, new_content)
     return mw.returnJson(True, '保存成功!')
+
+
+def _getVipSummary():
+    vip = ''
+    interface = ''
+    tpl_content = ''
+    tpl = getConfTpl()
+    if os.path.exists(tpl):
+        tpl_content = mw.readFile(tpl)
+
+    conf = getConf()
+    if os.path.exists(conf):
+        content = mw.readFile(conf)
+        try:
+            form_data = kp_util.get_vrrp_form_data(content, tpl_content)
+            vip = form_data.get('virtual_ipaddress', '')
+            interface = form_data.get('interface', '')
+        except kp_util.KeepalivedConfigError:
+            vip = ''
+            interface = ''
+    pure_vip = vip.split('/')[0] if vip else ''
+    return vip, pure_vip, interface
+
+
+def getStatusPanel():
+    vip, pure_vip, interface = _getVipSummary()
+    vip_cmd_output = ''
+    vip_owned = False
+    if pure_vip != '':
+        cmd = "ip addr | grep -w " + pure_vip
+        vip_cmd_output = mw.execShell(cmd)[0].strip()
+        vip_owned = vip_cmd_output != ''
+
+    service_state = status()
+
+    log_file = runLog()
+    if os.path.exists(log_file):
+        log_content = mw.getLastLine(log_file, 200)
+    else:
+        log_content = '日志文件不存在: ' + log_file
+
+    pid_output = mw.execShell("pidof keepalived")[0].strip()
+    pid_list = [pid for pid in pid_output.split() if pid.strip() != '']
+
+    data = {
+        'vip': vip,
+        'pure_vip': pure_vip,
+        'vip_owned': vip_owned,
+        'vip_interface': interface,
+        'vip_check_output': vip_cmd_output,
+        'service_status': service_state,
+        'log': log_content,
+        'pid_list': pid_list,
+        'timestamp': int(time.time())
+    }
+    return mw.returnJson(True, 'OK', data)
 
 
 def status():
@@ -555,6 +611,8 @@ if __name__ == "__main__":
         print(configScriptsTpl())
     elif func == 'read_config_tpl':
         print(readConfigTpl())
+    elif func == 'get_status_panel':
+        print(getStatusPanel())
     elif func == 'get_vrrp_form':
         print(getVrrpForm())
     elif func == 'save_vrrp_form':

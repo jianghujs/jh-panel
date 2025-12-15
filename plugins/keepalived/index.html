@@ -1,8 +1,19 @@
+<style>
+.keepalived-status-simple{padding:15px;}
+.keepalived-status-simple .item{margin-bottom:12px;font-size:14px;}
+.keepalived-status-simple .item .label-text{display:inline-block;min-width:140px;color:#666;}
+.keepalived-status-buttons button{margin-right:8px;}
+.keepalived-status-badge{display:inline-block;font-size:13px;font-weight:bold;margin-left:6px;}
+.keepalived-status-badge.success{color:#5cb85c;}
+.keepalived-status-badge.danger{color:#d9534f;}
+.keepalived-status-simple .status-pre{background:#1f1f1f;color:#f5f5f5;padding:10px;border-radius:4px;}
+</style>
 <div class="bt-form">
 	<div class='plugin_version'></div>
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
 			<p onclick="pluginService('keepalived');">服务</p>
+			<p onclick="keepalivedStatusPanel($('.plugin_version').attr('version'));">状态面板</p>
 			<p onclick="pluginInitD('keepalived');">自启动</p>
 			<p class="bgw" onclick="keepalivedVrrpPanel($('.plugin_version').attr('version'));">基本配置</p>
 			<!-- <p onclick="pluginConfig('keepalived');">配置修改</p> -->

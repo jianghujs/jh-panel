@@ -282,3 +282,74 @@ function keepalivedSaveVrrp(version){
         }, 500);
     });
 }
+
+function keepalivedStatusPanel(version){
+    kpPost('get_status_panel', version, {}, function(res){
+        var resData = keepalivedParsePayload(res.data);
+        var data = resData.data;
+        if(!data){
+            layer.msg('未能获取状态数据，请稍后重试。', {icon:2});
+            return;
+        }
+
+        var serviceBadge = data.service_status === 'start'
+            ? '<span class="keepalived-status-badge success">运行中</span>'
+            : '<span class="keepalived-status-badge danger">未运行</span>';
+        var vipBadge = data.vip_owned
+            ? '<span class="keepalived-status-badge success">是</span>'
+            : '<span class="keepalived-status-badge danger">否</span>';
+
+        var vipText = data.vip ? '（' + keepalivedEscapeHtml(data.vip) + '）' : '';
+        var startStopClass = data.service_status === 'start' ? 'btn-danger' : 'btn-success';
+        var startStopStyle = data.service_status === 'start' ? 'background-color:#d9534f;color:#fff;' : 'background-color:#5cb85c;color:#fff;';
+
+        var html = '<div class="keepalived-status-simple">\
+            <div class="item"><span class="label-text">Keepalived 服务状态：</span>' + serviceBadge + '</div>\
+            <div class="item"><span class="label-text">是否持有 VIP：</span>' + vipBadge + vipText + '</div>\
+            <div class="keepalived-status-buttons">\
+                <button class="btn btn-sm ' + startStopClass + '" style="' + startStopStyle + '" onclick="keepalivedServiceControl(\'' + (data.service_status === 'start' ? 'stop' : 'start') + '\', \'' + version + '\')">' + (data.service_status === 'start' ? '停止' : '启动') + '</button>\
+                <button class="btn btn-default btn-sm" onclick="keepalivedServiceControl(\'restart\', \'' + version + '\')">重启</button>\
+                <button class="btn btn-default btn-sm" onclick="pluginLogs(\'keepalived\',\'\',\'run_log\')">服务日志</button>\
+                <button class="btn btn-default btn-sm" onclick="keepalivedShowVipStatus(\'' + version + '\')">VIP 状态</button>\
+            </div>\
+        </div>';
+        $(".soft-man-con").html(html);
+    });
+}
+
+function keepalivedServiceControl(action, version){
+    var alias = action === 'restart' ? '重启' : (action === 'stop' ? '停止' : '启动');
+    kpPost(action, version, {}, function(res){
+        layer.msg(res.msg || (alias + '成功'), {icon:1});
+        setTimeout(function(){
+            keepalivedStatusPanel(version);
+        }, 800);
+    });
+}
+
+function keepalivedShowVipStatus(version){
+    kpPost('get_status_panel', version, {}, function(res){
+        var resData = keepalivedParsePayload(res.data);
+        var data = resData.data;
+        if(!data){
+            layer.msg('未能获取 VIP 状态', {icon:2});
+            return;
+        }
+        var vipBadge = data.vip_owned
+            ? '<span class="keepalived-status-badge success">是</span>'
+            : '<span class="keepalived-status-badge danger">否</span>';
+        var content = '<div class="pd15">\
+            <p>VIP：' + keepalivedEscapeHtml(data.vip || '未配置') + '</p>\
+            <p>接口：' + keepalivedEscapeHtml(data.vip_interface || '-') + '</p>\
+            <p>当前是否持有：' + vipBadge + '</p>\
+            <p style="margin-top:10px;">检查输出：</p>\
+            <pre class="status-pre" style="height:160px;overflow:auto;">' + keepalivedEscapeHtml(data.vip_check_output || '') + '</pre>\
+        </div>';
+        layer.open({
+            type: 1,
+            title: 'VIP 状态',
+            area: ['460px','360px'],
+            content: content
+        });
+    });
+}

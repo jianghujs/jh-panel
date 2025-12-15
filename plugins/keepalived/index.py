@@ -12,7 +12,7 @@ import mw
 PLUGIN_PATH = os.path.dirname(__file__)
 if PLUGIN_PATH not in sys.path:
     sys.path.append(PLUGIN_PATH)
-import config_util as kp_util
+import config_util as config_util
 
 app_debug = False
 if mw.isAppleSystem():
@@ -202,10 +202,10 @@ def _getVipSummary():
     if os.path.exists(conf):
         content = mw.readFile(conf)
         try:
-            form_data = kp_util.get_vrrp_form_data(content, tpl_content)
+            form_data = config_util.get_vrrp_form_data(content, tpl_content)
             vip = form_data.get('virtual_ipaddress', '')
             interface = form_data.get('interface', '')
-        except kp_util.KeepalivedConfigError:
+        except config_util.KeepalivedConfigError:
             vip = ''
             interface = ''
     pure_vip = vip.split('/')[0] if vip else ''

@@ -13,9 +13,9 @@
 	<div class="bt-w-main">
 		<div class="bt-w-menu">
 			<p onclick="pluginService('keepalived');">服务</p>
-			<p onclick="keepalivedStatusPanel($('.plugin_version').attr('version'));">状态面板</p>
 			<p onclick="pluginInitD('keepalived');">自启动</p>
-			<p class="bgw" onclick="keepalivedVrrpPanel($('.plugin_version').attr('version'));">基本配置</p>
+			<p class="bgw" onclick="keepalivedStatusPanel($('.plugin_version').attr('version'));">状态</p>
+			<p onclick="keepalivedVrrpPanel($('.plugin_version').attr('version'));">基本配置</p>
 			<!-- <p onclick="pluginConfig('keepalived');">配置修改</p> -->
 			<p onclick="pluginConfigTpl('keepalived',$('.plugin_version').attr('version'));">配置修改</p>
 			<p onclick="pluginConfigListTpl('keepalived',$('.plugin_version').attr('version'),'config_scripts_tpl','read_config_tpl');">脚本模板</p>
@@ -29,6 +29,6 @@
 <script type="text/javascript">
 resetPluginWinHeight(530);
 $.getScript( "/plugins/file?name=keepalived&f=js/keepalived.js", function(){
-	keepalivedVrrpPanel($('.plugin_version').attr('version'));
+	keepalivedStatusPanel($('.plugin_version').attr('version'));
 });
 </script>

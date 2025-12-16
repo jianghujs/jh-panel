@@ -314,6 +314,7 @@ function keepalivedStatusPanel(version){
             priorityClass = 'danger';
         }
         var priorityDisplay = '<span class="keepalived-status-priority' + (priorityClass ? (' ' + priorityClass) : '') + '">' + keepalivedEscapeHtml(priorityText) + '</span>';
+        var priorityButtonsHtml = priorityButtons || '';
 
         var html = '<div class="keepalived-status-simple">\
             <div class="item"><span class="label-text">Keepalived 服务状态：</span>' + serviceBadge + '</div>\
@@ -322,8 +323,9 @@ function keepalivedStatusPanel(version){
             <div class="keepalived-status-buttons">\
                 <button class="btn btn-sm ' + startStopClass + '" style="' + startStopStyle + '" onclick="keepalivedServiceControl(\'' + (data.service_status === 'start' ? 'stop' : 'start') + '\', \'' + version + '\')">' + (data.service_status === 'start' ? '停止' : '启动') + '</button>\
                 <button class="btn btn-default btn-sm" onclick="keepalivedServiceControl(\'restart\', \'' + version + '\')">重启</button>\
+                ' + priorityButtonsHtml + '\
                 <button class="btn btn-default btn-sm" onclick="keepalivedServiceLog()">服务日志</button>\
-                <button class="btn btn-default btn-sm" onclick="keepalivedShowVipStatus(\'' + version + '\')">VIP 状态</button>' + priorityButtons + '\
+                <button class="btn btn-default btn-sm" onclick="keepalivedShowVipStatus(\'' + version + '\')">VIP 状态</button>\
             </div>\
         </div>';
         $(".soft-man-con").html(html);

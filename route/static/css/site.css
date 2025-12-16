@@ -1740,8 +1740,8 @@ html .menu .menu_exit:hover {
 }
 
 .btn-danger {
-    background-color: #cbcbcb;
-    border-color: #cbcbcb;
+  background-color: #d9534f;
+  border-color: #d9534f;
     color: #fff
 }
 

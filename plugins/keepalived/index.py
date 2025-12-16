@@ -193,6 +193,7 @@ def saveVrrpForm():
 def _getVipSummary():
     vip = ''
     interface = ''
+    priority = ''
     tpl_content = ''
     tpl = getConfTpl()
     if os.path.exists(tpl):
@@ -205,15 +206,71 @@ def _getVipSummary():
             form_data = config_util.get_vrrp_form_data(content, tpl_content)
             vip = form_data.get('virtual_ipaddress', '')
             interface = form_data.get('interface', '')
+            priority = form_data.get('priority', '')
         except config_util.KeepalivedConfigError:
             vip = ''
             interface = ''
+            priority = ''
     pure_vip = vip.split('/')[0] if vip else ''
-    return vip, pure_vip, interface
+    return vip, pure_vip, interface, priority
+
+
+def setPriority():
+    args = getArgs()
+    data = checkArgs(args, ['priority'])
+    if not data[0]:
+        return data[1]
+
+    priority_raw = args['priority'].strip()
+    try:
+        priority_int = int(priority_raw)
+        if priority_int < 1:
+            raise ValueError('priority < 1')
+    except Exception:
+        return mw.returnJson(False, '优先级必须为正整数!')
+
+    conf = getConf()
+    if not os.path.exists(conf):
+        return mw.returnJson(False, '未找到配置文件!')
+
+    tpl_content = ''
+    tpl = getConfTpl()
+    if os.path.exists(tpl):
+        tpl_content = mw.readFile(tpl)
+
+    content = mw.readFile(conf)
+    try:
+        form_data = config_util.get_vrrp_form_data(content, tpl_content)
+    except config_util.KeepalivedConfigError as exc:
+        return mw.returnJson(False, str(exc))
+
+    current_priority = str(form_data.get('priority', '')).strip()
+    if current_priority != '' and current_priority == str(priority_int):
+        return mw.returnJson(True, '优先级已是 {0}'.format(priority_int))
+
+    peer_text = form_data.get('unicast_peer_list', '')
+    peer_list = [p.strip() for p in peer_text.splitlines() if p.strip() != '']
+    values = {
+        'interface': form_data.get('interface', ''),
+        'virtual_ipaddress': form_data.get('virtual_ipaddress', ''),
+        'priority': priority_int,
+        'auth_pass': form_data.get('auth_pass', ''),
+        'unicast_enabled': True if form_data.get('unicast_enabled') else False,
+        'unicast_src_ip': form_data.get('unicast_src_ip', ''),
+        'unicast_peer_list': peer_list
+    }
+
+    try:
+        new_content = config_util.build_vrrp_content(content, values)
+    except config_util.KeepalivedConfigError as exc:
+        return mw.returnJson(False, str(exc))
+
+    mw.writeFile(conf, new_content)
+    return mw.returnJson(True, '优先级已更新为 {0}'.format(priority_int))
 
 
 def getStatusPanel():
-    vip, pure_vip, interface = _getVipSummary()
+    vip, pure_vip, interface, priority = _getVipSummary()
     vip_cmd_output = ''
     vip_owned = False
     if pure_vip != '':
@@ -241,7 +298,8 @@ def getStatusPanel():
         'service_status': service_state,
         'log': log_content,
         'pid_list': pid_list,
-        'timestamp': int(time.time())
+        'timestamp': int(time.time()),
+        'priority': priority
     }
     return mw.returnJson(True, 'OK', data)
 
@@ -617,5 +675,7 @@ if __name__ == "__main__":
         print(getVrrpForm())
     elif func == 'save_vrrp_form':
         print(saveVrrpForm())
+    elif func == 'set_priority':
+        print(setPriority())
     else:
         print('error')

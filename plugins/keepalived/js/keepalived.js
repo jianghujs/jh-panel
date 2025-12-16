@@ -302,15 +302,28 @@ function keepalivedStatusPanel(version){
         var vipText = data.vip ? '（' + keepalivedEscapeHtml(data.vip) + '）' : '';
         var startStopClass = data.service_status === 'start' ? 'btn-danger' : 'btn-success';
         var startStopStyle = data.service_status === 'start' ? 'background-color:#d9534f;color:#fff;' : 'background-color:#5cb85c;color:#fff;';
+        var priorityText = (data.priority !== undefined && data.priority !== null && data.priority !== '') ? data.priority : '未知';
+        var priorityNum = parseInt(data.priority, 10);
+        var priorityButtons = '';
+        var priorityClass = '';
+        if(priorityNum === 100){
+            priorityButtons = '<button class="btn btn-danger btn-sm" onclick="keepalivedAdjustPriority(90, \'' + version + '\')">设置为低优先级</button>';
+            priorityClass = 'success';
+        }else if(priorityNum === 90){
+            priorityButtons = '<button class="btn btn-success btn-sm" onclick="keepalivedAdjustPriority(100, \'' + version + '\')">设置为高优先级</button>';
+            priorityClass = 'danger';
+        }
+        var priorityDisplay = '<span class="keepalived-status-priority' + (priorityClass ? (' ' + priorityClass) : '') + '">' + keepalivedEscapeHtml(priorityText) + '</span>';
 
         var html = '<div class="keepalived-status-simple">\
             <div class="item"><span class="label-text">Keepalived 服务状态：</span>' + serviceBadge + '</div>\
             <div class="item"><span class="label-text">是否持有 VIP：</span>' + vipBadge + vipText + '</div>\
+            <div class="item"><span class="label-text">当前优先级：</span>' + priorityDisplay + '</div>\
             <div class="keepalived-status-buttons">\
                 <button class="btn btn-sm ' + startStopClass + '" style="' + startStopStyle + '" onclick="keepalivedServiceControl(\'' + (data.service_status === 'start' ? 'stop' : 'start') + '\', \'' + version + '\')">' + (data.service_status === 'start' ? '停止' : '启动') + '</button>\
                 <button class="btn btn-default btn-sm" onclick="keepalivedServiceControl(\'restart\', \'' + version + '\')">重启</button>\
                 <button class="btn btn-default btn-sm" onclick="keepalivedServiceLog()">服务日志</button>\
-                <button class="btn btn-default btn-sm" onclick="keepalivedShowVipStatus(\'' + version + '\')">VIP 状态</button>\
+                <button class="btn btn-default btn-sm" onclick="keepalivedShowVipStatus(\'' + version + '\')">VIP 状态</button>' + priorityButtons + '\
             </div>\
         </div>';
         $(".soft-man-con").html(html);
@@ -335,6 +348,20 @@ function keepalivedServiceControl(action, version){
     } else {
         perform();
     }
+}
+
+function keepalivedAdjustPriority(targetPriority, version){
+    var alias = targetPriority === 90 ? '低优先级' : '高优先级';
+    var confirmText = '确认将优先级设置为 ' + targetPriority + '（' + alias + '）吗？';
+    layer.confirm(confirmText, {title:'确认操作',icon:0}, function(index){
+        layer.close(index);
+        kpPost('set_priority', version, {priority: String(targetPriority)}, function(res){
+            layer.msg(res.msg || '优先级已更新', {icon:1});
+            setTimeout(function(){
+                keepalivedStatusPanel(version);
+            }, 800);
+        });
+    });
 }
 
 function keepalivedServiceLog(){

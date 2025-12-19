@@ -100,9 +100,7 @@ mysql_health_trigger_notify_backup() {
 }
 
 mysql_health_handle_failure() {
-    # 停止keepalived服务
-    keepalived_stop "$KEEPALIVED_SERVICE"
-    # mysql_health_trigger_notify_backup
+    mysql_health_trigger_notify_backup
     log "MySQL健康检查失败，脚本退出并上报异常"
     exit 1
 }

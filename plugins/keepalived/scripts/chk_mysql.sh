@@ -13,55 +13,27 @@ MYSQL_BIN='{$SERVER_PATH}/mysql-apt/bin/usr/bin/mysql'
 MYSQL_SOCKET='{$SERVER_PATH}/mysql-apt/mysql.sock'
 SLAVE_STATUS=""
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
-KEEPALIVED_STOPPED=0
 FATAL_ERROR=0
-PRIORITY_TOOL='{$SERVER_PATH}/keepalived/scripts/update_keepalived_priority.sh'
 FAIL_PRIORITY="${FAIL_PRIORITY:-90}"
+NOTIFY_BACKUP_SCRIPT="{$SERVER_PATH}/keepalived/scripts/notify_backup.sh"
 
 # 写入日志函数
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> $LOG_FILE
 }
 
-set_keepalived_priority() {
-    local target_priority="$1"
-
-    if [ ! -x "$PRIORITY_TOOL" ]; then
-        log "WARN: priority工具 $PRIORITY_TOOL 不存在或不可执行"
+trigger_notify_backup() {
+    if [ -x "$NOTIFY_BACKUP_SCRIPT" ]; then
+        STOP_KEEPALIVED_ON_BACKUP=1 \
+        KEEPALIVED_SERVICE="$KEEPALIVED_SERVICE" \
+        KEEPALIVED_CONF="${KEEPALIVED_CONF:-}" \
+        KEEPALIVED_INSTANCE="${KEEPALIVED_INSTANCE:-}" \
+        FAIL_PRIORITY="$FAIL_PRIORITY" \
+        "$NOTIFY_BACKUP_SCRIPT" "$FAIL_PRIORITY"
         return
     fi
 
-    KEEPALIVED_CONF="${KEEPALIVED_CONF:-}" KEEPALIVED_INSTANCE="${KEEPALIVED_INSTANCE:-}" \
-        "$PRIORITY_TOOL" "$target_priority"
-    local rc=$?
-
-    case $rc in
-        0)
-            log "优先级已更新为 $target_priority"
-            ;;
-        3)
-            log "当前优先级已是 $target_priority"
-            ;;
-        2)
-            log "WARN: keepalived配置中未找到目标实例"
-            ;;
-        4)
-            log "WARN: keepalived配置文件不存在"
-            ;;
-        *)
-            log "WARN: priority工具执行失败 (code $rc)"
-            ;;
-    esac
-}
-
-stop_keepalived_service() {
-    if [ $KEEPALIVED_STOPPED -eq 1 ]; then
-        return
-    fi
-
-    KEEPALIVED_STOPPED=1
-    log "检测到MySQL异常，准备停止keepalived服务以释放VIP"
-
+    log "WARN: notify_backup脚本不存在或不可执行，将尝试直接停止keepalived服务"
     if command -v systemctl >/dev/null 2>&1; then
         nohup systemctl stop "$KEEPALIVED_SERVICE" >/dev/null 2>&1 &
     elif command -v service >/dev/null 2>&1; then
@@ -71,18 +43,8 @@ stop_keepalived_service() {
     fi
 }
 
-down_vip() {
-  if command -v wg-quick >/dev/null 2>&1; then
-    wg-quick down vip
-  else
-    log "WARN: wg-quick not found, cannot down vip"
-  fi
-}
-
 handle_failure() {
-    down_vip
-    set_keepalived_priority "$FAIL_PRIORITY"
-    stop_keepalived_service
+    trigger_notify_backup
     log "MySQL健康检查失败，脚本退出并上报异常"
     exit 1
 }

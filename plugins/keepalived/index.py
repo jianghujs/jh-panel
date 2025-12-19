@@ -357,8 +357,8 @@ def copyScripts():
     return copied
 
 
-def getPromotionScriptPath():
-    return getServerDir() + '/scripts/promote_slave_to_master.sh'
+def getNotifyMasterScriptPath():
+    return getServerDir() + '/scripts/notify_master.sh'
 
 
 def getCheckMysqlScriptPath():
@@ -446,7 +446,7 @@ def syncMysqlScriptsCredentials():
         return
 
     script_paths = [
-        getPromotionScriptPath(),
+        getNotifyMasterScriptPath(),
         getCheckMysqlScriptPath()
     ]
 

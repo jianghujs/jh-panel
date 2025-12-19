@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Promote the local MySQL replica to primary by disabling read-only mode
-# and clearing replication state. Intended to be triggered by keepalived's
-# notify_master hook when the VIP floats to this node.
+# Handle keepalived notify_master events by promoting the local MySQL
+# instance to primary (disable read-only, clear replication metadata,
+# and optionally tune keepalived priority).
 
 set -u
 
@@ -11,7 +11,7 @@ MYSQL_USER='root'
 MYSQL_PASSWORD='123456'
 MYSQL_PORT='33067'
 MYSQL_SOCKET='{$SERVER_PATH}/mysql-apt/mysql.sock'
-LOG_FILE='{$SERVER_PATH}/keepalived/promote_slave.log'
+LOG_FILE='{$SERVER_PATH}/keepalived/notify_master.log'
 
 MYSQL_CMD=()
 DESIRED_PRIORITY="${DESIRED_PRIORITY:-100}"
@@ -20,7 +20,7 @@ PRIORITY_TOOL='{$SERVER_PATH}/keepalived/scripts/update_keepalived_priority.sh'
 log() {
     local now
     now=$(date +'%Y-%m-%d %H:%M:%S')
-    echo "${now} [promote_slave] $*" >> "$LOG_FILE"
+    echo "${now} [notify_master] $*" >> "$LOG_FILE"
 }
 
 ensure_log_path() {
@@ -145,7 +145,7 @@ main() {
         exit 1
     fi
 
-    log "Promotion script triggered"
+    log "notify_master 触发"
     build_mysql_cmd
 
     execute_step "Stopping slave threads" "STOP SLAVE" 1 || exit 1
@@ -156,7 +156,7 @@ main() {
     up_vip
     update_keepalived_priority
     restart_keepalived
-    log "Promotion finished successfully"
+    log "notify_master 执行完毕"
 }
 
 main "$@"

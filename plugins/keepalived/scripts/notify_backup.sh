@@ -18,7 +18,7 @@ WG_QUICK_PROFILE="${WG_QUICK_PROFILE:-vip}"
 
 # 日志初始化
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_backup.log}"
-logger_init "$LOG_FILE" "notify_backup"
+logger_init "$LOG_FILE" "notify_backup" 100
 log() { logger_log "$@"; }
 
 main() {

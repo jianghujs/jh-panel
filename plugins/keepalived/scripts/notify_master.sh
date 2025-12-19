@@ -25,7 +25,7 @@ KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
 
 # 日志初始化
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_master.log}"
-logger_init "$LOG_FILE" "notify_master"
+logger_init "$LOG_FILE" "notify_master" 100
 log() { logger_log "$@"; }
 
 mysql_client_set_logger log

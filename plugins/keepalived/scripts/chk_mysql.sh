@@ -21,8 +21,8 @@ NOTIFY_BACKUP_SCRIPT="${NOTIFY_BACKUP_SCRIPT:-{$SERVER_PATH}/keepalived/scripts/
 SLAVE_STATUS=""
 
 # 日志初始化
-LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/keepalived.log}"
-logger_init "$LOG_FILE" "chk_mysql"
+LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/chk_mysql.log}"
+logger_init "$LOG_FILE" "chk_mysql" 100
 log() { logger_log "$@"; }
 
 # 执行MySQL健康检查

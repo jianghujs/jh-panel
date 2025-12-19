@@ -22,6 +22,7 @@ MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
 DESIRED_PRIORITY="${DESIRED_PRIORITY:-100}"
 WG_QUICK_PROFILE="${WG_QUICK_PROFILE:-vip}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
+RESTART_KEEPALIVED_ON_PROMOTE="${RESTART_KEEPALIVED_ON_PROMOTE:-0}"
 
 # 日志初始化
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_master.log}"
@@ -44,8 +45,12 @@ main() {
     wireguard_up "$WG_QUICK_PROFILE"
     # 更新优先级
     priority_update "$DESIRED_PRIORITY"
-    # 重启keepalived服务
-    keepalived_restart "$KEEPALIVED_SERVICE"
+
+    if [ "$RESTART_KEEPALIVED_ON_PROMOTE" = "1" ]; then
+        keepalived_restart "$KEEPALIVED_SERVICE"
+    else
+        log "跳过 keepalived 重启 (RESTART_KEEPALIVED_ON_PROMOTE=$RESTART_KEEPALIVED_ON_PROMOTE)"
+    fi
     log "notify_master 执行完毕"
 }
 

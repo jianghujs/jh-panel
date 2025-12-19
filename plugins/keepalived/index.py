@@ -339,21 +339,32 @@ def copyScripts():
         mw.execShell('mkdir -p ' + dst_scripts_path)
 
     copied = False
-    olist = os.listdir(src_scripts_path)
-    for o in range(len(olist)):
-        src_file = src_scripts_path + '/' + olist[o]
-        dst_file = dst_scripts_path + '/' + olist[o]
+    for root, _, files in os.walk(src_scripts_path):
+        rel_path = os.path.relpath(root, src_scripts_path)
+        if rel_path == '.':
+            target_root = dst_scripts_path
+        else:
+            target_root = os.path.join(dst_scripts_path, rel_path)
+            if not os.path.exists(target_root):
+                os.makedirs(target_root)
 
-        if os.path.exists(dst_file):
-            continue
+        for fname in files:
+            src_file = os.path.join(root, fname)
+            dst_file = os.path.join(target_root, fname)
 
-        content = mw.readFile(src_file)
-        content = contentReplace(content)
-        mw.writeFile(dst_file, content)
+            if os.path.exists(dst_file):
+                continue
 
-        cmd = 'chmod +x ' + dst_file
-        mw.execShell(cmd)
-        copied = True
+            content = mw.readFile(src_file)
+            if content is None:
+                continue
+
+            content = contentReplace(content)
+            mw.writeFile(dst_file, content)
+
+            cmd = 'chmod +x ' + dst_file
+            mw.execShell(cmd)
+            copied = True
     return copied
 
 

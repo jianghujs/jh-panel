@@ -29,8 +29,6 @@ main() {
     wireguard_down "$WG_QUICK_PROFILE"
     # 更新优先级
     priority_update "$target_priority"
-    # 停止keepalived服务
-    keepalived_stop "$KEEPALIVED_SERVICE"
 
     log "notify_backup 执行完毕"
 }

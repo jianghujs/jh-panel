@@ -128,6 +128,14 @@ restart_keepalived() {
     fi
 }
 
+up_vip() {
+    if command -v wg-quick >/dev/null 2>&1; then
+        wg-quick up vip
+    else
+        log "WARN: wg-quick not found, cannot up vip"
+    fi
+}
+
 main() {
     ensure_log_path
     resolve_mysql_bin
@@ -145,6 +153,7 @@ main() {
     execute_step "Disabling read_only" "SET GLOBAL read_only = OFF" || exit 1
     execute_step "Disabling super_read_only" "SET GLOBAL super_read_only = OFF" || exit 1
 
+    up_vip
     update_keepalived_priority
     restart_keepalived
     log "Promotion finished successfully"

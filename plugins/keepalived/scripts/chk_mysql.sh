@@ -71,7 +71,16 @@ stop_keepalived_service() {
     fi
 }
 
+down_vip() {
+  if command -v wg-quick >/dev/null 2>&1; then
+    wg-quick down vip
+  else
+    log "WARN: wg-quick not found, cannot down vip"
+  fi
+}
+
 handle_failure() {
+    down_vip
     set_keepalived_priority "$FAIL_PRIORITY"
     stop_keepalived_service
     log "MySQL健康检查失败，脚本退出并上报异常"

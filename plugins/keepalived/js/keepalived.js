@@ -65,7 +65,7 @@ function redisStatus(version) {
 
         hit = (parseInt(rdata.keyspace_hits) / (parseInt(rdata.keyspace_hits) + parseInt(rdata.keyspace_misses)) * 100).toFixed(2);
         var con = '<div class="divtable">\
-                        <table class="table table-hover table-bordered" style="width: 490px;">\
+                        <table class="table table-hover table-bordered" style="width: 590px;">\
                         <thead><th>字段</th><th>当前值</th><th>说明</th></thead>\
                         <tbody>\
                             <tr><th>uptime_in_days</th><td>' + rdata.uptime_in_days + '</td><td>已运行天数</td></tr>\
@@ -161,6 +161,13 @@ function keepalivedParsePayload(payload){
     }
     return payload || null;
 }
+
+var keepalivedScriptEditorState = {
+    editor: null,
+    scripts: [],
+    current: null,
+    version: ''
+};
 
 function keepalivedVrrpPanel(version){
     kpPost('get_vrrp_form', version, {}, function(res){
@@ -397,4 +404,159 @@ function keepalivedShowVipStatus(version){
             content: content
         });
     });
+}
+
+function keepalivedResetScriptEditorState(){
+    if(keepalivedScriptEditorState.editor && typeof keepalivedScriptEditorState.editor.toTextArea === 'function'){
+        keepalivedScriptEditorState.editor.toTextArea();
+    }
+    keepalivedScriptEditorState.editor = null;
+    keepalivedScriptEditorState.scripts = [];
+    keepalivedScriptEditorState.current = null;
+}
+
+function keepalivedScriptsPanel(version){
+    kpPost('get_script_editor_targets', version, {}, function(res){
+        var resData = keepalivedParsePayload(res.data);
+        var scripts = (resData && resData.data) ? resData.data : [];
+        keepalivedResetScriptEditorState();
+        keepalivedScriptEditorState.version = version;
+        var html = '<div class="keepalived-script-editor pd15">\
+            <div class="line">\
+                <span class="tname" style="text-align: left; width: 70px;">脚本选择</span>\
+                <div class="info-r">\
+                    <select id="keepalived-script-select" class="bt-input-text" style="width:320px;"></select>\
+                    <button class="btn btn-default btn-sm" id="keepalived-script-refresh" style="margin-left:5px;">刷新</button>\
+                    <button class="btn btn-success btn-sm" id="keepalived-script-save" style="margin-left:5px;">保存</button>\
+                    <div class="c9 keepalived-script-description" style="margin-top:8px;"></div>\
+                    <div class="c9" style="margin-top:4px;">路径：<span class="keepalived-script-current-path">-</span></div>\
+                </div>\
+            </div>\
+            <textarea id="keepalived-script-body" class="bt-input-text" style="width:100%;height:320px;margin-top:15px;"></textarea>\
+        </div>';
+        $(".soft-man-con").html(html);
+        if(!scripts.length){
+            $('.keepalived-script-description').text('未找到可编辑脚本。请确认插件是否已初始化。');
+            keepalivedInitScriptEditor();
+            keepalivedSetScriptEditorValue('');
+            return;
+        }
+        keepalivedScriptEditorState.scripts = scripts;
+        var select = $('#keepalived-script-select');
+        $.each(scripts, function(_, item){
+            var label = item.display_name || item.name || item.id;
+            if(item.exists === false){
+                label += '（不存在）';
+            }
+            var option = $('<option></option>').val(item.id).text(label);
+            select.append(option);
+        });
+        keepalivedInitScriptEditor();
+        select.change(function(){
+            keepalivedSwitchScript($(this).val());
+        });
+        $('#keepalived-script-refresh').click(function(){
+            var currentId = $('#keepalived-script-select').val();
+            keepalivedSwitchScript(currentId);
+        });
+        $('#keepalived-script-save').click(function(){
+            keepalivedSaveCurrentScript();
+        });
+        var firstId = scripts[0].id;
+        select.val(firstId);
+        keepalivedSwitchScript(firstId);
+    });
+}
+
+function keepalivedInitScriptEditor(){
+    if(keepalivedScriptEditorState.editor){
+        return keepalivedScriptEditorState.editor;
+    }
+    var textarea = document.getElementById('keepalived-script-body');
+    var editor = CodeMirror.fromTextArea(textarea, {
+        lineNumbers: true,
+        matchBrackets: true,
+        mode: 'shell',
+        extraKeys: {
+            'Ctrl-S': function(cm){
+                keepalivedSaveCurrentScript();
+            }
+        }
+    });
+    keepalivedScriptEditorState.editor = editor;
+    $(editor.getWrapperElement()).find(".CodeMirror-scroll").css({"height":"350px","margin":0,"padding":0});
+    return editor;
+}
+
+function keepalivedSetScriptEditorValue(value){
+    var editor = keepalivedInitScriptEditor();
+    editor.setValue(value || '');
+    editor.focus();
+}
+
+function keepalivedGetScriptById(scriptId){
+    for(var i=0;i<keepalivedScriptEditorState.scripts.length;i++){
+        if(keepalivedScriptEditorState.scripts[i].id === scriptId){
+            return keepalivedScriptEditorState.scripts[i];
+        }
+    }
+    return null;
+}
+
+function keepalivedSwitchScript(scriptId){
+    var script = keepalivedGetScriptById(scriptId);
+    if(!script){
+        keepalivedSetScriptEditorValue('');
+        $('.keepalived-script-description').text('请选择脚本');
+        $('.keepalived-script-current-path').text('-');
+        keepalivedScriptEditorState.current = null;
+        return;
+    }
+    keepalivedScriptEditorState.current = script;
+    $('.keepalived-script-description').text(script.description || '');
+    $('.keepalived-script-current-path').text(script.path || '-');
+    if(script.exists === false){
+        keepalivedSetScriptEditorValue('');
+        layer.msg('脚本不存在：' + script.path, {icon:0});
+        return;
+    }
+    keepalivedLoadScriptContent(script);
+}
+
+function keepalivedLoadScriptContent(script){
+    if(!script || !script.path){
+        keepalivedSetScriptEditorValue('');
+        return;
+    }
+    var loadT = layer.msg('正在读取脚本...', {icon:16,time:0,shade:[0.3,'#000']});
+    $.post('/files/get_body', {path: script.path}, function(res){
+        layer.close(loadT);
+        if(!res.status){
+            layer.msg(res.msg || '读取脚本失败', {icon:2});
+            keepalivedSetScriptEditorValue('');
+            return;
+        }
+        var body = (res.data && res.data.data) ? res.data.data : '';
+        keepalivedSetScriptEditorValue(body);
+    }, 'json');
+}
+
+function keepalivedSaveCurrentScript(){
+    var script = keepalivedScriptEditorState.current;
+    if(!script || !script.path){
+        layer.msg('请选择需要保存的脚本', {icon:0});
+        return;
+    }
+    var editor = keepalivedInitScriptEditor();
+    var content = editor.getValue();
+    var postData = 'data=' + encodeURIComponent(content) + '&path=' + script.path + '&encoding=utf-8';
+    var loadT = layer.msg('保存中...', {icon:16,time:0,shade:[0.3,'#000']});
+    $.post('/files/save_body', postData, function(res){
+        layer.close(loadT);
+        if(!res.status){
+            layer.msg(res.msg || '保存失败', {icon:2});
+            return;
+        }
+        layer.msg('保存成功', {icon:1});
+    }, 'json');
 }

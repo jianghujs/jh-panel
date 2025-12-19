@@ -19,8 +19,8 @@
 			<p onclick="pluginInitD('keepalived');">自启动</p>
 			<p class="bgw" onclick="keepalivedStatusPanel($('.plugin_version').attr('version'));">状态</p>
 			<p onclick="keepalivedVrrpPanel($('.plugin_version').attr('version'));">基本配置</p>
-			<!-- <p onclick="pluginConfig('keepalived');">配置修改</p> -->
 			<p onclick="pluginConfigTpl('keepalived',$('.plugin_version').attr('version'));">配置文件</p>
+			<p onclick="keepalivedScriptsPanel($('.plugin_version').attr('version'));">脚本编辑</p>
 			<!-- <p onclick="pluginConfigListTpl('keepalived',$('.plugin_version').attr('version'),'config_scripts_tpl','read_config_tpl');">脚本模板</p> -->
 			<p onclick="pluginLogs('keepalived','','run_log');">日志</p>
 		</div>
@@ -31,6 +31,7 @@
 </div>
 <script type="text/javascript">
 resetPluginWinHeight(530);
+resetPluginWinWidth(750);
 $.getScript( "/plugins/file?name=keepalived&f=js/keepalived.js", function(){
 	keepalivedStatusPanel($('.plugin_version').attr('version'));
 });

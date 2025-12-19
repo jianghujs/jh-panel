@@ -11,7 +11,6 @@ UTIL_DIR="$SCRIPT_DIR/util"
 . "$UTIL_DIR/wireguard_util.sh"
 . "$UTIL_DIR/keepalived_util.sh"
 
-PRIORITY_TOOL="${PRIORITY_TOOL:-{$SERVER_PATH}/keepalived/scripts/update_keepalived_priority.sh}"
 FAIL_PRIORITY="${FAIL_PRIORITY:-90}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
 STOP_KEEPALIVED_ON_BACKUP="${STOP_KEEPALIVED_ON_BACKUP:-0}"

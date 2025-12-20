@@ -84,6 +84,163 @@ def getConf():
     return path
 
 
+def getSemiSyncPluginDir():
+    return getServerDir() + '/bin/usr/lib/mysql/plugin'
+
+
+SEMI_SYNC_REQUIRED_DIRECTIVES = [
+    'plugin-load-add = semisync_master.so',
+    'plugin-load-add = semisync_slave.so',
+    'rpl-semi-sync-master-timeout = 5000',
+    'rpl-semi-sync-master-wait-no-slave = ON',
+    'rpl-semi-sync-master-wait-point = AFTER_SYNC'
+]
+
+
+def _normalize_conf_line(line):
+    return re.sub(r'\s+', '', line.strip().lower())
+
+
+SEMI_SYNC_OPTIONAL_DIRECTIVES = [
+    'plugin-dir = ' + getSemiSyncPluginDir()
+]
+
+SEMI_SYNC_REQUIRED_NORMALIZED = [_normalize_conf_line(item) for item in SEMI_SYNC_REQUIRED_DIRECTIVES]
+SEMI_SYNC_REMOVE_NORMALIZED = [_normalize_conf_line(item) for item in (SEMI_SYNC_REQUIRED_DIRECTIVES + SEMI_SYNC_OPTIONAL_DIRECTIVES)]
+
+
+def _is_semi_sync_line(line):
+    stripped = line.strip()
+    if stripped == '' or stripped.startswith('#'):
+        return False
+    return _normalize_conf_line(stripped) in SEMI_SYNC_REMOVE_NORMALIZED
+
+
+def isSemiSyncConfigured(content=None):
+    if content is None:
+        content = mw.readFile(getConf())
+    if content is None:
+        return False
+    has = set()
+    for line in content.split('\n'):
+        stripped = line.strip()
+        if stripped == '' or stripped.startswith('#'):
+            continue
+        has.add(_normalize_conf_line(stripped))
+    for target in SEMI_SYNC_REQUIRED_NORMALIZED:
+        if target not in has:
+            return False
+    return True
+
+
+def applySemiSyncConfigToFile(enable):
+    conf_file = getConf()
+    content = mw.readFile(conf_file)
+    if content is None:
+        return (False, '无法读取MySQL配置文件')
+    current_enabled = isSemiSyncConfigured(content)
+    plugin_dir_present = False
+    plugin_dir_norm = None
+    if len(SEMI_SYNC_OPTIONAL_DIRECTIVES) > 0:
+        plugin_dir_norm = _normalize_conf_line(SEMI_SYNC_OPTIONAL_DIRECTIVES[0])
+        for line in content.split('\n'):
+            stripped = line.strip()
+            if stripped == '' or stripped.startswith('#'):
+                continue
+            if _normalize_conf_line(stripped) == plugin_dir_norm:
+                plugin_dir_present = True
+                break
+
+    need_change = False
+    if enable:
+        if not current_enabled or not plugin_dir_present:
+            need_change = True
+    else:
+        if current_enabled or plugin_dir_present:
+            need_change = True
+
+    if not need_change:
+        return (False, '')
+
+    lines = content.split('\n')
+    filtered_lines = [line for line in lines if not _is_semi_sync_line(line)]
+
+    if enable:
+        insert_index = len(filtered_lines)
+        for idx, line in enumerate(filtered_lines):
+            if line.strip().lower() == '[mysqld]':
+                insert_index = idx + 1
+                break
+        insert_lines = []
+        insert_lines.extend(SEMI_SYNC_OPTIONAL_DIRECTIVES)
+        insert_lines.extend(SEMI_SYNC_REQUIRED_DIRECTIVES)
+        filtered_lines = filtered_lines[:insert_index] + insert_lines + filtered_lines[insert_index:]
+
+    mw.writeFile(conf_file, '\n'.join(filtered_lines))
+    return (True, '')
+
+
+def getSemiSyncStatusSummary(db=None):
+    info = {
+        'enabled': isSemiSyncConfigured(),
+        'master_runtime': False,
+        'slave_runtime': False
+    }
+    try:
+        close_db = False
+        if db is None:
+            db = pMysqlDb()
+            close_db = True
+        master_var = db.query("SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync_master_enabled'")
+        slave_var = db.query("SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync_slave_enabled'")
+
+        if len(master_var) > 0:
+            info['master_runtime'] = str(master_var[0].get('Value', '')).lower() in ('1', 'on', 'true')
+        if len(slave_var) > 0:
+            info['slave_runtime'] = str(slave_var[0].get('Value', '')).lower() in ('1', 'on', 'true')
+
+        if close_db:
+            try:
+                db.close()
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return info
+
+
+def runSemiSyncRoleSql(role, db=None):
+    statements = []
+    if role == 'master':
+        statements = [
+            "SET GLOBAL rpl_semi_sync_master_enabled = 1",
+            "SET GLOBAL rpl_semi_sync_slave_enabled = 0"
+        ]
+    elif role == 'slave':
+        statements = [
+            "SET GLOBAL rpl_semi_sync_master_enabled = 0",
+            "SET GLOBAL rpl_semi_sync_slave_enabled = 1"
+        ]
+    else:
+        return (False, '角色参数错误')
+
+    try:
+        need_close = False
+        if db is None:
+            db = pMysqlDb()
+            need_close = True
+        for sql in statements:
+            db.query(sql)
+        if need_close:
+            try:
+                db.close()
+            except Exception:
+                pass
+        return (True, '设置成功')
+    except Exception as e:
+        return (False, str(e))
+
+
 def getDbPort():
     file = getConf()
     content = mw.readFile(file)
@@ -2024,6 +2181,8 @@ def getMasterStatus(version=''):
         except Exception as e:
             data['slave_status'] = False
 
+        data['semi_sync'] = getSemiSyncStatusSummary(db)
+
         return mw.returnJson(master_status, '设置成功', data)
     except Exception as e:
         return mw.returnJson(False, "获取主从状态异常!" + str(e), 'pwd')
@@ -2039,6 +2198,32 @@ def setMasterStatus(version=''):
 
     restart(version)
     return mw.returnJson(True, '设置成功')
+
+
+def setSemiSyncStatus(version=''):
+    args = getArgs()
+    data = checkArgs(args, ['enable'])
+    if not data[0]:
+        return data[1]
+
+    enable_flag = str(args['enable']).lower()
+    enable = enable_flag in ['1', 'true', 'on', 'yes']
+    changed, err_msg = applySemiSyncConfigToFile(enable)
+    if err_msg:
+        return mw.returnJson(False, err_msg)
+
+    if not changed:
+        return mw.returnJson(True, '半同步配置已是目标状态', {'enabled': isSemiSyncConfigured()})
+
+    ret = restart(version)
+    if ret != 'ok':
+        return mw.returnJson(False, '重启MySQL失败: ' + str(ret))
+    time.sleep(3)
+    if enable:
+        status, msg = runSemiSyncRoleSql('master')
+        if not status:
+            return mw.returnJson(False, '执行半同步主节点SQL失败:' + msg)
+    return mw.returnJson(True, ('已启用' if enable else '已关闭') + '半同步复制', {'enabled': isSemiSyncConfigured()})
 
 
 def getMasterRepSlaveList(version=''):
@@ -2513,6 +2698,12 @@ def initSlaveStatus(version=''):
         db.query('SET GLOBAL read_only = on')
         db.query('SET GLOBAL super_read_only = on')
         mw.execShell(f'source {getPluginDir()}/readonly.sh && enable_readonly')
+
+        if isSemiSyncConfigured():
+            sync_status, sync_msg = runSemiSyncRoleSql('slave', db)
+            if not sync_status:
+                ssh_client.close()
+                return mw.returnJson(False, '执行半同步从节点SQL失败:' + sync_msg)
     except Exception as e:
         return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
     ssh_client.close()
@@ -3127,6 +3318,8 @@ if __name__ == "__main__":
         print(getMasterStatus(version))
     elif func == 'set_master_status':
         print(setMasterStatus(version))
+    elif func == 'set_semi_sync_status':
+        print(setSemiSyncStatus(version))
     elif func == 'set_db_master':
         print(setDbMaster(version))
     elif func == 'set_db_slave':

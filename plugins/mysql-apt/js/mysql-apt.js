@@ -2178,6 +2178,11 @@ function masterOrSlaveConf(version=''){
                     <!-- <button class="btn '+(!rdata.status ? 'btn-danger' : 'btn-success')+' btn-xs btn-master">'+(!rdata.status ? '未开启' : '已开启') +'</button> -->\
                 </p>\
                 <hr/>\
+                <div class="conf_p semi-sync-box flex" style="align-items: center;">\
+                    <span class="f14 c6 mr20">半同步复制</span><span class="f14 c6 mr20"></span>\
+                    <div id="semiSyncSwitch"></div>\
+                    <span class="f12 c9 semi-sync-runtime" style="margin-left: 15px;width:250px;"></span>\
+                </div>\
                 <hr/>\
                 <!-- class="conf_p" -->\
                 <p class="conf_p">\
@@ -2201,6 +2206,23 @@ function masterOrSlaveConf(version=''){
                 <div class="safe bgw table_slave_list"></div>\
                 ';
             $(".soft-man-con").html(limitCon);
+
+            var semiSyncInfo = rdata.semi_sync || {enabled:false, master_runtime:false, slave_runtime:false};
+            var runtimeText = '运行状态：主' + (semiSyncInfo.master_runtime ? '开启' : '关闭') + ' / 从' + (semiSyncInfo.slave_runtime ? '开启' : '关闭');
+            if (!semiSyncInfo.enabled){
+                runtimeText += '（配置未启用）';
+            }
+            $('.semi-sync-runtime').text(runtimeText);
+            $("#semiSyncSwitch").createRadioSwitch(semiSyncInfo.enabled, function(checked){
+                if (semiSyncInfo.enabled === checked) return;
+                var tip = checked ? '确认启用半同步复制？该操作会写入配置并重启MySQL。' : '确认关闭半同步复制？该操作会写入配置并重启MySQL。';
+                layer.confirm(tip, {title:'确认操作', icon:3}, function(index){
+                    layer.close(index);
+                    setSemiSyncStatus(checked);
+                }, function(){
+                    masterOrSlaveConf();
+                });
+            });
             getAutoSaveSlaveStatusToMasterCron();
             
             $("#autoSaveSlaveStatusToMasterCronDetail .open-cron-selecter-layer").click(() => {
@@ -2324,4 +2346,15 @@ function deleteCron(id) {
           layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
       },'json');
   }
+}
+
+function setSemiSyncStatus(enable){
+    var title = enable ? '正在启用半同步...' : '正在关闭半同步...';
+    myPost('set_semi_sync_status', { enable: enable ? 1 : 0 }, function(data){
+        var rdata = $.parseJSON(data.data);
+        layer.msg(rdata.msg, {icon: rdata.status ? 1 : 2});
+        setTimeout(function(){
+            masterOrSlaveConf();
+        }, 1000);
+    }, title);
 }

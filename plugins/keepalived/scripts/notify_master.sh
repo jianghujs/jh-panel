@@ -23,13 +23,9 @@ DESIRED_PRIORITY="${DESIRED_PRIORITY:-100}"
 WG_QUICK_PROFILE="${WG_QUICK_PROFILE:-vip}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
 RESTART_KEEPALIVED_ON_PROMOTE="${RESTART_KEEPALIVED_ON_PROMOTE:-0}"
-KEEPALIVED_CONFIG="${KEEPALIVED_CONFIG:-{$SERVER_PATH}/keepalived/etc/keepalived/keepalived.conf}"
-VIP_CHECK_IP="${VIP_CHECK_IP:-}"
-VIP_ARP_INTERFACE="${VIP_ARP_INTERFACE:-}"
 VIP_GATEWAY_IP="${VIP_GATEWAY_IP:-}"
 PING_GATEWAY_COUNT="${PING_GATEWAY_COUNT:-3}"
 PING_GATEWAY_TIMEOUT="${PING_GATEWAY_TIMEOUT:-1}"
-ARPING_DETECT_COUNT="${ARPING_DETECT_COUNT:-3}"
 
 # 日志初始化
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_master.log}"
@@ -41,8 +37,9 @@ mysql_client_set_logger log
 main() {
     log "notify_master 触发"
 
-    if ! keepalived_existing_master_check; then
-        log "检测到网络已有主占用 VIP，终止提升流程"
+    if ! keepalived_gateway_connectivity_guard; then
+        log "无法连接到网关，可能发生孤岛，停止 keepalived 并终止提升流程"
+        keepalived_stop "$KEEPALIVED_SERVICE"
         exit 1
     fi
 

@@ -78,6 +78,50 @@ mysql_client_exec() {
     return $rc
 }
 
+mysql_wait_for_relay_log_applied() {
+    local max_wait="${1:-30}"
+    local start_time=$(date +%s)
+    
+    mysql_client_log "等待 Relay Log 回放完成 (最大等待时间: ${max_wait}s)..."
+    
+    # 1. 停止 IO 线程，防止继续接收数据（虽然主库可能已经挂了）
+    mysql_client_exec "Stopping IO thread" "STOP SLAVE IO_THREAD" 1
+    
+    while true; do
+        local current_time=$(date +%s)
+        local elapsed=$((current_time - start_time))
+        
+        if [ $elapsed -ge $max_wait ]; then
+            mysql_client_log "WARN: 等待 Relay Log 回放超时 (${max_wait}s)，强制继续"
+            break
+        fi
+        
+        # 获取状态
+        local status
+        status=$(mysql_client_run "SHOW SLAVE STATUS\G")
+        if [ -z "$status" ]; then
+             mysql_client_log "未检测到从库状态，跳过等待"
+             break
+        fi
+        
+        # 使用更精确的匹配，避免 Relay_Master_Log_File 干扰 Master_Log_File 的提取
+        local master_file=$(echo "$status" | awk -F: '$1 ~ /^[[:space:]]*Relay_Master_Log_File$/ {print $2}' | xargs)
+        local read_pos=$(echo "$status" | awk -F: '$1 ~ /^[[:space:]]*Read_Master_Log_Pos$/ {print $2}' | xargs)
+        local exec_file=$(echo "$status" | awk -F: '$1 ~ /^[[:space:]]*Master_Log_File$/ {print $2}' | xargs)
+        local exec_pos=$(echo "$status" | awk -F: '$1 ~ /^[[:space:]]*Exec_Master_Log_Pos$/ {print $2}' | xargs)
+        
+        # 如果读取位置和执行位置一致，说明回放完成
+        if [ "$master_file" == "$exec_file" ] && [ "$read_pos" == "$exec_pos" ]; then
+            mysql_client_log "Relay Log 已完全回放完成 (Pos: $exec_pos)"
+            break
+        fi
+        
+        mysql_client_log "正在同步 Relay Log: Read=$read_pos, Exec=$exec_pos (耗时: ${elapsed}s)..."
+        sleep 1
+    done
+    return 0
+}
+
 mysql_health_trigger_notify_backup() {
     if [ -x "${NOTIFY_BACKUP_SCRIPT:-}" ]; then
         STOP_KEEPALIVED_ON_BACKUP=1 \

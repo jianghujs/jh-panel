@@ -45,8 +45,15 @@ main() {
 
     # MySQL提升为主库
     mysql_client_prepare || exit 1
-    mysql_client_exec "Stopping slave threads" "STOP SLAVE" 1 || exit 1
+    
+    # 1. 确保 Relay Log 回放完成，避免丢数
+    mysql_wait_for_relay_log_applied 30
+    
+    # 2. 彻底停止从库并重置
+    mysql_client_exec "Stopping all slave threads" "STOP SLAVE" 1 || exit 1
     mysql_client_exec "Resetting slave metadata" "RESET SLAVE ALL" 1 || exit 1
+    
+    # 3. 开启写权限
     mysql_client_exec "Disabling read_only" "SET GLOBAL read_only = OFF" || exit 1
     mysql_client_exec "Disabling super_read_only" "SET GLOBAL super_read_only = OFF" || exit 1
 

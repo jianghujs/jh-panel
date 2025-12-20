@@ -22,8 +22,40 @@ install_tmp=${rootPath}/tmp/mw_install.pl
 
 VERSION=$2
 
+Install_Arping()
+{
+	if command -v arping >/dev/null 2>&1; then
+		return
+	fi
+
+	echo '缺少 arping 命令，开始安装依赖...'
+	if command -v yum >/dev/null 2>&1; then
+		yum install -y iputils
+	elif command -v dnf >/dev/null 2>&1; then
+		dnf install -y iputils
+	elif command -v apt-get >/dev/null 2>&1; then
+		apt-get install -y iputils-arping
+	elif command -v zypper >/dev/null 2>&1; then
+		zypper install -y iputils
+	elif command -v pacman >/dev/null 2>&1; then
+		pacman -Sy --noconfirm iputils
+	elif command -v brew >/dev/null 2>&1; then
+		brew install arping
+	else
+		echo 'WARN: 未找到可用的包管理器，请手动安装 arping (iputils-arping)'
+		return
+	fi
+
+	if command -v arping >/dev/null 2>&1; then
+		echo 'arping 安装完成'
+	else
+		echo 'WARN: 自动安装 arping 失败，请手动执行安装'
+	fi
+}
+
 Install_App()
 {
+
 	echo '正在安装keepalived脚本文件...'
 	mkdir -p $serverPath/source/keepalived
 
@@ -66,6 +98,8 @@ Install_App()
 	if [ -d $serverPath/source/keepalived/keepalived-${VERSION} ];then
 		rm -rf $serverPath/source/keepalived/keepalived-${VERSION}
 	fi
+
+	Install_Arping
 }
 
 Uninstall_App()

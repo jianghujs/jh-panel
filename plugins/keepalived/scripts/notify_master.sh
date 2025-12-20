@@ -41,8 +41,9 @@ main() {
     mysql_client_exec "Disabling read_only" "SET GLOBAL read_only = OFF" || exit 1
     mysql_client_exec "Disabling super_read_only" "SET GLOBAL super_read_only = OFF" || exit 1
 
-    # 开启WireGuard配置
-    wireguard_up "$WG_QUICK_PROFILE"
+    # 开启WireGuard配置（解决Wireguard不支持VIP漂移问题）
+    # wireguard_up "$WG_QUICK_PROFILE"
+    
     # 更新优先级
     priority_update "$DESIRED_PRIORITY"
 

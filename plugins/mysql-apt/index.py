@@ -91,7 +91,7 @@ def getSemiSyncPluginDir():
 SEMI_SYNC_REQUIRED_DIRECTIVES = [
     'plugin-load-add = semisync_master.so',
     'plugin-load-add = semisync_slave.so',
-    'rpl-semi-sync-master-timeout = 5000',
+    'rpl-semi-sync-master-timeout = 1000',
     'rpl-semi-sync-master-wait-no-slave = ON',
     'rpl-semi-sync-master-wait-point = AFTER_SYNC'
 ]

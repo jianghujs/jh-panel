@@ -16,7 +16,7 @@
 
 #### Scenario: 启用时写入配置
 - **WHEN** 用户启用半同步
-- **THEN** 后端必须在 `[mysqld]` 段新增缺失的 `plugin-load-add = semisync_master.so`、`plugin-load-add = semisync_slave.so`、`rpl-semi-sync-master-timeout = 5000`、`rpl-semi-sync-master-wait-no-slave = ON`、`rpl-semi-sync-master-wait-point = AFTER_SYNC`，并在重启成功后才返回成功。
+- **THEN** 后端必须在 `[mysqld]` 段新增缺失的 `plugin-load-add = semisync_master.so`、`plugin-load-add = semisync_slave.so`、`rpl-semi-sync-master-timeout = 5000`、`rpl-semi-sync-master-wait-no-slave = ON`、`rpl-semi-sync-master-wait-point = AFTER_SYNC`、`rpl_semi_sync_master_enabled = 1`，并在重启成功后才返回成功。
 
 #### Scenario: 禁用时移除配置
 - **WHEN** 用户禁用半同步

@@ -2182,7 +2182,7 @@ function masterOrSlaveConf(version=''){
                     <span class="f14 c6 mr20">半同步复制</span><span class="f14 c6 mr20"></span>\
                     <div id="semiSyncSwitch"></div>\
                     <div>\
-                        <span class="f12 c9 semi-sync-runtime" style="cursor:pointer;margin-left: 15px;width:250px;" title=""></span>\
+                        <span class="f12 c9 semi-sync-runtime" style="cursor:pointer;margin-left: 15px;margin-right: 2px;width:250px;" title=""></span>\
                         <span class="semi-sync-runtime-tip bt-ico-ask" data-toggle="tooltip" title="" style="cursor:pointer; margin-left:0;width: 16px;height: 16px;text-align: center;">?</span>\
                     </div>\
                 </div>\

@@ -2181,7 +2181,10 @@ function masterOrSlaveConf(version=''){
                 <div class="conf_p semi-sync-box flex" style="align-items: center;">\
                     <span class="f14 c6 mr20">半同步复制</span><span class="f14 c6 mr20"></span>\
                     <div id="semiSyncSwitch"></div>\
-                    <span class="f12 c9 semi-sync-runtime" style="margin-left: 15px;width:250px;"></span>\
+                    <div>\
+                        <span class="f12 c9 semi-sync-runtime" style="cursor:pointer;margin-left: 15px;width:250px;" title=""></span>\
+                        <span class="semi-sync-runtime-tip bt-ico-ask" data-toggle="tooltip" title="" style="cursor:pointer; margin-left:0;width: 16px;height: 16px;text-align: center;">?</span>\
+                    </div>\
                 </div>\
                 <hr/>\
                 <!-- class="conf_p" -->\
@@ -2213,6 +2216,16 @@ function masterOrSlaveConf(version=''){
                 runtimeText += '（配置未启用）';
             }
             $('.semi-sync-runtime').text(runtimeText);
+            var statusVars = semiSyncInfo.status_vars || {};
+            var metricsText = [];
+            Object.keys(statusVars).forEach(function(key){
+                if (statusVars[key] !== ''){
+                    metricsText.push(key + '=' + statusVars[key]);
+                }
+            });
+            $('.semi-sync-runtime').attr('title', metricsText.join('\n'));
+            $('.semi-sync-runtime-tip').attr('title', metricsText.join('\n'));
+            $('[data-toggle="tooltip"]').tooltip();
             $("#semiSyncSwitch").createRadioSwitch(semiSyncInfo.enabled, function(checked){
                 if (semiSyncInfo.enabled === checked) return;
                 var tip = checked ? '确认启用半同步复制？该操作会写入配置并重启MySQL。' : '确认关闭半同步复制？该操作会写入配置并重启MySQL。';

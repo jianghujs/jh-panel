@@ -186,7 +186,8 @@ def getSemiSyncStatusSummary(db=None):
     info = {
         'enabled': isSemiSyncConfigured(),
         'master_runtime': False,
-        'slave_runtime': False
+        'slave_runtime': False,
+        'status_vars': {}
     }
     try:
         close_db = False
@@ -200,6 +201,27 @@ def getSemiSyncStatusSummary(db=None):
             info['master_runtime'] = str(master_var[0].get('Value', '')).lower() in ('1', 'on', 'true')
         if len(slave_var) > 0:
             info['slave_runtime'] = str(slave_var[0].get('Value', '')).lower() in ('1', 'on', 'true')
+
+        status_keys = [
+            'Rpl_semi_sync_master_status',
+            'Rpl_semi_sync_master_clients',
+            'Rpl_semi_sync_master_yes_tx',
+            'Rpl_semi_sync_master_no_tx',
+            'Rpl_semi_sync_master_net_wait_time',
+            'Rpl_semi_sync_master_net_waits',
+            'Rpl_semi_sync_master_trx_newest_wait_time',
+            'Rpl_semi_sync_master_net_avg_wait_time',
+            'Rpl_semi_sync_master_timefunc_failures',
+            'Rpl_semi_sync_slave_status',
+            'Rpl_semi_sync_slave_clients',
+            'Rpl_semi_sync_slave_yes_tx',
+            'Rpl_semi_sync_slave_no_tx'
+        ]
+
+        for key in status_keys:
+            rows = db.query("SHOW GLOBAL STATUS LIKE '{}'".format(key))
+            if rows and len(rows) > 0:
+                info['status_vars'][key] = rows[0].get('Value', '')
 
         if close_db:
             try:

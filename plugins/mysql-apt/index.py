@@ -213,12 +213,12 @@ def runSemiSyncRoleSql(role, db=None):
     statements = []
     if role == 'master':
         statements = [
-            "SET GLOBAL rpl_semi_sync_master_enabled = 1",
+            # "SET GLOBAL rpl_semi_sync_master_enabled = 1",
             "SET GLOBAL rpl_semi_sync_slave_enabled = 0"
         ]
     elif role == 'slave':
         statements = [
-            "SET GLOBAL rpl_semi_sync_master_enabled = 0",
+            # "SET GLOBAL rpl_semi_sync_master_enabled = 0",
             "SET GLOBAL rpl_semi_sync_slave_enabled = 1"
         ]
     else:
@@ -2752,6 +2752,10 @@ def deleteSlave(version=''):
     db.query('SET GLOBAL read_only = off')
     db.query('SET GLOBAL super_read_only = off')
     mw.execShell(f'source {getPluginDir()}/readonly.sh && disable_readonly')
+    if isSemiSyncConfigured():
+        sync_status, sync_msg = runSemiSyncRoleSql('master', db)
+        if not sync_status:
+            return mw.returnJson(False, '删除从库成功，但禁用半同步从节点失败:' + sync_msg)
     return mw.returnJson(True, '删除成功!')
 
 def saveSlaveStatus(version=''):

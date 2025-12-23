@@ -91,10 +91,11 @@ def getSemiSyncPluginDir():
 SEMI_SYNC_REQUIRED_DIRECTIVES = [
     'plugin-load-add = semisync_master.so',
     'plugin-load-add = semisync_slave.so',
-    'rpl-semi-sync-master-timeout = 1000',
+    'rpl-semi-sync-master-timeout = 5000',
     'rpl-semi-sync-master-wait-no-slave = ON',
     'rpl-semi-sync-master-wait-point = AFTER_SYNC',
-    'rpl_semi_sync_master_enabled = 1'
+    'rpl_semi_sync_master_enabled = 1',
+    'rpl_semi_sync_slave_enabled = 1'
 ]
 
 
@@ -208,38 +209,6 @@ def getSemiSyncStatusSummary(db=None):
     except Exception:
         pass
     return info
-
-
-def runSemiSyncRoleSql(role, db=None):
-    statements = []
-    if role == 'master':
-        statements = [
-            # "SET GLOBAL rpl_semi_sync_master_enabled = 1",
-            "SET GLOBAL rpl_semi_sync_slave_enabled = 0"
-        ]
-    elif role == 'slave':
-        statements = [
-            # "SET GLOBAL rpl_semi_sync_master_enabled = 0",
-            "SET GLOBAL rpl_semi_sync_slave_enabled = 1"
-        ]
-    else:
-        return (False, '角色参数错误')
-
-    try:
-        need_close = False
-        if db is None:
-            db = pMysqlDb()
-            need_close = True
-        for sql in statements:
-            db.query(sql)
-        if need_close:
-            try:
-                db.close()
-            except Exception:
-                pass
-        return (True, '设置成功')
-    except Exception as e:
-        return (False, str(e))
 
 
 def getDbPort():
@@ -2220,10 +2189,6 @@ def setSemiSyncStatus(version=''):
     if ret != 'ok':
         return mw.returnJson(False, '重启MySQL失败: ' + str(ret))
     time.sleep(3)
-    if enable:
-        status, msg = runSemiSyncRoleSql('master')
-        if not status:
-            return mw.returnJson(False, '执行半同步主节点SQL失败:' + msg)
     return mw.returnJson(True, ('已启用' if enable else '已关闭') + '半同步复制', {'enabled': isSemiSyncConfigured()})
 
 
@@ -2700,11 +2665,6 @@ def initSlaveStatus(version=''):
         db.query('SET GLOBAL super_read_only = on')
         mw.execShell(f'source {getPluginDir()}/readonly.sh && enable_readonly')
 
-        if isSemiSyncConfigured():
-            sync_status, sync_msg = runSemiSyncRoleSql('slave', db)
-            if not sync_status:
-                ssh_client.close()
-                return mw.returnJson(False, '执行半同步从节点SQL失败:' + sync_msg)
     except Exception as e:
         return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
     ssh_client.close()
@@ -2753,10 +2713,6 @@ def deleteSlave(version=''):
     db.query('SET GLOBAL read_only = off')
     db.query('SET GLOBAL super_read_only = off')
     mw.execShell(f'source {getPluginDir()}/readonly.sh && disable_readonly')
-    if isSemiSyncConfigured():
-        sync_status, sync_msg = runSemiSyncRoleSql('master', db)
-        if not sync_status:
-            return mw.returnJson(False, '删除从库成功，但禁用半同步从节点失败:' + sync_msg)
     return mw.returnJson(True, '删除成功!')
 
 def saveSlaveStatus(version=''):

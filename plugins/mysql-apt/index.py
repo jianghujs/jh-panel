@@ -123,16 +123,14 @@ def isSemiSyncConfigured(content=None):
         content = mw.readFile(getConf())
     if content is None:
         return False
-    has = set()
+    pattern = _normalize_conf_line('rpl_semi_sync_master_enabled = 1')
     for line in content.split('\n'):
         stripped = line.strip()
         if stripped == '' or stripped.startswith('#'):
             continue
-        has.add(_normalize_conf_line(stripped))
-    for target in SEMI_SYNC_REQUIRED_NORMALIZED:
-        if target not in has:
-            return False
-    return True
+        if _normalize_conf_line(stripped) == pattern:
+            return True
+    return False
 
 
 def applySemiSyncConfigToFile(enable):

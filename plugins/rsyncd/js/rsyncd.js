@@ -669,15 +669,27 @@ function lsyncdRealtime(){
         </div>\
         <div class="card" id="lsyncd-all-sync-cron">\
           <span class="flex align-center mb10">定时同步全部实时任务：</span>\
-          <div class="mb10">\
-              <span>每天</span>\
-              <span>\
+          <div class="mb10 all-sync-period-row" style="display: flex; align-items: center;">\
+              <span>周期</span>\
+              <div>\
                   <input type="hidden" name="id" value="">\
-                  <input type="number" name="hour" value="20" maxlength="2" max="23" min="0">\
-                  <span class="name">:</span>\
-                  <input type="number" name="minute" value="30" maxlength="2" max="59" min="0">\
-              </span>\
-              <span>定时执行</span>\
+                  <select class="bt-input-text all-sync-period-select" name="period" style="width:100px;margin:0 10px;">\
+                      <option value="minute-n" selected>N分钟</option>\
+                      <option value="day">每天</option>\
+                  </select>\
+              </div>\
+              <div class="plan_hms pull-left mr20 bt-input-text all-sync-hour-group">\
+                  <span><input type="number" name="hour" value="20" maxlength="2" max="23" min="0"></span>\
+                  <span class="name">小时</span>\
+              </div>\
+              <div class="plan_hms pull-left mr20 bt-input-text all-sync-minute-group">\
+                  <span><input type="number" name="minute" value="30" maxlength="2" max="59" min="0"></span>\
+                  <span class="name">分钟</span>\
+              </div>\
+              <div class="plan_hms pull-left mr20 bt-input-text all-sync-minute-n-group" style="display:none;">\
+                  <span><input type="number" name="minute-n" value="60" min="1"></span>\
+                  <span class="name">分钟</span>\
+              </div>\
           </div>\
           <button id="lsyncd-all-sync-add" style="display: none;"\
               class="btn btn-success btn-sm" onclick="addLsyncdAllSyncCron();">创建</button>\
@@ -693,6 +705,7 @@ function lsyncdRealtime(){
   `;
 
   $(".soft-man-con").html(con);
+  bindLsyncdAllSyncPeriodEvents();
   
   getLsyncdLogCutCron();
   getLsyncdAllSyncCron();
@@ -998,8 +1011,8 @@ var lsyncdLogCutCron = {...defaultLsyncdLogCutCron}
 
 var defaultLsyncdAllSyncCron = {      
   name: '[勿删]lsyncd实时任务定时同步',
-  type: 'day',
-  where1: '',
+  type: 'minute-n',
+  where1: 60,
   week: '',
   sType: 'toShell',
   stype: 'toShell',
@@ -1012,6 +1025,72 @@ popd > /dev/null
   `,
   backupTo: 'localhost' };
 var lsyncdAllSyncCron = {...defaultLsyncdAllSyncCron}
+
+
+function toggleLsyncdAllSyncPeriod(type) {
+  var card = $("#lsyncd-all-sync-cron");
+  if (!card.length) return;
+  var hourGroup = card.find(".all-sync-hour-group");
+  var minuteGroup = card.find(".all-sync-minute-group");
+  var minuteNGroup = card.find(".all-sync-minute-n-group");
+  if (type === 'day') {
+      minuteNGroup.hide();
+      hourGroup.show();
+      minuteGroup.show();
+      if (card.find("input[name='hour']").val() === '') {
+          card.find("input[name='hour']").val(0);
+      }
+      if (card.find("input[name='minute']").val() === '') {
+          card.find("input[name='minute']").val(0);
+      }
+  } else {
+      hourGroup.hide();
+      minuteGroup.hide();
+      minuteNGroup.show();
+      if (card.find("input[name='minute-n']").val() === '') {
+          card.find("input[name='minute-n']").val(60);
+      }
+  }
+}
+
+function bindLsyncdAllSyncPeriodEvents() {
+  var select = $("#lsyncd-all-sync-cron select[name='period']");
+  if (!select.length) return;
+  select.off('change.allSyncPeriod').on('change.allSyncPeriod', function(){
+      toggleLsyncdAllSyncPeriod($(this).val());
+  });
+  toggleLsyncdAllSyncPeriod(select.val());
+}
+
+function buildLsyncdAllSyncCronParams(id) {
+  var card = $("#lsyncd-all-sync-cron");
+  var hour = card.find("input[name='hour']").val();
+  var minute = card.find("input[name='minute']").val();
+  var period = card.find("select[name='period']").val() || 'minute-n';
+  var minuteN = card.find("input[name='minute-n']").val();
+  var params = { ...lsyncdAllSyncCron, hour, minute, where1: '' };
+  params.type = period;
+  if (!hour) {
+      params.hour = 0;
+  }
+  if (!minute) {
+      params.minute = 0;
+  }
+  if (period === 'minute-n') {
+      var minuteNValue = parseInt(minuteN, 10);
+      if (isNaN(minuteNValue) || minuteNValue < 1) {
+          minuteNValue = 1;
+      }
+      card.find("input[name='minute-n']").val(minuteNValue);
+      params.where1 = minuteNValue;
+      params.hour = '';
+      params.minute = '';
+  }
+  if (id) {
+      params.id = id;
+  }
+  return params;
+}
 
 
 function getLsyncdLogCutCron() {
@@ -1049,13 +1128,21 @@ function getLsyncdAllSyncCron() {
   $.post('/crontab/get', { name: lsyncdAllSyncCron.name },function(rdata){
     const { status } = rdata;
     if (status) {
-      const { id,name,type,where_hour: hour,where_minute: minute} = rdata.data;
+      const { id,name,type,where_hour: hour,where_minute: minute,where1 } = rdata.data;
+      var periodType = (type === 'minute-n') ? 'minute-n' : 'day';
       $("#lsyncd-all-sync-cron #lsyncd-all-sync-add").css("display", "none");
       $("#lsyncd-all-sync-cron #lsyncd-all-sync-update").css("display", "inline-block");
       $("#lsyncd-all-sync-cron #lsyncd-all-sync-delete").css("display", "inline-block");
       $("#lsyncd-all-sync-cron input[name='id']").val(id);
+      $("#lsyncd-all-sync-cron select[name='period']").val(periodType);
       $("#lsyncd-all-sync-cron input[name='hour']").val(hour);
       $("#lsyncd-all-sync-cron input[name='minute']").val(minute);
+      if (periodType === 'minute-n') {
+          $("#lsyncd-all-sync-cron input[name='minute-n']").val(where1 || 60);
+      } else {
+          $("#lsyncd-all-sync-cron input[name='minute-n']").val(lsyncdAllSyncCron.where1 || 60);
+      }
+      toggleLsyncdAllSyncPeriod(periodType);
       // lsyncdAllSyncCron = rdata.data;
     }else {
       $("#lsyncd-all-sync-cron #lsyncd-all-sync-add").css("display", "inline-block");
@@ -1064,6 +1151,9 @@ function getLsyncdAllSyncCron() {
       $("#lsyncd-all-sync-cron input[name='id']").val("");
       $("#lsyncd-all-sync-cron input[name='hour']").val(0);
       $("#lsyncd-all-sync-cron input[name='minute']").val(0);
+      $("#lsyncd-all-sync-cron input[name='minute-n']").val(lsyncdAllSyncCron.where1 || 60);
+      $("#lsyncd-all-sync-cron select[name='period']").val(lsyncdAllSyncCron.type || 'minute-n');
+      toggleLsyncdAllSyncPeriod(lsyncdAllSyncCron.type || 'minute-n');
       // lsyncdAllSyncCron = {...defaultLsyncdLogCutCron};
     }
   },'json');
@@ -1110,10 +1200,8 @@ function addLsyncdLogCutCron() {
   },'json');
 }
 function addLsyncdAllSyncCron() {
-  var hour =  $("#lsyncd-all-sync-cron input[name='hour']").val();
-  var minute =  $("#lsyncd-all-sync-cron input[name='minute']").val();
-  
-  $.post('/crontab/add', { ...lsyncdAllSyncCron, hour, minute },function(rdata){
+  var params = buildLsyncdAllSyncCronParams();
+  $.post('/crontab/add', params,function(rdata){
     getLsyncdAllSyncCron();
       layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
   },'json');
@@ -1136,10 +1224,9 @@ function updateLsyncdLogCutCron() {
 
 function updateLsyncdAllSyncCron() {
   var id = $("#lsyncd-all-sync-cron input[name='id']").val();
-  var hour =  $("#lsyncd-all-sync-cron input[name='hour']").val();
-  var minute =  $("#lsyncd-all-sync-cron input[name='minute']").val();
   if (id) {
-      $.post('/crontab/modify_crond', { ...lsyncdAllSyncCron, id, hour, minute },function(rdata){
+      var params = buildLsyncdAllSyncCronParams(id);
+      $.post('/crontab/modify_crond', params,function(rdata){
           getLsyncdAllSyncCron();
           layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
       },'json');

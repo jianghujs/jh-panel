@@ -122,29 +122,9 @@ mysql_wait_for_relay_log_applied() {
     return 0
 }
 
-mysql_health_trigger_notify_backup() {
-    if [ -x "${NOTIFY_BACKUP_SCRIPT:-}" ]; then
-        STOP_KEEPALIVED_ON_BACKUP=1 \
-        KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}" \
-        KEEPALIVED_CONF="${KEEPALIVED_CONF:-}" \
-        KEEPALIVED_INSTANCE="${KEEPALIVED_INSTANCE:-}" \
-        FAIL_PRIORITY="${FAIL_PRIORITY:-90}" \
-        "${NOTIFY_BACKUP_SCRIPT}" "${FAIL_PRIORITY:-90}"
-        return
-    fi
-
-    log "WARN: notify_backup脚本不存在或不可执行，将尝试直接停止keepalived服务"
-    if command -v systemctl >/dev/null 2>&1; then
-        nohup systemctl stop "${KEEPALIVED_SERVICE:-keepalived}" >/dev/null 2>&1 &
-    elif command -v service >/dev/null 2>&1; then
-        nohup service "${KEEPALIVED_SERVICE:-keepalived}" stop >/dev/null 2>&1 &
-    else
-        pkill keepalived >/dev/null 2>&1 || true
-    fi
-}
 
 mysql_health_handle_failure() {
-    mysql_health_trigger_notify_backup
+    keepalived_stop "$KEEPALIVED_SERVICE"
     log "MySQL健康检查失败，脚本退出并上报异常"
     exit 1
 }

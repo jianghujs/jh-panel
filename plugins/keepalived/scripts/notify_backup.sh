@@ -10,6 +10,8 @@ UTIL_DIR="$SCRIPT_DIR/util"
 . "$UTIL_DIR/priority_util.sh"
 . "$UTIL_DIR/wireguard_util.sh"
 . "$UTIL_DIR/keepalived_util.sh"
+. "$UTIL_DIR/mysql_util.sh"
+. "$UTIL_DIR/alert_util.sh"
 
 FAIL_PRIORITY="${FAIL_PRIORITY:-90}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
@@ -20,6 +22,16 @@ WG_QUICK_PROFILE="${WG_QUICK_PROFILE:-vip}"
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_backup.log}"
 logger_init "$LOG_FILE" "notify_backup" 100
 log() { logger_log "$@"; }
+
+MYSQL_HOST="${MYSQL_HOST:-localhost}"
+MYSQL_PORT="${MYSQL_PORT:-33067}"
+MYSQL_USER="${MYSQL_USER:-root}"
+MYSQL_PASSWORD="${MYSQL_PASSWORD:-123456}"
+MYSQL_BIN="${MYSQL_BIN:-{$SERVER_PATH}/mysql-apt/bin/usr/bin/mysql}"
+MYSQL_SOCKET="${MYSQL_SOCKET:-{$SERVER_PATH}/mysql-apt/mysql.sock}"
+MYSQL_CONNECT_TIMEOUT="${MYSQL_CONNECT_TIMEOUT:-3}"
+
+mysql_client_set_logger log
 
 main() {
     local target_priority="${1:-$FAIL_PRIORITY}"
@@ -32,6 +44,16 @@ main() {
     priority_update "$target_priority"
 
     log "notify_backup 执行完毕"
+
+    if [ "$(alert_util_bool notify_demote)" = "1" ]; then
+        if alert_util_notify_demote "$target_priority"; then
+            log "已发送降级为备通知"
+        else
+            log "WARN: 发送降级通知失败"
+        fi
+    else
+        log "降级为备通知未开启，跳过邮件推送"
+    fi
 }
 
 main "$@"

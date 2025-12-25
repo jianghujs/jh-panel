@@ -11,6 +11,7 @@ UTIL_DIR="$SCRIPT_DIR/util"
 . "$UTIL_DIR/priority_util.sh"
 . "$UTIL_DIR/wireguard_util.sh"
 . "$UTIL_DIR/keepalived_util.sh"
+. "$UTIL_DIR/alert_util.sh"
 
 MYSQL_BIN="${MYSQL_BIN:-{$SERVER_PATH}/mysql-apt/bin/usr/bin/mysql}"
 MYSQL_USER="${MYSQL_USER:-root}"
@@ -69,6 +70,16 @@ main() {
         log "跳过 keepalived 重启 (RESTART_KEEPALIVED_ON_PROMOTE=$RESTART_KEEPALIVED_ON_PROMOTE)"
     fi
     log "notify_master 执行完毕"
+
+    if [ "$(alert_util_bool notify_promote)" = "1" ]; then
+        if alert_util_notify_promote; then
+            log "已发送提升为主通知"
+        else
+            log "WARN: 发送提升为主通知失败"
+        fi
+    else
+        log "提升为主通知未开启，跳过邮件推送"
+    fi
 }
 
 main "$@"

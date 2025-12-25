@@ -27,6 +27,7 @@ import re
 import db
 from random import Random
 import tempfile
+import importlib.util
 
 sys.path.append(os.getcwd() + "/class/plugin")
 from retry_tool import retry
@@ -110,6 +111,29 @@ def getPanelDataDir():
 
 def getPanelTmp():
     return getRunDir() + '/tmp'
+
+
+_keepalived_helper_module = None
+
+
+def loadKeepalivedHelper():
+    global _keepalived_helper_module
+    if _keepalived_helper_module is not None:
+        return _keepalived_helper_module or None
+    helper_path = os.path.join(getRunDir(), 'plugins', 'keepalived', 'notify_util.py')
+    if not os.path.exists(helper_path):
+        _keepalived_helper_module = False
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location('keepalived_notify_helper_runtime', helper_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _keepalived_helper_module = module
+        return module
+    except Exception as ex:
+        writeFileLog('加载 keepalived 帮助模块失败: {0}'.format(ex))
+        _keepalived_helper_module = False
+        return None
 
 def getServerDir():
     return getRootDir() + '/server'
@@ -2348,6 +2372,30 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             lsyncd_status_data = execShell(lsyncd_status_cmd)
             if lsyncd_status_data[0] == '':
                 error_msg_arr.append('Rsync实时同步异常')
+
+        # Keepalived 实时监测
+        keepalived_helper = loadKeepalivedHelper()
+        if keepalived_helper:
+            try:
+                settings = keepalived_helper.read_alert_settings()
+                if settings.get('monitor_enabled'):
+                    now_ts = int(time.time())
+                    last_ts = int(settings.get('monitor_last_run', 0) or 0)
+                    if now_ts - last_ts >= 600:
+                        health = keepalived_helper.collect_keepalived_health()
+                        keepalived_helper.append_monitor_log(health)
+                        settings['monitor_last_run'] = now_ts
+                        keepalived_helper.write_alert_settings(settings)
+                        if health.get('issues'):
+                            msg = keepalived_helper.format_keepalived_monitor_message(health)
+                            notifyMessage(title='Keepalived 实时监测告警',
+                                          msg=msg,
+                                          msgtype='html',
+                                          stype='keepalived-monitor',
+                                          trigger_time=600)
+            except Exception as ex:
+                writeFileLog('keepalived monitor error: {0}'.format(ex))
+
         # 发送异常报告
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('<br/>- '.join(error_msg_arr) + '<br/>请注意!')

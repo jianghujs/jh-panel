@@ -22,14 +22,14 @@ keepalived 的 `notify_master.sh` 与 `notify_backup.sh` SHALL 根据 `alert_set
 - **THEN** 脚本发送“降级”主题的邮件，描述本机优先级、是否仍持有 VIP、MySQL 读写状态，失败时写入 `notify_backup.log` 并返回非零退出码以提示管理员检查。
 
 ### Requirement: Keepalived 实时监测告警
-`task.py` SHALL 在“Keepalived 实时监测报告”开关开启时每 10 分钟运行一次巡检，综合 keepalived/VIP/MySQL 的状态并在出现异常时通过面板通知系统推送一条告警。
+`plugins/keepalived/notify_util.py` SHALL 提供 Keepalived 状态巡检与报告格式化能力，`mw.generateMonitorReportAndNotify` SHALL 在“Keepalived 实时监测报告”开关开启时每 10 分钟调用该 helper 并在异常时推送告警。
 
-#### Scenario: 任务调度与检测项
-- **WHEN** 异常巡检开关开启
-- **THEN** `task.py` 每 10 分钟读取 `alert_settings.json` 与 keepalived 配置，执行以下检测：
+#### Scenario: 巡检与调度
+- **WHEN** 巡检开关开启
+- **THEN** helper 读取 `alert_settings.json` 与 keepalived 配置，执行以下检测：
   1. `systemctl is-active keepalived` 或 `pidof keepalived`，判定服务是否运行；
   2. 解析配置的 VIP/interface，并检查本机 `ip addr` 是否持有 VIP 来确定 VRRP 角色；
   3. 对 VIP 执行 `ping`（3 次、1 秒超时）与 `nc`/`telnet` 到 MySQL 端口，若全部失败则判定“无节点持有 VIP”；若 `arping`/`ip neigh` 返回多个 MAC，则判定“多节点持有 VIP”；
-  4. 通过 TCP 探测与 `SHOW SLAVE STATUS`/`SELECT @@global.read_only` 判断本地 MySQL 端口可达且角色=MASTER 时可写、角色=BACKUP 时只读，防止双主；
+  4. 通过 TCP 探测与 `SELECT @@global.read_only` 判断本地 MySQL 端口可达且角色=MASTER 时可写、角色=BACKUP 时只读，防止双主；
   5. 任一检测不可执行（如缺少命令或凭据）时，结果标记为“未知”但不会误报。
-- **AND** 当任一检测结果为失败时，`task.py` 聚合异常列表，通过 `mw.notifyMessage(..., stype='keepalived-monitor', trigger_time=600)` 发送 HTML 告警，每 10 分钟最多一条，并把详细的检测结果写入 keepalived 运行日志以供排查。
+- **AND** `mw.generateMonitorReportAndNotify` 每 10 分钟调用 helper，写入 `/www/server/keepalived/logs/keepalived_monitor.log`，若存在异常则通过 `mw.notifyMessage(..., stype='keepalived-monitor', trigger_time=600)` 发送 HTML 告警，每 10 分钟最多一条。

@@ -4,8 +4,8 @@ set -e
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."
-    sudo apt-get update
-    sudo apt-get install dialog -y
+    apt-get update
+    apt-get install dialog -y
     hash -r
     if ! [ -x "/usr/bin/dialog" ]; then
         echo "安装dialog失败，请手动安装后再运行脚本。"

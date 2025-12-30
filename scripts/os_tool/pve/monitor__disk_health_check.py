@@ -558,7 +558,7 @@ def main():
     report_time = datetime.now()
     report_time_str = report_time.strftime('%Y-%m-%d %H:%M:%S')
     
-    report_logger.log(f"{color_text('PVE硬盘健康检查报告', Colors.YELLOW)}")
+    report_logger.log(f"{color_text('硬盘健康检查报告', Colors.YELLOW)}")
     report_logger.log(f"检查时间: {report_time_str}")
     report_logger.log("")
     

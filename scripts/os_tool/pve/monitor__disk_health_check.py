@@ -3,6 +3,7 @@
 PVE硬盘健康监控脚本 - 修复对齐问题
 """
 
+import os
 import subprocess
 import re
 import sys
@@ -36,6 +37,30 @@ class Colors:
     PURPLE = '\033[1;35m'
     END = '\033[0m'
 
+ANSI_ESCAPE_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+
+def strip_ansi(text):
+    """移除ANSI颜色码"""
+    return ANSI_ESCAPE_RE.sub('', text) if text else text
+
+class ReportLogger:
+    """记录最终报告并同步打印"""
+    def __init__(self):
+        self.lines = []
+    
+    def log(self, message=""):
+        print(message)
+        self.capture(message)
+    
+    def write_to_file(self, path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        content = '\n'.join(self.lines).rstrip() + '\n'
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+    def capture(self, message=""):
+        self.lines.append(strip_ansi(message))
+
 # ========================= 工具函数 =========================
 def color_text(text, color):
     """为文本添加颜色"""
@@ -50,6 +75,35 @@ def run_command(cmd):
         return result.stdout, result.stderr, result.returncode
     except Exception as e:
         return "", str(e), 1
+
+def print_command_output(cmd, stdout, stderr, logger=None):
+    """打印命令原始输出并可选写入日志"""
+    header = f"\n{color_text('>>> 原始命令输出:', Colors.PURPLE)} {cmd}"
+    print(header)
+    if logger:
+        logger.capture(header)
+    
+    if stdout.strip():
+        output_text = stdout.rstrip()
+    else:
+        output_text = color_text("[无标准输出]", Colors.YELLOW)
+    print(output_text)
+    if logger:
+        logger.capture(output_text)
+    
+    if stderr.strip():
+        stderr_label = color_text("[stderr]", Colors.ORANGE)
+        stderr_text = color_text(stderr.rstrip(), Colors.ORANGE)
+        print(stderr_label)
+        if logger:
+            logger.capture(stderr_label)
+        print(stderr_text)
+        if logger:
+            logger.capture(stderr_text)
+    
+    print()
+    if logger:
+        logger.capture("")
 
 def get_display_width(text):
     """获取字符串在终端的显示宽度（中文字符算2个宽度）"""
@@ -74,6 +128,21 @@ def pad_string(text, width, align='left'):
     else:  # right
         return ' ' * padding + text
 
+def to_int(value, default=0):
+    """尝试转换为整数，必要时抽取字符串中的数字"""
+    if isinstance(value, int):
+        return value
+    if value is None:
+        return default
+    value_str = str(value).strip()
+    if not value_str:
+        return default
+    try:
+        return int(value_str)
+    except ValueError:
+        match = re.search(r'-?\d+', value_str)
+        return int(match.group()) if match else default
+
 def parse_sata_attributes(output):
     """解析SATA设备的SMART属性"""
     attrs = {}
@@ -81,24 +150,23 @@ def parse_sata_attributes(output):
     
     for line in lines:
         if re.match(r'^\s*\d+', line):
-            parts = re.split(r'\s+', line.strip())
+            parts = re.split(r'\s+', line.strip(), maxsplit=10)
             if len(parts) >= 10:
                 attr_id = parts[0]
-                # 有些属性名可能包含空格，需要特殊处理
                 attr_name = parts[1]
+                raw_value = parts[9]
                 if len(parts) > 10:
-                    # 合并多余的字段作为属性名
-                    for i in range(2, len(parts)-9):
-                        attr_name += " " + parts[i]
+                    raw_value = f"{raw_value} {parts[10]}"
                 
                 attrs[attr_id] = {
                     'name': attr_name,
-                    'value': int(parts[-6]) if parts[-6].isdigit() else 0,
-                    'worst': int(parts[-5]) if parts[-5].isdigit() else 0,
-                    'threshold': int(parts[-4]) if parts[-4].isdigit() else 0,
-                    'raw': parts[-1] if parts[-1] else '0',
-                    'type': parts[-3] if len(parts) > 7 else '',
-                    'when_failed': parts[-2] if len(parts) > 8 else '-'
+                    'value': to_int(parts[3]),
+                    'worst': to_int(parts[4]),
+                    'threshold': to_int(parts[5]),
+                    'raw': raw_value,
+                    'raw_int': to_int(raw_value),
+                    'type': parts[6] if len(parts) > 6 else '',
+                    'when_failed': parts[8] if len(parts) > 8 else '-'
                 }
     return attrs
 
@@ -137,7 +205,7 @@ def parse_nvme_info(output):
 
 # ========================= 设备检查类 =========================
 class DiskChecker:
-    def __init__(self, device):
+    def __init__(self, device, raw_output=None, logger=None):
         self.device = device
         self.name = device.split('/')[-1]
         self.is_nvme = 'nvme' in device
@@ -145,19 +213,29 @@ class DiskChecker:
         self.issues = []
         self.status = "正常"
         self.attributes = []
+        self.raw_smart_output = raw_output or ""
+        self.logger = logger
+    
+    def log(self, message=""):
+        if self.logger:
+            self.logger.log(message)
+        else:
+            print(message)
         
     def get_basic_info(self):
         """获取设备基本信息"""
-        cmd = f"smartctl -i {self.device}"
-        output, _, _ = run_command(cmd)
+        output = self.raw_smart_output
         
         info = {
             'model': '未知',
             'serial': '未知',
             'firmware': '未知',
             'capacity': '未知',
-            'type': 'SATA'
+            'type': 'SSD' if self.is_nvme else 'SATA'
         }
+        
+        if not output:
+            return info
         
         for line in output.split('\n'):
             line_lower = line.lower()
@@ -181,9 +259,7 @@ class DiskChecker:
     
     def check_health(self):
         """检查设备健康状态"""
-        cmd = f"smartctl -H {self.device}"
-        output, _, returncode = run_command(cmd)
-        
+        output = self.raw_smart_output
         if 'PASSED' in output or 'OK' in output:
             return "通过"
         else:
@@ -191,13 +267,13 @@ class DiskChecker:
     
     def check_sata_disk(self):
         """检查SATA设备"""
-        cmd = f"smartctl -A {self.device}"
-        output, _, _ = run_command(cmd)
-        attrs = parse_sata_attributes(output)
+        attrs = parse_sata_attributes(self.raw_smart_output)
         
-        print(f"    {color_text('SATA详细参数:', Colors.CYAN)}")
-        print(f"    {pad_string('参数名', 24)} {pad_string('当前值', 8)} {pad_string('阈值', 8)} {pad_string('原始值', 12)} 状态")
-        print(f"    {'-' * 70}")
+        name_width = 24
+        key_width = 24
+        self.log(f"    {color_text('SATA详细参数:', Colors.CYAN)}")
+        self.log(f"    {pad_string('名称', name_width)} {pad_string('参数', key_width)} {pad_string('当前值', 8)} {pad_string('阈值', 8)} {pad_string('原始值', 12)} 状态")
+        self.log(f"    {'-' * (name_width + key_width + 40)}")
         
         for attr_id, attr_data in attrs.items():
             if attr_id in SATA_PARAMS:
@@ -206,6 +282,7 @@ class DiskChecker:
                 value = attr_data['value']
                 threshold = attr_data['threshold']
                 raw = attr_data['raw']
+                raw_value = attr_data.get('raw_int', to_int(raw))
                 when_failed = attr_data['when_failed']
                 
                 # 判断状态
@@ -214,10 +291,10 @@ class DiskChecker:
                 
                 # 特定参数的特殊判断
                 if attr_id == "5":  # 重新分配扇区计数
-                    if int(raw) > 0:
+                    if raw_value > 0:
                         status = "异常"
                         status_color = Colors.RED
-                        self.issues.append(f"坏块:{raw}")
+                        self.issues.append(f"坏块:{raw_value}")
                         self.status = "异常"
                     elif when_failed != '-':
                         status = "警告"
@@ -226,14 +303,14 @@ class DiskChecker:
                             self.status = "警告"
                 
                 elif attr_id == "187":  # 报告不可纠正错误
-                    if int(raw) > 0:
+                    if raw_value > 0:
                         status = "异常"
                         status_color = Colors.RED
-                        self.issues.append(f"不可纠正错误:{raw}")
+                        self.issues.append(f"不可纠正错误:{raw_value}")
                         self.status = "异常"
                 
                 elif attr_id == "194":  # 温度
-                    temp = int(raw) if raw.isdigit() else 0
+                    temp = raw_value
                     if temp >= TEMP_CRITICAL:
                         status = "危险"
                         status_color = Colors.RED
@@ -248,7 +325,7 @@ class DiskChecker:
                             self.status = "警告"
                 
                 elif attr_id == "231":  # SSD剩余寿命
-                    life = int(raw) if raw.isdigit() else 100
+                    life = raw_value if raw_value > 0 else value
                     if life <= 10:
                         status = "危险"
                         status_color = Colors.RED
@@ -280,22 +357,23 @@ class DiskChecker:
                 })
                 
                 # 显示参数
-                param_display = pad_string(cn_name, 24)
+                cn_display = pad_string(cn_name, name_width)
+                key_display = pad_string(en_name, key_width)
                 value_display = pad_string(str(value), 8)
                 threshold_display = pad_string(str(threshold), 8)
                 raw_display = pad_string(raw, 12)
                 
-                print(f"    {param_display} {value_display} {threshold_display} {raw_display} {color_text(status, status_color)}")
+                self.log(f"    {cn_display} {key_display} {value_display} {threshold_display} {raw_display} {color_text(status, status_color)}")
     
     def check_nvme_disk(self):
         """检查NVMe设备"""
-        cmd = f"smartctl -a {self.device}"
-        output, _, _ = run_command(cmd)
-        info = parse_nvme_info(output)
+        info = parse_nvme_info(self.raw_smart_output)
         
-        print(f"    {color_text('NVMe详细参数:', Colors.CYAN)}")
-        print(f"    {pad_string('参数名', 24)} {pad_string('值', 20)} 状态")
-        print(f"    {'-' * 60}")
+        name_width = 24
+        key_width = 24
+        self.log(f"    {color_text('NVMe详细参数:', Colors.CYAN)}")
+        self.log(f"    {pad_string('名称', name_width)} {pad_string('参数', key_width)} {pad_string('值', 20)} 状态")
+        self.log(f"    {'-' * (name_width + key_width + 30)}")
         
         # NVMe关键参数检查
         nvme_params = [
@@ -393,27 +471,28 @@ class DiskChecker:
                 })
                 
                 # 显示参数
-                param_display = pad_string(cn_name, 24)
+                cn_display = pad_string(cn_name, name_width)
+                key_display = pad_string(key, key_width)
                 value_display = pad_string(display_value, 20)
                 
-                print(f"    {param_display} {value_display} {color_text(status, status_color)}")
+                self.log(f"    {cn_display} {key_display} {value_display} {color_text(status, status_color)}")
     
     def check(self):
         """执行完整的设备检查"""
-        print(f"\n{color_text('=' * 60, Colors.YELLOW)}")
-        print(f"{color_text('设备:', Colors.CYAN)} {self.device}")
+        self.log(f"\n{color_text('=' * 60, Colors.YELLOW)}")
+        self.log(f"{color_text('设备:', Colors.CYAN)} {self.device}")
         
         # 获取基本信息
         self.info = self.get_basic_info()
-        print(f"{color_text('型号:', Colors.CYAN)} {self.info['model']}")
-        print(f"{color_text('序列号:', Colors.CYAN)} {self.info['serial']}")
-        print(f"{color_text('容量:', Colors.CYAN)} {self.info['capacity']}")
-        print(f"{color_text('类型:', Colors.CYAN)} {self.info['type']}")
+        self.log(f"{color_text('型号:', Colors.CYAN)} {self.info['model']}")
+        self.log(f"{color_text('序列号:', Colors.CYAN)} {self.info['serial']}")
+        self.log(f"{color_text('容量:', Colors.CYAN)} {self.info['capacity']}")
+        self.log(f"{color_text('类型:', Colors.CYAN)} {self.info['type']}")
         
         # 检查健康状态
         health = self.check_health()
         health_color = Colors.GREEN if health == "通过" else Colors.RED
-        print(f"{color_text('健康状态:', Colors.CYAN)} {color_text(health, health_color)}")
+        self.log(f"{color_text('健康状态:', Colors.CYAN)} {color_text(health, health_color)}")
         
         if health != "通过":
             self.status = "异常"
@@ -432,7 +511,7 @@ class DiskChecker:
         else:
             self.check_sata_disk()
         
-        print(f"{color_text('=' * 60, Colors.YELLOW)}")
+        self.log(f"{color_text('=' * 60, Colors.YELLOW)}")
         
         return {
             'device': self.device,
@@ -445,16 +524,15 @@ class DiskChecker:
 # ========================= 主程序 =========================
 def main():
     """主函数"""
-    print(f"{color_text('PVE硬盘健康检查报告', Colors.YELLOW)}")
-    print(f"检查时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print()
+    report_logger = ReportLogger()
+    scan_cmd = "smartctl --scan"
+    scan_output, scan_err, _ = run_command(scan_cmd)
+    print_command_output(scan_cmd, scan_output, scan_err, report_logger)
     
-    # 检测所有硬盘
-    output, _, _ = run_command("smartctl --scan")
     devices = []
     
-    if output.strip():
-        for line in output.strip().split('\n'):
+    if scan_output.strip():
+        for line in scan_output.strip().split('\n'):
             if line:
                 device = line.split()[0]
                 devices.append(device)
@@ -465,42 +543,57 @@ def main():
             output, _, _ = run_command(cmd)
             if output:
                 devices.extend(output.strip().split())
+
+    raw_outputs = {}
+    for device in devices:
+        smart_cmd = f"smartctl -a {device}"
+        stdout, stderr, _ = run_command(smart_cmd)
+        print_command_output(smart_cmd, stdout, stderr, report_logger)
+        raw_outputs[device] = stdout
     
     if not devices:
         print(color_text("错误：未检测到任何硬盘设备！", Colors.RED))
         sys.exit(1)
     
+    report_time = datetime.now()
+    report_time_str = report_time.strftime('%Y-%m-%d %H:%M:%S')
+    
+    report_logger.log(f"{color_text('PVE硬盘健康检查报告', Colors.YELLOW)}")
+    report_logger.log(f"检查时间: {report_time_str}")
+    report_logger.log("")
+    
     # 检查每个设备
     results = []
     for device in devices:
-        checker = DiskChecker(device)
+        checker = DiskChecker(device, raw_outputs.get(device, ""), report_logger)
         result = checker.check()
         if result:
             results.append(result)
     
     # 生成汇总报告
-    print(f"\n{color_text('=' * 60, Colors.YELLOW)}")
-    print(f"{color_text('硬盘健康检查汇总报告', Colors.CYAN)}")
-    print(f"{color_text('=' * 60, Colors.YELLOW)}")
-    print(f"检查时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_logger.log(f"\n{color_text('=' * 60, Colors.YELLOW)}")
+    report_logger.log(f"{color_text('硬盘健康检查汇总报告', Colors.CYAN)}")
+    report_logger.log(f"{color_text('=' * 60, Colors.YELLOW)}")
+    summary_time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    report_logger.log(f"检查时间: {summary_time_str}")
     
     total = len(results)
     healthy = sum(1 for r in results if r['status'] == '正常')
     warning = sum(1 for r in results if r['status'] == '警告')
     critical = sum(1 for r in results if r['status'] == '异常')
     
-    print(f"检测设备: {total}")
-    print(f"{color_text('健康设备:', Colors.GREEN)} {healthy}")
-    print(f"{color_text('警告设备:', Colors.ORANGE)} {warning}")
-    print(f"{color_text('异常设备:', Colors.RED)} {critical}")
+    report_logger.log(f"检测设备: {total}")
+    report_logger.log(f"{color_text('健康设备:', Colors.GREEN)} {healthy}")
+    report_logger.log(f"{color_text('警告设备:', Colors.ORANGE)} {warning}")
+    report_logger.log(f"{color_text('异常设备:', Colors.RED)} {critical}")
     
     # 设备状态表
     if results:
-        print(f"\n{color_text('设备状态表:', Colors.CYAN)}")
-        print(f"{'-' * 80}")
+        report_logger.log(f"\n{color_text('设备状态表:', Colors.CYAN)}")
+        report_logger.log(f"{'-' * 80}")
         header = f"| {pad_string('设备', 8)} | {pad_string('型号', 20)} | {pad_string('类型', 6)} | {pad_string('状态', 8)} | {pad_string('问题摘要', 30)} |"
-        print(header)
-        print(f"{'-' * 80}")
+        report_logger.log(header)
+        report_logger.log(f"{'-' * 80}")
         
         for r in results:
             status_color = (
@@ -518,22 +611,30 @@ def main():
             if len(issues_short) > 30:
                 issues_short = issues_short[:27] + "..."
             
-            print(f"| {pad_string(device_short, 8)} | {pad_string(model_short, 20)} | "
-                  f"{pad_string(r['type'], 6)} | {color_text(pad_string(r['status'], 8), status_color)} | "
-                  f"{pad_string(issues_short, 30)} |")
+            report_logger.log(
+                f"| {pad_string(device_short, 8)} | {pad_string(model_short, 20)} | "
+                f"{pad_string(r['type'], 6)} | {color_text(pad_string(r['status'], 8), status_color)} | "
+                f"{pad_string(issues_short, 30)} |"
+            )
         
-        print(f"{'-' * 80}")
+        report_logger.log(f"{'-' * 80}")
     
     # 给出建议
+    exit_code = 0
     if critical > 0:
-        print(f"\n{color_text('⚠️ 警告：发现异常设备，请立即备份数据！', Colors.RED)}")
-        sys.exit(1)
+        report_logger.log(f"\n{color_text('⚠️ 警告：发现异常设备，请立即备份数据！', Colors.RED)}")
+        exit_code = 1
     elif warning > 0:
-        print(f"\n{color_text('⚠️ 注意：发现警告设备，请保持关注。', Colors.ORANGE)}")
-        sys.exit(0)
+        report_logger.log(f"\n{color_text('⚠️ 注意：发现警告设备，请保持关注。', Colors.ORANGE)}")
     else:
-        print(f"\n{color_text('✓ 所有硬盘状态正常。', Colors.GREEN)}")
-        sys.exit(0)
+        report_logger.log(f"\n{color_text('✓ 所有硬盘状态正常。', Colors.GREEN)}")
+    
+    report_filename = f"pve_disk_health_report_{report_time.strftime('%Y%m%d_%H%M%S')}.txt"
+    report_path = os.path.join('/tmp', report_filename)
+    report_logger.write_to_file(report_path)
+    print(color_text(f"报告已保存到: {report_path}", Colors.CYAN))
+    
+    sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()

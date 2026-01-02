@@ -124,6 +124,7 @@ mysql_wait_for_relay_log_applied() {
 
 
 mysql_health_handle_failure() {
+    priority_update "90"
     keepalived_stop "$KEEPALIVED_SERVICE"
     log "MySQL健康检查失败，脚本退出并上报异常"
     exit 1

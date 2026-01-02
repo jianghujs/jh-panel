@@ -8,6 +8,7 @@ UTIL_DIR="$SCRIPT_DIR/util"
 . "$UTIL_DIR/logging_util.sh"
 . "$UTIL_DIR/mysql_util.sh"
 . "$UTIL_DIR/keepalived_util.sh"
+. "$UTIL_DIR/priority_util.sh"
 
 MYSQL_HOST="${MYSQL_HOST:-localhost}"
 MYSQL_PORT="${MYSQL_PORT:-33067}"

@@ -215,6 +215,7 @@ class DiskChecker:
         self.attributes = []
         self.raw_smart_output = raw_output or ""
         self.logger = logger
+        self.health_score = None
     
     def log(self, message=""):
         if self.logger:
@@ -326,6 +327,7 @@ class DiskChecker:
                 
                 elif attr_id == "231":  # SSD剩余寿命
                     life = raw_value if raw_value > 0 else value
+                    life = max(0, min(100, life))
                     if life <= 10:
                         status = "危险"
                         status_color = Colors.RED
@@ -338,6 +340,7 @@ class DiskChecker:
                             self.status = "异常"
                         elif self.status == "正常":
                             self.status = "警告"
+                    self.health_score = life
                 
                 # 对于其他参数，如果当前值小于等于阈值且不为0，标记为警告
                 elif threshold > 0 and value <= threshold:
@@ -426,6 +429,8 @@ class DiskChecker:
                         if self.status == "正常":
                             self.status = "警告"
                         self.issues.append(f"寿命:{value_num}%")
+                    health_percent = max(0, min(100, int(round(100 - value_num))))
+                    self.health_score = health_percent
                 
                 elif key == 'media_and_data_integrity_errors' and is_numeric:
                     if value_num > 0:
@@ -497,12 +502,17 @@ class DiskChecker:
         if health != "通过":
             self.status = "异常"
             self.issues.append("健康检查失败")
+            if self.health_score is not None:
+                self.log(f"{color_text('健康度:', Colors.CYAN)} {self.health_score}%")
+            else:
+                self.log(f"{color_text('健康度:', Colors.CYAN)} 未知")
             return {
                 'device': self.device,
                 'model': self.info['model'],
                 'status': self.status,
                 'issues': ', '.join(self.issues) if self.issues else '无',
-                'type': self.info['type']
+                'type': self.info['type'],
+                'health_score': self.health_score
             }
         
         # 根据设备类型检查详细参数
@@ -511,6 +521,11 @@ class DiskChecker:
         else:
             self.check_sata_disk()
         
+        if self.health_score is not None:
+            self.log(f"{color_text('健康度:', Colors.CYAN)} {self.health_score}%")
+        else:
+            self.log(f"{color_text('健康度:', Colors.CYAN)} 未知")
+        
         self.log(f"{color_text('=' * 60, Colors.YELLOW)}")
         
         return {
@@ -518,7 +533,8 @@ class DiskChecker:
             'model': self.info['model'],
             'status': self.status,
             'issues': ', '.join(self.issues) if self.issues else '无',
-            'type': self.info['type']
+            'type': self.info['type'],
+            'health_score': self.health_score
         }
 
 # ========================= 主程序 =========================
@@ -590,10 +606,15 @@ def main():
     # 设备状态表
     if results:
         report_logger.log(f"\n{color_text('设备状态表:', Colors.CYAN)}")
-        report_logger.log(f"{'-' * 80}")
-        header = f"| {pad_string('设备', 8)} | {pad_string('型号', 20)} | {pad_string('类型', 6)} | {pad_string('状态', 8)} | {pad_string('问题摘要', 30)} |"
+        header = (
+            f"| {pad_string('设备', 8)} | {pad_string('型号', 20)} | "
+            f"{pad_string('类型', 6)} | {pad_string('状态', 8)} | "
+            f"{pad_string('问题摘要', 30)} | {pad_string('健康度', 10)} |"
+        )
+        line_width = len(strip_ansi(header))
+        report_logger.log(f"{'-' * line_width}")
         report_logger.log(header)
-        report_logger.log(f"{'-' * 80}")
+        report_logger.log(f"{'-' * line_width}")
         
         for r in results:
             status_color = (
@@ -611,13 +632,16 @@ def main():
             if len(issues_short) > 30:
                 issues_short = issues_short[:27] + "..."
             
+            health_score = r.get('health_score')
+            health_display = f"{health_score}%" if health_score is not None else "未知"
+            
             report_logger.log(
                 f"| {pad_string(device_short, 8)} | {pad_string(model_short, 20)} | "
                 f"{pad_string(r['type'], 6)} | {color_text(pad_string(r['status'], 8), status_color)} | "
-                f"{pad_string(issues_short, 30)} |"
+                f"{pad_string(issues_short, 30)} | {pad_string(health_display, 10)} |"
             )
         
-        report_logger.log(f"{'-' * 80}")
+        report_logger.log(f"{'-' * line_width}")
     
     # 给出建议
     exit_code = 0

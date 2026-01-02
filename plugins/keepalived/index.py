@@ -5,6 +5,7 @@ import io
 import os
 import time
 import re
+import json
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -61,6 +62,18 @@ def getArgs():
     args = sys.argv[3:]
     tmp = {}
     args_len = len(args)
+
+    if args_len == 1:
+        content = args[0].strip()
+        if content.startswith('{') and content.endswith('}'):
+            try:
+                data = json.loads(content)
+                normalized = {}
+                for k, v in data.items():
+                    normalized[k] = str(v)
+                return normalized
+            except Exception:
+                pass
 
     if args_len == 1:
         t = args[0].strip('{').strip('}')

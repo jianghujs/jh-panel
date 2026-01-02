@@ -29,6 +29,7 @@ show_menu() {
     echo "4. 修复MySQL数据库用户（重建数据库用户和密码）"
     echo "5. 修复MySQL从库：从xtrabackup备份中恢复从库和GTID事务"
     echo "6. 修复网站well-known配置（避免申请SSL证书时验证地址404问题）"
+    echo "7. 修复KeepalivedMySQL（确保双节点keepalived+mysql状态，本机成为主节点）"
     echo "========================================================"
 }
 
@@ -58,6 +59,9 @@ case $choice in
     ;;
 6)
     download_and_run repair__fix_website_wellknown_conf.sh
+    ;;
+7)
+    download_and_run repair__keepalived_mysql_failover.sh
     ;;
 esac
 

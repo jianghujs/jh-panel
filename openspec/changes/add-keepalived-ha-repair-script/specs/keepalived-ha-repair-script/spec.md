@@ -1,6 +1,6 @@
 ## ADDED Requirements
 ### Requirement: 双节点 Keepalived/MySQL 本机修复脚本
-`scripts/os_tool/vm/default` SHALL 提供一个 `repair__keepalived_mysql_failover.sh`（或同义命名、以 `repair__` 打头）的脚本，引导维护者在当前节点上完成 VIP、MySQL、Keepalived 的恢复，使本机重新成为主节点。
+`scripts/os_tool/vm/default` SHALL 提供一个 `repair__keepalived_mysql_failover.sh`（或同义命名、以 `repair__` 打头的 shell 脚本），引导维护者在当前节点上完成 VIP、MySQL、Keepalived 的恢复，使本机重新成为主节点。
 
 #### Scenario: 发现当前节点元数据
 - **WHEN** 执行脚本

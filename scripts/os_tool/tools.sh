@@ -80,3 +80,35 @@ download_and_run_py() {
     $python_bin "$script_path" ${@:2}
     popd > /dev/null
 }
+
+ensure_jq_installed() {
+    if command -v jq >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "jq 未安装，正在尝试自动安装..."
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y jq
+    else
+        echo "当前环境不支持自动安装 jq，请手动安装后重试。"
+        return 1
+    fi
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "安装 jq 失败，请手动安装后再运行脚本。"
+        return 1
+    fi
+    return 0
+}
+
+panel_python_call() {
+    local label="$1"
+    shift
+    local panel_dir="${PANEL_DIR:-/www/server/jh-panel}"
+    local python_bin="${PYTHON_BIN:-python3}"
+    local output
+    if ! output=$(cd "$panel_dir" && "$python_bin" "$@" 2>&1); then
+        echo "[$label] 执行失败：$output" >&2
+        return 1
+    fi
+    printf '%s\n' "$output"
+}

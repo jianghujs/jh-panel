@@ -64,18 +64,6 @@ def getArgs():
     args_len = len(args)
 
     if args_len == 1:
-        content = args[0].strip()
-        if content.startswith('{') and content.endswith('}'):
-            try:
-                data = json.loads(content)
-                normalized = {}
-                for k, v in data.items():
-                    normalized[k] = str(v)
-                return normalized
-            except Exception:
-                pass
-
-    if args_len == 1:
         t = args[0].strip('{').strip('}')
         if t.strip() == '':
             tmp = []
@@ -379,6 +367,88 @@ def copyScripts():
             mw.execShell(cmd)
             copied = True
     return copied
+
+
+def getAlertSettingsPath():
+    config_dir = os.path.join(getServerDir(), 'config')
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir, 0o755)
+    return os.path.join(config_dir, 'alert_settings.json')
+
+
+def _defaultAlertSettings():
+    return {
+        'notify_promote': False,
+        'notify_demote': False,
+        'monitor_enabled': False,
+        'updated_at': int(time.time()),
+        'monitor_last_run': 0
+    }
+
+
+def _loadAlertSettings():
+    path = getAlertSettingsPath()
+    if not os.path.exists(path):
+        data = _defaultAlertSettings()
+        mw.writeFile(path, json.dumps(data))
+        return data
+    try:
+        content = mw.readFile(path)
+        data = json.loads(content) if content else {}
+    except Exception:
+        data = {}
+    base = _defaultAlertSettings()
+    base.update({
+        'notify_promote': bool(data.get('notify_promote', False)),
+        'notify_demote': bool(data.get('notify_demote', False)),
+        'monitor_enabled': bool(data.get('monitor_enabled', False)),
+    })
+    if 'updated_at' in data:
+        try:
+            base['updated_at'] = int(data['updated_at'])
+        except Exception:
+            base['updated_at'] = int(time.time())
+    try:
+        base['monitor_last_run'] = int(data.get('monitor_last_run', 0) or 0)
+    except Exception:
+        base['monitor_last_run'] = 0
+    return base
+
+
+def getAlertSettings():
+    data = _loadAlertSettings()
+    return mw.returnJson(True, 'OK', data)
+
+
+def saveAlertSettings():
+    args = getArgs()
+    settings = _loadAlertSettings()
+    changed = False
+
+    def parse_bool(value):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.lower() in ['1', 'true', 'yes', 'on']
+        return bool(value)
+
+    if 'notify_promote' in args:
+        settings['notify_promote'] = parse_bool(args['notify_promote'])
+        changed = True
+    if 'notify_demote' in args:
+        settings['notify_demote'] = parse_bool(args['notify_demote'])
+        changed = True
+    if 'monitor_enabled' in args:
+        settings['monitor_enabled'] = parse_bool(args['monitor_enabled'])
+        changed = True
+
+    if not changed:
+        return mw.returnJson(False, '未提供任何可更新字段')
+
+    settings['updated_at'] = int(time.time())
+    path = getAlertSettingsPath()
+    mw.writeFile(path, json.dumps(settings))
+    return mw.returnJson(True, '保存成功', settings)
 
 
 def getNotifyMasterScriptPath():
@@ -723,6 +793,10 @@ if __name__ == "__main__":
         print(readConfigTpl())
     elif func == 'get_status_panel':
         print(getStatusPanel())
+    elif func == 'get_alert_settings':
+        print(getAlertSettings())
+    elif func == 'save_alert_settings':
+        print(saveAlertSettings())
     elif func == 'get_vrrp_form':
         print(getVrrpForm())
     elif func == 'save_vrrp_form':

@@ -334,8 +334,83 @@ function keepalivedStatusPanel(version){
                 <button class="btn btn-default btn-sm" onclick="keepalivedServiceLog()">服务日志</button>\
                 <button class="btn btn-default btn-sm" onclick="keepalivedShowVipStatus(\'' + version + '\')">VIP 状态</button>\
             </div>\
-        </div>';
+        </div>\
+        <hr />\
+        <div id="keepalived-alert-settings"></div>';
         $(".soft-man-con").html(html);
+        keepalivedLoadAlertSettings(version);
+    });
+}
+
+function keepalivedLoadAlertSettings(version){
+    kpPost('get_alert_settings', version, {}, function(res){
+        var payload = keepalivedParsePayload(res.data);
+        var settings = (payload && payload.data) ? payload.data : null;
+        if(!settings){
+            $('#keepalived-alert-settings').html('<div class="keepalived-alert-card">无法加载告警配置</div>');
+            return;
+        }
+        keepalivedRenderAlertSettings(version, settings);
+    });
+}
+
+function keepalivedRenderAlertSettings(version, settings){
+    var optionList = [
+        {
+            field: 'notify_promote',
+            label: '提升为主邮件通知',
+            desc: '当节点提升为主并持有 VIP 时发送邮件提醒。'
+        },
+        {
+            field: 'notify_demote',
+            label: '降级为备邮件通知',
+            desc: '节点降级释放 VIP 时发送降级提醒。'
+        },
+        {
+            field: 'monitor_enabled',
+            label: 'Keepalived 实时监测报告',
+            desc: '每 10 分钟检测 Keepalived/VIP/MySQL 状态，异常时推送告警。'
+        }
+    ];
+    var switchRows = optionList.map(function(opt){
+        var checked = settings[opt.field] ? 'checked' : '';
+        return '<div class="keepalived-alert-row">\
+            <div class="keepalived-alert-info">\
+                <div class="keepalived-alert-label">' + opt.label + '</div>\
+                <div class="keepalived-alert-desc">' + opt.desc + '</div>\
+            </div>\
+            <label class="keepalived-switch">\
+                <input type="checkbox" data-field="' + opt.field + '" ' + checked + '>\
+                <span class="keepalived-switch-slider"></span>\
+            </label>\
+        </div>';
+    }).join('');
+
+    var card = '<div class="keepalived-alert-card">\
+        <div class="keepalived-alert-card-title">状态告警设置：</div>\
+        <div class="keepalived-alert-switches">' + switchRows + '</div>\
+        <div class="keepalived-alert-actions">\
+            <button class="btn btn-default btn-sm" onclick="keepalivedLoadAlertSettings(\'' + version + '\')">刷新</button>\
+            <button class="btn btn-success btn-sm" onclick="keepalivedSaveAlertSettings(\'' + version + '\')">保存</button>\
+        </div>\
+    </div>';
+    $('#keepalived-alert-settings').html(card);
+}
+
+function keepalivedSaveAlertSettings(version){
+    var switches = $('#keepalived-alert-settings').find('input[type="checkbox"][data-field]');
+    if(switches.length === 0){
+        layer.msg('未找到配置项', {icon:2});
+        return;
+    }
+    var payload = {};
+    switches.each(function(){
+        var field = $(this).data('field');
+        payload[field] = $(this).is(':checked') ? '1' : '0';
+    });
+    kpPost('save_alert_settings', version, payload, function(res){
+        layer.msg(res.msg || '保存成功', {icon:1});
+        keepalivedLoadAlertSettings(version);
     });
 }
 

@@ -10,6 +10,21 @@
 .keepalived-status-priority.success{color:#5cb85c;}
 .keepalived-status-priority.danger{color:#d9534f;}
 .keepalived-status-simple .status-pre{background:#1f1f1f;color:#f5f5f5;padding:10px;border-radius:4px;}
+.keepalived-alert-card{margin:20px 15px 0;}
+.keepalived-alert-card-title{margin-bottom:10px;margin-top: 15px;font-size: 14px;}
+.keepalived-alert-switches{display:flex;flex-direction:column;margin-bottom:12px;}
+.keepalived-alert-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f1f1;}
+.keepalived-alert-row:last-child{border-bottom:none;}
+.keepalived-alert-info{max-width:75%;}
+.keepalived-alert-label{font-weight:600;color:#333;}
+.keepalived-alert-desc{color:#888;font-size:12px;margin-top:3px;}
+.keepalived-alert-actions .btn{margin-right:8px;}
+.keepalived-switch{position:relative;display:inline-block;width:44px;height:24px;}
+.keepalived-switch input{opacity:0;width:0;height:0;}
+.keepalived-switch-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#dcdfe6;border-radius:24px;transition:0.3s;}
+.keepalived-switch-slider:before{position:absolute;content:"";height:20px;width:20px;left:2px;bottom:2px;background-color:#fff;border-radius:50%;transition:0.3s;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+.keepalived-switch input:checked + .keepalived-switch-slider{background-color:#64bd63;}
+.keepalived-switch input:checked + .keepalived-switch-slider:before{transform:translateX(20px);}
 </style>
 <div class="bt-form">
 	<div class='plugin_version'></div>

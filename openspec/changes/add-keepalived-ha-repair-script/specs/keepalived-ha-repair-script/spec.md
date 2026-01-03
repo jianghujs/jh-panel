@@ -27,4 +27,5 @@
 
 #### Scenario: 远程 Keepalived 设定
 - **WHEN** 脚本完成对端 MySQL 检查
-- **THEN** 它在对端执行 `python3 plugins/keepalived/index.py set_priority '{"priority":90}'` 之类命令，把优先级设为 90 并保持备节点定位；若对端 keepalived 未运行，则提示确认并执行 `python3 plugins/keepalived/index.py start`，最后调用 `systemctl status keepalived` 输出结果。
+- **THEN** 它在对端执行 `python3 plugins/keepalived/index.py set_priority '{"priority":90}'` 之类命令，把优先级设为 90 并保持备节点定位；若对端 keepalived 未运行，则提示确认并执行 `python3 plugins/keepalived/index.py start`，最后调用 `systemctl status keepalived` 输出结果；
+- **AND** 无论服务原本是否运行，脚本都要触发一次 `python3 plugins/keepalived/index.py restart`，以确保对端主动释放 VIP、漂移到本机。

@@ -391,6 +391,10 @@ else
     fi
   fi
   show_remote_service "$host" "$port" "keepalived"
+  echo "|- 正在重启对端 $host keepalived，确保优先级生效..."
+  restart_output=$(remote_panel_cmd "$host" "$port" "重启对端 keepalived" plugins/keepalived/index.py restart)
+  echo "|- [对端 $host] keepalived 重启结果：$restart_output"
+  record_step "对端：keepalived 服务已重启以保证漂移 ($host)"
   record_step "对端：keepalived 优先级与服务状态已确认 ($host)"
   REMOTE_EXECUTED=1
 }

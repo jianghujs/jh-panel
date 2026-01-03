@@ -31,6 +31,13 @@ main() {
     # 更新优先级
     priority_update "$target_priority"
 
+    # 发送通知
+    log "发送降级通知"
+    pushd /www/server/jh-panel > /dev/null 
+    python3 /www/server/jh-panel/plugins/keepalived/scripts/util/notify_util.py backup
+    popd > /dev/null
+    log "发送降级通知完成"
+
     log "notify_backup 执行完毕"
 }
 

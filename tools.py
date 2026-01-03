@@ -226,6 +226,11 @@ def getStandbyIp():
         standby_ip = ""
     print(standby_ip)
 
+def notify_msg(title, msg, stype='common'):
+    mw.notifyMessage(msg, title=title, stype=stype, trigger_time=0)
+    print("Notification sent")
+
+
 if __name__ == "__main__":
     method = sys.argv[1]
     confirm = True if len(sys.argv) > 3 and sys.argv[3] == '-y' else False
@@ -246,6 +251,14 @@ if __name__ == "__main__":
         getPanelIp()
     elif method == 'getStandbyIp':
         getStandbyIp()
+    elif method == 'notify_msg':
+        # title msg stype
+        title = sys.argv[2]
+        msg = sys.argv[3]
+        stype = 'common'
+        if len(sys.argv) > 4:
+            stype = sys.argv[4]
+        notify_msg(title, msg, stype)
     elif method == "cli":
         clinum = 0
         try:

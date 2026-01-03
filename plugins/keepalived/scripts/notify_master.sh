@@ -68,6 +68,14 @@ main() {
     else
         log "跳过 keepalived 重启 (RESTART_KEEPALIVED_ON_PROMOTE=$RESTART_KEEPALIVED_ON_PROMOTE)"
     fi
+
+    # 发送通知
+    log "发送提升为主通知"
+    pushd /www/server/jh-panel > /dev/null 
+    python3 /www/server/jh-panel/plugins/keepalived/scripts/util/notify_util.py master
+    popd > /dev/null
+    log "发送提升为主通知完成"
+
     log "notify_master 执行完毕"
 }
 

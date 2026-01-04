@@ -20,7 +20,6 @@ MYSQL_SOCKET="${MYSQL_SOCKET:-{$SERVER_PATH}/mysql-apt/mysql.sock}"
 MYSQL_CONNECT_TIMEOUT="${MYSQL_CONNECT_TIMEOUT:-3}"
 MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
 DESIRED_PRIORITY="${DESIRED_PRIORITY:-100}"
-WG_QUICK_PROFILE="${WG_QUICK_PROFILE:-vip}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
 RESTART_KEEPALIVED_ON_PROMOTE="${RESTART_KEEPALIVED_ON_PROMOTE:-0}"
 VIP_GATEWAY_IP="${VIP_GATEWAY_IP:-}"
@@ -57,8 +56,9 @@ main() {
     mysql_client_exec "Disabling read_only" "SET GLOBAL read_only = OFF" || exit 1
     mysql_client_exec "Disabling super_read_only" "SET GLOBAL super_read_only = OFF" || exit 1
 
-    # 开启WireGuard配置（解决Wireguard不支持VIP漂移问题）
-    # wireguard_up "$WG_QUICK_PROFILE"
+    # WireGuard配置切换：Master启用vip，禁用novip
+    # wireguard_up "vip"
+    # wireguard_down "novip"
     
     # 更新优先级
     priority_update "$DESIRED_PRIORITY"

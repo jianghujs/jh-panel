@@ -14,7 +14,6 @@ UTIL_DIR="$SCRIPT_DIR/util"
 FAIL_PRIORITY="${FAIL_PRIORITY:-90}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
 STOP_KEEPALIVED_ON_BACKUP="${STOP_KEEPALIVED_ON_BACKUP:-0}"
-WG_QUICK_PROFILE="${WG_QUICK_PROFILE:-vip}"
 
 # 日志初始化
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_backup.log}"
@@ -25,8 +24,9 @@ main() {
     local target_priority="${1:-$FAIL_PRIORITY}"
     log "notify_backup 触发，目标 priority: $target_priority"
 
-    # 关闭WireGuard配置（解决Wireguard不支持VIP漂移问题）
-    # wireguard_down "$WG_QUICK_PROFILE"
+    # WireGuard配置切换：Backup启用novip，禁用vip
+    # wireguard_up "novip"
+    # wireguard_down "vip"
     
     # 更新优先级
     priority_update "$target_priority"

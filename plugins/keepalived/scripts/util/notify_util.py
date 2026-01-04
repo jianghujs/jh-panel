@@ -54,16 +54,15 @@ def main():
     panel_title = get_panel_title()
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    title = "节点状态变更通知：{} {} ".format(panel_title, current_time)
-    content = ""
-
     if notify_type == 'master':
         if config.get('notify_promote', False):
             should_notify = True
+            title = "节点提升为主通知：{} {}".format(panel_title, current_time)
             content = "Keepalived 状态变更为 MASTER (主节点)。\nVIP 已绑定，服务已接管。"
     elif notify_type == 'backup':
         if config.get('notify_demote', False):
             should_notify = True
+            title = "节点降级为备通知：{} {}".format(panel_title, current_time)
             content = "Keepalived 状态变更为 BACKUP (备节点)。\nVIP 已释放。"
 
     if should_notify:

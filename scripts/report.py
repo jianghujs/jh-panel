@@ -39,8 +39,10 @@ class reportTools:
     __END_TIMESTAMP = None
     __START_DATE = None
     __END_DATE = None
+    __ENABLE_LOG = True
 
-    def __init__(self):
+    def __init__(self, enable_log=True):
+        self.__ENABLE_LOG = enable_log
         now = datetime.now()
         start = mw.getReportCycleStartTime(now)
         # start = datetime.fromtimestamp(1700314320)
@@ -51,6 +53,11 @@ class reportTools:
         self.__END_TIME = datetime.fromtimestamp(self.__END_TIMESTAMP)
         self.__START_DATE = datetime.fromtimestamp(self.__START_TIMESTAMP).date()
         self.__END_DATE = datetime.fromtimestamp(self.__END_TIMESTAMP).date()
+
+    def _log(self, message):
+        """打印日志的辅助方法"""
+        if self.__ENABLE_LOG:
+            print(message)
 
     def analyzeMonitorData(self, data, key, over):
         """ 
@@ -81,16 +88,20 @@ class reportTools:
 
     # 获取报告数据
     def getReportData(self):
+        self._log("|- 开始生成报告数据...")
         # 检查数据结构
+        self._log("|- 检查数据库结构...")
         sql = db.Sql().dbfile('system')
         csql = mw.readFile('data/sql/system.sql')
         csql_list = csql.split(';')
         for index in range(len(csql_list)):
             sql.execute(csql_list[index], ())
 
+        self._log("|- 获取通知配置...")
         control_notify_config = mw.getControlNotifyConfig()
 
         # 监控阈值
+        self._log("|- 开始分析系统资源...")
         cpu_notify_value = control_notify_config['cpu']
         mem_notify_value = control_notify_config['memory']
         disk_notify_value = control_notify_config['disk']
@@ -98,11 +109,14 @@ class reportTools:
 
         # cpu(pro)、内存(mem)
         sysinfo_tips = []
+        self._log("  |- 查询CPU/内存监控数据...")
         cpuIoData = sql.table('cpuio').where("addtime>=? AND addtime<=?", (self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,mem,addtime').order('id asc').select()
+        self._log("  |- 分析CPU/内存数据...")
         cpuAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'pro', cpu_notify_value)
         memAnalyzeResult = self.analyzeMonitorData(cpuIoData, 'mem', mem_notify_value)
         
         # CPU信息
+        self._log("  |- 获取当前CPU使用率和TOP进程...")
         current_cpu_usage_and_rank = mw.getCurrentCpuUsageAndRank()
         cpu_desc = f"平均使用率<span style='color: {'red' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and cpuAnalyzeResult.get('average', 0) > (cpu_notify_value * 0.8)) else 'auto')}'>{round(cpuAnalyzeResult.get('average', 0), 2)}%</span>"
         cpu_desc += f"<br/>当前CPU使用率：<span style='color: {'red' if (cpu_notify_value != -1 and current_cpu_usage_and_rank['current_usage'] > cpu_notify_value) else ('orange' if (cpu_notify_value != -1 and current_cpu_usage_and_rank['current_usage'] > (cpu_notify_value * 0.8)) else 'auto')}'>{current_cpu_usage_and_rank['current_usage']}%</span>"
@@ -116,6 +130,7 @@ class reportTools:
         })
 
         # 内存信息
+        self._log("  |- 获取当前内存使用率和TOP进程...")
         current_mem_usage_and_rank = mw.getCurrentMemUsageAndRank()
         mem_desc = f"平均使用率<span style='color: {'red' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > mem_notify_value) else ('orange' if (mem_notify_value != -1 and memAnalyzeResult.get('average', 0) > (mem_notify_value * 0.8)) else 'auto')}'>{round(memAnalyzeResult.get('average', 0), 2)}%</span>"
         mem_desc += f"<br/>当前内存使用率：<span style='color: {'red' if (mem_notify_value != -1 and current_mem_usage_and_rank['current_usage'] > mem_notify_value) else ('orange' if (mem_notify_value != -1 and current_mem_usage_and_rank['current_usage'] > (mem_notify_value * 0.8)) else 'auto')}'>{current_mem_usage_and_rank['current_usage']}%</span>"
@@ -129,7 +144,9 @@ class reportTools:
         })
 
         # 负载：资源使用率(pro)
+        self._log("  |- 查询负载监控数据...")
         loadAverageData = mw.M('load_average').dbfile('system') .where("addtime>=? AND addtime<=?", ( self.__START_TIMESTAMP, self.__END_TIMESTAMP)).field('id,pro,one,five,fifteen,addtime').order('id asc').select()
+        self._log("  |- 分析负载数据...")
         loadAverageAnalyzeResult = self.analyzeMonitorData(loadAverageData, 'pro', cpu_notify_value)
         sysinfo_tips.append({
             "name": "资源使用率",
@@ -138,6 +155,7 @@ class reportTools:
         })
 
         # 磁盘
+        self._log("  |- 获取磁盘信息...")
         diskInfo = systemApi.getDiskInfo()
         for disk in diskInfo:
             disk_size_percent = int(disk['size'][3].replace('%', ''))
@@ -147,6 +165,7 @@ class reportTools:
             })
 
         # 最后监控时间
+        self._log("  |- 查询最后监控时间...")
         lastMonitorRecord = mw.M('cpuio').dbfile('system').field('id,pro,mem,addtime').order('addtime desc').limit("0,1").select()
         lastMonitorTimestamp = lastMonitorRecord[0]['addtime'] if len(lastMonitorRecord) > 0 else None
         sysinfo_tips.append({
@@ -154,10 +173,13 @@ class reportTools:
             "desc": f"<span style='color: {'red' if lastMonitorTimestamp < self.__START_TIMESTAMP else 'auto'}'>{mw.toTime(lastMonitorTimestamp)}</span>"
         })
 
-        # 备份相关
-        mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips = self.getBackupReport()
+        # 备份相关（包含Keepalived）
+        self._log("|- 开始获取备份信息...")
+        mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips, keepalived_info = self.getBackupReport()
+        self._log("|- 备份信息获取完成")
 
         # 网站
+        self._log("|- 开始获取网站信息...")
         siteinfo_tips = []
         siteInfo = systemApi.getSiteInfo()
         for site in siteInfo['site_list']:
@@ -189,6 +211,7 @@ class reportTools:
             })
 
         # JianghuJS管理器
+        self._log("|- 开始获取JianghuJS信息...")
         jianghujsinfo_tips = []
         jianghujs_Info = systemApi.getJianghujsInfo()
         if(jianghujs_Info['status'] == 'start'):
@@ -202,6 +225,7 @@ class reportTools:
                 })
 
         # Docker管理器
+        self._log("|- 开始获取Docker信息...")
         dockerinfo_tips = []
         docker_Info = systemApi.getDockerInfo()
         if(docker_Info['status'] == 'start'):
@@ -215,6 +239,7 @@ class reportTools:
                 })
 
         # 数据库表 
+        self._log("|- 开始获取MySQL数据库信息...")
         mysqlinfo_tips = []
         mysql_info = systemApi.getMysqlInfo()
         # 开始的数据库情况
@@ -242,6 +267,7 @@ class reportTools:
                 "desc": "<span style='color: red'>已停止</span>"
             })
         # 生成概要信息
+        self._log("|- 开始生成概要信息...")
         summary_tips = []
         error_tips = []
         # 系统资源概要信息
@@ -311,6 +337,15 @@ class reportTools:
         if rsyncd_info is not None and  len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_delays', 0) > 0:
             summary_tips.append("<span style='color: orange;'>实时备份文件延迟%s个</span>" % rsyncd_info.get('realtime_delays', 0))
             error_tips.append("实时备份文件延迟%s个" % rsyncd_info.get('realtime_delays', 0))
+        
+        # Keepalived概要信息
+        keepalived_summary_tips = []
+        if keepalived_info is not None:
+            if keepalived_info.get('service_status', '') != 'start':
+                keepalived_summary_tips.append("Keepalived服务未运行")
+                error_tips.append("Keepalived服务未运行")
+        if len(keepalived_summary_tips) > 0:
+            summary_tips.append("<span style='color: red;'>" + "、".join(keepalived_summary_tips) + '</span>')
 
         # 无异常默认信息
         if len(summary_tips) == 0:
@@ -318,6 +353,7 @@ class reportTools:
 
 
         # 获取当前时间格式化后的字符串
+        self._log("|- 组装报告数据...")
         report_data = {
             "title": mw.getConfig('title'),
             "ip": mw.getHostAddr(),
@@ -337,6 +373,9 @@ class reportTools:
             "rsyncd_info": rsyncd_info,
             "backup_tips": backup_tips,
 
+            # Keepalived相关
+            "keepalived_info": keepalived_info,
+
             "siteinfo_tips": siteinfo_tips,
             "jianghujsinfo_tips": jianghujsinfo_tips,
             "dockerinfo_tips": dockerinfo_tips,
@@ -346,6 +385,7 @@ class reportTools:
         }
 
         self.writeReportLog(report_data)
+        self._log("|- 报告数据生成完成！")
 
         return report_data
 
@@ -477,6 +517,7 @@ table tr td:nth-child(2) {
         backup_tips = []
 
         # mysql主从
+        self._log("[备份] 检查MySQL主从同步状态...")
         mysql_master_slave_info = {}
         mysql_dir = '/www/server/mysql-apt'
         if os.path.exists(mysql_dir + '/mysql.db'):
@@ -519,6 +560,7 @@ IP：{item.get('ip', '')}<br/>
             
 
         # xtrabackup
+        self._log("[备份] 检查Xtrabackup备份状态...")
         xtrabackup_info = None
         xtrabackup_crontab = crontabApi.getCrontab('[勿删]xtrabackup-cron')
         if xtrabackup_crontab and xtrabackup_crontab.get('status', 0) == 1 and os.path.exists('/www/server/xtrabackup/'):
@@ -571,6 +613,7 @@ IP：{item.get('ip', '')}<br/>
             })
 
         # xtrabackup-inc
+        self._log("[备份] 检查Xtrabackup增量备份状态...")
         xtrabackup_inc_info = None
         xtrabackup_inc_crontab = crontabApi.getCrontab('[勿删]xtrabackup-inc增量备份')
         if xtrabackup_inc_crontab and xtrabackup_inc_crontab.get('status', 0) == 1 and os.path.exists('/www/server/xtrabackup-inc/'):
@@ -649,6 +692,7 @@ IP：{item.get('ip', '')}<br/>
             })
         
         # mysql-dump
+        self._log("[备份] 检查MySQL Dump备份状态...")
         mysql_dump_info = None
         mysql_dump_crontab = crontabApi.getCrontab('备份数据库[backupAll]')
         if mysql_dump_crontab and mysql_dump_crontab.get('status', 0) == 1 and os.path.exists('/www/server/mysql-apt/'):
@@ -696,6 +740,7 @@ IP：{item.get('ip', '')}<br/>
             })
 
         # rsyncd
+        self._log("[备份] 检查Rsyncd同步状态...")
         rsyncd_info = None
         if os.path.exists('/www/server/rsyncd/'):
             rsyncd_config_content = mw.readFile("/www/server/rsyncd/config.json")
@@ -766,14 +811,76 @@ IP：{item.get('ip', '')}<br/>
                 )
             })
 
+        # Keepalived
+        self._log("[备份] 检查Keepalived状态...")
+        keepalived_info = None
+        keepalived_dir = '/www/server/keepalived'
+        if os.path.exists(keepalived_dir):
+            try:
+                # 获取Keepalived状态
+                keepalived_status_data = mw.execShell("python3 /www/server/jh-panel/plugins/keepalived/index.py get_status_panel")
+                if keepalived_status_data[2] == 0:
+                    keepalived_status_result = json.loads(keepalived_status_data[0])
+                    if keepalived_status_result.get('status', False):
+                        keepalived_data = keepalived_status_result.get('data', {})
+                        keepalived_info = {
+                            'service_status': keepalived_data.get('service_status', ''),
+                            'vip': keepalived_data.get('vip', ''),
+                            'vip_owned': keepalived_data.get('vip_owned', False),
+                            'vip_interface': keepalived_data.get('vip_interface', ''),
+                            'priority': keepalived_data.get('priority', '')
+                        }
+                        
+                        # 服务状态
+                        service_status_text = '<span style="color: green">运行中</span>' if keepalived_info['service_status'] == 'start' else '<span style="color: red">未运行</span>'
+                        
+                        # VIP持有状态
+                        vip_owned_text = '<span style="color: green">是</span>' if keepalived_info['vip_owned'] else '<span style="color: red">否</span>'
+                        
+                        # 优先级
+                        priority_text = keepalived_info.get('priority', '未知')
+                        priority_color = 'green' if priority_text == '100' else ('orange' if priority_text == '90' else 'auto')
+                        priority_display = f"<span style='color: {priority_color}'>{priority_text}</span>"
+                        
+                        backup_tips.append({
+                            "name": 'Keepalived服务状态',
+                            "desc": service_status_text
+                        })
+                        
+                        backup_tips.append({
+                            "name": 'VIP地址',
+                            "desc": keepalived_info.get('vip', '未配置')
+                        })
+                        
+                        backup_tips.append({
+                            "name": '是否持有VIP',
+                            "desc": vip_owned_text
+                        })
+                        
+                        backup_tips.append({
+                            "name": 'VIP接口',
+                            "desc": keepalived_info.get('vip_interface', '-')
+                        })
+                        
+                        backup_tips.append({
+                            "name": '当前优先级',
+                            "desc": priority_display
+                        })
+            except Exception as e:
+                traceback.print_exc()
+                print('获取Keepalived状态失败', e)
+                pass
 
-        return mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips
+        return mysql_master_slave_info, xtrabackup_info, xtrabackup_inc_info, mysql_dump_info, rsyncd_info, backup_tips, keepalived_info
+
 
 
 if __name__ == "__main__":
-    report = reportTools()
-
     type = sys.argv[1]
+
+    # get_report_data 时禁用日志，send 时启用日志
+    enable_log = (type == 'send')
+    report = reportTools(enable_log=enable_log)
 
     if type == 'send':
       try:

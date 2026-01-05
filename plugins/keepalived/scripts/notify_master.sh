@@ -32,6 +32,9 @@ main() {
         exit 1
     fi
 
+    log "等待3秒，确保原主降级后再提升"
+    sleep 3
+
     local delete_output delete_rc
     log "执行 delete_slave 清理从库配置"
     pushd /www/server/jh-panel > /dev/null

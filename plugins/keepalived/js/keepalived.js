@@ -365,11 +365,6 @@ function keepalivedRenderAlertSettings(version, settings){
             field: 'notify_demote',
             label: '降级为备邮件通知',
             desc: '节点降级释放 VIP 时发送降级提醒。'
-        },
-        {
-            field: 'monitor_enabled',
-            label: 'Keepalived 实时监测报告',
-            desc: '每 10 分钟检测 Keepalived/VIP/MySQL 状态，异常时推送告警。'
         }
     ];
     var switchRows = optionList.map(function(opt){

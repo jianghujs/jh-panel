@@ -24,6 +24,10 @@ main() {
     local target_priority="${1:-$FAIL_PRIORITY}"
     log "notify_backup 触发，目标 priority: $target_priority"
 
+    # WireGuard配置切换：Backup启用novip，禁用vip
+    # wireguard_up "novip"
+    # wireguard_down "vip"
+
     log "执行 init_slave_status 初始化从库状态"
     local init_output init_rc
     pushd /www/server/jh-panel > /dev/null
@@ -41,10 +45,6 @@ main() {
         log "init_slave_status 返回失败状态或响应无法解析，退出"
         exit 1
     fi
-
-    # WireGuard配置切换：Backup启用novip，禁用vip
-    # wireguard_up "novip"
-    # wireguard_down "vip"
     
     # 更新优先级
     priority_update "$target_priority"

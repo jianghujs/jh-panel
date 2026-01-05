@@ -32,8 +32,9 @@ main() {
         exit 1
     fi
 
-    log "等待3秒，确保原主降级后再提升"
-    sleep 3
+    # WireGuard配置切换：Master启用vip，禁用novip
+    # wireguard_up "vip"
+    # wireguard_down "novip"
 
     local delete_output delete_rc
     log "执行 delete_slave 清理从库配置"
@@ -52,10 +53,6 @@ main() {
         log "delete_slave 返回失败状态或响应无法解析，退出"
         exit 1
     fi
-
-    # WireGuard配置切换：Master启用vip，禁用novip
-    # wireguard_up "vip"
-    # wireguard_down "novip"
     
     # 更新优先级
     priority_update "$DESIRED_PRIORITY"

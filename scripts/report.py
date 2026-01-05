@@ -517,7 +517,7 @@ table tr td:nth-child(2) {
         backup_tips = []
 
         # mysql主从
-        self._log("[备份] 检查MySQL主从同步状态...")
+        self._log("  |- 检查MySQL主从同步状态...")
         mysql_master_slave_info = {}
         mysql_dir = '/www/server/mysql-apt'
         if os.path.exists(mysql_dir + '/mysql.db'):
@@ -560,7 +560,7 @@ IP：{item.get('ip', '')}<br/>
             
 
         # xtrabackup
-        self._log("[备份] 检查Xtrabackup备份状态...")
+        self._log("  |- 检查Xtrabackup备份状态...")
         xtrabackup_info = None
         xtrabackup_crontab = crontabApi.getCrontab('[勿删]xtrabackup-cron')
         if xtrabackup_crontab and xtrabackup_crontab.get('status', 0) == 1 and os.path.exists('/www/server/xtrabackup/'):
@@ -613,7 +613,7 @@ IP：{item.get('ip', '')}<br/>
             })
 
         # xtrabackup-inc
-        self._log("[备份] 检查Xtrabackup增量备份状态...")
+        self._log("  |- 检查Xtrabackup增量备份状态...")
         xtrabackup_inc_info = None
         xtrabackup_inc_crontab = crontabApi.getCrontab('[勿删]xtrabackup-inc增量备份')
         if xtrabackup_inc_crontab and xtrabackup_inc_crontab.get('status', 0) == 1 and os.path.exists('/www/server/xtrabackup-inc/'):
@@ -692,7 +692,7 @@ IP：{item.get('ip', '')}<br/>
             })
         
         # mysql-dump
-        self._log("[备份] 检查MySQL Dump备份状态...")
+        self._log("  |- 检查MySQL Dump备份状态...")
         mysql_dump_info = None
         mysql_dump_crontab = crontabApi.getCrontab('备份数据库[backupAll]')
         if mysql_dump_crontab and mysql_dump_crontab.get('status', 0) == 1 and os.path.exists('/www/server/mysql-apt/'):
@@ -740,7 +740,7 @@ IP：{item.get('ip', '')}<br/>
             })
 
         # rsyncd
-        self._log("[备份] 检查Rsyncd同步状态...")
+        self._log("  |- 检查Rsyncd同步状态...")
         rsyncd_info = None
         if os.path.exists('/www/server/rsyncd/'):
             rsyncd_config_content = mw.readFile("/www/server/rsyncd/config.json")
@@ -812,7 +812,7 @@ IP：{item.get('ip', '')}<br/>
             })
 
         # Keepalived
-        self._log("[备份] 检查Keepalived状态...")
+        self._log("  |- 检查Keepalived状态...")
         keepalived_info = None
         keepalived_dir = '/www/server/keepalived'
         if os.path.exists(keepalived_dir):
@@ -843,28 +843,20 @@ IP：{item.get('ip', '')}<br/>
                         priority_display = f"<span style='color: {priority_color}'>{priority_text}</span>"
                         
                         backup_tips.append({
-                            "name": 'Keepalived服务状态',
-                            "desc": service_status_text
-                        })
-                        
-                        backup_tips.append({
-                            "name": 'VIP地址',
-                            "desc": keepalived_info.get('vip', '未配置')
-                        })
-                        
-                        backup_tips.append({
-                            "name": '是否持有VIP',
-                            "desc": vip_owned_text
-                        })
-                        
-                        backup_tips.append({
-                            "name": 'VIP接口',
-                            "desc": keepalived_info.get('vip_interface', '-')
-                        })
-                        
-                        backup_tips.append({
-                            "name": '当前优先级',
-                            "desc": priority_display
+                            "name": 'Keepalived',
+                            "desc": """
+服务状态：%s<br/>
+VIP接口：%s<br/>
+VIP地址：%s<br/>
+是否持有VIP：%s<br/>
+当前优先级：%s
+                            """ % (
+                                service_status_text,
+                                keepalived_info.get('vip_interface', '-'),
+                                keepalived_info.get('vip', '未配置'),
+                                vip_owned_text,
+                                                                priority_display
+                            )
                         })
             except Exception as e:
                 traceback.print_exc()

@@ -2240,6 +2240,7 @@ def getControlNotifyConfig():
     control_notify_config['ssl_cert'] = control_notify_value_data['ssl_cert'] if 'ssl_cert' in control_notify_value_data else 14 
     control_notify_config['mysql_slave_status_notice'] = control_notify_value_data['mysql_slave_status_notice'] if 'mysql_slave_status_notice' in control_notify_value_data else 0
     control_notify_config['rsync_status_notice'] = control_notify_value_data['rsync_status_notice'] if 'rsync_status_notice' in control_notify_value_data else 0 
+    control_notify_config['keepalived_status_notice'] = control_notify_value_data['keepalived_status_notice'] if 'keepalived_status_notice' in control_notify_value_data else 0
     return control_notify_config
 
 
@@ -2348,6 +2349,13 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
             lsyncd_status_data = execShell(lsyncd_status_cmd)
             if lsyncd_status_data[0] == '':
                 error_msg_arr.append('Rsync实时同步异常')
+
+        # Keepalived状态
+        if (control_notify_config['keepalived_status_notice'] == 1):
+            keepalived_status = execShell('systemctl is-active keepalived')[0].strip()
+            if keepalived_status != 'active':
+                error_msg_arr.append('Keepalived服务异常')
+
         # 发送异常报告
         if (len(error_msg_arr) > 0):
             notify_msg = generateCommonNotifyMessage('<br/>- '.join(error_msg_arr) + '<br/>请注意!')

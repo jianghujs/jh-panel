@@ -1019,6 +1019,11 @@ function openSetNotifyValue() {
             <div class='pl5 pt5' id='openRsyncStatusNoticeSwitch'></div>\
           </div>\
           <input type='number' name='rsync_status_notice' value='" + (data.rsync_status_notice) + "' style='display:none;'>\
+					<div class='line flex align-center'\
+						<em class='mr20'>Keepalived服务</em>\
+            <div class='pl5 pt5' id='openKeepalivedStatusNoticeSwitch'></div>\
+          </div>\
+          <input type='number' name='keepalived_status_notice' value='" + (data.keepalived_status_notice) + "' style='display:none;'>\
           <b>异常阈值：</b>\
           <div class='line'>\
 						<span class='tname'>CPU</span>\
@@ -1063,6 +1068,10 @@ function openSetNotifyValue() {
 
       $("#openRsyncStatusNoticeSwitch").createRadioSwitch(data.rsync_status_notice, (checked) => {
         $("input[name='rsync_status_notice']").val(checked? 1: 0);
+      });
+
+      $("#openKeepalivedStatusNoticeSwitch").createRadioSwitch(data.keepalived_status_notice, (checked) => {
+        $("input[name='keepalived_status_notice']").val(checked? 1: 0);
       });
 		} else {
 			layer.msg(b.msg, {icon: 2});

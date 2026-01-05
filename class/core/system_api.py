@@ -904,6 +904,7 @@ class system_api:
         ssl_cert = notify_value.get('ssl_cert', '')
         mysql_slave_status_notice = notify_value.get('mysql_slave_status_notice', '')
         rsync_status_notice = notify_value.get('rsync_status_notice', '')
+        keepalived_status_notice = notify_value.get('keepalived_status_notice', '')
 
         control_notify_value_file = 'data/control_notify_value.conf'
         if not os.path.exists(control_notify_value_file):
@@ -922,6 +923,8 @@ class system_api:
             config_data['mysql_slave_status_notice'] = int(mysql_slave_status_notice)
         if rsync_status_notice != '':
             config_data['rsync_status_notice'] = int(rsync_status_notice)
+        if keepalived_status_notice != '':
+            config_data['keepalived_status_notice'] = int(keepalived_status_notice)
         mw.writeFile(control_notify_value_file, json.dumps(config_data))
         return config_data
   

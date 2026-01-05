@@ -7,18 +7,10 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 UTIL_DIR="$SCRIPT_DIR/util"
 . "$UTIL_DIR/logging_util.sh"
-. "$UTIL_DIR/mysql_util.sh"
 . "$UTIL_DIR/priority_util.sh"
 . "$UTIL_DIR/wireguard_util.sh"
 . "$UTIL_DIR/keepalived_util.sh"
 
-MYSQL_BIN="${MYSQL_BIN:-{$SERVER_PATH}/mysql-apt/bin/usr/bin/mysql}"
-MYSQL_USER="${MYSQL_USER:-root}"
-MYSQL_PASSWORD="${MYSQL_PASSWORD:-123456}"
-MYSQL_PORT="${MYSQL_PORT:-33067}"
-MYSQL_SOCKET="${MYSQL_SOCKET:-{$SERVER_PATH}/mysql-apt/mysql.sock}"
-MYSQL_CONNECT_TIMEOUT="${MYSQL_CONNECT_TIMEOUT:-3}"
-MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
 FAIL_PRIORITY="${FAIL_PRIORITY:-90}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
 STOP_KEEPALIVED_ON_BACKUP="${STOP_KEEPALIVED_ON_BACKUP:-0}"
@@ -27,15 +19,28 @@ STOP_KEEPALIVED_ON_BACKUP="${STOP_KEEPALIVED_ON_BACKUP:-0}"
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_backup.log}"
 logger_init "$LOG_FILE" "notify_backup" 100
 log() { logger_log "$@"; }
-mysql_client_set_logger log
 
 main() {
     local target_priority="${1:-$FAIL_PRIORITY}"
     log "notify_backup 触发，目标 priority: $target_priority"
 
-    log "切换 MySQL 为只读模式"
-    mysql_client_exec "启用 super_read_only" "SET GLOBAL super_read_only = ON" || exit 1
-    mysql_client_exec "启用 read_only" "SET GLOBAL read_only = ON" || exit 1
+    log "执行 init_slave_status 初始化从库状态"
+    local init_output init_rc
+    pushd /www/server/jh-panel > /dev/null
+    init_output=$(python3 plugins/mysql-apt/index.py init_slave_status 2>&1)
+    init_rc=$?
+    popd > /dev/null
+    if [ $init_rc -ne 0 ]; then
+        log "init_slave_status 命令执行失败: $init_output"
+        exit 1
+    fi
+    log "init_slave_status 输出: $init_output"
+    local init_status
+    init_status=$(printf '%s' "$init_output" | jq -r '.status' 2>/dev/null || echo "")
+    if [ "$init_status" != "true" ]; then
+        log "init_slave_status 返回失败状态或响应无法解析，退出"
+        exit 1
+    fi
 
     # WireGuard配置切换：Backup启用novip，禁用vip
     # wireguard_up "novip"

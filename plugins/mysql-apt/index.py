@@ -2726,8 +2726,51 @@ def setSlaveStatus(version=''):
     return mw.returnJson(True, '设置成功!')
 
 
+def waitRelayLogApplied(db, max_wait=30):
+    """
+    等待 Relay Log 回放完成，确保切换主库前数据已全部执行。
+    """
+    try:
+        db.query('STOP SLAVE IO_THREAD')
+    except Exception as e:
+        mw.writeLog('mysql-apt', '停止IO线程失败: {}'.format(e))
+
+    start_time = time.time()
+    while True:
+        try:
+            status = db.query('SHOW SLAVE STATUS')
+        except Exception as e:
+            mw.writeLog('mysql-apt', '读取从库状态失败: {}'.format(e))
+            break
+
+        if not status:
+            mw.writeLog('mysql-apt', '未检测到从库状态，跳过 Relay Log 检查')
+            break
+
+        row = status[0]
+        relay_master_file = str(row.get('Relay_Master_Log_File', '') or '')
+        master_log_file = str(row.get('Master_Log_File', '') or '')
+        read_pos = str(row.get('Read_Master_Log_Pos', '0') or '0')
+        exec_pos = str(row.get('Exec_Master_Log_Pos', '0') or '0')
+
+        if relay_master_file == master_log_file and read_pos == exec_pos:
+            mw.writeLog('mysql-apt', 'Relay Log 已完全回放 (Pos: {0})'.format(exec_pos))
+            break
+
+        elapsed = int(time.time() - start_time)
+        mw.writeLog('mysql-apt',
+                    '等待 Relay Log 回放中: Read={0}, Exec={1}, 已等待 {2}s'.format(read_pos, exec_pos, elapsed))
+
+        if elapsed >= max_wait:
+            mw.writeLog('mysql-apt', '等待 Relay Log 回放超过 {0}s，强制进入主库模式'.format(max_wait))
+            break
+
+        time.sleep(1)
+
+
 def deleteSlave(version=''):
     db = pMysqlDb()
+    waitRelayLogApplied(db, 30)
     db.query('STOP SLAVE')
     db.query('RESET SLAVE ALL')
     db.query('SET GLOBAL read_only = off')

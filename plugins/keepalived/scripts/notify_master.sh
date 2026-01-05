@@ -7,18 +7,10 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 UTIL_DIR="$SCRIPT_DIR/util"
 . "$UTIL_DIR/logging_util.sh"
-. "$UTIL_DIR/mysql_util.sh"
 . "$UTIL_DIR/priority_util.sh"
 . "$UTIL_DIR/wireguard_util.sh"
 . "$UTIL_DIR/keepalived_util.sh"
 
-MYSQL_BIN="${MYSQL_BIN:-{$SERVER_PATH}/mysql-apt/bin/usr/bin/mysql}"
-MYSQL_USER="${MYSQL_USER:-root}"
-MYSQL_PASSWORD="${MYSQL_PASSWORD:-123456}"
-MYSQL_PORT="${MYSQL_PORT:-33067}"
-MYSQL_SOCKET="${MYSQL_SOCKET:-{$SERVER_PATH}/mysql-apt/mysql.sock}"
-MYSQL_CONNECT_TIMEOUT="${MYSQL_CONNECT_TIMEOUT:-3}"
-MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
 DESIRED_PRIORITY="${DESIRED_PRIORITY:-100}"
 KEEPALIVED_SERVICE="${KEEPALIVED_SERVICE:-keepalived}"
 RESTART_KEEPALIVED_ON_PROMOTE="${RESTART_KEEPALIVED_ON_PROMOTE:-0}"
@@ -31,8 +23,6 @@ LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_master.log}"
 logger_init "$LOG_FILE" "notify_master" 100
 log() { logger_log "$@"; }
 
-mysql_client_set_logger log
-
 main() {
     log "notify_master 触发"
 
@@ -42,19 +32,23 @@ main() {
         exit 1
     fi
 
-    # MySQL提升为主库
-    mysql_client_prepare || exit 1
-    
-    # 1. 确保 Relay Log 回放完成，避免丢数
-    mysql_wait_for_relay_log_applied 30
-    
-    # 2. 彻底停止从库并重置
-    mysql_client_exec "Stopping all slave threads" "STOP SLAVE" 1 || exit 1
-    mysql_client_exec "Resetting slave metadata" "RESET SLAVE ALL" 1 || exit 1
-    
-    # 3. 开启写权限
-    mysql_client_exec "Disabling read_only" "SET GLOBAL read_only = OFF" || exit 1
-    mysql_client_exec "Disabling super_read_only" "SET GLOBAL super_read_only = OFF" || exit 1
+    local delete_output delete_rc
+    log "执行 delete_slave 清理从库配置"
+    pushd /www/server/jh-panel > /dev/null
+    delete_output=$(python3 plugins/mysql-apt/index.py delete_slave 2>&1)
+    delete_rc=$?
+    popd > /dev/null
+    if [ $delete_rc -ne 0 ]; then
+        log "delete_slave 命令执行失败: $delete_output"
+        exit 1
+    fi
+    log "delete_slave 输出: $delete_output"
+    local delete_status
+    delete_status=$(printf '%s' "$delete_output" | jq -r '.status' 2>/dev/null || echo "")
+    if [ "$delete_status" != "true" ]; then
+        log "delete_slave 返回失败状态或响应无法解析，退出"
+        exit 1
+    fi
 
     # WireGuard配置切换：Master启用vip，禁用novip
     # wireguard_up "vip"

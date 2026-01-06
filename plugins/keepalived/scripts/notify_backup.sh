@@ -24,6 +24,25 @@ main() {
     local target_priority="${1:-$FAIL_PRIORITY}"
     log "notify_backup 触发，目标 priority: $target_priority"
 
+    # 设置数据库为只读模式，防止执行过程写入数据
+    log "执行 set_db_read_only 设置数据库只读"
+    local readonly_output readonly_rc
+    pushd /www/server/jh-panel > /dev/null
+    readonly_output=$(python3 plugins/mysql-apt/index.py set_db_read_only 2>&1)
+    readonly_rc=$?
+    popd > /dev/null
+    if [ $readonly_rc -ne 0 ]; then
+        log "set_db_read_only 命令执行失败: $readonly_output"
+        exit 1
+    fi
+    log "set_db_read_only 输出: $readonly_output"
+    local readonly_status
+    readonly_status=$(printf '%s' "$readonly_output" | jq -r '.status' 2>/dev/null || echo "")
+    if [ "$readonly_status" != "true" ]; then
+        log "set_db_read_only 返回失败状态或响应无法解析，退出"
+        exit 1
+    fi
+
     # WireGuard配置切换：Backup启用novip，禁用vip
     # wireguard_up "novip"
     # wireguard_down "vip"

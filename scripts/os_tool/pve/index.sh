@@ -19,15 +19,15 @@ for file in $(find . -name "*.sh"); do
 done
 
 # 检查是否以root用户运行
-if [ "$EUID" -eq 0 ]; then
-    if [ -z "$SUDO_COMMAND" ]; then
-        echo "请不要使用root账户来执行此脚本，以防配置不生效。执行此脚本需要添加sudo。"
-        exit
-    fi
-else
-    echo "请使用'sudo'来执行此脚本。"
-    exit
-fi
+# if [ "$EUID" -eq 0 ]; then
+#     if [ -z "$SUDO_COMMAND" ]; then
+#         echo "请不要使用root账户来执行此脚本，以防配置不生效。执行此脚本需要添加sudo。"
+#         exit
+#     fi
+# else
+#     echo "请使用'sudo'来执行此脚本。"
+#     exit
+# fi
 
 show_menu() {
     echo "==================pve os-tools=================="

@@ -251,7 +251,9 @@ class DiskCollector:
             'error': None
         }
         
-        stdout, stderr, code = run_command("df -h")
+        # 使用 df -h -l 只显示本地文件系统，排除网络文件系统
+        # 使用 -x 排除临时文件系统
+        stdout, stderr, code = run_command("df -h -l -x tmpfs -x devtmpfs -x squashfs")
         if code != 0:
             result['error'] = stderr or "无法获取磁盘信息"
             return result
@@ -266,6 +268,10 @@ class DiskCollector:
                 avail = parts[3]
                 use_percent_str = parts[4].rstrip('%')
                 mountpoint = parts[5]
+                
+                # 过滤掉非本地磁盘设备（如loop设备、overlay等）
+                if filesystem.startswith('loop') or filesystem.startswith('overlay'):
+                    continue
                 
                 use_percent = to_float(use_percent_str)
                 
@@ -409,14 +415,29 @@ class NetworkCollector:
     """网络信息采集器"""
     
     @staticmethod
-    def collect() -> Dict[str, Any]:
-        """采集网络接口信息"""
+    def collect(interfaces: List[str] = None) -> Dict[str, Any]:
+        """
+        采集网络接口信息
+        
+        Args:
+            interfaces: 要监控的网卡接口列表，如 ['eth0', 'enp2s0']
+                       如果为 None 或空列表，则自动检测物理网卡
+        """
         result = {
             'status': 'unknown',
             'interfaces': [],
             'error': None
         }
         
+        # 如果指定了接口列表，直接使用指定的接口
+        if interfaces:
+            for ifname in interfaces:
+                iface_data = NetworkCollector._collect_interface(ifname)
+                if iface_data:
+                    result['interfaces'].append(iface_data)
+            return result
+        
+        # 否则自动检测物理网卡（只检测常见的物理网卡命名模式）
         stdout, stderr, code = run_command("ip -s link")
         if code != 0:
             result['error'] = stderr or "无法获取网络信息"
@@ -430,92 +451,240 @@ class NetworkCollector:
             match = re.match(r'^\d+:\s+(\S+):', line)
             if match:
                 ifname = match.group(1)
-                state = 'DOWN'
-                if 'state UP' in line:
-                    state = 'UP'
-                elif 'state DOWN' in line:
-                    state = 'DOWN'
-                elif 'state UNKNOWN' in line:
-                    state = 'UNKNOWN'
                 
-                # 解析统计信息
-                rx_bytes = 0
-                rx_packets = 0
-                rx_errors = 0
-                tx_bytes = 0
-                tx_packets = 0
-                tx_errors = 0
+                # 只检测物理网卡接口（白名单模式）
+                # eth*: 传统以太网接口
+                # enp*: 新式PCI以太网接口
+                # eno*: 板载以太网接口
+                # ens*: 热插拔以太网接口
+                # em*: Dell等厂商的以太网接口
+                # wlan*: 无线网卡
+                # wlp*: 新式无线网卡
+                is_physical = (
+                    ifname.startswith('eth') or
+                    ifname.startswith('enp') or
+                    ifname.startswith('eno') or
+                    ifname.startswith('ens') or
+                    ifname.startswith('em') or
+                    ifname.startswith('wlan') or
+                    ifname.startswith('wlp')
+                )
                 
-                if i + 2 < len(lines):
-                    rx_line = lines[i + 2].strip()
-                    rx_parts = rx_line.split()
-                    if len(rx_parts) >= 3:
-                        rx_bytes = to_int(rx_parts[0])
-                        rx_packets = to_int(rx_parts[1])
-                        rx_errors = to_int(rx_parts[2])
+                if not is_physical:
+                    i += 5
+                    continue
                 
-                if i + 4 < len(lines):
-                    tx_line = lines[i + 4].strip()
-                    tx_parts = tx_line.split()
-                    if len(tx_parts) >= 3:
-                        tx_bytes = to_int(tx_parts[0])
-                        tx_packets = to_int(tx_parts[1])
-                        tx_errors = to_int(tx_parts[2])
-                
-                # 获取速率（如果可用）
-                speed = None
-                stdout2, _, code2 = run_command(f"ethtool {ifname} 2>/dev/null | grep Speed")
-                if code2 == 0 and stdout2:
-                    match_speed = re.search(r'Speed:\s*(\S+)', stdout2)
-                    if match_speed:
-                        speed = match_speed.group(1)
-                
-                result['interfaces'].append({
-                    'name': ifname,
-                    'state': state,
-                    'rx_bytes': rx_bytes,
-                    'rx_packets': rx_packets,
-                    'rx_errors': rx_errors,
-                    'tx_bytes': tx_bytes,
-                    'tx_packets': tx_packets,
-                    'tx_errors': tx_errors,
-                    'speed': speed
-                })
+                # 检查网线连接状态
+                stdout_ethtool, _, code_ethtool = run_command(f"ethtool {ifname} 2>/dev/null")
+                if code_ethtool == 0 and stdout_ethtool:
+                    if 'Link detected: yes' in stdout_ethtool:
+                        iface_data = NetworkCollector._collect_interface(ifname)
+                        if iface_data:
+                            result['interfaces'].append(iface_data)
                 
                 i += 5
             else:
                 i += 1
         
         return result
+    
+    @staticmethod
+    def _collect_interface(ifname: str) -> Optional[Dict[str, Any]]:
+        """采集单个网卡接口的信息"""
+        # 获取接口统计信息
+        stdout, stderr, code = run_command(f"ip -s link show {ifname}")
+        if code != 0:
+            return None
+        
+        lines = stdout.strip().split('\n')
+        if len(lines) < 5:
+            return None
+        
+        # 解析状态
+        state = 'DOWN'
+        if 'state UP' in lines[0]:
+            state = 'UP'
+        elif 'state DOWN' in lines[0]:
+            state = 'DOWN'
+        elif 'state UNKNOWN' in lines[0]:
+            state = 'UNKNOWN'
+        
+        # 解析统计信息
+        rx_bytes = 0
+        rx_packets = 0
+        rx_errors = 0
+        tx_bytes = 0
+        tx_packets = 0
+        tx_errors = 0
+        
+        # RX 统计（通常在第3行）
+        for i, line in enumerate(lines):
+            if 'RX:' in line or (i >= 2 and i <= 3):
+                rx_line = lines[i].strip() if 'RX:' in line else line.strip()
+                rx_parts = rx_line.split()
+                if len(rx_parts) >= 3:
+                    # 跳过 "RX:" 标签
+                    start_idx = 1 if rx_parts[0] == 'RX:' else 0
+                    if len(rx_parts) > start_idx + 2:
+                        rx_bytes = to_int(rx_parts[start_idx])
+                        rx_packets = to_int(rx_parts[start_idx + 1])
+                        rx_errors = to_int(rx_parts[start_idx + 2])
+                break
+        
+        # TX 统计（通常在第5行）
+        for i, line in enumerate(lines):
+            if 'TX:' in line or (i >= 4 and i <= 5):
+                tx_line = lines[i].strip() if 'TX:' in line else line.strip()
+                tx_parts = tx_line.split()
+                if len(tx_parts) >= 3:
+                    # 跳过 "TX:" 标签
+                    start_idx = 1 if tx_parts[0] == 'TX:' else 0
+                    if len(tx_parts) > start_idx + 2:
+                        tx_bytes = to_int(tx_parts[start_idx])
+                        tx_packets = to_int(tx_parts[start_idx + 1])
+                        tx_errors = to_int(tx_parts[start_idx + 2])
+                break
+        
+        # 获取速率
+        speed = None
+        stdout_ethtool, _, code_ethtool = run_command(f"ethtool {ifname} 2>/dev/null")
+        if code_ethtool == 0 and stdout_ethtool:
+            match_speed = re.search(r'Speed:\s*(\S+)', stdout_ethtool)
+            if match_speed:
+                speed = match_speed.group(1)
+        
+        return {
+            'name': ifname,
+            'state': state,
+            'rx_bytes': rx_bytes,
+            'rx_packets': rx_packets,
+            'rx_errors': rx_errors,
+            'tx_bytes': tx_bytes,
+            'tx_packets': tx_packets,
+            'tx_errors': tx_errors,
+            'speed': speed
+        }
 
 class SensorCollector:
     """传感器信息采集器（温度、风扇、电压）"""
     
     @staticmethod
-    def collect() -> Dict[str, Any]:
-        """采集传感器信息"""
+    def collect(auto_install: bool = False) -> Dict[str, Any]:
+        """
+        采集传感器信息
+        
+        Args:
+            auto_install: 是否自动安装缺失的工具
+        """
         result = {
             'status': 'unknown',
             'temperatures': [],
             'fans': [],
             'voltages': [],
-            'error': None
+            'error': None,
+            'installed_tools': []
         }
         
+        # 检查并安装 lm-sensors
+        sensors_available = SensorCollector._check_tool('sensors')
+        if not sensors_available and auto_install:
+            if SensorCollector._install_lm_sensors():
+                result['installed_tools'].append('lm-sensors')
+                sensors_available = True
+        
+        # 检查并安装 ipmitool
+        ipmitool_available = SensorCollector._check_tool('ipmitool')
+        if not ipmitool_available and auto_install:
+            if SensorCollector._install_ipmitool():
+                result['installed_tools'].append('ipmitool')
+                ipmitool_available = True
+        
         # 尝试使用 sensors
-        stdout, stderr, code = run_command("sensors 2>/dev/null")
-        if code == 0 and stdout:
-            SensorCollector._parse_sensors(stdout, result)
+        if sensors_available:
+            stdout, stderr, code = run_command("sensors 2>/dev/null")
+            if code == 0 and stdout:
+                SensorCollector._parse_sensors(stdout, result)
         
         # 尝试使用 ipmitool
-        stdout, stderr, code = run_command("ipmitool sensor 2>/dev/null")
-        if code == 0 and stdout:
-            SensorCollector._parse_ipmitool(stdout, result)
+        if ipmitool_available:
+            stdout, stderr, code = run_command("ipmitool sensor 2>/dev/null")
+            if code == 0 and stdout:
+                SensorCollector._parse_ipmitool(stdout, result)
         
         if not result['temperatures'] and not result['fans'] and not result['voltages']:
-            result['error'] = "未检测到传感器（可能需要安装 lm-sensors 或 ipmitool）"
+            if not sensors_available and not ipmitool_available:
+                result['error'] = "未检测到传感器工具（lm-sensors 和 ipmitool 均不可用）"
+            else:
+                result['error'] = "未检测到传感器数据（硬件可能不支持或需要加载内核模块）"
         
         return result
+    
+    @staticmethod
+    def _check_tool(tool_name: str) -> bool:
+        """检查工具是否已安装"""
+        stdout, stderr, code = run_command(f"which {tool_name}")
+        return code == 0 and stdout.strip() != ''
+    
+    @staticmethod
+    def _install_lm_sensors() -> bool:
+        """安装 lm-sensors"""
+        print("  正在安装 lm-sensors...")
+        
+        # 检测包管理器并安装
+        if SensorCollector._check_tool('apt-get'):
+            stdout, stderr, code = run_command("apt-get update -qq && apt-get install -y lm-sensors", timeout=120)
+            if code == 0:
+                print("  ✓ lm-sensors 安装成功")
+                # 尝试检测传感器
+                run_command("sensors-detect --auto", timeout=60)
+                return True
+        elif SensorCollector._check_tool('yum'):
+            stdout, stderr, code = run_command("yum install -y lm_sensors", timeout=120)
+            if code == 0:
+                print("  ✓ lm-sensors 安装成功")
+                run_command("sensors-detect --auto", timeout=60)
+                return True
+        elif SensorCollector._check_tool('dnf'):
+            stdout, stderr, code = run_command("dnf install -y lm_sensors", timeout=120)
+            if code == 0:
+                print("  ✓ lm-sensors 安装成功")
+                run_command("sensors-detect --auto", timeout=60)
+                return True
+        
+        print("  ✗ lm-sensors 安装失败")
+        return False
+    
+    @staticmethod
+    def _install_ipmitool() -> bool:
+        """安装 ipmitool"""
+        print("  正在安装 ipmitool...")
+        
+        # 检测包管理器并安装
+        if SensorCollector._check_tool('apt-get'):
+            stdout, stderr, code = run_command("apt-get install -y ipmitool", timeout=120)
+            if code == 0:
+                print("  ✓ ipmitool 安装成功")
+                # 加载 IPMI 内核模块
+                run_command("modprobe ipmi_devintf 2>/dev/null")
+                run_command("modprobe ipmi_si 2>/dev/null")
+                return True
+        elif SensorCollector._check_tool('yum'):
+            stdout, stderr, code = run_command("yum install -y ipmitool", timeout=120)
+            if code == 0:
+                print("  ✓ ipmitool 安装成功")
+                run_command("modprobe ipmi_devintf 2>/dev/null")
+                run_command("modprobe ipmi_si 2>/dev/null")
+                return True
+        elif SensorCollector._check_tool('dnf'):
+            stdout, stderr, code = run_command("dnf install -y ipmitool", timeout=120)
+            if code == 0:
+                print("  ✓ ipmitool 安装成功")
+                run_command("modprobe ipmi_devintf 2>/dev/null")
+                run_command("modprobe ipmi_si 2>/dev/null")
+                return True
+        
+        print("  ✗ ipmitool 安装失败")
+        return False
     
     @staticmethod
     def _parse_sensors(output: str, result: Dict[str, Any]):
@@ -644,8 +813,10 @@ class PowerCollector:
 class HardwareReporter:
     """硬件报告生成器"""
     
-    def __init__(self, thresholds: Dict[str, float]):
+    def __init__(self, thresholds: Dict[str, float], network_interfaces: List[str] = None, auto_install: bool = False):
         self.thresholds = thresholds
+        self.network_interfaces = network_interfaces
+        self.auto_install = auto_install
         self.report_data = {}
         self.issues = []
         self.report_lines = []
@@ -676,11 +847,11 @@ class HardwareReporter:
         
         # 网络
         self.log("采集网络信息...")
-        self.report_data['network'] = NetworkCollector.collect()
+        self.report_data['network'] = NetworkCollector.collect(self.network_interfaces)
         
         # 传感器
         self.log("采集传感器信息...")
-        self.report_data['sensors'] = SensorCollector.collect()
+        self.report_data['sensors'] = SensorCollector.collect(self.auto_install)
         
         # 电源
         self.log("采集电源信息...")
@@ -696,6 +867,16 @@ class HardwareReporter:
         self.log(f"报告时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         self.log("")
         
+        # 先生成隐患摘要（在顶部显示）
+        self._analyze_all_and_collect_issues()
+        self._generate_summary()
+        
+        # 详细信息
+        self.log_section("=" * 80)
+        self.log_section("详细信息", Colors.CYAN)
+        self.log_section("=" * 80)
+        self.log("")
+        
         # 分析各项指标
         self._analyze_cpu()
         self._analyze_memory()
@@ -705,9 +886,134 @@ class HardwareReporter:
         self._analyze_network()
         self._analyze_sensors()
         self._analyze_power()
+    
+    def _analyze_all_and_collect_issues(self):
+        """预先分析所有数据并收集问题"""
+        # CPU
+        cpu = self.report_data.get('cpu', {})
+        if not cpu.get('error'):
+            usage = cpu.get('usage', 0)
+            status = determine_status(usage, self.thresholds['cpu_warn'], self.thresholds['cpu_crit'])
+            if status != 'normal':
+                self.issues.append({
+                    'category': 'CPU',
+                    'severity': 'warning',  # 强制使用 warning，不使用 critical
+                    'message': f'CPU 使用率 {usage}%',
+                    'detail': f'当前使用率较高'
+                })
         
-        # 生成隐患摘要
-        self._generate_summary()
+        # 内存
+        mem = self.report_data.get('memory', {})
+        if not mem.get('error'):
+            usage_percent = mem.get('usage_percent', 0)
+            status = determine_status(usage_percent, self.thresholds['mem_warn'], self.thresholds['mem_crit'])
+            if status != 'normal':
+                self.issues.append({
+                    'category': '内存',
+                    'severity': 'warning',  # 强制使用 warning，不使用 critical
+                    'message': f'内存使用率 {usage_percent}%',
+                    'detail': f'当前使用率较高'
+                })
+        
+        # 磁盘容量
+        disk = self.report_data.get('disk', {})
+        if not disk.get('error'):
+            for fs in disk.get('filesystems', []):
+                use_percent = fs['use_percent']
+                status = determine_status(use_percent, self.thresholds['disk_warn'], self.thresholds['disk_crit'])
+                if status != 'normal':
+                    self.issues.append({
+                        'category': '磁盘容量',
+                        'severity': status,
+                        'message': f'{fs["mountpoint"]} 使用率 {use_percent}%',
+                        'detail': f'挂载点 {fs["mountpoint"]} 空间不足'
+                    })
+        
+        # 磁盘SMART
+        smart = self.report_data.get('smart', {})
+        if not smart.get('error'):
+            for dev in smart.get('devices', []):
+                health = dev.get('health', 'unknown')
+                if health == 'failed':
+                    self.issues.append({
+                        'category': '磁盘健康',
+                        'severity': 'critical',
+                        'message': f'{dev["device"]} SMART 检查失败',
+                        'detail': f'磁盘 {dev["device"]} 健康检查未通过'
+                    })
+                
+                temp = dev.get('temperature')
+                if temp is not None:
+                    temp_status = determine_status(temp, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
+                    if temp_status != 'normal':
+                        self.issues.append({
+                            'category': '磁盘温度',
+                            'severity': temp_status,
+                            'message': f'{dev["device"]} 温度 {temp}°C',
+                            'detail': f'磁盘 {dev["device"]} 温度过高'
+                        })
+        
+        # 磁盘IO
+        io = self.report_data.get('io', {})
+        if not io.get('error'):
+            for dev in io.get('devices', []):
+                if dev['await'] > self.thresholds['io_wait_crit']:
+                    self.issues.append({
+                        'category': '磁盘IO',
+                        'severity': 'critical',
+                        'message': f'{dev["device"]} IO等待 {dev["await"]:.2f}ms',
+                        'detail': f'磁盘 {dev["device"]} IO响应时间过长'
+                    })
+                elif dev['await'] > self.thresholds['io_wait_warn']:
+                    self.issues.append({
+                        'category': '磁盘IO',
+                        'severity': 'warning',
+                        'message': f'{dev["device"]} IO等待 {dev["await"]:.2f}ms',
+                        'detail': f'磁盘 {dev["device"]} IO响应时间较长'
+                    })
+        
+        # 网络
+        net = self.report_data.get('network', {})
+        if not net.get('error'):
+            for iface in net.get('interfaces', []):
+                if iface['rx_errors'] > 0 or iface['tx_errors'] > 0:
+                    self.issues.append({
+                        'category': '网络',
+                        'severity': 'warning',
+                        'message': f'{iface["name"]} 有网络错误',
+                        'detail': f'接口 {iface["name"]} 检测到 {iface["rx_errors"]+iface["tx_errors"]} 个错误'
+                    })
+        
+        # 传感器
+        sensors = self.report_data.get('sensors', {})
+        if not sensors.get('error'):
+            for temp in sensors.get('temperatures', []):
+                value = temp['value']
+                status = determine_status(value, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
+                if status != 'normal':
+                    self.issues.append({
+                        'category': '温度',
+                        'severity': status,
+                        'message': f'{temp["name"]} {value}°C',
+                        'detail': f'传感器 {temp["name"]} 温度过高'
+                    })
+            
+            for fan in sensors.get('fans', []):
+                value = fan['value']
+                if value == 0:
+                    self.issues.append({
+                        'category': '风扇',
+                        'severity': 'critical',
+                        'message': f'{fan["name"]} 停转',
+                        'detail': f'风扇 {fan["name"]} 转速为 0'
+                    })
+                elif value < 500:
+                    self.issues.append({
+                        'category': '风扇',
+                        'severity': 'warning',
+                        'message': f'{fan["name"]} 转速低 ({value} RPM)',
+                        'detail': f'风扇 {fan["name"]} 转速异常'
+                    })
     
     def _analyze_cpu(self):
         """分析CPU"""
@@ -722,25 +1028,22 @@ class HardwareReporter:
         load = cpu.get('load', [0, 0, 0])
         
         status = determine_status(usage, self.thresholds['cpu_warn'], self.thresholds['cpu_crit'])
-        status_color = get_status_color(status)
+        # CPU只显示警告色（橙色）或正常色（绿色），不显示红色
+        if status == 'critical':
+            status_color = Colors.ORANGE
+        else:
+            status_color = get_status_color(status)
         
-        self.log(f"  CPU 使用率: {color_text(f'{usage}%', status_color)} (阈值: {self.thresholds['cpu_warn']}%/{self.thresholds['cpu_crit']}%)")
+        self.log(f"  当前使用率: {color_text(f'{usage}%', status_color)}")
         self.log(f"  系统负载: {load[0]}, {load[1]}, {load[2]} (1分钟, 5分钟, 15分钟)")
-        
-        if status != 'normal':
-            self.issues.append({
-                'category': 'CPU',
-                'severity': status,
-                'message': f'CPU 使用率 {usage}%',
-                'detail': f'当前使用率超过{"警告" if status == "warning" else "危险"}阈值'
-            })
+        self.log(f"  阈值设置: 警告 {self.thresholds['cpu_warn']}% / 危险 {self.thresholds['cpu_crit']}%")
         
         # TOP进程
         top_procs = cpu.get('top_processes', [])
         if top_procs:
-            self.log(f"  TOP 5 进程:")
-            for proc in top_procs[:5]:
-                self.log(f"    PID {proc['pid']}: {proc['command'][:50]} (CPU: {proc['cpu']}%, MEM: {proc['mem']}%)")
+            self.log(f"  CPU使用率TOP5进程:")
+            for i, proc in enumerate(top_procs[:5], 1):
+                self.log(f"    {i}. {proc['command'][:50]}: {proc['cpu']}% (PID: {proc['pid']})")
         
         self.log("")
     
@@ -759,25 +1062,23 @@ class HardwareReporter:
         usage_percent = mem.get('usage_percent', 0)
         
         status = determine_status(usage_percent, self.thresholds['mem_warn'], self.thresholds['mem_crit'])
-        status_color = get_status_color(status)
+        # 内存只显示警告色（橙色）或正常色（绿色），不显示红色
+        if status == 'critical':
+            status_color = Colors.ORANGE
+        else:
+            status_color = get_status_color(status)
         
         self.log(f"  总内存: {self._format_bytes(total)}")
         self.log(f"  已使用: {self._format_bytes(used)} ({color_text(f'{usage_percent}%', status_color)})")
         self.log(f"  可用: {self._format_bytes(available)}")
+        self.log(f"  阈值设置: 警告 {self.thresholds['mem_warn']}% / 危险 {self.thresholds['mem_crit']}%")
         
         swap_total = mem.get('swap_total', 0)
         swap_used = mem.get('swap_used', 0)
         if swap_total > 0:
             swap_percent = round((swap_used / swap_total) * 100, 2)
-            self.log(f"  Swap: {self._format_bytes(swap_used)} / {self._format_bytes(swap_total)} ({swap_percent}%)")
-        
-        if status != 'normal':
-            self.issues.append({
-                'category': '内存',
-                'severity': status,
-                'message': f'内存使用率 {usage_percent}%',
-                'detail': f'当前使用率超过{"警告" if status == "warning" else "危险"}阈值'
-            })
+            swap_color = Colors.ORANGE if swap_percent > 50 else Colors.GREEN
+            self.log(f"  Swap: {self._format_bytes(swap_used)} / {self._format_bytes(swap_total)} ({color_text(f'{swap_percent}%', swap_color)})")
         
         self.log("")
     
@@ -1037,41 +1338,49 @@ class HardwareReporter:
     def _generate_summary(self):
         """生成隐患摘要"""
         self.log_section("=" * 80)
-        self.log_section("硬件隐患摘要", Colors.YELLOW)
+        self.log_section("概要信息", Colors.YELLOW)
         self.log_section("=" * 80)
         
         if not self.issues:
-            self.log(color_text("✓ 未发现硬件隐患，所有指标正常。", Colors.GREEN))
+            self.log(color_text("✓ 服务运行正常，未发现硬件隐患，继续保持！", Colors.GREEN))
+            self.log("")
             return
         
         # 按严重度排序
         critical = [i for i in self.issues if i['severity'] == 'critical']
         warning = [i for i in self.issues if i['severity'] == 'warning']
         
-        self.log(f"发现 {len(self.issues)} 个隐患:")
-        self.log(f"  {color_text('危险:', Colors.RED)} {len(critical)} 个")
-        self.log(f"  {color_text('警告:', Colors.ORANGE)} {len(warning)} 个")
+        # 按类别分组
+        issues_by_category = {}
+        for issue in self.issues:
+            category = issue['category']
+            if category not in issues_by_category:
+                issues_by_category[category] = []
+            issues_by_category[category].append(issue)
+        
+        # 生成概要列表
+        summary_items = []
+        for category, items in issues_by_category.items():
+            has_critical = any(i['severity'] == 'critical' for i in items)
+            color = Colors.RED if has_critical else Colors.ORANGE
+            messages = [i['message'] for i in items]
+            summary_items.append(color_text(f"• {category}: {', '.join(messages)}", color))
+        
+        self.log("发现以下隐患:")
+        for item in summary_items:
+            self.log(f"  {item}")
         self.log("")
         
-        if critical:
-            self.log(color_text("危险隐患:", Colors.RED))
-            for issue in critical:
-                self.log(f"  [{issue['category']}] {issue['message']}")
-                self.log(f"    详情: {issue['detail']}")
-            self.log("")
-        
-        if warning:
-            self.log(color_text("警告隐患:", Colors.ORANGE))
-            for issue in warning:
-                self.log(f"  [{issue['category']}] {issue['message']}")
-                self.log(f"    详情: {issue['detail']}")
-            self.log("")
+        self.log(f"统计: {color_text(f'危险 {len(critical)} 个', Colors.RED)}, {color_text(f'警告 {len(warning)} 个', Colors.ORANGE)}")
+        self.log("")
         
         # 建议
         if critical:
-            self.log(color_text("⚠️ 建议: 发现危险隐患，请立即处理！", Colors.RED))
+            self.log(color_text("⚠️  建议: 发现危险隐患，请立即处理！", Colors.RED))
         elif warning:
-            self.log(color_text("⚠️ 建议: 发现警告隐患，请保持关注。", Colors.ORANGE))
+            self.log(color_text("⚠️  建议: 发现警告隐患，请保持关注。", Colors.ORANGE))
+        
+        self.log("")
     
     def save_reports(self, log_dir: str = '/tmp/logs/pve'):
         """保存报告到文件"""
@@ -1151,6 +1460,8 @@ def main():
     parser.add_argument('--temp-crit', type=float, default=DEFAULT_THRESHOLDS['temp_crit'], help='温度危险阈值(摄氏度)')
     parser.add_argument('--io-wait-warn', type=float, default=DEFAULT_THRESHOLDS['io_wait_warn'], help='IO等待警告阈值(毫秒)')
     parser.add_argument('--io-wait-crit', type=float, default=DEFAULT_THRESHOLDS['io_wait_crit'], help='IO等待危险阈值(毫秒)')
+    parser.add_argument('--network-interfaces', type=str, default=None, help='要监控的网卡接口列表，用逗号分隔，如: eth0,enp2s0 (默认自动检测物理网卡)')
+    parser.add_argument('--auto-install', action='store_true', help='自动安装缺失的监控工具（lm-sensors, ipmitool等）')
     parser.add_argument('--log-dir', type=str, default='/tmp/logs/pve', help='日志保存目录')
     
     args = parser.parse_args()
@@ -1169,8 +1480,13 @@ def main():
         'io_wait_crit': args.io_wait_crit,
     }
     
+    # 解析网卡接口列表
+    network_interfaces = None
+    if args.network_interfaces:
+        network_interfaces = [iface.strip() for iface in args.network_interfaces.split(',') if iface.strip()]
+    
     # 创建报告器
-    reporter = HardwareReporter(thresholds)
+    reporter = HardwareReporter(thresholds, network_interfaces, args.auto_install)
     
     # 采集数据
     reporter.collect_all()

@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+if [ "$USE_PANEL_SCRIPT" != "true" ]; then
+    source /tmp/pve_tools.sh
+else
+    source /www/server/jh-panel/scripts/os_tool/tools.sh
+fi
+
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."

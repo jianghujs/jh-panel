@@ -1,6 +1,17 @@
 #!/bin/bash
 
 set -e
+
+# 在远程模式下，预先下载 tools.sh 供子脚本使用
+if [ "$USE_PANEL_SCRIPT" != "true" ]; then
+    if [ ! -f "/tmp/pve_tools.sh" ]; then
+        toolsURL=$(echo $URLBase | sed 's|/pve/.*$|/tools.sh|')
+        echo "正在下载 tools.sh 从 ${toolsURL}"
+        wget -nv -O /tmp/pve_tools.sh ${toolsURL}
+    fi
+fi
+
+source /tmp/pve_tools.sh
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."

@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-source /www/server/jh-panel/scripts/os_tool/tools.sh
-
-
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."

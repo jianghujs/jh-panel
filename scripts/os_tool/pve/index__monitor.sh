@@ -25,6 +25,7 @@ show_menu() {
     echo "==================vm os-tools=================="
     echo "请选择状态监测工具:"
     echo "1. 硬盘健康检查"
+    echo "2. 硬件健康报告"
     echo "========================================================"
 }
 
@@ -39,6 +40,9 @@ choice=${choice:-"1"}
 case $choice in
 1)
     download_and_run_py monitor__disk_health_check.py
+    ;;
+2)
+    download_and_run_py monitor__hardware_report.py
     ;;
 esac
 

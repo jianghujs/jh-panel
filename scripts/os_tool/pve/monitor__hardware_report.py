@@ -2,6 +2,35 @@
 """
 PVE硬件全面健康报告脚本
 聚合 CPU/内存/磁盘/网络/温度/风扇/电源等信息并标记风险
+
+功能特性:
+- 采集系统资源信息（CPU、内存、磁盘、网络）
+- 采集硬件健康信息（SMART、温度、风扇、电压、电源）
+- 支持自定义阈值配置
+- 生成多种格式报告（文本、JSON、HTML）
+- 自动识别和标记风险隐患
+- 支持自动安装监控工具（lm-sensors、ipmitool）
+
+使用示例:
+    # 基本使用（使用默认阈值）
+    python3 monitor__hardware_report.py
+    
+    # 自定义阈值
+    python3 monitor__hardware_report.py --cpu-warn 70 --cpu-crit 85 --disk-warn 75
+    
+    # 指定网卡接口
+    python3 monitor__hardware_report.py --network-interfaces eth0,enp2s0
+    
+    # 自动安装监控工具
+    python3 monitor__hardware_report.py --auto-install
+    
+    # 自定义日志目录
+    python3 monitor__hardware_report.py --log-dir /var/log/pve
+
+输出文件:
+    - hardware_report_YYYYMMDD_HHMMSS.log  # 文本报告（无颜色）
+    - hardware_report_YYYYMMDD_HHMMSS.html # HTML报告（美观可视化）
+    - hardware_report.json                  # JSON报告（最新数据）
 """
 
 import os
@@ -915,19 +944,26 @@ class HardwareReporter:
                     'detail': f'当前使用率较高'
                 })
         
-        # 磁盘容量
+        # 磁盘容量（不在这里添加，因为在_analyze_disk中已经添加过了）
         disk = self.report_data.get('disk', {})
         if not disk.get('error'):
             for fs in disk.get('filesystems', []):
                 use_percent = fs['use_percent']
                 status = determine_status(use_percent, self.thresholds['disk_warn'], self.thresholds['disk_crit'])
                 if status != 'normal':
-                    self.issues.append({
-                        'category': '磁盘容量',
-                        'severity': status,
-                        'message': f'{fs["mountpoint"]} 使用率 {use_percent}%',
-                        'detail': f'挂载点 {fs["mountpoint"]} 空间不足'
-                    })
+                    # 检查是否已经添加过这个问题
+                    already_exists = any(
+                        i['category'] == '磁盘容量' and 
+                        i['message'] == f'{fs["mountpoint"]} 使用率 {use_percent}%'
+                        for i in self.issues
+                    )
+                    if not already_exists:
+                        self.issues.append({
+                            'category': '磁盘容量',
+                            'severity': status,
+                            'message': f'{fs["mountpoint"]} 使用率 {use_percent}%',
+                            'detail': f'挂载点 {fs["mountpoint"]} 空间不足'
+                        })
         
         # 磁盘SMART
         smart = self.report_data.get('smart', {})
@@ -1103,14 +1139,6 @@ class HardwareReporter:
             
             self.log(f"  {fs['mountpoint']} ({fs['filesystem']})")
             self.log(f"    大小: {fs['size']}, 已用: {fs['used']}, 可用: {fs['available']}, 使用率: {color_text(f'{use_percent}%', status_color)}")
-            
-            if status != 'normal':
-                self.issues.append({
-                    'category': '磁盘容量',
-                    'severity': status,
-                    'message': f'{fs["mountpoint"]} 使用率 {use_percent}%',
-                    'detail': f'挂载点 {fs["mountpoint"]} 空间不足'
-                })
         
         # 大磁盘提示
         large_disks = disk.get('large_disks', [])
@@ -1148,27 +1176,11 @@ class HardwareReporter:
                 temp_status = determine_status(temp, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
                 temp_color = get_status_color(temp_status)
                 self.log(f"    温度: {color_text(f'{temp}°C', temp_color)}")
-                
-                if temp_status != 'normal':
-                    self.issues.append({
-                        'category': '磁盘温度',
-                        'severity': temp_status,
-                        'message': f'{dev["device"]} 温度 {temp}°C',
-                        'detail': f'磁盘 {dev["device"]} 温度过高'
-                    })
             
             errors = dev.get('errors', [])
             if errors:
                 for err in errors:
                     self.log(f"    {color_text('错误:', Colors.ORANGE)} {err}")
-            
-            if health == 'failed':
-                self.issues.append({
-                    'category': '磁盘健康',
-                    'severity': 'critical',
-                    'message': f'{dev["device"]} SMART 检查失败',
-                    'detail': f'磁盘 {dev["device"]} 健康检查未通过'
-                })
         
         self.log("")
     
@@ -1192,22 +1204,6 @@ class HardwareReporter:
             self.log(f"    写入: {dev['w_s']:.2f} w/s, {dev['wkB_s']:.2f} kB/s")
             self.log(f"    平均等待时间: {dev['await']:.2f} ms")
             self.log(f"    使用率: {dev['util']:.2f}%")
-            
-            # 检查IO等待时间
-            if dev['await'] > self.thresholds['io_wait_crit']:
-                self.issues.append({
-                    'category': '磁盘IO',
-                    'severity': 'critical',
-                    'message': f'{dev["device"]} IO等待 {dev["await"]:.2f}ms',
-                    'detail': f'磁盘 {dev["device"]} IO响应时间过长'
-                })
-            elif dev['await'] > self.thresholds['io_wait_warn']:
-                self.issues.append({
-                    'category': '磁盘IO',
-                    'severity': 'warning',
-                    'message': f'{dev["device"]} IO等待 {dev["await"]:.2f}ms',
-                    'detail': f'磁盘 {dev["device"]} IO响应时间较长'
-                })
         
         self.log("")
     
@@ -1234,15 +1230,6 @@ class HardwareReporter:
                 self.log(f"    速率: {iface['speed']}")
             self.log(f"    接收: {self._format_bytes(iface['rx_bytes'])} ({iface['rx_packets']} 包, {iface['rx_errors']} 错误)")
             self.log(f"    发送: {self._format_bytes(iface['tx_bytes'])} ({iface['tx_packets']} 包, {iface['tx_errors']} 错误)")
-            
-            # 检查错误
-            if iface['rx_errors'] > 0 or iface['tx_errors'] > 0:
-                self.issues.append({
-                    'category': '网络',
-                    'severity': 'warning',
-                    'message': f'{iface["name"]} 有网络错误',
-                    'detail': f'接口 {iface["name"]} 检测到 {iface["rx_errors"]+iface["tx_errors"]} 个错误'
-                })
         
         self.log("")
     
@@ -1265,14 +1252,6 @@ class HardwareReporter:
                 status_color = get_status_color(status)
                 unit = temp['unit']
                 self.log(f"    {temp['name']}: {color_text(f'{value}{unit}', status_color)}")
-                
-                if status != 'normal':
-                    self.issues.append({
-                        'category': '温度',
-                        'severity': status,
-                        'message': f'{temp["name"]} {value}°C',
-                        'detail': f'传感器 {temp["name"]} 温度过高'
-                    })
         
         # 风扇
         fans = sensors.get('fans', [])
@@ -1284,21 +1263,6 @@ class HardwareReporter:
                 # 风扇转速为0或过低可能有问题
                 fan_color = Colors.RED if value == 0 else Colors.ORANGE if value < 500 else Colors.GREEN
                 self.log(f"    {fan['name']}: {color_text(f'{value} {unit}', fan_color)}")
-                
-                if value == 0:
-                    self.issues.append({
-                        'category': '风扇',
-                        'severity': 'critical',
-                        'message': f'{fan["name"]} 停转',
-                        'detail': f'风扇 {fan["name"]} 转速为 0'
-                    })
-                elif value < 500:
-                    self.issues.append({
-                        'category': '风扇',
-                        'severity': 'warning',
-                        'message': f'{fan["name"]} 转速低 ({value} RPM)',
-                        'detail': f'风扇 {fan["name"]} 转速异常'
-                    })
         
         # 电压
         voltages = sensors.get('voltages', [])
@@ -1405,13 +1369,21 @@ class HardwareReporter:
         with open(json_report_path, 'w', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=2)
         
+        # 保存HTML报告
+        html_report_path = os.path.join(log_dir, f'hardware_report_{timestamp}.html')
+        html_content = self._generate_html_report()
+        with open(html_report_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
         # 保留最近5份日志
         self._cleanup_old_logs(log_dir, 'hardware_report_*.log', 5)
+        self._cleanup_old_logs(log_dir, 'hardware_report_*.html', 5)
         
         self.log("")
         self.log(color_text(f"报告已保存:", Colors.CYAN))
         self.log(f"  文本报告: {text_report_path}")
         self.log(f"  JSON报告: {json_report_path}")
+        self.log(f"  HTML报告: {html_report_path}")
     
     def _cleanup_old_logs(self, log_dir: str, pattern: str, keep: int):
         """清理旧日志，保留最近N份"""
@@ -1423,6 +1395,401 @@ class HardwareReporter:
                     os.remove(old_log)
                 except:
                     pass
+    
+    def _generate_html_report(self) -> str:
+        """生成HTML格式的报告"""
+        now = datetime.now()
+        hostname = run_command("hostname")[0].strip() or "PVE服务器"
+        
+        # 生成概要信息
+        summary_items = []
+        if not self.issues:
+            summary_items.append("<li><span style='color: green;'>✓ 服务运行正常，未发现硬件隐患，继续保持！</span></li>")
+        else:
+            # 按类别分组
+            issues_by_category = {}
+            for issue in self.issues:
+                category = issue['category']
+                if category not in issues_by_category:
+                    issues_by_category[category] = []
+                issues_by_category[category].append(issue)
+            
+            # 生成概要列表
+            for category, items in issues_by_category.items():
+                has_critical = any(i['severity'] == 'critical' for i in items)
+                color = 'red' if has_critical else 'orange'
+                messages = [i['message'] for i in items]
+                summary_items.append(f"<li><span style='color: {color};'>{category}: {', '.join(messages)}</span></li>")
+            
+            # 统计
+            critical_count = sum(1 for i in self.issues if i['severity'] == 'critical')
+            warning_count = sum(1 for i in self.issues if i['severity'] == 'warning')
+            summary_items.append(f"<li>统计: <span style='color: red;'>危险 {critical_count} 个</span>, <span style='color: orange;'>警告 {warning_count} 个</span></li>")
+            
+            # 建议
+            if critical_count > 0:
+                summary_items.append("<li><span style='color: red;'>⚠️ 建议: 发现危险隐患，请立即处理！</span></li>")
+            elif warning_count > 0:
+                summary_items.append("<li><span style='color: orange;'>⚠️ 建议: 发现警告隐患，请保持关注。</span></li>")
+        
+        summary_content = '\n'.join(summary_items)
+        
+        # 生成系统状态表格
+        sysinfo_rows = []
+        
+        # CPU信息
+        cpu = self.report_data.get('cpu', {})
+        if not cpu.get('error'):
+            usage = cpu.get('usage', 0)
+            load = cpu.get('load', [0, 0, 0])
+            status = determine_status(usage, self.thresholds['cpu_warn'], self.thresholds['cpu_crit'])
+            color = 'orange' if status != 'normal' else 'auto'
+            
+            cpu_desc = f"使用率: <span style='color: {color}'>{usage}%</span><br/>"
+            cpu_desc += f"负载: {load[0]}, {load[1]}, {load[2]} (1/5/15分钟)<br/>"
+            cpu_desc += f"阈值: 警告 {self.thresholds['cpu_warn']}% / 危险 {self.thresholds['cpu_crit']}%"
+            
+            top_procs = cpu.get('top_processes', [])
+            if top_procs:
+                cpu_desc += "<br/>TOP5进程:<br/>" + "<br/>".join([
+                    f"{i+1}. {proc['command'][:50]}: {proc['cpu']}% (PID: {proc['pid']})" 
+                    for i, proc in enumerate(top_procs[:5])
+                ])
+            
+            sysinfo_rows.append(f"<tr><td>CPU</td><td>{cpu_desc}</td></tr>")
+        
+        # 内存信息
+        mem = self.report_data.get('memory', {})
+        if not mem.get('error'):
+            total = mem.get('total', 0)
+            used = mem.get('used', 0)
+            available = mem.get('available', 0)
+            usage_percent = mem.get('usage_percent', 0)
+            status = determine_status(usage_percent, self.thresholds['mem_warn'], self.thresholds['mem_crit'])
+            color = 'orange' if status != 'normal' else 'auto'
+            
+            mem_desc = f"总内存: {self._format_bytes(total)}<br/>"
+            mem_desc += f"已使用: {self._format_bytes(used)} (<span style='color: {color}'>{usage_percent}%</span>)<br/>"
+            mem_desc += f"可用: {self._format_bytes(available)}<br/>"
+            mem_desc += f"阈值: 警告 {self.thresholds['mem_warn']}% / 危险 {self.thresholds['mem_crit']}%"
+            
+            swap_total = mem.get('swap_total', 0)
+            swap_used = mem.get('swap_used', 0)
+            if swap_total > 0:
+                swap_percent = round((swap_used / swap_total) * 100, 2)
+                swap_color = 'orange' if swap_percent > 50 else 'auto'
+                mem_desc += f"<br/>Swap: {self._format_bytes(swap_used)} / {self._format_bytes(swap_total)} (<span style='color: {swap_color}'>{swap_percent}%</span>)"
+            
+            sysinfo_rows.append(f"<tr><td>内存</td><td>{mem_desc}</td></tr>")
+        
+        sysinfo_content = '\n'.join(sysinfo_rows)
+        
+        # 生成磁盘信息表格
+        disk_rows = []
+        
+        # 磁盘容量
+        disk = self.report_data.get('disk', {})
+        if not disk.get('error'):
+            for fs in disk.get('filesystems', []):
+                use_percent = fs['use_percent']
+                status = determine_status(use_percent, self.thresholds['disk_warn'], self.thresholds['disk_crit'])
+                color = 'red' if status == 'critical' else 'orange' if status == 'warning' else 'auto'
+                
+                disk_desc = f"大小: {fs['size']}<br/>"
+                disk_desc += f"已用: {fs['used']}<br/>"
+                disk_desc += f"可用: {fs['available']}<br/>"
+                disk_desc += f"使用率: <span style='color: {color}'>{use_percent}%</span>"
+                
+                disk_rows.append(f"<tr><td>磁盘 ({fs['mountpoint']})</td><td>{disk_desc}</td></tr>")
+        
+        # 磁盘SMART
+        smart = self.report_data.get('smart', {})
+        if not smart.get('error'):
+            for dev in smart.get('devices', []):
+                health = dev.get('health', 'unknown')
+                health_color = 'green' if health == 'passed' else 'red' if health == 'failed' else 'orange'
+                
+                smart_desc = f"型号: {dev['model']}<br/>"
+                smart_desc += f"健康状态: <span style='color: {health_color}'>{health.upper()}</span><br/>"
+                
+                temp = dev.get('temperature')
+                if temp is not None:
+                    temp_status = determine_status(temp, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
+                    temp_color = 'red' if temp_status == 'critical' else 'orange' if temp_status == 'warning' else 'auto'
+                    smart_desc += f"温度: <span style='color: {temp_color}'>{temp}°C</span>"
+                
+                disk_rows.append(f"<tr><td>SMART ({dev['device']})</td><td>{smart_desc}</td></tr>")
+        
+        # 磁盘IO
+        io = self.report_data.get('io', {})
+        if not io.get('error'):
+            for dev in io.get('devices', []):
+                io_desc = f"读取: {dev['r_s']:.2f} r/s, {dev['rkB_s']:.2f} kB/s<br/>"
+                io_desc += f"写入: {dev['w_s']:.2f} w/s, {dev['wkB_s']:.2f} kB/s<br/>"
+                
+                await_val = dev['await']
+                await_color = 'red' if await_val > self.thresholds['io_wait_crit'] else 'orange' if await_val > self.thresholds['io_wait_warn'] else 'auto'
+                io_desc += f"平均等待: <span style='color: {await_color}'>{await_val:.2f} ms</span><br/>"
+                io_desc += f"使用率: {dev['util']:.2f}%"
+                
+                disk_rows.append(f"<tr><td>IO ({dev['device']})</td><td>{io_desc}</td></tr>")
+        
+        disk_content = '\n'.join(disk_rows) if disk_rows else "<tr><td colspan='2'>无磁盘信息</td></tr>"
+        
+        # 生成网络信息表格
+        network_rows = []
+        net = self.report_data.get('network', {})
+        if not net.get('error'):
+            for iface in net.get('interfaces', []):
+                state = iface['state']
+                state_color = 'green' if state == 'UP' else 'orange' if state == 'UNKNOWN' else 'red'
+                
+                net_desc = f"状态: <span style='color: {state_color}'>{state}</span><br/>"
+                if iface.get('speed'):
+                    net_desc += f"速率: {iface['speed']}<br/>"
+                net_desc += f"接收: {self._format_bytes(iface['rx_bytes'])} ({iface['rx_packets']} 包, "
+                rx_err_color = 'red' if iface['rx_errors'] > 0 else 'auto'
+                net_desc += f"<span style='color: {rx_err_color}'>{iface['rx_errors']} 错误</span>)<br/>"
+                net_desc += f"发送: {self._format_bytes(iface['tx_bytes'])} ({iface['tx_packets']} 包, "
+                tx_err_color = 'red' if iface['tx_errors'] > 0 else 'auto'
+                net_desc += f"<span style='color: {tx_err_color}'>{iface['tx_errors']} 错误</span>)"
+                
+                network_rows.append(f"<tr><td>{iface['name']}</td><td>{net_desc}</td></tr>")
+        
+        network_content = '\n'.join(network_rows) if network_rows else "<tr><td colspan='2'>无网络信息</td></tr>"
+        
+        # 生成传感器信息表格
+        sensor_rows = []
+        sensors = self.report_data.get('sensors', {})
+        if not sensors.get('error'):
+            # 温度传感器
+            temps = sensors.get('temperatures', [])
+            if temps:
+                for temp in temps:
+                    value = temp['value']
+                    status = determine_status(value, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
+                    color = 'red' if status == 'critical' else 'orange' if status == 'warning' else 'auto'
+                    sensor_rows.append(f"<tr><td>温度 ({temp['name']})</td><td><span style='color: {color}'>{value}{temp['unit']}</span></td></tr>")
+            
+            # 风扇传感器
+            fans = sensors.get('fans', [])
+            if fans:
+                for fan in fans:
+                    value = fan['value']
+                    color = 'red' if value == 0 else 'orange' if value < 500 else 'auto'
+                    sensor_rows.append(f"<tr><td>风扇 ({fan['name']})</td><td><span style='color: {color}'>{value} {fan['unit']}</span></td></tr>")
+            
+            # 电压传感器
+            voltages = sensors.get('voltages', [])
+            if voltages:
+                for volt in voltages:
+                    sensor_rows.append(f"<tr><td>电压 ({volt['name']})</td><td>{volt['value']}{volt['unit']}</td></tr>")
+        
+        sensor_content = '\n'.join(sensor_rows) if sensor_rows else "<tr><td colspan='2'>无传感器信息或未安装监控工具</td></tr>"
+        
+        # 生成电源信息表格
+        power_rows = []
+        power = self.report_data.get('power', {})
+        if not power.get('error'):
+            supplies = power.get('supplies', [])
+            for supply in supplies:
+                if 'info' in supply:
+                    power_rows.append(f"<tr><td>电源信息</td><td>{supply['info']}</td></tr>")
+                elif 'power' in supply:
+                    power_rows.append(f"<tr><td>功率</td><td>{supply['power']:.2f} {supply['unit']}</td></tr>")
+        
+        power_content = '\n'.join(power_rows) if power_rows else "<tr><td colspan='2'>无电源信息</td></tr>"
+        
+        # HTML模板
+        html_template = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PVE硬件健康报告 - %(hostname)s</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #34495e;
+            margin-top: 25px;
+            font-size: 1.3em;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2em;
+        }
+        .header .subtitle {
+            opacity: 0.9;
+            font-size: 0.95em;
+        }
+        .summary {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .summary h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .summary ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .summary li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .summary li:last-child {
+            border-bottom: none;
+        }
+        table {
+            width: 100%%;
+            border-collapse: collapse;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+        table tr td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        table tr:last-child td {
+            border-bottom: none;
+        }
+        table tr:hover {
+            background-color: #f8f9fa;
+        }
+        table tr td:first-child {
+            width: 30%%;
+            font-weight: 600;
+            color: #2c3e50;
+            background-color: #f8f9fa;
+        }
+        table tr td:nth-child(2) {
+            width: 70%%;
+        }
+        .section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .footer {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ecf0f1;
+            font-size: 0.9em;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            table tr td:first-child {
+                width: 40%%;
+            }
+            table tr td:nth-child(2) {
+                width: 60%%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PVE 硬件健康报告</h1>
+        <div class="subtitle">
+            服务器: %(hostname)s<br/>
+            报告时间: %(report_time)s
+        </div>
+    </div>
+
+    <div class="summary">
+        <h3>概要信息</h3>
+        <ul>
+%(summary_content)s
+        </ul>
+    </div>
+
+    <div class="section">
+        <h3>系统状态</h3>
+        <table>
+%(sysinfo_content)s
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>磁盘信息</h3>
+        <table>
+%(disk_content)s
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>网络接口</h3>
+        <table>
+%(network_content)s
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>传感器信息</h3>
+        <table>
+%(sensor_content)s
+        </table>
+    </div>
+
+    <div class="section">
+        <h3>电源信息</h3>
+        <table>
+%(power_content)s
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>报告生成时间: %(report_time)s</p>
+        <p>PVE 硬件监控系统 v1.0</p>
+    </div>
+</body>
+</html>"""
+        
+        return html_template % {
+            'hostname': hostname,
+            'report_time': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'summary_content': summary_content,
+            'sysinfo_content': sysinfo_content,
+            'disk_content': disk_content,
+            'network_content': network_content,
+            'sensor_content': sensor_content,
+            'power_content': power_content
+        }
     
     def log(self, message: str = ""):
         """记录日志"""

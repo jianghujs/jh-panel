@@ -1864,6 +1864,17 @@ def main():
     if args.send_email:
         reporter.log("")
         reporter.send_email(html_report_path, args.email, args.email_subject)
+    else:
+        # 如果没有指定发送邮件参数，询问用户是否发送
+        reporter.log("")
+        try:
+            user_input = input(color_text("是否发送邮件报告？(y/n): ", Colors.CYAN)).strip().lower()
+            if user_input in ['y', 'yes', '是']:
+                reporter.log("")
+                reporter.send_email(html_report_path, args.email, args.email_subject)
+        except (KeyboardInterrupt, EOFError):
+            reporter.log("")
+            reporter.log(color_text("已取消发送邮件", Colors.YELLOW))
     
     # 根据隐患数量返回退出码
     critical_count = sum(1 for i in reporter.issues if i['severity'] == 'critical')

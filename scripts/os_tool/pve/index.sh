@@ -10,7 +10,7 @@ if [ "$USE_PANEL_SCRIPT" != "true" ]; then
         wget -nv -O /tmp/os_tools.sh ${toolsURL}
     fi
     if [ ! -f "/tmp/pve_tools.sh" ]; then
-        toolsURL=$(echo $URLBase | sed 's|/pve/.*$|/pve/pve_tools.sh|')
+        toolsURL=$(echo $URLBase | sed 's|/[^/]*$|/pve_tools.sh|')
         echo "正在下载 pve_tools.sh 从 ${toolsURL}"
         wget -nv -O /tmp/pve_tools.sh ${toolsURL}
     fi

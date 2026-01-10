@@ -1306,7 +1306,7 @@ class HardwareReporter:
         self.log_section("=" * 80)
         
         if not self.issues:
-            self.log(color_text("✓ 服务运行正常，未发现硬件隐患，继续保持！", Colors.GREEN))
+            self.log(color_text("✓ 服务运行正常，继续保持！", Colors.GREEN))
             self.log("")
             return
         
@@ -1334,20 +1334,14 @@ class HardwareReporter:
         for item in summary_items:
             self.log(f"  {item}")
         self.log("")
-        
-        self.log(f"统计: {color_text(f'危险 {len(critical)} 个', Colors.RED)}, {color_text(f'警告 {len(warning)} 个', Colors.ORANGE)}")
-        self.log("")
-        
-        # 建议
-        if critical:
-            self.log(color_text("⚠️  建议: 发现危险隐患，请立即处理！", Colors.RED))
-        elif warning:
-            self.log(color_text("⚠️  建议: 发现警告隐患，请保持关注。", Colors.ORANGE))
-        
-        self.log("")
     
-    def save_reports(self, log_dir: str = '/tmp/logs/pve'):
-        """保存报告到文件"""
+    def save_reports(self, log_dir: str = '/tmp/logs/pve') -> str:
+        """
+        保存报告到文件
+        
+        Returns:
+            str: HTML报告文件路径
+        """
         os.makedirs(log_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1384,6 +1378,8 @@ class HardwareReporter:
         self.log(f"  文本报告: {text_report_path}")
         self.log(f"  JSON报告: {json_report_path}")
         self.log(f"  HTML报告: {html_report_path}")
+        
+        return html_report_path
     
     def _cleanup_old_logs(self, log_dir: str, pattern: str, keep: int):
         """清理旧日志，保留最近N份"""
@@ -1421,17 +1417,6 @@ class HardwareReporter:
                 messages = [i['message'] for i in items]
                 summary_items.append(f"<li><span style='color: {color};'>{category}: {', '.join(messages)}</span></li>")
             
-            # 统计
-            critical_count = sum(1 for i in self.issues if i['severity'] == 'critical')
-            warning_count = sum(1 for i in self.issues if i['severity'] == 'warning')
-            summary_items.append(f"<li>统计: <span style='color: red;'>危险 {critical_count} 个</span>, <span style='color: orange;'>警告 {warning_count} 个</span></li>")
-            
-            # 建议
-            if critical_count > 0:
-                summary_items.append("<li><span style='color: red;'>⚠️ 建议: 发现危险隐患，请立即处理！</span></li>")
-            elif warning_count > 0:
-                summary_items.append("<li><span style='color: orange;'>⚠️ 建议: 发现警告隐患，请保持关注。</span></li>")
-        
         summary_content = '\n'.join(summary_items)
         
         # 生成系统状态表格
@@ -1447,7 +1432,7 @@ class HardwareReporter:
             
             cpu_desc = f"使用率: <span style='color: {color}'>{usage}%</span><br/>"
             cpu_desc += f"负载: {load[0]}, {load[1]}, {load[2]} (1/5/15分钟)<br/>"
-            cpu_desc += f"阈值: 警告 {self.thresholds['cpu_warn']}% / 危险 {self.thresholds['cpu_crit']}%"
+            cpu_desc += f""
             
             top_procs = cpu.get('top_processes', [])
             if top_procs:
@@ -1482,12 +1467,10 @@ class HardwareReporter:
             
             sysinfo_rows.append(f"<tr><td>内存</td><td>{mem_desc}</td></tr>")
         
-        sysinfo_content = '\n'.join(sysinfo_rows)
+        sysinfo_content = '<tbody>' + '\n'.join(sysinfo_rows) + '\n</tbody>' if sysinfo_rows else '<tbody><tr><td colspan="2">无系统信息</td></tr></tbody>'
         
-        # 生成磁盘信息表格
-        disk_rows = []
-        
-        # 磁盘容量
+        # 生成磁盘容量信息表格
+        disk_capacity_rows = []
         disk = self.report_data.get('disk', {})
         if not disk.get('error'):
             for fs in disk.get('filesystems', []):
@@ -1500,7 +1483,12 @@ class HardwareReporter:
                 disk_desc += f"可用: {fs['available']}<br/>"
                 disk_desc += f"使用率: <span style='color: {color}'>{use_percent}%</span>"
                 
-                disk_rows.append(f"<tr><td>磁盘 ({fs['mountpoint']})</td><td>{disk_desc}</td></tr>")
+                disk_capacity_rows.append(f"<tr><td>{fs['mountpoint']}</td><td>{disk_desc}</td></tr>")
+        
+        disk_capacity_content = '<tbody>' + '\n'.join(disk_capacity_rows) + '\n</tbody>' if disk_capacity_rows else '<tbody><tr><td colspan="2">无磁盘容量信息</td></tr></tbody>'
+        
+        # 生成磁盘健康度信息表格（SMART + IO）
+        disk_health_rows = []
         
         # 磁盘SMART
         smart = self.report_data.get('smart', {})
@@ -1518,7 +1506,7 @@ class HardwareReporter:
                     temp_color = 'red' if temp_status == 'critical' else 'orange' if temp_status == 'warning' else 'auto'
                     smart_desc += f"温度: <span style='color: {temp_color}'>{temp}°C</span>"
                 
-                disk_rows.append(f"<tr><td>SMART ({dev['device']})</td><td>{smart_desc}</td></tr>")
+                disk_health_rows.append(f"<tr><td>SMART ({dev['device']})</td><td>{smart_desc}</td></tr>")
         
         # 磁盘IO
         io = self.report_data.get('io', {})
@@ -1532,9 +1520,9 @@ class HardwareReporter:
                 io_desc += f"平均等待: <span style='color: {await_color}'>{await_val:.2f} ms</span><br/>"
                 io_desc += f"使用率: {dev['util']:.2f}%"
                 
-                disk_rows.append(f"<tr><td>IO ({dev['device']})</td><td>{io_desc}</td></tr>")
+                disk_health_rows.append(f"<tr><td>IO ({dev['device']})</td><td>{io_desc}</td></tr>")
         
-        disk_content = '\n'.join(disk_rows) if disk_rows else "<tr><td colspan='2'>无磁盘信息</td></tr>"
+        disk_health_content = '<tbody>' + '\n'.join(disk_health_rows) + '\n</tbody>' if disk_health_rows else '<tbody><tr><td colspan="2">无磁盘健康度信息</td></tr></tbody>'
         
         # 生成网络信息表格
         network_rows = []
@@ -1556,7 +1544,7 @@ class HardwareReporter:
                 
                 network_rows.append(f"<tr><td>{iface['name']}</td><td>{net_desc}</td></tr>")
         
-        network_content = '\n'.join(network_rows) if network_rows else "<tr><td colspan='2'>无网络信息</td></tr>"
+        network_content = '<tbody>' + '\n'.join(network_rows) + '\n</tbody>' if network_rows else '<tbody><tr><td colspan="2">无网络信息</td></tr></tbody>'
         
         # 生成传感器信息表格
         sensor_rows = []
@@ -1585,7 +1573,7 @@ class HardwareReporter:
                 for volt in voltages:
                     sensor_rows.append(f"<tr><td>电压 ({volt['name']})</td><td>{volt['value']}{volt['unit']}</td></tr>")
         
-        sensor_content = '\n'.join(sensor_rows) if sensor_rows else "<tr><td colspan='2'>无传感器信息或未安装监控工具</td></tr>"
+        sensor_content = '<tbody>' + '\n'.join(sensor_rows) + '\n</tbody>' if sensor_rows else '<tbody><tr><td colspan="2">无传感器信息或未安装监控工具</td></tr></tbody>'
         
         # 生成电源信息表格
         power_rows = []
@@ -1598,198 +1586,203 @@ class HardwareReporter:
                 elif 'power' in supply:
                     power_rows.append(f"<tr><td>功率</td><td>{supply['power']:.2f} {supply['unit']}</td></tr>")
         
-        power_content = '\n'.join(power_rows) if power_rows else "<tr><td colspan='2'>无电源信息</td></tr>"
+        power_content = '<tbody>' + '\n'.join(power_rows) + '\n</tbody>' if power_rows else '<tbody><tr><td colspan="2">无电源信息</td></tr></tbody>'
         
-        # HTML模板
-        html_template = """<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PVE硬件健康报告 - %(hostname)s</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        h2 {
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-            margin-top: 30px;
-        }
-        h3 {
-            color: #34495e;
-            margin-top: 25px;
-            font-size: 1.3em;
-        }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .header h1 {
-            margin: 0 0 10px 0;
-            font-size: 2em;
-        }
-        .header .subtitle {
-            opacity: 0.9;
-            font-size: 0.95em;
-        }
-        .summary {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .summary h3 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-        .summary ul {
-            list-style: none;
-            padding-left: 0;
-        }
-        .summary li {
-            padding: 8px 0;
-            border-bottom: 1px solid #ecf0f1;
-        }
-        .summary li:last-child {
-            border-bottom: none;
-        }
-        table {
-            width: 100%%;
-            border-collapse: collapse;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 25px;
-        }
-        table tr td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #ecf0f1;
-        }
-        table tr:last-child td {
-            border-bottom: none;
-        }
-        table tr:hover {
-            background-color: #f8f9fa;
-        }
-        table tr td:first-child {
-            width: 30%%;
-            font-weight: 600;
-            color: #2c3e50;
-            background-color: #f8f9fa;
-        }
-        table tr td:nth-child(2) {
-            width: 70%%;
-        }
-        .section {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .footer {
-            text-align: center;
-            color: #7f8c8d;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ecf0f1;
-            font-size: 0.9em;
-        }
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            table tr td:first-child {
-                width: 40%%;
-            }
-            table tr td:nth-child(2) {
-                width: 60%%;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>PVE 硬件健康报告</h1>
-        <div class="subtitle">
-            服务器: %(hostname)s<br/>
-            报告时间: %(report_time)s
-        </div>
-    </div>
+        # HTML模板（参考 report.py 格式）
+        html_template = """<div id="content" class="netease_mail_readhtml netease_mail_readhtml_webmail">
+<style>
+h3 { font-size: bold; }
+table {
+    border-top: 1px solid #999;
+    border-left: 1px solid #999;
+    border-spacing: 0;
+    width: 100%%;
+}
+table tr td {
+    padding: 5px;
+    line-height: 20px;
+    border-right: 1px solid #999;
+    border-bottom: 1px solid #999;
+}
+table tr td:first-child {
+    width: 30%%;
+}
+table tr td:nth-child(2) {
+    width: 70%%;
+}
+.system-table tr td:first-child {
+    width: 40%%;
+}
+.system-table tr td:nth-child(2) {
+    width: 60%%;
+}
+</style>
 
-    <div class="summary">
-        <h3>概要信息</h3>
-        <ul>
+<h2>%(hostname)s(%(ip)s)-PVE硬件健康报告</h2>
+<h3 style="color: #cecece">报告时间：%(report_time)s</h3>
+<div style="display: flex; flex-direction: column;align-items: center;">
+    <h3>概要信息：</h3>
+    <ul>
 %(summary_content)s
-        </ul>
-    </div>
+    </ul>
+</div>
 
-    <div class="section">
-        <h3>系统状态</h3>
-        <table>
+<h3>系统状态：</h3>
+<table border class="system-table">
 %(sysinfo_content)s
-        </table>
-    </div>
+</table>
 
-    <div class="section">
-        <h3>磁盘信息</h3>
-        <table>
-%(disk_content)s
-        </table>
-    </div>
+<h3>磁盘容量：</h3>
+<table border>
+%(disk_capacity_content)s
+</table>
 
-    <div class="section">
-        <h3>网络接口</h3>
-        <table>
+<h3>磁盘健康度：</h3>
+<table border>
+%(disk_health_content)s
+</table>
+
+<h3>网络接口：</h3>
+<table border>
 %(network_content)s
-        </table>
-    </div>
+</table>
 
-    <div class="section">
-        <h3>传感器信息</h3>
-        <table>
+<h3>传感器信息：</h3>
+<table border>
 %(sensor_content)s
-        </table>
-    </div>
+</table>
 
-    <div class="section">
-        <h3>电源信息</h3>
-        <table>
+<h3>电源信息：</h3>
+<table border>
 %(power_content)s
-        </table>
-    </div>
+</table>
 
-    <div class="footer">
-        <p>报告生成时间: %(report_time)s</p>
-        <p>PVE 硬件监控系统 v1.0</p>
-    </div>
-</body>
-</html>"""
+<div style="clear:both;height:1px;"></div>
+</div>
+
+<script>
+var _n = document.querySelectorAll('[formAction], [onclick]');
+for(var i=0;i<_n.length;i++){ 
+	var _nc = _n[i];
+	if (_nc.getAttribute('formAction')) {
+		_nc.setAttribute('__formAction', _nc.getAttribute('formAction')), _nc.removeAttribute('formAction');
+	}
+	if (_nc.getAttribute('onclick')) {
+		_nc.setAttribute('__onclick', _nc.getAttribute('onclick')), _nc.removeAttribute('onclick');
+	}
+}
+</script>
+<style type="text/css">
+* {
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+body{font-size:14px;font-family:arial,verdana,sans-serif;line-height:1.666;padding:0;margin:0;overflow:auto;white-space:normal;word-wrap:break-word;min-height:100px}
+td, input, button, select, body{font-family:Helvetica, 'Microsoft Yahei', verdana}
+pre {white-space:pre-wrap !important;white-space:-moz-pre-wrap;white-space:-pre-wrap;white-space:-o-pre-wrap;word-wrap:break-word;width:95%%}
+pre * { white-space: unset !important; }
+th,td{font-family:arial,verdana,sans-serif;line-height:1.666}
+img{ border:0}
+header,footer,section,aside,article,nav,hgroup,figure,figcaption{display:block}
+blockquote{margin-right:0px}
+</style>"""
+        
+        # 获取IP地址
+        ip_output, _, _ = run_command("hostname -I | awk '{print $1}'")
+        ip_addr = ip_output.strip() or "未知"
         
         return html_template % {
             'hostname': hostname,
+            'ip': ip_addr,
             'report_time': now.strftime('%Y-%m-%d %H:%M:%S'),
             'summary_content': summary_content,
             'sysinfo_content': sysinfo_content,
-            'disk_content': disk_content,
+            'disk_capacity_content': disk_capacity_content,
+            'disk_health_content': disk_health_content,
             'network_content': network_content,
             'sensor_content': sensor_content,
             'power_content': power_content
         }
+    
+    def send_email(self, html_report_path: str, recipient: str = None, subject: str = None) -> bool:
+        """
+        通过 pve_tools.sh 发送HTML报告
+        
+        Args:
+            html_report_path: HTML报告文件路径
+            recipient: 收件人邮箱（如果为None，使用PVE配置的默认邮箱）
+            subject: 邮件主题（如果为None，自动生成）
+        
+        Returns:
+            bool: 发送成功返回True，失败返回False
+        """
+        try:
+            # 检查HTML报告是否存在
+            if not os.path.exists(html_report_path):
+                self.log(color_text(f"错误: HTML报告文件不存在: {html_report_path}", Colors.RED))
+                return False
+            
+            # 检查 pve_tools.sh 是否存在
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            pve_tools_path = os.path.join(script_dir, 'pve_tools.sh')
+            
+            if not os.path.exists(pve_tools_path):
+                self.log(color_text(f"错误: pve_tools.sh 不存在: {pve_tools_path}", Colors.RED))
+                return False
+            
+            # 确保脚本可执行
+            os.chmod(pve_tools_path, 0o755)
+            
+            # 获取主机名
+            hostname_output, _, _ = run_command("hostname")
+            hostname = hostname_output.strip() or "PVE服务器"
+            
+            # 生成邮件主题
+            if subject is None:
+                critical_count = sum(1 for i in self.issues if i['severity'] == 'critical')
+                warning_count = sum(1 for i in self.issues if i['severity'] == 'warning')
+                
+                if critical_count > 0:
+                    status_text = f"⚠️ 危险 {critical_count} 个"
+                elif warning_count > 0:
+                    status_text = f"⚠️ 警告 {warning_count} 个"
+                else:
+                    status_text = "✓ 正常"
+                
+                subject = f"[{hostname}] 硬件健康报告 - {status_text}"
+            
+            # 如果没有指定收件人，从 pve_tools.sh 获取
+            if recipient is None:
+                stdout, _, code = run_command(f"bash {pve_tools_path} get-pve-email")
+                if code == 0 and stdout.strip():
+                    recipient = stdout.strip()
+            
+            if not recipient:
+                self.log(color_text("错误: 未配置收件人邮箱", Colors.RED))
+                self.log("请配置邮箱:")
+                self.log("  方法1: 在 /etc/aliases 中添加 'root: your@email.com' 并运行 newaliases")
+                self.log("  方法2: 在 /etc/pve/notifications.cfg 中配置邮箱")
+                self.log("  方法3: 使用 --email 参数指定收件人")
+                return False
+            
+            # 使用 pve_tools.sh 发送邮件
+            cmd = f"bash {pve_tools_path} send-email --to '{recipient}' --subject '{subject}' --body-file '{html_report_path}' --html"
+            stdout, stderr, code = run_command(cmd, timeout=30)
+            
+            if code == 0:
+                self.log(color_text(f"✓ 邮件已发送至: {recipient}", Colors.GREEN))
+                if stdout.strip():
+                    self.log(f"  {stdout.strip()}")
+                return True
+            else:
+                self.log(color_text(f"✗ 邮件发送失败", Colors.RED))
+                if stderr.strip():
+                    self.log(f"  错误信息: {stderr.strip()}")
+                return False
+            
+        except Exception as e:
+            self.log(color_text(f"发送邮件时出错: {str(e)}", Colors.RED))
+            return False
     
     def log(self, message: str = ""):
         """记录日志"""
@@ -1829,6 +1822,9 @@ def main():
     parser.add_argument('--io-wait-crit', type=float, default=DEFAULT_THRESHOLDS['io_wait_crit'], help='IO等待危险阈值(毫秒)')
     parser.add_argument('--network-interfaces', type=str, default=None, help='要监控的网卡接口列表，用逗号分隔，如: eth0,enp2s0 (默认自动检测物理网卡)')
     parser.add_argument('--auto-install', action='store_true', help='自动安装缺失的监控工具（lm-sensors, ipmitool等）')
+    parser.add_argument('--send-email', action='store_true', help='发送HTML报告到邮箱')
+    parser.add_argument('--email', type=str, default=None, help='收件人邮箱地址（默认使用PVE配置的邮箱）')
+    parser.add_argument('--email-subject', type=str, default=None, help='邮件主题（默认自动生成）')
     parser.add_argument('--log-dir', type=str, default='/tmp/logs/pve', help='日志保存目录')
     
     args = parser.parse_args()
@@ -1862,7 +1858,12 @@ def main():
     reporter.analyze_and_report()
     
     # 保存报告
-    reporter.save_reports(args.log_dir)
+    html_report_path = reporter.save_reports(args.log_dir)
+    
+    # 发送邮件
+    if args.send_email:
+        reporter.log("")
+        reporter.send_email(html_report_path, args.email, args.email_subject)
     
     # 根据隐患数量返回退出码
     critical_count = sum(1 for i in reporter.issues if i['severity'] == 'critical')

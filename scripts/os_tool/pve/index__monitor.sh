@@ -2,9 +2,11 @@
 set -e
 
 if [ "$USE_PANEL_SCRIPT" != "true" ]; then
+    source /tmp/os_tools.sh
     source /tmp/pve_tools.sh
 else
     source /www/server/jh-panel/scripts/os_tool/tools.sh
+    source /www/server/jh-panel/scripts/os_tool/pve/pve_tools.sh
 fi
 
 # 检查/usr/bin/dialog是否存在

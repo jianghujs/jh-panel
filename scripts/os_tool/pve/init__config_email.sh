@@ -245,6 +245,40 @@ configure_email_wizard() {
     else
         echo -e "${YELLOW}跳过 SMTP 服务配置${NC}"
     fi
+
+    smtputf8_changed=false
+    if [ -f "$POSTFIX_MAIN_CF" ]; then
+        if [ -n "$relayhost" ]; then
+            if grep -q "^smtputf8_enable" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                sed -i '/^smtputf8_enable/d' "$POSTFIX_MAIN_CF"
+                smtputf8_changed=true
+                echo -e "${YELLOW}已移除 smtputf8_enable 配置${NC}"
+            fi
+        else
+            if grep -q "^smtputf8_enable" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                if ! grep -q "^smtputf8_enable *= *no" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                    sed -i 's/^smtputf8_enable.*/smtputf8_enable = no/' "$POSTFIX_MAIN_CF"
+                    smtputf8_changed=true
+                fi
+            else
+                echo "smtputf8_enable = no" >> "$POSTFIX_MAIN_CF"
+                smtputf8_changed=true
+            fi
+            if [ "$smtputf8_changed" = true ]; then
+                echo -e "${GREEN}✓ 已设置 smtputf8_enable = no${NC}"
+            fi
+        fi
+
+        if [ "$smtputf8_changed" = true ]; then
+            postfix check
+            if [ $? -eq 0 ]; then
+                systemctl reload postfix
+            else
+                echo -e "${RED}✗ Postfix 配置检查失败${NC}"
+                return 1
+            fi
+        fi
+    fi
     
     echo ""
     echo -e "${CYAN}[步骤 2/3] 配置 PVE root@pam 用户接收邮箱${NC}"

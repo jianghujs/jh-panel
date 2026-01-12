@@ -69,6 +69,13 @@ SATA_PARAMS = {
     "242": ("总计读取", "Total_LBAs_Read")
 }
 
+SMART_LIFE_WARN = 30
+SMART_LIFE_CRIT = 10
+NVME_SPARE_WARN = 20
+NVME_SPARE_CRIT = 10
+NVME_USED_WARN = 80
+NVME_USED_CRIT = 95
+
 # 颜色定义
 class Colors:
     RED = '\033[1;31m'
@@ -131,6 +138,50 @@ def to_float(value: Any, default: float = 0.0) -> float:
     except ValueError:
         match = re.search(r'-?\d+\.?\d*', value_str)
         return float(match.group()) if match else default
+
+def parse_sata_attributes(output: str) -> Dict[str, Dict[str, Any]]:
+    """解析SATA设备的SMART属性"""
+    attrs = {}
+    lines = output.strip().split('\n')
+    for line in lines:
+        if re.match(r'^\s*\d+', line):
+            parts = re.split(r'\s+', line.strip(), maxsplit=10)
+            if len(parts) >= 10:
+                attr_id = parts[0]
+                raw_value = parts[9]
+                if len(parts) > 10:
+                    raw_value = f"{raw_value} {parts[10]}"
+                attrs[attr_id] = {
+                    'id': attr_id,
+                    'name': parts[1],
+                    'value': to_int(parts[3]),
+                    'worst': to_int(parts[4]),
+                    'threshold': to_int(parts[5]),
+                    'raw': raw_value,
+                    'raw_int': to_int(raw_value),
+                    'type': parts[6] if len(parts) > 6 else '',
+                    'when_failed': parts[8] if len(parts) > 8 else '-'
+                }
+    return attrs
+
+def parse_nvme_info(output: str) -> Dict[str, Any]:
+    """解析NVMe设备的SMART信息"""
+    info = {}
+    lines = output.strip().split('\n')
+    current_section = None
+    for line in lines:
+        line = line.strip()
+        if line.startswith('=== START OF SMART DATA SECTION ==='):
+            current_section = 'smart'
+        elif line.startswith('SMART/Health Information'):
+            current_section = 'health'
+        if ':' in line and current_section == 'health':
+            key, value = line.split(':', 1)
+            key = key.strip().lower().replace(' ', '_')
+            value = value.strip()
+            num_match = re.search(r'(\d+\.?\d*)', value)
+            info[key] = num_match.group(1) if num_match else value
+    return info
 
 def get_status_color(status: str) -> str:
     """根据状态返回颜色"""
@@ -337,6 +388,10 @@ class DiskCollector:
                 if line:
                     device = line.split()[0]
                     devices.append(device)
+        elif code != 0 and stderr:
+            if 'command not found' in stderr.lower() or 'not found' in stderr.lower():
+                result['error'] = "smartctl 未安装，无法读取SMART信息"
+                return result
         
         if not devices:
             # 备用检测
@@ -348,11 +403,20 @@ class DiskCollector:
         # 检查每个设备
         for device in devices:
             stdout, stderr, code = run_command(f"smartctl -a {device}")
+            is_nvme = 'nvme' in device
             device_info = {
                 'device': device,
                 'model': '未知',
+                'serial': '未知',
+                'firmware': '未知',
+                'capacity': '未知',
+                'type': 'SSD' if is_nvme else 'SATA',
+                'is_nvme': is_nvme,
                 'health': 'unknown',
                 'temperature': None,
+                'attributes': [],
+                'nvme': {},
+                'health_score': None,
                 'errors': []
             }
             
@@ -366,26 +430,58 @@ class DiskCollector:
                 line_lower = line.lower()
                 if 'model number:' in line_lower or 'device model:' in line_lower:
                     device_info['model'] = line.split(':', 1)[1].strip()
+                elif 'serial number:' in line_lower:
+                    device_info['serial'] = line.split(':', 1)[1].strip()
+                elif 'firmware version:' in line_lower:
+                    device_info['firmware'] = line.split(':', 1)[1].strip()
+                elif 'user capacity:' in line_lower or 'total nvm capacity:' in line_lower:
+                    capacity_match = re.search(r'\[(.*?)\]', line)
+                    if capacity_match:
+                        device_info['capacity'] = capacity_match.group(1)
+                elif 'rotation rate:' in line_lower:
+                    if 'solid state' in line_lower:
+                        device_info['type'] = 'SSD'
+                    else:
+                        device_info['type'] = 'HDD'
                 elif 'smart overall-health' in line_lower or 'smart health status:' in line_lower:
                     if 'PASSED' in line or 'OK' in line:
                         device_info['health'] = 'passed'
                     else:
                         device_info['health'] = 'failed'
-            
-            # 解析温度
-            is_nvme = 'nvme' in device
+
+            # 解析温度与详细参数
             if is_nvme:
-                match = re.search(r'Temperature:\s*(\d+)', stdout)
-                if match:
-                    device_info['temperature'] = to_int(match.group(1))
+                nvme_info = parse_nvme_info(stdout)
+                device_info['nvme'] = nvme_info
+                temp_match = re.search(r'(?:Temperature|Composite Temperature):\s*(\d+)', stdout)
+                if not temp_match:
+                    temp_match = re.search(r'Temperature Sensor 1:\s*(\d+)', stdout)
+                if temp_match:
+                    device_info['temperature'] = to_int(temp_match.group(1))
+                elif 'temperature' in nvme_info:
+                    device_info['temperature'] = to_int(nvme_info.get('temperature'))
+                if 'percentage_used' in nvme_info:
+                    used = to_float(nvme_info.get('percentage_used'))
+                    if used >= 0:
+                        device_info['health_score'] = max(0, min(100, int(round(100 - used))))
             else:
-                # SATA设备
-                for line in stdout.split('\n'):
-                    if re.match(r'^\s*194\s', line):
-                        parts = line.split()
-                        if len(parts) >= 10:
-                            device_info['temperature'] = to_int(parts[9])
-                        break
+                attrs = parse_sata_attributes(stdout)
+                for attr_id, (cn_name, en_name) in SATA_PARAMS.items():
+                    if attr_id in attrs:
+                        attr_data = dict(attrs[attr_id])
+                        attr_data['cn_name'] = cn_name
+                        attr_data['key'] = en_name
+                        device_info['attributes'].append(attr_data)
+                if '194' in attrs:
+                    device_info['temperature'] = attrs['194'].get('raw_int')
+                elif '190' in attrs:
+                    device_info['temperature'] = attrs['190'].get('raw_int')
+                if '231' in attrs:
+                    life_raw = attrs['231'].get('raw_int', 0)
+                    life_val = attrs['231'].get('value', 0)
+                    life = life_raw if life_raw > 0 else life_val
+                    if life >= 0:
+                        device_info['health_score'] = max(0, min(100, int(life)))
             
             result['devices'].append(device_info)
         
@@ -977,6 +1073,101 @@ class HardwareReporter:
                         'message': f'{dev["device"]} SMART 检查失败',
                         'detail': f'磁盘 {dev["device"]} 健康检查未通过'
                     })
+
+                if dev.get('errors'):
+                    self.issues.append({
+                        'category': '磁盘健康',
+                        'severity': 'warning',
+                        'message': f'{dev["device"]} SMART 读取异常',
+                        'detail': '; '.join(dev.get('errors', []))
+                    })
+
+                attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
+                if attrs:
+                    reallocated = attrs.get('5', {})
+                    if reallocated.get('raw_int', 0) > 0:
+                        self.issues.append({
+                            'category': '磁盘健康',
+                            'severity': 'critical',
+                            'message': f'{dev["device"]} 重新分配扇区 {reallocated["raw_int"]}',
+                            'detail': f'磁盘 {dev["device"]} 存在坏块迹象'
+                        })
+                    uncorrect = attrs.get('187', {})
+                    if uncorrect.get('raw_int', 0) > 0:
+                        self.issues.append({
+                            'category': '磁盘健康',
+                            'severity': 'critical',
+                            'message': f'{dev["device"]} 不可纠正错误 {uncorrect["raw_int"]}',
+                            'detail': f'磁盘 {dev["device"]} 出现不可纠正错误'
+                        })
+                    life_attr = attrs.get('231', {})
+                    if life_attr:
+                        life_raw = life_attr.get('raw_int', 0)
+                        life_val = life_attr.get('value', 0)
+                        life = life_raw if life_raw > 0 else life_val
+                        if life <= SMART_LIFE_CRIT:
+                            self.issues.append({
+                                'category': '磁盘寿命',
+                                'severity': 'critical',
+                                'message': f'{dev["device"]} 剩余寿命 {life}%',
+                                'detail': f'磁盘 {dev["device"]} 寿命告急'
+                            })
+                        elif life <= SMART_LIFE_WARN:
+                            self.issues.append({
+                                'category': '磁盘寿命',
+                                'severity': 'warning',
+                                'message': f'{dev["device"]} 剩余寿命 {life}%',
+                                'detail': f'磁盘 {dev["device"]} 寿命偏低'
+                            })
+                    for attr in attrs.values():
+                        threshold = attr.get('threshold', 0)
+                        value = attr.get('value', 0)
+                        if threshold > 0 and value <= threshold:
+                            self.issues.append({
+                                'category': '磁盘健康',
+                                'severity': 'warning',
+                                'message': f'{dev["device"]} SMART 指标 {attr.get("cn_name", attr.get("name", ""))} 低于阈值',
+                                'detail': f'当前值 {value} 阈值 {threshold}'
+                            })
+
+                nvme = dev.get('nvme', {})
+                if nvme:
+                    if 'available_spare' in nvme:
+                        spare = to_float(nvme.get('available_spare'))
+                        spare_status = determine_status(spare, NVME_SPARE_WARN, NVME_SPARE_CRIT, reverse=True)
+                        if spare_status != 'normal':
+                            self.issues.append({
+                                'category': '磁盘寿命',
+                                'severity': spare_status,
+                                'message': f'{dev["device"]} 可用备用空间 {spare}%',
+                                'detail': f'磁盘 {dev["device"]} 备用空间不足'
+                            })
+                    if 'percentage_used' in nvme:
+                        used = to_float(nvme.get('percentage_used'))
+                        if used >= NVME_USED_WARN:
+                            used_status = determine_status(used, NVME_USED_WARN, NVME_USED_CRIT)
+                            self.issues.append({
+                                'category': '磁盘寿命',
+                                'severity': used_status,
+                                'message': f'{dev["device"]} 已用寿命 {used}%',
+                                'detail': f'磁盘 {dev["device"]} 寿命接近阈值'
+                            })
+                    media_errors = to_int(nvme.get('media_and_data_integrity_errors'))
+                    if media_errors > 0:
+                        self.issues.append({
+                            'category': '磁盘健康',
+                            'severity': 'critical',
+                            'message': f'{dev["device"]} 媒体错误 {media_errors}',
+                            'detail': f'磁盘 {dev["device"]} 检测到媒体/数据完整性错误'
+                        })
+                    unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
+                    if unsafe_shutdowns > 0:
+                        self.issues.append({
+                            'category': '磁盘健康',
+                            'severity': 'warning',
+                            'message': f'{dev["device"]} 不安全关机 {unsafe_shutdowns}',
+                            'detail': f'磁盘 {dev["device"]} 存在不安全关机记录'
+                        })
                 
                 temp = dev.get('temperature')
                 if temp is not None:
@@ -1169,13 +1360,78 @@ class HardwareReporter:
             
             self.log(f"  设备: {dev['device']}")
             self.log(f"    型号: {dev['model']}")
+            if dev.get('serial') and dev['serial'] != '未知':
+                self.log(f"    序列号: {dev['serial']}")
+            if dev.get('firmware') and dev['firmware'] != '未知':
+                self.log(f"    固件版本: {dev['firmware']}")
+            if dev.get('capacity') and dev['capacity'] != '未知':
+                self.log(f"    容量: {dev['capacity']}")
+            if dev.get('type'):
+                self.log(f"    类型: {dev['type']}")
             self.log(f"    健康状态: {color_text(health.upper(), health_color)}")
+            if dev.get('health_score') is not None:
+                self.log(f"    健康度: {dev['health_score']}%")
             
             temp = dev.get('temperature')
             if temp is not None:
                 temp_status = determine_status(temp, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
                 temp_color = get_status_color(temp_status)
                 self.log(f"    温度: {color_text(f'{temp}°C', temp_color)}")
+
+            if dev.get('is_nvme'):
+                nvme = dev.get('nvme', {})
+                if nvme:
+                    if 'available_spare' in nvme:
+                        spare = to_float(nvme.get('available_spare'))
+                        spare_status = determine_status(spare, NVME_SPARE_WARN, NVME_SPARE_CRIT, reverse=True)
+                        spare_color = get_status_color(spare_status)
+                        self.log(f"    备用空间: {color_text(f'{spare}%', spare_color)}")
+                    if 'percentage_used' in nvme:
+                        used = to_float(nvme.get('percentage_used'))
+                        used_status = determine_status(used, NVME_USED_WARN, NVME_USED_CRIT)
+                        used_color = get_status_color(used_status)
+                        self.log(f"    已用寿命: {color_text(f'{used}%', used_color)}")
+                    media_errors = to_int(nvme.get('media_and_data_integrity_errors'))
+                    if media_errors:
+                        media_color = Colors.RED if media_errors > 0 else Colors.GREEN
+                        self.log(f"    媒体错误: {color_text(str(media_errors), media_color)}")
+                    unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
+                    if unsafe_shutdowns:
+                        unsafe_color = Colors.ORANGE if unsafe_shutdowns > 0 else Colors.GREEN
+                        self.log(f"    不安全关机: {color_text(str(unsafe_shutdowns), unsafe_color)}")
+            else:
+                attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
+                if attrs:
+                    reallocated = attrs.get('5')
+                    if reallocated:
+                        raw = reallocated.get('raw_int', 0)
+                        raw_color = Colors.RED if raw > 0 else Colors.GREEN
+                        self.log(f"    重新分配扇区: {color_text(str(raw), raw_color)}")
+                    uncorrect = attrs.get('187')
+                    if uncorrect:
+                        raw = uncorrect.get('raw_int', 0)
+                        raw_color = Colors.RED if raw > 0 else Colors.GREEN
+                        self.log(f"    不可纠正错误: {color_text(str(raw), raw_color)}")
+                    life_attr = attrs.get('231')
+                    if life_attr:
+                        life_raw = life_attr.get('raw_int', 0)
+                        life_val = life_attr.get('value', 0)
+                        life = life_raw if life_raw > 0 else life_val
+                        life_status = determine_status(life, SMART_LIFE_WARN, SMART_LIFE_CRIT, reverse=True)
+                        life_color = get_status_color(life_status)
+                        self.log(f"    剩余寿命: {color_text(f'{life}%', life_color)}")
+                    power_on = attrs.get('9')
+                    if power_on:
+                        self.log(f"    通电时间: {power_on.get('raw', '-')}")
+                    power_cycle = attrs.get('12')
+                    if power_cycle:
+                        self.log(f"    电源循环: {power_cycle.get('raw', '-')}")
+                    total_written = attrs.get('241')
+                    if total_written:
+                        self.log(f"    总写入: {total_written.get('raw', '-')}")
+                    total_read = attrs.get('242')
+                    if total_read:
+                        self.log(f"    总读取: {total_read.get('raw', '-')}")
             
             errors = dev.get('errors', [])
             if errors:
@@ -1498,13 +1754,64 @@ class HardwareReporter:
                 health_color = 'green' if health == 'passed' else 'red' if health == 'failed' else 'orange'
                 
                 smart_desc = f"型号: {dev['model']}<br/>"
+                if dev.get('serial') and dev['serial'] != '未知':
+                    smart_desc += f"序列号: {dev['serial']}<br/>"
+                if dev.get('capacity') and dev['capacity'] != '未知':
+                    smart_desc += f"容量: {dev['capacity']}<br/>"
+                if dev.get('type'):
+                    smart_desc += f"类型: {dev['type']}<br/>"
                 smart_desc += f"健康状态: <span style='color: {health_color}'>{health.upper()}</span><br/>"
+                if dev.get('health_score') is not None:
+                    smart_desc += f"健康度: {dev['health_score']}%<br/>"
                 
                 temp = dev.get('temperature')
                 if temp is not None:
                     temp_status = determine_status(temp, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
                     temp_color = 'red' if temp_status == 'critical' else 'orange' if temp_status == 'warning' else 'auto'
                     smart_desc += f"温度: <span style='color: {temp_color}'>{temp}°C</span>"
+
+                if dev.get('is_nvme'):
+                    nvme = dev.get('nvme', {})
+                    if nvme:
+                        if 'available_spare' in nvme:
+                            spare = to_float(nvme.get('available_spare'))
+                            spare_status = determine_status(spare, NVME_SPARE_WARN, NVME_SPARE_CRIT, reverse=True)
+                            spare_color = 'red' if spare_status == 'critical' else 'orange' if spare_status == 'warning' else 'auto'
+                            smart_desc += f"<br/>备用空间: <span style='color: {spare_color}'>{spare}%</span>"
+                        if 'percentage_used' in nvme:
+                            used = to_float(nvme.get('percentage_used'))
+                            used_status = determine_status(used, NVME_USED_WARN, NVME_USED_CRIT)
+                            used_color = 'red' if used_status == 'critical' else 'orange' if used_status == 'warning' else 'auto'
+                            smart_desc += f"<br/>已用寿命: <span style='color: {used_color}'>{used}%</span>"
+                        media_errors = to_int(nvme.get('media_and_data_integrity_errors'))
+                        if media_errors:
+                            media_color = 'red' if media_errors > 0 else 'auto'
+                            smart_desc += f"<br/>媒体错误: <span style='color: {media_color}'>{media_errors}</span>"
+                        unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
+                        if unsafe_shutdowns:
+                            unsafe_color = 'orange' if unsafe_shutdowns > 0 else 'auto'
+                            smart_desc += f"<br/>不安全关机: <span style='color: {unsafe_color}'>{unsafe_shutdowns}</span>"
+                else:
+                    attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
+                    if attrs:
+                        reallocated = attrs.get('5')
+                        if reallocated:
+                            raw = reallocated.get('raw_int', 0)
+                            raw_color = 'red' if raw > 0 else 'auto'
+                            smart_desc += f"<br/>重新分配扇区: <span style='color: {raw_color}'>{raw}</span>"
+                        uncorrect = attrs.get('187')
+                        if uncorrect:
+                            raw = uncorrect.get('raw_int', 0)
+                            raw_color = 'red' if raw > 0 else 'auto'
+                            smart_desc += f"<br/>不可纠正错误: <span style='color: {raw_color}'>{raw}</span>"
+                        life_attr = attrs.get('231')
+                        if life_attr:
+                            life_raw = life_attr.get('raw_int', 0)
+                            life_val = life_attr.get('value', 0)
+                            life = life_raw if life_raw > 0 else life_val
+                            life_status = determine_status(life, SMART_LIFE_WARN, SMART_LIFE_CRIT, reverse=True)
+                            life_color = 'red' if life_status == 'critical' else 'orange' if life_status == 'warning' else 'auto'
+                            smart_desc += f"<br/>剩余寿命: <span style='color: {life_color}'>{life}%</span>"
                 
                 disk_health_rows.append(f"<tr><td>SMART ({dev['device']})</td><td>{smart_desc}</td></tr>")
         
@@ -1885,4 +2192,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

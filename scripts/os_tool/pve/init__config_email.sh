@@ -19,6 +19,66 @@ POSTFIX_MAIN_CF="/etc/postfix/main.cf"
 POSTFIX_SASL_PASSWD="/etc/postfix/sasl_passwd"
 POSTFIX_SASL_PASSWD_DB="/etc/postfix/sasl_passwd.db"
 
+update_postfix_setting() {
+    local key="$1"
+    local value="$2"
+    if grep -q "^${key}" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+        sed -i "s|^${key}.*|${key} = ${value}|" "$POSTFIX_MAIN_CF"
+    else
+        echo "${key} = ${value}" >> "$POSTFIX_MAIN_CF"
+    fi
+}
+
+remove_postfix_setting() {
+    local key="$1"
+    if grep -q "^${key}" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+        sed -i "/^${key}/d" "$POSTFIX_MAIN_CF"
+    fi
+}
+
+extract_relay_port() {
+    local relayhost="$1"
+    local port=""
+    port=$(echo "$relayhost" | sed -n 's/.*:\([0-9][0-9]*\).*/\1/p')
+    if [ -z "$port" ]; then
+        port="25"
+    fi
+    echo "$port"
+}
+
+apply_smtp_tls_settings() {
+    local relayhost="$1"
+    local port=""
+
+    if [ -z "$relayhost" ]; then
+        return
+    fi
+
+    port=$(extract_relay_port "$relayhost")
+    case "$port" in
+        465)
+            update_postfix_setting "smtp_tls_wrappermode" "yes"
+            update_postfix_setting "smtp_tls_security_level" "encrypt"
+            update_postfix_setting "smtp_use_tls" "no"
+            ;;
+        25)
+            remove_postfix_setting "smtp_tls_wrappermode"
+            update_postfix_setting "smtp_tls_security_level" "none"
+            update_postfix_setting "smtp_use_tls" "no"
+            ;;
+        *)
+            remove_postfix_setting "smtp_tls_wrappermode"
+            update_postfix_setting "smtp_tls_security_level" "encrypt"
+            update_postfix_setting "smtp_use_tls" "yes"
+            ;;
+    esac
+}
+
+apply_ipv4_preference() {
+    update_postfix_setting "inet_protocols" "ipv4"
+    update_postfix_setting "smtp_address_preference" "ipv4"
+}
+
 echo -e "${CYAN}================================${NC}"
 echo -e "${CYAN}PVE 邮件发送配置工具${NC}"
 echo -e "${CYAN}================================${NC}"
@@ -155,6 +215,7 @@ configure_email_wizard() {
                 sed -i '/^relayhost/d' "$POSTFIX_MAIN_CF"
                 sed -i '/^smtp_use_tls/d' "$POSTFIX_MAIN_CF"
                 sed -i '/^smtp_tls_security_level/d' "$POSTFIX_MAIN_CF"
+                sed -i '/^smtp_tls_wrappermode/d' "$POSTFIX_MAIN_CF"
                 sed -i '/^smtp_sasl_auth_enable/d' "$POSTFIX_MAIN_CF"
                 sed -i '/^smtp_sasl_password_maps/d' "$POSTFIX_MAIN_CF"
                 sed -i '/^smtp_sasl_security_options/d' "$POSTFIX_MAIN_CF"
@@ -206,27 +267,25 @@ configure_email_wizard() {
                 else
                     echo "relayhost = $relayhost" >> "$POSTFIX_MAIN_CF"
                 fi
-                
-                # 配置TLS支持
-                if ! grep -q "^smtp_use_tls" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-                    echo "smtp_use_tls = yes" >> "$POSTFIX_MAIN_CF"
-                fi
-                
-                if ! grep -q "^smtp_tls_security_level" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-                    echo "smtp_tls_security_level = encrypt" >> "$POSTFIX_MAIN_CF"
-                fi
-                
-                # 重新加载Postfix
-                postfix check
-                if [ $? -eq 0 ]; then
-                    systemctl reload postfix
-                    echo -e "${GREEN}✓ SMTP 中继服务器配置成功${NC}"
-                else
-                    echo -e "${RED}✗ Postfix 配置检查失败${NC}"
-                    return 1
-                fi
             else
                 echo -e "${YELLOW}保持现有 SMTP 中继配置${NC}"
+            fi
+            
+            apply_smtp_tls_settings "$relayhost"
+            apply_ipv4_preference
+            
+            # 重新加载Postfix
+            postfix check
+            if [ $? -eq 0 ]; then
+                systemctl reload postfix
+                if [ "$update_relayhost" = true ]; then
+                    echo -e "${GREEN}✓ SMTP 中继服务器配置成功${NC}"
+                else
+                    echo -e "${GREEN}✓ SMTP 配置已应用${NC}"
+                fi
+            else
+                echo -e "${RED}✗ Postfix 配置检查失败${NC}"
+                return 1
             fi
             
             # 配置SMTP认证

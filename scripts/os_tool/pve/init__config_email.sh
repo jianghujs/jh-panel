@@ -85,17 +85,12 @@ echo ""
 # 主菜单
 show_menu() {
     echo -e "${CYAN}请选择配置选项:${NC}"
-    echo "  1) 一键配置完整邮件系统 (推荐)"
-    echo "  2) 配置 SMTP 中继服务器 (relayhost)"
-    echo "  3) 配置 SMTP 认证 (用户名/密码)"
-    echo "  4) 配置 PVE root@pam 用户邮箱"
-    echo "  5) 配置 PVE Datacenter 邮箱"
-    echo "  6) 查看当前配置"
-    echo "  7) 测试邮件发送"
-    echo "  8) 移除 SMTP 中继配置"
-    echo "  9) 退出"
+    echo "  1) 配置向导"
+    echo "  2) 查看当前配置"
+    echo "  3) 测试邮件发送"
+    echo "  4) 退出"
     echo ""
-    read -p "请选择 [1-9]: " choice
+    read -p "请选择 [1-4]: " choice
 }
 
 # 一键配置向导
@@ -124,30 +119,20 @@ configure_email_wizard() {
     CURRENT_RELAYHOST=$(postconf -h relayhost 2>/dev/null || echo "")
     if [ -n "$CURRENT_RELAYHOST" ]; then
         echo -e "${YELLOW}当前已配置 SMTP 中继: $CURRENT_RELAYHOST${NC}"
-        read -p "是否重新配置 SMTP 服务? [y/N]: " config_smtp
-        if [[ ! "$config_smtp" =~ ^[Yy]$ ]]; then
-            config_smtp="skip"
-        fi
+        read -p "请输入 SMTP 服务器地址 (格式: [smtp.example.com]:587，回车保持当前): " relayhost_input
     else
-        read -p "是否配置 SMTP 服务? [Y/n]: " config_smtp
-        if [[ "$config_smtp" =~ ^[Nn]$ ]]; then
-            config_smtp="skip"
-        fi
+        read -p "请输入 SMTP 服务器地址 (格式: [smtp.example.com]:587，回车跳过): " relayhost_input
     fi
     
-    if [ "$config_smtp" != "skip" ]; then
-        # 配置relayhost
-        echo ""
-        echo "常用SMTP服务器示例:"
-        echo "  - Gmail: [smtp.gmail.com]:587"
-        echo "  - Outlook: [smtp-mail.outlook.com]:587"
-        echo "  - QQ邮箱: [smtp.qq.com]:587"
-        echo "  - 163邮箱: [smtp.163.com]:587"
-        echo ""
-        
-        read -p "请输入 SMTP 服务器地址 (格式: [smtp.example.com]:587): " relayhost
-        
-        if [ -n "$relayhost" ]; then
+    relayhost="$CURRENT_RELAYHOST"
+    update_relayhost=false
+    if [ -n "$relayhost_input" ]; then
+        relayhost="$relayhost_input"
+        update_relayhost=true
+    fi
+    
+    if [ -n "$relayhost" ]; then
+        if [ "$update_relayhost" = true ]; then
             # 备份配置文件
             if [ -f "$POSTFIX_MAIN_CF" ]; then
                 cp "$POSTFIX_MAIN_CF" "${POSTFIX_MAIN_CF}.bak.$(date +%Y%m%d_%H%M%S)"
@@ -178,63 +163,83 @@ configure_email_wizard() {
                 echo -e "${RED}✗ Postfix 配置检查失败${NC}"
                 return 1
             fi
-            
-            # 配置SMTP认证
-            echo ""
-            echo "大多数SMTP服务器需要身份验证。"
-            echo "注意: 某些邮件服务商需要使用应用专用密码"
-            echo "  - Gmail: 需要在Google账号中生成应用专用密码"
-            echo "  - QQ邮箱: 需要使用授权码而非登录密码"
-            echo ""
-            
-            read -p "是否配置 SMTP 认证? [Y/n]: " config_auth
-            if [[ ! "$config_auth" =~ ^[Nn]$ ]]; then
-                read -p "请输入 SMTP 用户名/邮箱: " smtp_user
-                if [ -n "$smtp_user" ]; then
-                    read -sp "请输入 SMTP 密码/授权码: " smtp_pass
-                    echo ""
-                    
-                    if [ -n "$smtp_pass" ]; then
-                        # 创建sasl_passwd文件
-                        echo "$relayhost $smtp_user:$smtp_pass" > "$POSTFIX_SASL_PASSWD"
-                        chmod 600 "$POSTFIX_SASL_PASSWD"
-                        
-                        # 生成数据库文件
-                        postmap "$POSTFIX_SASL_PASSWD"
-                        chmod 600 "$POSTFIX_SASL_PASSWD_DB"
-                        
-                        # 配置SASL认证
-                        if ! grep -q "^smtp_sasl_auth_enable" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-                            echo "smtp_sasl_auth_enable = yes" >> "$POSTFIX_MAIN_CF"
-                        else
-                            sed -i 's/^smtp_sasl_auth_enable.*/smtp_sasl_auth_enable = yes/' "$POSTFIX_MAIN_CF"
-                        fi
-                        
-                        if ! grep -q "^smtp_sasl_password_maps" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-                            echo "smtp_sasl_password_maps = hash:$POSTFIX_SASL_PASSWD" >> "$POSTFIX_MAIN_CF"
-                        else
-                            sed -i "s|^smtp_sasl_password_maps.*|smtp_sasl_password_maps = hash:$POSTFIX_SASL_PASSWD|" "$POSTFIX_MAIN_CF"
-                        fi
-                        
-                        if ! grep -q "^smtp_sasl_security_options" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-                            echo "smtp_sasl_security_options = noanonymous" >> "$POSTFIX_MAIN_CF"
-                        fi
-                        
-                        if ! grep -q "^smtp_sasl_tls_security_options" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-                            echo "smtp_sasl_tls_security_options = noanonymous" >> "$POSTFIX_MAIN_CF"
-                        fi
-                        
-                        # 重新加载Postfix
-                        postfix check
-                        if [ $? -eq 0 ]; then
-                            systemctl reload postfix
-                            echo -e "${GREEN}✓ SMTP 认证配置成功${NC}"
-                        else
-                            echo -e "${RED}✗ Postfix 配置检查失败${NC}"
-                            return 1
-                        fi
-                    fi
+        else
+            echo -e "${YELLOW}保持现有 SMTP 中继配置${NC}"
+        fi
+        
+        # 配置SMTP认证
+        echo ""
+        echo "大多数SMTP服务器需要身份验证。"
+        echo "注意: 某些邮件服务商需要使用应用专用密码"
+        echo "  - Gmail: 需要在Google账号中生成应用专用密码"
+        echo "  - QQ邮箱: 需要使用授权码而非登录密码"
+        echo ""
+        
+        CURRENT_SMTP_USER=""
+        if [ -f "$POSTFIX_SASL_PASSWD" ]; then
+            CURRENT_SMTP_USER=$(cut -d' ' -f2 "$POSTFIX_SASL_PASSWD" | cut -d':' -f1)
+        fi
+        
+        if [ -n "$CURRENT_SMTP_USER" ]; then
+            read -p "请输入 SMTP 用户名/邮箱 (回车保持当前): " smtp_user_input
+        else
+            read -p "请输入 SMTP 用户名/邮箱 (回车跳过): " smtp_user_input
+        fi
+        
+        if [ -z "$smtp_user_input" ]; then
+            if [ -n "$CURRENT_SMTP_USER" ]; then
+                echo -e "${YELLOW}保持现有 SMTP 认证配置${NC}"
+            else
+                echo -e "${YELLOW}跳过 SMTP 认证配置${NC}"
+            fi
+        else
+            smtp_user="$smtp_user_input"
+            while true; do
+                read -sp "请输入 SMTP 密码/授权码: " smtp_pass
+                echo ""
+                if [ -n "$smtp_pass" ]; then
+                    break
                 fi
+                echo -e "${RED}✗ 密码不能为空，请重新输入${NC}"
+            done
+            
+            # 创建sasl_passwd文件
+            echo "$relayhost $smtp_user:$smtp_pass" > "$POSTFIX_SASL_PASSWD"
+            chmod 600 "$POSTFIX_SASL_PASSWD"
+            
+            # 生成数据库文件
+            postmap "$POSTFIX_SASL_PASSWD"
+            chmod 600 "$POSTFIX_SASL_PASSWD_DB"
+            
+            # 配置SASL认证
+            if ! grep -q "^smtp_sasl_auth_enable" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                echo "smtp_sasl_auth_enable = yes" >> "$POSTFIX_MAIN_CF"
+            else
+                sed -i 's/^smtp_sasl_auth_enable.*/smtp_sasl_auth_enable = yes/' "$POSTFIX_MAIN_CF"
+            fi
+            
+            if ! grep -q "^smtp_sasl_password_maps" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                echo "smtp_sasl_password_maps = hash:$POSTFIX_SASL_PASSWD" >> "$POSTFIX_MAIN_CF"
+            else
+                sed -i "s|^smtp_sasl_password_maps.*|smtp_sasl_password_maps = hash:$POSTFIX_SASL_PASSWD|" "$POSTFIX_MAIN_CF"
+            fi
+            
+            if ! grep -q "^smtp_sasl_security_options" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                echo "smtp_sasl_security_options = noanonymous" >> "$POSTFIX_MAIN_CF"
+            fi
+            
+            if ! grep -q "^smtp_sasl_tls_security_options" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                echo "smtp_sasl_tls_security_options = noanonymous" >> "$POSTFIX_MAIN_CF"
+            fi
+            
+            # 重新加载Postfix
+            postfix check
+            if [ $? -eq 0 ]; then
+                systemctl reload postfix
+                echo -e "${GREEN}✓ SMTP 认证配置成功${NC}"
+            else
+                echo -e "${RED}✗ Postfix 配置检查失败${NC}"
+                return 1
             fi
         fi
     else
@@ -254,14 +259,20 @@ configure_email_wizard() {
         CURRENT_EMAIL=$(pveum user list --output-format json 2>/dev/null | grep -A 5 '"userid":"root@pam"' | grep '"email"' | cut -d'"' -f4 || echo "")
         if [ -n "$CURRENT_EMAIL" ]; then
             echo -e "${YELLOW}当前邮箱: $CURRENT_EMAIL${NC}"
-            read -p "是否修改? [y/N]: " modify
-            if [[ "$modify" =~ ^[Yy]$ ]]; then
-                read -p "请输入新的邮箱地址: " email
-            else
-                email="$CURRENT_EMAIL"
-            fi
+            read -p "请输入 root@pam 邮箱 (回车保持当前): " email_input
         else
-            read -p "请输入邮箱地址: " email
+            read -p "请输入 root@pam 邮箱: " email_input
+        fi
+        
+        while [ -z "$email_input" ] && [ -z "$CURRENT_EMAIL" ]; do
+            echo -e "${RED}✗ 此项为必填，请输入邮箱地址${NC}"
+            read -p "请输入 root@pam 邮箱: " email_input
+        done
+        
+        if [ -n "$email_input" ]; then
+            email="$email_input"
+        else
+            email="$CURRENT_EMAIL"
         fi
         
         if [ -n "$email" ]; then
@@ -270,11 +281,15 @@ configure_email_wizard() {
                 echo -e "${YELLOW}⚠ 邮箱格式可能不正确，但将继续配置${NC}"
             fi
             
-            if pveum user modify root@pam -email "$email" 2>/dev/null; then
-                echo -e "${GREEN}✓ PVE root@pam 用户邮箱配置成功: $email${NC}"
+            if [ "$email" = "$CURRENT_EMAIL" ]; then
+                echo -e "${YELLOW}保持当前 root@pam 邮箱: $email${NC}"
             else
-                echo -e "${RED}✗ 配置失败，请检查权限和邮箱格式${NC}"
-                return 1
+                if pveum user modify root@pam -email "$email" 2>/dev/null; then
+                    echo -e "${GREEN}✓ PVE root@pam 用户邮箱配置成功: $email${NC}"
+                else
+                    echo -e "${RED}✗ 配置失败，请检查权限和邮箱格式${NC}"
+                    return 1
+                fi
             fi
         else
             echo -e "${YELLOW}⚠ 未配置邮箱，将使用系统默认${NC}"
@@ -293,27 +308,33 @@ configure_email_wizard() {
         echo ""
         
         DC_CFG="/etc/pve/datacenter.cfg"
+        CURRENT_DC_EMAIL=""
         if [ -f "$DC_CFG" ]; then
             CURRENT_DC_EMAIL=$(grep -E "^email:" "$DC_CFG" 2>/dev/null | cut -d' ' -f2 || echo "")
-            if [ -n "$CURRENT_DC_EMAIL" ]; then
-                echo -e "${YELLOW}当前 Datacenter 邮箱: $CURRENT_DC_EMAIL${NC}"
-                read -p "是否配置/修改 Datacenter 邮箱? [y/N]: " config_dc
-            else
-                read -p "是否配置 Datacenter 邮箱? [y/N]: " config_dc
-            fi
-        else
-            read -p "是否配置 Datacenter 邮箱? [y/N]: " config_dc
         fi
         
-        if [[ "$config_dc" =~ ^[Yy]$ ]]; then
-            read -p "请输入 Datacenter 邮箱地址: " dc_email
+        if [ -n "$CURRENT_DC_EMAIL" ]; then
+            echo -e "${YELLOW}当前 Datacenter 邮箱: $CURRENT_DC_EMAIL${NC}"
+            read -p "请输入 Datacenter 邮箱地址 (回车保持当前): " dc_email_input
+        else
+            read -p "请输入 Datacenter 邮箱地址 (回车跳过): " dc_email_input
+        fi
+        
+        if [ -n "$dc_email_input" ]; then
+            dc_email="$dc_email_input"
+        else
+            dc_email="$CURRENT_DC_EMAIL"
+        fi
+        
+        if [ -n "$dc_email" ]; then
+            # 验证邮箱格式
+            if [[ ! "$dc_email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+                echo -e "${YELLOW}⚠ 邮箱格式可能不正确，但将继续配置${NC}"
+            fi
             
-            if [ -n "$dc_email" ]; then
-                # 验证邮箱格式
-                if [[ ! "$dc_email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-                    echo -e "${YELLOW}⚠ 邮箱格式可能不正确，但将继续配置${NC}"
-                fi
-                
+            if [ "$dc_email" = "$CURRENT_DC_EMAIL" ]; then
+                echo -e "${YELLOW}保持当前 Datacenter 邮箱: $dc_email${NC}"
+            else
                 # 备份配置文件
                 if [ -f "$DC_CFG" ]; then
                     cp "$DC_CFG" "${DC_CFG}.bak.$(date +%Y%m%d_%H%M%S)"
@@ -327,8 +348,6 @@ configure_email_wizard() {
                 fi
                 
                 echo -e "${GREEN}✓ PVE Datacenter 邮箱配置成功: $dc_email${NC}"
-            else
-                echo -e "${YELLOW}⚠ 未输入邮箱，跳过 Datacenter 邮箱配置${NC}"
             fi
         else
             echo -e "${YELLOW}跳过 Datacenter 邮箱配置${NC}"
@@ -394,239 +413,6 @@ configure_email_wizard() {
         fi
     fi
     echo ""
-}
-
-# 配置SMTP中继服务器
-configure_relayhost() {
-    echo ""
-    echo -e "${CYAN}配置 SMTP 中继服务器${NC}"
-    echo "----------------------------------------"
-    echo "常用SMTP服务器示例:"
-    echo "  - Gmail: [smtp.gmail.com]:587"
-    echo "  - Outlook: [smtp-mail.outlook.com]:587"
-    echo "  - QQ邮箱: [smtp.qq.com]:587"
-    echo "  - 163邮箱: [smtp.163.com]:587"
-    echo ""
-    
-    CURRENT_RELAYHOST=$(postconf -h relayhost 2>/dev/null || echo "")
-    if [ -n "$CURRENT_RELAYHOST" ]; then
-        echo -e "${YELLOW}当前 relayhost: $CURRENT_RELAYHOST${NC}"
-        read -p "是否修改? [y/N]: " modify
-        if [[ ! "$modify" =~ ^[Yy]$ ]]; then
-            return
-        fi
-    fi
-    
-    read -p "请输入 SMTP 服务器地址 (格式: [smtp.example.com]:587): " relayhost
-    
-    if [ -z "$relayhost" ]; then
-        echo -e "${RED}✗ 未输入服务器地址${NC}"
-        return
-    fi
-    
-    # 备份配置文件
-    if [ -f "$POSTFIX_MAIN_CF" ]; then
-        cp "$POSTFIX_MAIN_CF" "${POSTFIX_MAIN_CF}.bak.$(date +%Y%m%d_%H%M%S)"
-    fi
-    
-    # 配置relayhost
-    if grep -q "^relayhost" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-        sed -i "s|^relayhost.*|relayhost = $relayhost|" "$POSTFIX_MAIN_CF"
-    else
-        echo "relayhost = $relayhost" >> "$POSTFIX_MAIN_CF"
-    fi
-    
-    # 配置TLS支持
-    if ! grep -q "^smtp_use_tls" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-        echo "smtp_use_tls = yes" >> "$POSTFIX_MAIN_CF"
-    fi
-    
-    if ! grep -q "^smtp_tls_security_level" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-        echo "smtp_tls_security_level = encrypt" >> "$POSTFIX_MAIN_CF"
-    fi
-    
-    # 重新加载Postfix
-    postfix check
-    if [ $? -eq 0 ]; then
-        systemctl reload postfix
-        echo -e "${GREEN}✓ SMTP 中继服务器配置成功${NC}"
-        echo -e "${GREEN}✓ relayhost = $relayhost${NC}"
-    else
-        echo -e "${RED}✗ Postfix 配置检查失败，请检查配置${NC}"
-        return 1
-    fi
-}
-
-# 配置SMTP认证
-configure_smtp_auth() {
-    echo ""
-    echo -e "${CYAN}配置 SMTP 认证${NC}"
-    echo "----------------------------------------"
-    echo "注意: 某些邮件服务商需要使用应用专用密码"
-    echo "  - Gmail: 需要在Google账号中生成应用专用密码"
-    echo "  - QQ邮箱: 需要使用授权码而非登录密码"
-    echo ""
-    
-    if [ ! -f "$POSTFIX_MAIN_CF" ]; then
-        echo -e "${RED}✗ Postfix 配置文件不存在，请先配置 relayhost${NC}"
-        return
-    fi
-    
-    CURRENT_RELAYHOST=$(postconf -h relayhost 2>/dev/null || echo "")
-    if [ -z "$CURRENT_RELAYHOST" ]; then
-        echo -e "${RED}✗ 请先配置 relayhost${NC}"
-        return
-    fi
-    
-    # 提取SMTP服务器地址（去掉端口）
-    SMTP_SERVER=$(echo "$CURRENT_RELAYHOST" | sed 's/\[\(.*\)\]:.*/\1/')
-    
-    read -p "请输入 SMTP 用户名/邮箱: " smtp_user
-    if [ -z "$smtp_user" ]; then
-        echo -e "${RED}✗ 未输入用户名${NC}"
-        return
-    fi
-    
-    read -sp "请输入 SMTP 密码/授权码: " smtp_pass
-    echo ""
-    if [ -z "$smtp_pass" ]; then
-        echo -e "${RED}✗ 未输入密码${NC}"
-        return
-    fi
-    
-    # 创建sasl_passwd文件
-    echo "$CURRENT_RELAYHOST $smtp_user:$smtp_pass" > "$POSTFIX_SASL_PASSWD"
-    chmod 600 "$POSTFIX_SASL_PASSWD"
-    
-    # 生成数据库文件
-    postmap "$POSTFIX_SASL_PASSWD"
-    chmod 600 "$POSTFIX_SASL_PASSWD_DB"
-    
-    # 备份并更新main.cf
-    cp "$POSTFIX_MAIN_CF" "${POSTFIX_MAIN_CF}.bak.$(date +%Y%m%d_%H%M%S)"
-    
-    # 配置SASL认证
-    if ! grep -q "^smtp_sasl_auth_enable" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-        echo "smtp_sasl_auth_enable = yes" >> "$POSTFIX_MAIN_CF"
-    else
-        sed -i 's/^smtp_sasl_auth_enable.*/smtp_sasl_auth_enable = yes/' "$POSTFIX_MAIN_CF"
-    fi
-    
-    if ! grep -q "^smtp_sasl_password_maps" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-        echo "smtp_sasl_password_maps = hash:$POSTFIX_SASL_PASSWD" >> "$POSTFIX_MAIN_CF"
-    else
-        sed -i "s|^smtp_sasl_password_maps.*|smtp_sasl_password_maps = hash:$POSTFIX_SASL_PASSWD|" "$POSTFIX_MAIN_CF"
-    fi
-    
-    if ! grep -q "^smtp_sasl_security_options" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-        echo "smtp_sasl_security_options = noanonymous" >> "$POSTFIX_MAIN_CF"
-    fi
-    
-    if ! grep -q "^smtp_sasl_tls_security_options" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-        echo "smtp_sasl_tls_security_options = noanonymous" >> "$POSTFIX_MAIN_CF"
-    fi
-    
-    # 重新加载Postfix
-    postfix check
-    if [ $? -eq 0 ]; then
-        systemctl reload postfix
-        echo -e "${GREEN}✓ SMTP 认证配置成功${NC}"
-        echo -e "${GREEN}✓ 用户名: $smtp_user${NC}"
-    else
-        echo -e "${RED}✗ Postfix 配置检查失败，请检查配置${NC}"
-        return 1
-    fi
-}
-
-# 配置PVE用户邮箱
-configure_pve_user_email() {
-    if [ "$PVE_AVAILABLE" != true ]; then
-        echo -e "${RED}✗ PVE 环境不可用${NC}"
-        return
-    fi
-    
-    echo ""
-    echo -e "${CYAN}配置 PVE root@pam 用户邮箱${NC}"
-    echo "----------------------------------------"
-    
-    CURRENT_EMAIL=$(pveum user list --output-format json 2>/dev/null | grep -A 5 '"userid":"root@pam"' | grep '"email"' | cut -d'"' -f4 || echo "")
-    if [ -n "$CURRENT_EMAIL" ]; then
-        echo -e "${YELLOW}当前邮箱: $CURRENT_EMAIL${NC}"
-        read -p "是否修改? [y/N]: " modify
-        if [[ ! "$modify" =~ ^[Yy]$ ]]; then
-            return
-        fi
-    fi
-    
-    read -p "请输入邮箱地址: " email
-    
-    if [ -z "$email" ]; then
-        echo -e "${RED}✗ 未输入邮箱地址${NC}"
-        return
-    fi
-    
-    # 验证邮箱格式
-    if [[ ! "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-        echo -e "${YELLOW}⚠ 邮箱格式可能不正确，但将继续配置${NC}"
-    fi
-    
-    if pveum user modify root@pam -email "$email" 2>/dev/null; then
-        echo -e "${GREEN}✓ PVE root@pam 用户邮箱配置成功: $email${NC}"
-    else
-        echo -e "${RED}✗ 配置失败，请检查权限和邮箱格式${NC}"
-        return 1
-    fi
-}
-
-# 配置PVE Datacenter邮箱
-configure_pve_datacenter_email() {
-    if [ "$PVE_AVAILABLE" != true ]; then
-        echo -e "${RED}✗ PVE 环境不可用${NC}"
-        return
-    fi
-    
-    echo ""
-    echo -e "${CYAN}配置 PVE Datacenter 邮箱${NC}"
-    echo "----------------------------------------"
-    
-    DC_CFG="/etc/pve/datacenter.cfg"
-    
-    if [ -f "$DC_CFG" ]; then
-        CURRENT_EMAIL=$(grep -E "^email:" "$DC_CFG" 2>/dev/null | cut -d' ' -f2 || echo "")
-        if [ -n "$CURRENT_EMAIL" ]; then
-            echo -e "${YELLOW}当前邮箱: $CURRENT_EMAIL${NC}"
-            read -p "是否修改? [y/N]: " modify
-            if [[ ! "$modify" =~ ^[Yy]$ ]]; then
-                return
-            fi
-        fi
-    fi
-    
-    read -p "请输入邮箱地址: " email
-    
-    if [ -z "$email" ]; then
-        echo -e "${RED}✗ 未输入邮箱地址${NC}"
-        return
-    fi
-    
-    # 验证邮箱格式
-    if [[ ! "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-        echo -e "${YELLOW}⚠ 邮箱格式可能不正确，但将继续配置${NC}"
-    fi
-    
-    # 备份配置文件
-    if [ -f "$DC_CFG" ]; then
-        cp "$DC_CFG" "${DC_CFG}.bak.$(date +%Y%m%d_%H%M%S)"
-    fi
-    
-    # 更新或添加邮箱配置
-    if grep -q "^email:" "$DC_CFG" 2>/dev/null; then
-        sed -i "s|^email:.*|email: $email|" "$DC_CFG"
-    else
-        echo "email: $email" >> "$DC_CFG"
-    fi
-    
-    echo -e "${GREEN}✓ PVE Datacenter 邮箱配置成功: $email${NC}"
 }
 
 # 查看当前配置
@@ -737,44 +523,6 @@ test_email() {
     echo ""
 }
 
-# 移除SMTP中继配置
-remove_relayhost() {
-    echo ""
-    echo -e "${YELLOW}警告: 此操作将移除 SMTP 中继配置${NC}"
-    read -p "确认继续? [y/N]: " confirm
-    
-    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        echo "已取消"
-        return
-    fi
-    
-    if [ -f "$POSTFIX_MAIN_CF" ]; then
-        # 备份配置文件
-        cp "$POSTFIX_MAIN_CF" "${POSTFIX_MAIN_CF}.bak.$(date +%Y%m%d_%H%M%S)"
-        
-        # 移除relayhost相关配置
-        sed -i '/^relayhost/d' "$POSTFIX_MAIN_CF"
-        sed -i '/^smtp_use_tls/d' "$POSTFIX_MAIN_CF"
-        sed -i '/^smtp_tls_security_level/d' "$POSTFIX_MAIN_CF"
-        sed -i '/^smtp_sasl_auth_enable/d' "$POSTFIX_MAIN_CF"
-        sed -i '/^smtp_sasl_password_maps/d' "$POSTFIX_MAIN_CF"
-        sed -i '/^smtp_sasl_security_options/d' "$POSTFIX_MAIN_CF"
-        sed -i '/^smtp_sasl_tls_security_options/d' "$POSTFIX_MAIN_CF"
-        
-        # 删除认证文件
-        rm -f "$POSTFIX_SASL_PASSWD" "$POSTFIX_SASL_PASSWD_DB"
-        
-        # 重新加载Postfix
-        postfix check
-        systemctl reload postfix
-        
-        echo -e "${GREEN}✓ SMTP 中继配置已移除${NC}"
-    else
-        echo -e "${YELLOW}⚠ Postfix 配置文件不存在${NC}"
-    fi
-    echo ""
-}
-
 # 主循环
 while true; do
     show_menu
@@ -784,27 +532,12 @@ while true; do
             configure_email_wizard
             ;;
         2)
-            configure_relayhost
-            ;;
-        3)
-            configure_smtp_auth
-            ;;
-        4)
-            configure_pve_user_email
-            ;;
-        5)
-            configure_pve_datacenter_email
-            ;;
-        6)
             show_current_config
             ;;
-        7)
+        3)
             test_email
             ;;
-        8)
-            remove_relayhost
-            ;;
-        9)
+        4)
             echo "退出配置工具"
             exit 0
             ;;
@@ -817,4 +550,3 @@ while true; do
     read -p "按 Enter 继续..."
     echo ""
 done
-

@@ -21,9 +21,6 @@ PVE硬件全面健康报告脚本
     # 指定网卡接口
     python3 monitor__hardware_report.py --network-interfaces eth0,enp2s0
 
-    # 忽略部分传感器并仅在风扇全停时报错
-    python3 monitor__hardware_report.py --ignore-temp-sensors CPU_Opt,AUXTIN0,AUXTIN3 --fan-min-running 1
-    
     # 自动安装监控工具
     python3 monitor__hardware_report.py --auto-install
     
@@ -58,6 +55,15 @@ DEFAULT_THRESHOLDS = {
     'temp_crit': 80,
     'io_wait_warn': 20,
     'io_wait_crit': 40,
+}
+
+DEFAULT_SENSOR_RULES = {
+    'ignore_temp_sensors': ['cpu_opt', 'auxtin0', 'auxtin3'],
+    'ignore_fan_sensors': [],
+    'temp_valid_min': -10,
+    'temp_valid_max': 110,
+    'fan_min_rpm': 500,
+    'fan_min_running': 1,
 }
 
 # SATA设备关键参数映射（复用自 monitor__disk_health_check.py）
@@ -2234,8 +2240,8 @@ def main():
     parser.add_argument('--ignore-fan-sensors', type=str, default=None, help='忽略的风扇传感器名称，逗号分隔')
     parser.add_argument('--temp-valid-min', type=float, default=None, help='温度传感器有效值下限（低于则忽略）')
     parser.add_argument('--temp-valid-max', type=float, default=None, help='温度传感器有效值上限（高于则忽略）')
-    parser.add_argument('--fan-min-rpm', type=int, default=500, help='风扇视为运行的最低转速 (RPM)')
-    parser.add_argument('--fan-min-running', type=int, default=0, help='至少需要运行的风扇数量，0 表示逐个风扇严格检查')
+    parser.add_argument('--fan-min-rpm', type=int, default=None, help='风扇视为运行的最低转速 (RPM)')
+    parser.add_argument('--fan-min-running', type=int, default=None, help='至少需要运行的风扇数量，0 表示逐个风扇严格检查')
     
     args = parser.parse_args()
     
@@ -2258,13 +2264,32 @@ def main():
     if args.network_interfaces:
         network_interfaces = [iface.strip() for iface in args.network_interfaces.split(',') if iface.strip()]
 
+    ignore_temp_sensors = (
+        parse_csv_list(args.ignore_temp_sensors)
+        if args.ignore_temp_sensors is not None
+        else DEFAULT_SENSOR_RULES['ignore_temp_sensors']
+    )
+    ignore_fan_sensors = (
+        parse_csv_list(args.ignore_fan_sensors)
+        if args.ignore_fan_sensors is not None
+        else DEFAULT_SENSOR_RULES['ignore_fan_sensors']
+    )
+    temp_valid_min = args.temp_valid_min if args.temp_valid_min is not None else DEFAULT_SENSOR_RULES['temp_valid_min']
+    temp_valid_max = args.temp_valid_max if args.temp_valid_max is not None else DEFAULT_SENSOR_RULES['temp_valid_max']
+    fan_min_rpm = args.fan_min_rpm if args.fan_min_rpm is not None else DEFAULT_SENSOR_RULES['fan_min_rpm']
+    fan_min_running = (
+        args.fan_min_running
+        if args.fan_min_running is not None
+        else DEFAULT_SENSOR_RULES['fan_min_running']
+    )
+
     sensor_rules = {
-        'ignore_temp_sensors': parse_csv_list(args.ignore_temp_sensors),
-        'ignore_fan_sensors': parse_csv_list(args.ignore_fan_sensors),
-        'temp_valid_min': args.temp_valid_min,
-        'temp_valid_max': args.temp_valid_max,
-        'fan_min_rpm': args.fan_min_rpm,
-        'fan_min_running': args.fan_min_running,
+        'ignore_temp_sensors': ignore_temp_sensors,
+        'ignore_fan_sensors': ignore_fan_sensors,
+        'temp_valid_min': temp_valid_min,
+        'temp_valid_max': temp_valid_max,
+        'fan_min_rpm': fan_min_rpm,
+        'fan_min_running': fan_min_running,
     }
     
     # 创建报告器

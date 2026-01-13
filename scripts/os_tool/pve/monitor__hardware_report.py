@@ -1238,14 +1238,6 @@ class HardwareReporter:
                             'message': f'{dev["device"]} 媒体错误 {media_errors}',
                             'detail': f'磁盘 {dev["device"]} 检测到媒体/数据完整性错误'
                         })
-                    unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
-                    if unsafe_shutdowns > 0:
-                        self.issues.append({
-                            'category': '磁盘健康',
-                            'severity': 'warning',
-                            'message': f'{dev["device"]} 不安全关机 {unsafe_shutdowns}',
-                            'detail': f'磁盘 {dev["device"]} 存在不安全关机记录'
-                        })
                 
                 temp = dev.get('temperature')
                 if temp is not None:
@@ -1486,10 +1478,6 @@ class HardwareReporter:
                     if media_errors:
                         media_color = Colors.RED if media_errors > 0 else Colors.GREEN
                         self.log(f"    媒体错误: {color_text(str(media_errors), media_color)}")
-                    unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
-                    if unsafe_shutdowns:
-                        unsafe_color = Colors.ORANGE if unsafe_shutdowns > 0 else Colors.GREEN
-                        self.log(f"    不安全关机: {color_text(str(unsafe_shutdowns), unsafe_color)}")
             else:
                 attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
                 if attrs:
@@ -1885,10 +1873,6 @@ class HardwareReporter:
                         if media_errors:
                             media_color = 'red' if media_errors > 0 else 'auto'
                             smart_desc += f"<br/>媒体错误: <span style='color: {media_color}'>{media_errors}</span>"
-                        unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
-                        if unsafe_shutdowns:
-                            unsafe_color = 'orange' if unsafe_shutdowns > 0 else 'auto'
-                            smart_desc += f"<br/>不安全关机: <span style='color: {unsafe_color}'>{unsafe_shutdowns}</span>"
                 else:
                     attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
                     if attrs:

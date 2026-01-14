@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# PVE 邮件发送配置脚本（暂时不可用，直接用PVE面板配置通知）
+# PVE 邮件发送配置脚本
 # 用于配置 Postfix SMTP 中继和 PVE 邮箱设置
 #
 
@@ -18,7 +18,6 @@ NC='\033[0m' # No Color
 POSTFIX_MAIN_CF="/etc/postfix/main.cf"
 POSTFIX_SASL_PASSWD="/etc/postfix/sasl_passwd"
 POSTFIX_SASL_PASSWD_DB="/etc/postfix/sasl_passwd.db"
-POSTFIX_GENERIC="/etc/postfix/generic"
 
 update_postfix_setting() {
     local key="$1"
@@ -78,15 +77,6 @@ apply_smtp_tls_settings() {
 apply_ipv4_preference() {
     update_postfix_setting "inet_protocols" "ipv4"
     update_postfix_setting "smtp_address_preference" "ipv4"
-}
-
-configure_sender_rewrite() {
-    local sender="$1"
-    if [ -z "$sender" ]; then
-        return 1
-    fi
-    update_postfix_setting "smtp_generic_maps" "regexp:${POSTFIX_GENERIC}"
-    echo "/.*/ ${sender}" > "$POSTFIX_GENERIC"
 }
 
 echo -e "${CYAN}================================${NC}"
@@ -230,11 +220,9 @@ configure_email_wizard() {
                 sed -i '/^smtp_sasl_password_maps/d' "$POSTFIX_MAIN_CF"
                 sed -i '/^smtp_sasl_security_options/d' "$POSTFIX_MAIN_CF"
                 sed -i '/^smtp_sasl_tls_security_options/d' "$POSTFIX_MAIN_CF"
-                sed -i '/^smtp_generic_maps/d' "$POSTFIX_MAIN_CF"
             fi
             
             rm -f "$POSTFIX_SASL_PASSWD" "$POSTFIX_SASL_PASSWD_DB"
-            rm -f "$POSTFIX_GENERIC"
             
             if postfix check; then
                 systemctl reload postfix
@@ -321,21 +309,7 @@ configure_email_wizard() {
             
             if [ -z "$smtp_user_input" ]; then
                 if [ -n "$CURRENT_SMTP_USER" ]; then
-                    if [ "$update_relayhost" = true ]; then
-                        existing_auth=$(awk 'NF {print $2; exit}' "$POSTFIX_SASL_PASSWD" 2>/dev/null || echo "")
-                        if [ -n "$existing_auth" ]; then
-                            echo "$relayhost $existing_auth" > "$POSTFIX_SASL_PASSWD"
-                            chmod 600 "$POSTFIX_SASL_PASSWD"
-                            postmap "$POSTFIX_SASL_PASSWD"
-                            chmod 600 "$POSTFIX_SASL_PASSWD_DB"
-                            systemctl reload postfix
-                            echo -e "${GREEN}✓ 已更新 SMTP 认证映射到新的中继服务器${NC}"
-                        else
-                            echo -e "${YELLOW}⚠ 未读取到现有 SMTP 认证信息，请重新输入${NC}"
-                        fi
-                    else
-                        echo -e "${YELLOW}保持现有 SMTP 认证配置${NC}"
-                    fi
+                    echo -e "${YELLOW}保持现有 SMTP 认证配置${NC}"
                 else
                     echo -e "${YELLOW}跳过 SMTP 认证配置${NC}"
                 fi
@@ -390,46 +364,15 @@ configure_email_wizard() {
                 fi
             fi
         fi
-
-        current_sender=""
-        if [ -f "$POSTFIX_GENERIC" ]; then
-            current_sender=$(awk 'NF {print $2; exit}' "$POSTFIX_GENERIC" 2>/dev/null)
-        fi
-        if [ -n "$USER" ]; then
-            default_sender="$USER"
-        else
-            default_sender="$current_sender"
-        fi
-        if [ -n "$default_sender" ]; then
-            read -p "请输入统一发件人地址 (回车使用 ${default_sender}): " sender_input
-        else
-            read -p "请输入统一发件人地址: " sender_input
-        fi
-        if [ -z "$sender_input" ]; then
-            sender_input="$default_sender"
-        fi
-        while [ -z "$sender_input" ]; do
-            echo -e "${RED}✗ 统一发件人地址为必填${NC}"
-            read -p "请输入统一发件人地址: " sender_input
-        done
-
-        configure_sender_rewrite "$sender_input"
-        if postfix check; then
-            systemctl reload postfix
-            echo -e "${GREEN}✓ 已设置统一发件人: ${sender_input}${NC}"
-        else
-            echo -e "${RED}✗ Postfix 配置检查失败${NC}"
-            return 1
-        fi
     fi
 
     smtputf8_changed=false
     if [ -f "$POSTFIX_MAIN_CF" ]; then
         if [ -n "$relayhost" ]; then
-            if grep -q "^smtputf8_enable" "$POSTFIX_MAIN_CF" 2>/dev/null; then
-                sed -i '/^smtputf8_enable/d' "$POSTFIX_MAIN_CF"
+            if ! grep -q "^smtputf8_enable *= *no" "$POSTFIX_MAIN_CF" 2>/dev/null; then
+                update_postfix_setting "smtputf8_enable" "no"
                 smtputf8_changed=true
-                echo -e "${YELLOW}已移除 smtputf8_enable 配置${NC}"
+                echo -e "${GREEN}✓ 已设置 smtputf8_enable = no 以提高兼容性${NC}"
             fi
         else
             if grep -q "^smtputf8_enable" "$POSTFIX_MAIN_CF" 2>/dev/null; then

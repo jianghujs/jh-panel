@@ -174,6 +174,80 @@ send_email() {
     fi
 }
 
+#
+# 发送 PVE 系统通知 (使用 PVE::Notify)
+#
+# 用法:
+#   send_pve_notify --subject <主题> --body-file <文件路径>
+#
+# 返回值:
+#   0 - 发送成功
+#   1 - 参数错误
+#   2 - PVE::Notify 模块不可用
+#   3 - 发送失败
+#
+send_pve_notify() {
+    local subject=""
+    local body_file=""
+    
+    # 解析参数
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --subject)
+                subject="$2"
+                shift 2
+                ;;
+            --body-file)
+                body_file="$2"
+                shift 2
+                ;;
+            *)
+                echo "错误: 未知参数 $1" >&2
+                return 1
+                ;;
+        esac
+    done
+    
+    if [[ -z "$subject" || -z "$body_file" ]]; then
+        echo "错误: 缺少必需参数 (--subject, --body-file)" >&2
+        return 1
+    fi
+    
+    if [[ ! -f "$body_file" ]]; then
+        echo "错误: 文件不存在: $body_file" >&2
+        return 1
+    fi
+    
+    # 检查 PVE::Notify 模块是否存在
+    if ! perl -e 'use PVE::Notify' 2>/dev/null; then
+        echo "错误: PVE::Notify 模块不可用 (仅支持 PVE 8.1+)" >&2
+        return 2
+    fi
+    
+    # 使用 Perl 发送通知
+    if perl -e '
+        use strict;
+        use warnings;
+        use PVE::Notify;
+        
+        my $subject = $ARGV[0];
+        my $body_file = $ARGV[1];
+        
+        open(my $fh, "<", $body_file) or die "Cannot open file: $!";
+        local $/;
+        my $content = <$fh>;
+        close($fh);
+        
+        PVE::Notify::info($subject, $content);
+    ' "$subject" "$body_file"; then
+        echo "✓ PVE 通知已发送"
+        return 0
+    else
+        echo "✗ PVE 通知发送失败" >&2
+        return 3
+    fi
+}
+
 # ========================= 其他工具函数 =========================
 
 #
@@ -346,64 +420,61 @@ PVE 工具脚本 v1.0
 命令:
   send-email          发送邮件
   get-pve-email       获取 PVE 配置的邮箱地址
-  check-mail-system   检查邮件系统配置
-  send-test-email     发送测试邮件
-  help                显示帮助信息
-
-示例:
-  # 发送纯文本邮件
-  $0 send-email --to user@example.com --subject "测试" --body "内容"
+      check-mail-system   检查邮件系统配置
+    send-test-email     发送测试邮件
+    send-pve-notify     发送 PVE 系统通知 (PVE 8.1+)
+    help                显示帮助信息
   
-  # 发送 HTML 邮件
-  $0 send-email --to user@example.com --subject "报告" --body-file report.html --html
+  示例:
+    # 发送纯文本邮件
+    $0 send-email --to user@example.com --subject "测试" --body "内容"
+    
+    # 发送 PVE 通知
+    $0 send-pve-notify --subject "警告" --body-file /tmp/msg.txt
   
-  # 检查邮件系统
-  $0 check-mail-system
-  
-  # 发送测试邮件
-  $0 send-test-email user@example.com
-
-详细文档:
-  请查看脚本源码中的函数注释
+detailed documentation:
+  Please check the function comments in the script source code
 
 EOF
 }
-
-# 主程序入口
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    # 脚本被直接执行
-    if [[ $# -eq 0 ]]; then
-        show_help
-        exit 0
-    fi
-    
-    command="$1"
-    shift
-    
-    case "$command" in
-        send-email)
-            send_email "$@"
-            ;;
-        get-pve-email)
-            get_pve_email
-            ;;
-        check-mail-system)
-            check_mail_system
-            ;;
-        send-test-email)
-            send_test_email "$@"
-            ;;
-        help|--help|-h)
-            show_help
-            ;;
-        *)
-            echo "错误: 未知命令 '$command'" >&2
-            echo "使用 '$0 help' 查看帮助信息" >&2
-            exit 1
-            ;;
-    esac
-else
-    # 脚本被 source 引入
+  
+  # 主程序入口
+  if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+      # 脚本被直接执行
+      if [[ $# -eq 0 ]]; then
+          show_help
+          exit 0
+      fi
+      
+      command="$1"
+      shift
+      
+      case "$command" in
+          send-email)
+              send_email "$@"
+              ;;
+          get-pve-email)
+              get_pve_email
+              ;;
+          check-mail-system)
+              check_mail_system
+              ;;
+          send-test-email)
+              send_test_email "$@"
+              ;;
+          send-pve-notify)
+              send_pve_notify "$@"
+              ;;
+          help|--help|-h)
+              show_help
+              ;;
+          *)
+              echo "错误: 未知命令 '$command'" >&2
+              echo "使用 '$0 help' 查看帮助信息" >&2
+              exit 1
+              ;;
+      esac
+  else    # 脚本被 source 引入
     :
 fi
 

@@ -20,7 +20,7 @@ PVE硬件全面健康报告脚本
     
     # 指定网卡接口
     python3 monitor__hardware_report.py --network-interfaces eth0,enp2s0
-
+    
     # 自动安装监控工具
     python3 monitor__hardware_report.py --auto-install
     
@@ -55,15 +55,6 @@ DEFAULT_THRESHOLDS = {
     'temp_crit': 80,
     'io_wait_warn': 20,
     'io_wait_crit': 40,
-}
-
-DEFAULT_SENSOR_RULES = {
-    'ignore_temp_sensors': ['cpu_opt', 'auxtin0', 'auxtin3'],
-    'ignore_fan_sensors': [],
-    'temp_valid_min': -10,
-    'temp_valid_max': 110,
-    'fan_min_rpm': 500,
-    'fan_min_running': 1,
 }
 
 # SATA设备关键参数映射（复用自 monitor__disk_health_check.py）
@@ -147,12 +138,6 @@ def to_float(value: Any, default: float = 0.0) -> float:
     except ValueError:
         match = re.search(r'-?\d+\.?\d*', value_str)
         return float(match.group()) if match else default
-
-def parse_csv_list(value: Optional[str]) -> List[str]:
-    """解析逗号分隔字符串为列表"""
-    if not value:
-        return []
-    return [item.strip().lower() for item in value.split(',') if item.strip()]
 
 def parse_sata_attributes(output: str) -> Dict[str, Dict[str, Any]]:
     """解析SATA设备的SMART属性"""
@@ -953,23 +938,10 @@ class PowerCollector:
 class HardwareReporter:
     """硬件报告生成器"""
     
-    def __init__(
-        self,
-        thresholds: Dict[str, float],
-        network_interfaces: List[str] = None,
-        auto_install: bool = False,
-        sensor_rules: Optional[Dict[str, Any]] = None,
-    ):
+    def __init__(self, thresholds: Dict[str, float], network_interfaces: List[str] = None, auto_install: bool = False):
         self.thresholds = thresholds
         self.network_interfaces = network_interfaces
         self.auto_install = auto_install
-        self.sensor_rules = sensor_rules or {}
-        self.ignore_temp_sensors = set(self.sensor_rules.get('ignore_temp_sensors', []))
-        self.ignore_fan_sensors = set(self.sensor_rules.get('ignore_fan_sensors', []))
-        self.temp_valid_min = self.sensor_rules.get('temp_valid_min')
-        self.temp_valid_max = self.sensor_rules.get('temp_valid_max')
-        self.fan_min_rpm = to_int(self.sensor_rules.get('fan_min_rpm', 500), 500)
-        self.fan_min_running = to_int(self.sensor_rules.get('fan_min_running', 0), 0)
         self.report_data = {}
         self.issues = []
         self.report_lines = []
@@ -1011,56 +983,6 @@ class HardwareReporter:
         self.report_data['power'] = PowerCollector.collect()
         
         self.log_section("数据采集完成")
-
-    def _normalize_sensor_name(self, name: str) -> str:
-        return name.strip().lower()
-
-    def _is_ignored_sensor(self, name: str, ignore_set: set) -> bool:
-        if not name:
-            return False
-        return self._normalize_sensor_name(name) in ignore_set
-
-    def _filter_temperatures(self, temps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        filtered = []
-        for temp in temps:
-            name = str(temp.get('name', '')).strip()
-            if not name:
-                continue
-            if self._is_ignored_sensor(name, self.ignore_temp_sensors):
-                continue
-            value = temp.get('value')
-            if value is None:
-                continue
-            if self.temp_valid_min is not None and value < self.temp_valid_min:
-                continue
-            if self.temp_valid_max is not None and value > self.temp_valid_max:
-                continue
-            filtered.append(temp)
-        return filtered
-
-    def _filter_fans(self, fans: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        merged = {}
-        for fan in fans:
-            name = str(fan.get('name', '')).strip()
-            if not name:
-                continue
-            if self._is_ignored_sensor(name, self.ignore_fan_sensors):
-                continue
-            value = fan.get('value')
-            if value is None:
-                continue
-            key = self._normalize_sensor_name(name)
-            existing = merged.get(key)
-            if not existing or value > existing['value']:
-                merged[key] = {
-                    'name': name,
-                    'value': value,
-                    'unit': fan.get('unit', 'RPM')
-                }
-        return list(merged.values())
-
-    def _count_running_fans(self, fans: List[Dict[str, Any]]) -> int:
-        return sum(1 for fan in fans if fan['value'] >= self.fan_min_rpm)
     
     def analyze_and_report(self):
         """分析数据并生成报告"""
@@ -1238,6 +1160,14 @@ class HardwareReporter:
                             'message': f'{dev["device"]} 媒体错误 {media_errors}',
                             'detail': f'磁盘 {dev["device"]} 检测到媒体/数据完整性错误'
                         })
+                    unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
+                    if unsafe_shutdowns > 0:
+                        self.issues.append({
+                            'category': '磁盘健康',
+                            'severity': 'warning',
+                            'message': f'{dev["device"]} 不安全关机 {unsafe_shutdowns}',
+                            'detail': f'磁盘 {dev["device"]} 存在不安全关机记录'
+                        })
                 
                 temp = dev.get('temperature')
                 if temp is not None:
@@ -1284,8 +1214,7 @@ class HardwareReporter:
         # 传感器
         sensors = self.report_data.get('sensors', {})
         if not sensors.get('error'):
-            temps = self._filter_temperatures(sensors.get('temperatures', []))
-            for temp in temps:
+            for temp in sensors.get('temperatures', []):
                 value = temp['value']
                 status = determine_status(value, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
                 if status != 'normal':
@@ -1295,35 +1224,23 @@ class HardwareReporter:
                         'message': f'{temp["name"]} {value}°C',
                         'detail': f'传感器 {temp["name"]} 温度过高'
                     })
-            fans = self._filter_fans(sensors.get('fans', []))
-            if fans:
-                if self.fan_min_running > 0:
-                    running_count = self._count_running_fans(fans)
-                    if running_count < self.fan_min_running:
-                        severity = 'critical' if running_count == 0 else 'warning'
-                        self.issues.append({
-                            'category': '风扇',
-                            'severity': severity,
-                            'message': f'风扇运行数量不足 ({running_count}/{len(fans)})',
-                            'detail': f'风扇运行数量不足（阈值: {self.fan_min_running}, RPM≥{self.fan_min_rpm}）'
-                        })
-                else:
-                    for fan in fans:
-                        value = fan['value']
-                        if value == 0:
-                            self.issues.append({
-                                'category': '风扇',
-                                'severity': 'critical',
-                                'message': f'{fan["name"]} 停转',
-                                'detail': f'风扇 {fan["name"]} 转速为 0'
-                            })
-                        elif value < self.fan_min_rpm:
-                            self.issues.append({
-                                'category': '风扇',
-                                'severity': 'warning',
-                                'message': f'{fan["name"]} 转速低 ({value} RPM)',
-                                'detail': f'风扇 {fan["name"]} 转速异常'
-                            })
+            
+            for fan in sensors.get('fans', []):
+                value = fan['value']
+                if value == 0:
+                    self.issues.append({
+                        'category': '风扇',
+                        'severity': 'critical',
+                        'message': f'{fan["name"]} 停转',
+                        'detail': f'风扇 {fan["name"]} 转速为 0'
+                    })
+                elif value < 500:
+                    self.issues.append({
+                        'category': '风扇',
+                        'severity': 'warning',
+                        'message': f'{fan["name"]} 转速低 ({value} RPM)',
+                        'detail': f'风扇 {fan["name"]} 转速异常'
+                    })
     
     def _analyze_cpu(self):
         """分析CPU"""
@@ -1478,6 +1395,10 @@ class HardwareReporter:
                     if media_errors:
                         media_color = Colors.RED if media_errors > 0 else Colors.GREEN
                         self.log(f"    媒体错误: {color_text(str(media_errors), media_color)}")
+                    unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
+                    if unsafe_shutdowns:
+                        unsafe_color = Colors.ORANGE if unsafe_shutdowns > 0 else Colors.GREEN
+                        self.log(f"    不安全关机: {color_text(str(unsafe_shutdowns), unsafe_color)}")
             else:
                 attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
                 if attrs:
@@ -1578,7 +1499,7 @@ class HardwareReporter:
             return
         
         # 温度
-        temps = self._filter_temperatures(sensors.get('temperatures', []))
+        temps = sensors.get('temperatures', [])
         if temps:
             self.log("  温度传感器:")
             for temp in temps:
@@ -1589,20 +1510,14 @@ class HardwareReporter:
                 self.log(f"    {temp['name']}: {color_text(f'{value}{unit}', status_color)}")
         
         # 风扇
-        fans = self._filter_fans(sensors.get('fans', []))
+        fans = sensors.get('fans', [])
         if fans:
             self.log("  风扇传感器:")
-            running_count = self._count_running_fans(fans)
-            if self.fan_min_running > 0:
-                self.log(f"    运行数量: {running_count}/{len(fans)} (阈值: {self.fan_min_running}, RPM≥{self.fan_min_rpm})")
-            fan_ok = self.fan_min_running > 0 and running_count >= self.fan_min_running
             for fan in fans:
                 value = fan['value']
                 unit = fan['unit']
-                if fan_ok:
-                    fan_color = Colors.GREEN if value >= self.fan_min_rpm else Colors.END
-                else:
-                    fan_color = Colors.RED if value == 0 else Colors.ORANGE if value < self.fan_min_rpm else Colors.GREEN
+                # 风扇转速为0或过低可能有问题
+                fan_color = Colors.RED if value == 0 else Colors.ORANGE if value < 500 else Colors.GREEN
                 self.log(f"    {fan['name']}: {color_text(f'{value} {unit}', fan_color)}")
         
         # 电压
@@ -1699,8 +1614,7 @@ class HardwareReporter:
             'timestamp': datetime.now().isoformat(),
             'data': self.report_data,
             'issues': self.issues,
-            'thresholds': self.thresholds,
-            'sensor_rules': self.sensor_rules
+            'thresholds': self.thresholds
         }
         with open(json_report_path, 'w', encoding='utf-8') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=2)
@@ -1873,6 +1787,10 @@ class HardwareReporter:
                         if media_errors:
                             media_color = 'red' if media_errors > 0 else 'auto'
                             smart_desc += f"<br/>媒体错误: <span style='color: {media_color}'>{media_errors}</span>"
+                        unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
+                        if unsafe_shutdowns:
+                            unsafe_color = 'orange' if unsafe_shutdowns > 0 else 'auto'
+                            smart_desc += f"<br/>不安全关机: <span style='color: {unsafe_color}'>{unsafe_shutdowns}</span>"
                 else:
                     attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
                     if attrs:
@@ -1940,7 +1858,7 @@ class HardwareReporter:
         sensors = self.report_data.get('sensors', {})
         if not sensors.get('error'):
             # 温度传感器
-            temps = self._filter_temperatures(sensors.get('temperatures', []))
+            temps = sensors.get('temperatures', [])
             if temps:
                 for temp in temps:
                     value = temp['value']
@@ -1949,16 +1867,11 @@ class HardwareReporter:
                     sensor_rows.append(f"<tr><td>温度 ({temp['name']})</td><td><span style='color: {color}'>{value}{temp['unit']}</span></td></tr>")
             
             # 风扇传感器
-            fans = self._filter_fans(sensors.get('fans', []))
+            fans = sensors.get('fans', [])
             if fans:
-                running_count = self._count_running_fans(fans)
-                fan_ok = self.fan_min_running > 0 and running_count >= self.fan_min_running
                 for fan in fans:
                     value = fan['value']
-                    if fan_ok:
-                        color = 'auto'
-                    else:
-                        color = 'red' if value == 0 else 'orange' if value < self.fan_min_rpm else 'auto'
+                    color = 'red' if value == 0 else 'orange' if value < 500 else 'auto'
                     sensor_rows.append(f"<tr><td>风扇 ({fan['name']})</td><td><span style='color: {color}'>{value} {fan['unit']}</span></td></tr>")
             
             # 电压传感器
@@ -2100,21 +2013,31 @@ blockquote{margin-right:0px}
     
     def send_email(self, html_report_path: str, recipient: str = None, subject: str = None) -> bool:
         """
-        通过 pve_tools.sh 发送HTML报告
+        通过 pve_tools.sh 发送报告
+        优先尝试使用 PVE 通知系统 (send-pve-notify)，如果指定了收件人或失败则回退 to send-email
         
         Args:
             html_report_path: HTML报告文件路径
-            recipient: 收件人邮箱（如果为None，使用PVE配置的默认邮箱）
+            recipient: 收件人邮箱（如果为None，尝试使用PVE通知系统，失��则自动获取）
             subject: 邮件主题（如果为None，自动生成）
         
         Returns:
             bool: 发送成功返回True，失败返回False
         """
         try:
-            # 检查HTML报告是否存在
+            # 检查报告文件
             if not os.path.exists(html_report_path):
-                self.log(color_text(f"错误: HTML报告文件不存在: {html_report_path}", Colors.RED))
+                self.log(color_text(f"错误: 报告文件不存在: {html_report_path}", Colors.RED))
                 return False
+            
+            # 推导文本报告路径 (用于PVE通知)
+            text_report_path = html_report_path.replace('.html', '.log')
+            if not os.path.exists(text_report_path):
+                # 如果找不到对应的log文件，临时生成一个
+                text_report_path = html_report_path.replace('.html', '.txt')
+                with open(text_report_path, 'w', encoding='utf-8') as f:
+                    for line in self.report_lines:
+                        f.write(strip_ansi(line) + '\n')
             
             # 检查 pve_tools.sh 是否存在
             script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -2145,7 +2068,23 @@ blockquote{margin-right:0px}
                 
                 subject = f"[{hostname}] 硬件健康报告 - {status_text}"
             
-            # 如果没有指定收件人，从 pve_tools.sh 获取
+            # 策略1: 如果未指定收件人，优先尝试 PVE 通知系统 (PVE 8.1+)
+            if recipient is None:
+                self.log("尝试通过 PVE 通知系统发送...")
+                cmd = f"bash {pve_tools_path} send-pve-notify --subject '{subject}' --body-file '{text_report_path}'"
+                stdout, stderr, code = run_command(cmd, timeout=30)
+                
+                if code == 0:
+                    self.log(color_text(f"✓ PVE 通知已发送", Colors.GREEN))
+                    return True
+                else:
+                    self.log(f"  PVE 通知系统不可用或发送失败 (代码 {code})，尝试回退到直接邮件发送...")
+                    if stderr.strip():
+                        self.log(f"  错误信息: {stderr.strip()}")
+            
+            # 策略2: 使用传统的 send-email (指定了收件人 或 PVE通知失败)
+            
+            # 如果没有指定收件人，尝试自动获取
             if recipient is None:
                 stdout, _, code = run_command(f"bash {pve_tools_path} get-pve-email")
                 if code == 0 and stdout.strip():
@@ -2153,13 +2092,11 @@ blockquote{margin-right:0px}
             
             if not recipient:
                 self.log(color_text("错误: 未配置收件人邮箱", Colors.RED))
-                self.log("请配置邮箱:")
-                self.log("  方法1: 在 /etc/aliases 中添加 'root: your@email.com' 并运行 newaliases")
-                self.log("  方法2: 在 /etc/pve/notifications.cfg 中配置邮箱")
-                self.log("  方法3: 使用 --email 参数指定收件人")
+                self.log("请配置邮箱或检查 PVE 通知设置")
                 return False
             
-            # 使用 pve_tools.sh 发送邮件
+            # 使用 pve_tools.sh send-email 发送邮件 (HTML)
+            self.log(f"正在发送 HTML 邮件至: {recipient}...")
             cmd = f"bash {pve_tools_path} send-email --to '{recipient}' --subject '{subject}' --body-file '{html_report_path}' --html"
             stdout, stderr, code = run_command(cmd, timeout=30)
             
@@ -2175,7 +2112,7 @@ blockquote{margin-right:0px}
                 return False
             
         except Exception as e:
-            self.log(color_text(f"发送邮件时出错: {str(e)}", Colors.RED))
+            self.log(color_text(f"发送报告时出错: {str(e)}", Colors.RED))
             return False
     
     def log(self, message: str = ""):
@@ -2220,12 +2157,6 @@ def main():
     parser.add_argument('--email', type=str, default=None, help='收件人邮箱地址（默认使用PVE配置的邮箱）')
     parser.add_argument('--email-subject', type=str, default=None, help='邮件主题（默认自动生成）')
     parser.add_argument('--log-dir', type=str, default='/tmp/logs/pve', help='日志保存目录')
-    parser.add_argument('--ignore-temp-sensors', type=str, default=None, help='忽略的温度传感器名称，逗号分隔')
-    parser.add_argument('--ignore-fan-sensors', type=str, default=None, help='忽略的风扇传感器名称，逗号分隔')
-    parser.add_argument('--temp-valid-min', type=float, default=None, help='温度传感器有效值下限（低于则忽略）')
-    parser.add_argument('--temp-valid-max', type=float, default=None, help='温度传感器有效值上限（高于则忽略）')
-    parser.add_argument('--fan-min-rpm', type=int, default=None, help='风扇视为运行的最低转速 (RPM)')
-    parser.add_argument('--fan-min-running', type=int, default=None, help='至少需要运行的风扇数量，0 表示逐个风扇严格检查')
     
     args = parser.parse_args()
     
@@ -2247,37 +2178,9 @@ def main():
     network_interfaces = None
     if args.network_interfaces:
         network_interfaces = [iface.strip() for iface in args.network_interfaces.split(',') if iface.strip()]
-
-    ignore_temp_sensors = (
-        parse_csv_list(args.ignore_temp_sensors)
-        if args.ignore_temp_sensors is not None
-        else DEFAULT_SENSOR_RULES['ignore_temp_sensors']
-    )
-    ignore_fan_sensors = (
-        parse_csv_list(args.ignore_fan_sensors)
-        if args.ignore_fan_sensors is not None
-        else DEFAULT_SENSOR_RULES['ignore_fan_sensors']
-    )
-    temp_valid_min = args.temp_valid_min if args.temp_valid_min is not None else DEFAULT_SENSOR_RULES['temp_valid_min']
-    temp_valid_max = args.temp_valid_max if args.temp_valid_max is not None else DEFAULT_SENSOR_RULES['temp_valid_max']
-    fan_min_rpm = args.fan_min_rpm if args.fan_min_rpm is not None else DEFAULT_SENSOR_RULES['fan_min_rpm']
-    fan_min_running = (
-        args.fan_min_running
-        if args.fan_min_running is not None
-        else DEFAULT_SENSOR_RULES['fan_min_running']
-    )
-
-    sensor_rules = {
-        'ignore_temp_sensors': ignore_temp_sensors,
-        'ignore_fan_sensors': ignore_fan_sensors,
-        'temp_valid_min': temp_valid_min,
-        'temp_valid_max': temp_valid_max,
-        'fan_min_rpm': fan_min_rpm,
-        'fan_min_running': fan_min_running,
-    }
     
     # 创建报告器
-    reporter = HardwareReporter(thresholds, network_interfaces, args.auto_install, sensor_rules)
+    reporter = HardwareReporter(thresholds, network_interfaces, args.auto_install)
     
     # 采集数据
     reporter.collect_all()

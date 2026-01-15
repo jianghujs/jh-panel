@@ -186,22 +186,28 @@ send_email() {
 get_pve_email() {
     local email=""
     
-    # 尝试从 /etc/aliases 读取 root 的转发地址
-    if [[ -f /etc/aliases ]]; then
-        email=$(grep "^root:" /etc/aliases | head -1 | cut -d: -f2 | tr -d ' ')
+    # 1. 尝试从 PVE 通知配置读取 (优先级最高，因为这是 PVE 面板专门的通知配置)
+    if [[ -f /etc/pve/notifications.cfg ]]; then
+        # 查找 mailto 配置，排除 mailto-user
+        email=$(grep "^\s*mailto\s" /etc/pve/notifications.cfg | head -1 | awk '{print $2}')
     fi
-    
-    # 如果没有找到，尝试从 PVE 通知配置读取
-    if [[ -z "$email" && -f /etc/pve/notifications.cfg ]]; then
-        email=$(grep "mailto " /etc/pve/notifications.cfg | head -1 | awk '{print $2}')
-    fi
-    
-    # 如果还是没有，尝试从 pveum 读取
+
+    # 2. 尝试从 pveum 读取 root@pam 邮箱
     if [[ -z "$email" ]] && command -v pveum &> /dev/null; then
         email=$(pveum user list --output-format json 2>/dev/null | \
                 grep -A 5 '"userid":"root@pam"' | \
                 grep '"email"' | \
                 cut -d'"' -f4)
+    fi
+
+    # 3. 尝试从 Datacenter 配置读取
+    if [[ -z "$email" && -f /etc/pve/datacenter.cfg ]]; then
+        email=$(grep "^email:" /etc/pve/datacenter.cfg | head -1 | awk '{print $2}')
+    fi
+    
+    # 4. 尝试从 /etc/aliases 读取 root 的转发地址 (最后尝试)
+    if [[ -z "$email" && -f /etc/aliases ]]; then
+        email=$(grep "^root:" /etc/aliases | head -1 | cut -d: -f2 | tr -d ' ')
     fi
     
     echo "$email"

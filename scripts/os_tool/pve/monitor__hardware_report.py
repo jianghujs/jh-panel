@@ -2070,8 +2070,15 @@ blockquote{margin-right:0px}
             
             # 策略1: 如果未指定收件人，优先尝试 PVE 通知系统 (PVE 8.1+)
             if recipient is None:
-                self.log("尝试通过 PVE 通知系统发送...")
-                cmd = f"bash {pve_tools_path} send-pve-notify --subject '{subject}' --body-file '{text_report_path}'"
+                # 计算严重程度
+                severity = 'info'
+                if any(i['severity'] == 'critical' for i in self.issues):
+                    severity = 'error'
+                elif any(i['severity'] == 'warning' for i in self.issues):
+                    severity = 'warning'
+
+                self.log(f"尝试通过 PVE 通知系统发送 (级别: {severity})...")
+                cmd = f"bash {pve_tools_path} send-pve-notify --subject '{subject}' --body-file '{text_report_path}' --severity '{severity}'"
                 stdout, stderr, code = run_command(cmd, timeout=30)
                 
                 if code == 0:

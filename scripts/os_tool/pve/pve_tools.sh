@@ -178,7 +178,10 @@ send_email() {
 # 发送 PVE 系统通知 (使用 PVE::Notify)
 #
 # 用法:
-#   send_pve_notify --subject <主题> --body-file <文件路径>
+#   send_pve_notify --subject <主题> --body-file <文件路径> [--severity <级别>]
+#
+# 参数:
+#   --severity    通知级别 (info, notice, warning, error, unknown). 默认: info
 #
 # 返回值:
 #   0 - 发送成功
@@ -189,6 +192,7 @@ send_email() {
 send_pve_notify() {
     local subject=""
     local body_file=""
+    local severity="info"
     
     # 解析参数
     while [[ $# -gt 0 ]]; do
@@ -199,6 +203,10 @@ send_pve_notify() {
                 ;;
             --body-file)
                 body_file="$2"
+                shift 2
+                ;;
+            --severity)
+                severity="$2"
                 shift 2
                 ;;
             *)
@@ -230,17 +238,19 @@ send_pve_notify() {
         use warnings;
         use PVE::Notify;
         
-        my $subject = $ARGV[0];
-        my $body_file = $ARGV[1];
+        my $severity = $ARGV[0];
+        my $subject = $ARGV[1];
+        my $body_file = $ARGV[2];
         
         open(my $fh, "<", $body_file) or die "Cannot open file: $!";
         local $/;
         my $content = <$fh>;
         close($fh);
         
-        PVE::Notify::info($subject, $content);
-    ' "$subject" "$body_file"; then
-        echo "✓ PVE 通知已发送"
+        # notify($severity, $title, $message, $template_data, $fields, $config)
+        PVE::Notify::notify($severity, $subject, $content);
+    ' "$severity" "$subject" "$body_file"; then
+        echo "✓ PVE 通知已发送 ($severity)"
         return 0
     else
         echo "✗ PVE 通知发送失败" >&2

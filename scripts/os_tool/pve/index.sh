@@ -50,6 +50,7 @@ show_menu() {
     echo "请选择一个操作:"
     echo "1. 初始化环境"
     echo "2. 服务器状态检查"
+    echo "3. 定时任务管理"
     echo "======================================================="
 }
 
@@ -79,6 +80,9 @@ case $choice in
         ;;
     2)
         download_and_run index__monitor.sh
-          ;;
+        ;;
+    3)
+        python3 $SCRIPT_BASE/cron.py
+        ;;
 esac
 

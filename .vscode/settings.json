@@ -1,3 +1,4 @@
 {
-  "windsurfPyright.disableLanguageServices": true
+  "windsurfPyright.disableLanguageServices": true,
+  "python.languageServer": "None"
 }

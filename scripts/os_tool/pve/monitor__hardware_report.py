@@ -57,6 +57,8 @@ DEFAULT_THRESHOLDS = {
     'io_wait_crit': 40,
 }
 
+REPORT_LOG_PATH = '/www/server/os_tool/pve/logs/report.log'
+
 # SATA设备关键参数映射（复用自 monitor__disk_health_check.py）
 SATA_PARAMS = {
     "5": ("重新分配扇区计数", "Reallocated_Sector_Ct"),
@@ -945,9 +947,12 @@ class HardwareReporter:
         self.report_data = {}
         self.issues = []
         self.report_lines = []
+        self.start_time = None
+        self.end_time = None
     
     def collect_all(self):
         """采集所有硬件信息"""
+        self.start_time = datetime.now()
         self.log_section("正在采集硬件信息...")
         
         # CPU
@@ -1636,6 +1641,280 @@ class HardwareReporter:
         self.log(f"  HTML报告: {html_report_path}")
         
         return html_report_path
+
+    def write_report_log(self, log_path: str = REPORT_LOG_PATH) -> bool:
+        """写入报告数据日志"""
+        now = datetime.now()
+        self.end_time = self.end_time or now
+        hostname = run_command("hostname")[0].strip() or "PVE服务器"
+        ip_stdout, _, _ = run_command("hostname -I")
+        ip_address = ip_stdout.strip().split()[0] if ip_stdout.strip() else "127.0.0.1"
+
+        start_time = self.start_time or now
+        end_time = self.end_time or now
+
+        sysinfo_tips = []
+        network_tips = []
+        smart_tips = []
+        io_tips = []
+        sensor_tips = []
+        power_tips = []
+        summary_tips = []
+        error_tips = []
+        collect_errors = []
+
+        cpu = self.report_data.get('cpu', {})
+        if cpu.get('error'):
+            collect_errors.append(f"CPU：{cpu.get('error')}")
+        else:
+            usage = cpu.get('usage', 0)
+            load = cpu.get('load', [0, 0, 0])
+            color = 'red' if usage >= self.thresholds['cpu_crit'] else 'orange' if usage >= self.thresholds['cpu_warn'] else 'auto'
+            cpu_desc = f"当前使用率：<span style='color: {color}'>{usage}%</span><br/>负载: {load[0]}, {load[1]}, {load[2]} (1/5/15分钟)"
+            top_procs = cpu.get('top_processes', [])
+            if top_procs:
+                cpu_desc += "<br/>TOP5进程:<br/>" + "<br/>".join([
+                    f"{i+1}. {proc['command'][:50]}: {proc['cpu']}% (PID: {proc['pid']})"
+                    for i, proc in enumerate(top_procs[:5])
+                ])
+            sysinfo_tips.append({
+                "name": "CPU",
+                "desc": cpu_desc
+            })
+
+        mem = self.report_data.get('memory', {})
+        if mem.get('error'):
+            collect_errors.append(f"内存：{mem.get('error')}")
+        else:
+            total = mem.get('total', 0)
+            used = mem.get('used', 0)
+            available = mem.get('available', 0)
+            usage_percent = mem.get('usage_percent', 0)
+            color = 'red' if usage_percent >= self.thresholds['mem_crit'] else 'orange' if usage_percent >= self.thresholds['mem_warn'] else 'auto'
+            mem_desc = f"总内存: {self._format_bytes(total)}<br/>已使用: {self._format_bytes(used)} (<span style='color: {color}'>{usage_percent}%</span>)<br/>可用: {self._format_bytes(available)}"
+            sysinfo_tips.append({
+                "name": "内存",
+                "desc": mem_desc
+            })
+
+        disk = self.report_data.get('disk', {})
+        if disk.get('error'):
+            collect_errors.append(f"磁盘容量：{disk.get('error')}")
+        else:
+            for fs in disk.get('filesystems', []):
+                use_percent = fs.get('use_percent', 0)
+                color = 'red' if use_percent >= self.thresholds['disk_crit'] else 'orange' if use_percent >= self.thresholds['disk_warn'] else 'auto'
+                sysinfo_tips.append({
+                    "name": f"磁盘({fs.get('mountpoint', '-')})",
+                    "desc": f"已使用<span style='color: {color}'>{use_percent}%</span>（{fs.get('used', '-')}/{fs.get('size', '-')}）"
+                })
+
+        net = self.report_data.get('network', {})
+        if net.get('error'):
+            collect_errors.append(f"网络：{net.get('error')}")
+        else:
+            for iface in net.get('interfaces', []):
+                state = iface.get('state', 'UNKNOWN')
+                state_color = 'red' if state == 'DOWN' else 'orange' if state == 'UNKNOWN' else 'auto'
+                err_count = iface.get('rx_errors', 0) + iface.get('tx_errors', 0)
+                err_color = 'red' if err_count > 0 else 'auto'
+                net_desc = f"状态: <span style='color: {state_color}'>{state}</span><br/>接收: {self._format_bytes(iface.get('rx_bytes', 0))} ({iface.get('rx_packets', 0)} 包, <span style='color: {err_color}'>{iface.get('rx_errors', 0)} 错误</span>)"
+                net_desc += f"<br/>发送: {self._format_bytes(iface.get('tx_bytes', 0))} ({iface.get('tx_packets', 0)} 包, <span style='color: {err_color}'>{iface.get('tx_errors', 0)} 错误</span>)"
+                network_tips.append({
+                    "name": f"网络({iface.get('name', '-')})",
+                    "desc": net_desc
+                })
+
+        smart = self.report_data.get('smart', {})
+        if smart.get('error'):
+            collect_errors.append(f"磁盘SMART：{smart.get('error')}")
+        else:
+            for dev in smart.get('devices', []):
+                health = dev.get('health', 'unknown')
+                health_color = 'green' if health == 'passed' else 'red' if health == 'failed' else 'orange'
+                desc_parts = [
+                    f"型号: {dev.get('model', '未知')}",
+                    f"类型: {dev.get('type', '未知')}",
+                    f"健康状态: <span style='color: {health_color}'>{health.upper()}</span>"
+                ]
+                if dev.get('serial') and dev.get('serial') != '未知':
+                    desc_parts.append(f"序列号: {dev.get('serial')}")
+                if dev.get('capacity') and dev.get('capacity') != '未知':
+                    desc_parts.append(f"容量: {dev.get('capacity')}")
+                if dev.get('health_score') is not None:
+                    desc_parts.append(f"健康度: {dev.get('health_score')}%")
+                temp = dev.get('temperature')
+                if temp is not None:
+                    temp_status = determine_status(temp, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
+                    temp_color = 'red' if temp_status == 'critical' else 'orange' if temp_status == 'warning' else 'auto'
+                    desc_parts.append(f"温度: <span style='color: {temp_color}'>{temp}°C</span>")
+                if dev.get('is_nvme'):
+                    nvme = dev.get('nvme', {})
+                    if nvme:
+                        if 'available_spare' in nvme:
+                            spare = to_float(nvme.get('available_spare'))
+                            spare_status = determine_status(spare, NVME_SPARE_WARN, NVME_SPARE_CRIT, reverse=True)
+                            spare_color = 'red' if spare_status == 'critical' else 'orange' if spare_status == 'warning' else 'auto'
+                            desc_parts.append(f"备用空间: <span style='color: {spare_color}'>{spare}%</span>")
+                        if 'percentage_used' in nvme:
+                            used = to_float(nvme.get('percentage_used'))
+                            used_status = determine_status(used, NVME_USED_WARN, NVME_USED_CRIT)
+                            used_color = 'red' if used_status == 'critical' else 'orange' if used_status == 'warning' else 'auto'
+                            desc_parts.append(f"已用寿命: <span style='color: {used_color}'>{used}%</span>")
+                        media_errors = to_int(nvme.get('media_and_data_integrity_errors'))
+                        if media_errors:
+                            desc_parts.append(f"媒体错误: <span style='color: red'>{media_errors}</span>")
+                        unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
+                        if unsafe_shutdowns:
+                            desc_parts.append(f"不安全关机: <span style='color: orange'>{unsafe_shutdowns}</span>")
+                else:
+                    attrs = {attr['id']: attr for attr in dev.get('attributes', [])}
+                    if attrs:
+                        reallocated = attrs.get('5')
+                        if reallocated:
+                            raw = reallocated.get('raw_int', 0)
+                            raw_color = 'red' if raw > 0 else 'auto'
+                            desc_parts.append(f"重新分配扇区: <span style='color: {raw_color}'>{raw}</span>")
+                        uncorrect = attrs.get('187')
+                        if uncorrect:
+                            raw = uncorrect.get('raw_int', 0)
+                            raw_color = 'red' if raw > 0 else 'auto'
+                            desc_parts.append(f"不可纠正错误: <span style='color: {raw_color}'>{raw}</span>")
+                        life_attr = attrs.get('231')
+                        if life_attr:
+                            life_raw = life_attr.get('raw_int', 0)
+                            life_val = life_attr.get('value', 0)
+                            life = life_raw if life_raw > 0 else life_val
+                            life_status = determine_status(life, SMART_LIFE_WARN, SMART_LIFE_CRIT, reverse=True)
+                            life_color = 'red' if life_status == 'critical' else 'orange' if life_status == 'warning' else 'auto'
+                            desc_parts.append(f"剩余寿命: <span style='color: {life_color}'>{life}%</span>")
+                smart_tips.append({
+                    "name": f"SMART({dev.get('device', '-')})",
+                    "desc": "<br/>".join(desc_parts)
+                })
+
+        io = self.report_data.get('io', {})
+        if io.get('error'):
+            collect_errors.append(f"磁盘IO：{io.get('error')}")
+        else:
+            for dev in io.get('devices', []):
+                io_desc = f"读取: {dev.get('r_s', 0):.2f} r/s, {dev.get('rkB_s', 0):.2f} kB/s"
+                io_desc += f"<br/>写入: {dev.get('w_s', 0):.2f} w/s, {dev.get('wkB_s', 0):.2f} kB/s"
+                io_desc += f"<br/>平均等待时间: {dev.get('await', 0):.2f} ms"
+                io_desc += f"<br/>使用率: {dev.get('util', 0):.2f}%"
+                io_tips.append({
+                    "name": f"IO({dev.get('device', '-')})",
+                    "desc": io_desc
+                })
+
+        sensors = self.report_data.get('sensors', {})
+        if sensors.get('error'):
+            collect_errors.append(f"传感器：{sensors.get('error')}")
+        else:
+            temps = sensors.get('temperatures', [])
+            if temps:
+                temp_lines = []
+                for temp in temps:
+                    value = temp.get('value', 0)
+                    unit = temp.get('unit', '')
+                    status = determine_status(value, self.thresholds['temp_warn'], self.thresholds['temp_crit'])
+                    color = 'red' if status == 'critical' else 'orange' if status == 'warning' else 'auto'
+                    temp_lines.append(f"{temp.get('name', '-')}: <span style='color: {color}'>{value}{unit}</span>")
+                sensor_tips.append({
+                    "name": "温度传感器",
+                    "desc": "<br/>".join(temp_lines)
+                })
+            fans = sensors.get('fans', [])
+            if fans:
+                fan_lines = []
+                for fan in fans:
+                    value = fan.get('value', 0)
+                    unit = fan.get('unit', '')
+                    color = 'red' if value == 0 else 'orange' if value < 500 else 'auto'
+                    fan_lines.append(f"{fan.get('name', '-')}: <span style='color: {color}'>{value} {unit}</span>")
+                sensor_tips.append({
+                    "name": "风扇传感器",
+                    "desc": "<br/>".join(fan_lines)
+                })
+            volts = sensors.get('voltages', [])
+            if volts:
+                volt_lines = []
+                for volt in volts:
+                    volt_lines.append(f"{volt.get('name', '-')}: {volt.get('value', 0)}{volt.get('unit', '')}")
+                sensor_tips.append({
+                    "name": "电压传感器",
+                    "desc": "<br/>".join(volt_lines)
+                })
+
+        power = self.report_data.get('power', {})
+        if power.get('error'):
+            collect_errors.append(f"电源：{power.get('error')}")
+        else:
+            supplies = power.get('supplies', [])
+            if supplies:
+                power_lines = []
+                for supply in supplies:
+                    if 'info' in supply:
+                        power_lines.append(supply['info'])
+                    elif 'power' in supply:
+                        power_lines.append(f"功率: {supply.get('power', 0):.2f} {supply.get('unit', '')}")
+                power_tips.append({
+                    "name": "电源",
+                    "desc": "<br/>".join(power_lines)
+                })
+
+        if self.issues:
+            issues_by_category = {}
+            for issue in self.issues:
+                category = issue.get('category', '未知')
+                issues_by_category.setdefault(category, []).append(issue)
+            for category, items in issues_by_category.items():
+                has_critical = any(i.get('severity') == 'critical' for i in items)
+                color = 'red' if has_critical else 'orange'
+                messages = [i.get('message', '') for i in items if i.get('message')]
+                summary_tips.append(f"<span style='color: {color};'>{category}: {', '.join(messages)}</span>")
+                for item in items:
+                    if item.get('message'):
+                        error_tips.append(f"{category}: {item.get('message')}")
+
+        if collect_errors:
+            for err in collect_errors:
+                summary_tips.append(f"<span style='color: red;'>数据采集异常: {err}</span>")
+            error_tips.extend(collect_errors)
+
+        if not summary_tips:
+            summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
+
+        report_payload = {
+            "title": hostname,
+            "ip": ip_address,
+            "report_time": now.strftime('%Y-%m-%d %H:%M:%S'),
+            "start_time": start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            "end_time": end_time.strftime('%Y-%m-%d %H:%M:%S'),
+            "start_date": str(start_time.date()),
+            "end_date": str(end_time.date()),
+            "sysinfo_tips": sysinfo_tips,
+            "network_tips": network_tips,
+            "smart_tips": smart_tips,
+            "io_tips": io_tips,
+            "sensor_tips": sensor_tips,
+            "power_tips": power_tips,
+            "summary_tips": summary_tips,
+            "error_tips": error_tips,
+            "hardware_report": {
+                "issues": self.issues,
+                "data": self.report_data,
+                "thresholds": self.thresholds,
+            },
+        }
+        try:
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(report_payload, ensure_ascii=False) + '\n')
+            return True
+        except Exception as e:
+            print(color_text(f"写入报告日志失败: {e}", Colors.RED))
+            return False
     
     def _cleanup_old_logs(self, log_dir: str, pattern: str, keep: int):
         """清理旧日志，保留最近N份"""
@@ -2197,6 +2476,9 @@ def main():
     
     # 保存报告
     html_report_path = reporter.save_reports(args.log_dir)
+
+    # 写入报告日志
+    reporter.write_report_log()
     
     # 发送邮件
     if args.send_email:

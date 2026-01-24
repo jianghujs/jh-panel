@@ -5,8 +5,8 @@ if [ "$USE_PANEL_SCRIPT" != "true" ]; then
     source /tmp/os_tools.sh
     source /tmp/pve_tools.sh
 else
-    source /www/server/jh-panel/scripts/os_tool/tools.sh
-    source /www/server/jh-panel/scripts/os_tool/pve/pve_tools.sh
+    source "${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}/tools.sh"
+    source "${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}/pve/pve_tools.sh"
 fi
 
 # 检查/usr/bin/dialog是否存在
@@ -50,4 +50,3 @@ case $choice in
     download_and_run_py monitor__hardware_report.py
     ;;
 esac
-

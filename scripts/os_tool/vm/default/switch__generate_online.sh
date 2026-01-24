@@ -1,4 +1,5 @@
 #!/bin/bash
+OS_TOOL_ROOT="${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}"
 source /www/server/jh-panel/scripts/util/msg.sh
 
 # 安装pygments
@@ -130,7 +131,7 @@ if [ $choice == "y" ]; then
     prerepre_online_opts+="- 检查主备服务器checksum\n"
     echo "# 检查主备服务器checksum" >> $tmp_prepare_script_file
     echo "echo \"|- 检查主备服务器checksum...\"" >> $tmp_prepare_script_file
-    echo "pushd /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_prepare_script_file
+    echo "pushd ${OS_TOOL_ROOT}/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_prepare_script_file
     echo "download_and_run_node monitor__export_mysql_checksum_compare.js" >> $tmp_prepare_script_file
     echo "popd > /dev/null" >> $tmp_prepare_script_file
     echo "if [ \$? -ne 0 ]; then" >> $tmp_prepare_script_file
@@ -287,7 +288,7 @@ if [ $choice == "y" ]; then
     confirm_online_opts+="- 将当前数据库提升为主\n"
     echo "# 将当前数据库提升为主" >> $tmp_online_script_file
     echo "echo \"|- 将当前数据库提升为主...\"" >> $tmp_online_script_file
-    echo "pushd /www/server/jh-panel/scripts/os_tool/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_online_script_file
+    echo "pushd ${OS_TOOL_ROOT}/vm/${TOOL_DIR}/ > /dev/null"  >> $tmp_online_script_file
     echo "source /root/.bashrc" >> $tmp_online_script_file
     echo "export PATH=\"/www/server/nodejs/fnm:\$PATH\"" >> $tmp_online_script_file 
     echo "download_and_run_node \"switch__mysql_master.js\"" >> $tmp_online_script_file
@@ -425,7 +426,7 @@ if [ $choice == "y" ]; then
 
   common_source_content="
 source /www/server/jh-panel/scripts/util/msg.sh
-source /www/server/jh-panel/scripts/os_tool/tools.sh
+source "${OS_TOOL_ROOT}/tools.sh"
 export USE_PANEL_SCRIPT=$USE_PANEL_SCRIPT
 export SCRIPT_BASE=$SCRIPT_BASE
 export URLBase=$URLBase

@@ -10,7 +10,7 @@ SKIP_REMOTE=0
 PEER_IP_OVERRIDE=""
 PEER_PORT=""
 SSH_BASE_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=5)
-TOOLS_SH="/www/server/jh-panel/scripts/os_tool/tools.sh"
+TOOLS_SH="${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}/tools.sh"
 MSG_SH="/www/server/jh-panel/scripts/util/msg.sh"
 declare -a PLANNED_STEPS=()
 declare -a COMPLETED_STEPS=()

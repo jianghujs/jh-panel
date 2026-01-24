@@ -14,9 +14,12 @@ if [ "$USE_PANEL_SCRIPT" != "true" ]; then
         echo "正在下载 pve_tools.sh 从 ${toolsURL}"
         wget -nv -O /tmp/pve_tools.sh ${toolsURL}
     fi
+    source /tmp/os_tools.sh
+    source /tmp/pve_tools.sh
+else
+    source "${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}/tools.sh"
+    source "${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}/pve/pve_tools.sh"
 fi
-
-source /tmp/os_tools.sh
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
     echo "/usr/bin/dialog不存在，正在尝试自动安装..."
@@ -85,4 +88,3 @@ case $choice in
         python3 $SCRIPT_BASE/cron.py
         ;;
 esac
-

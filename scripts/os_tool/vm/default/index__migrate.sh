@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-source /www/server/jh-panel/scripts/os_tool/tools.sh
+source "${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}/tools.sh"
 
 # 检查/usr/bin/dialog是否存在
 if ! [ -x "/usr/bin/dialog" ]; then
@@ -61,4 +61,3 @@ case $choice in
     download_and_run migrate__rsync_migrate_final.sh
     ;;
 esac
-

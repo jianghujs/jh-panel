@@ -4,7 +4,7 @@
 当前缺少统一的 os_tool 安装与更新入口，脚本分发与运行路径不一致。
 
 ## 变更内容
-- 新增 `scripts/os_tool/install.sh`，用于安装到 `/www/server/os_tool` 并注册 `jht` 命令
+- 新增 `scripts/os_tool/install.sh`，从仓库下载 `scripts/os_tool` 并安装到 `/www/server/os_tool`，同时注册 `jht` 命令
 - `jht` 命令启动 `scripts/os_tool/index.sh` 菜单
 - `scripts/os_tool/index.sh` 增加“更新”菜单项，按 `netEnvCn` 选择镜像更新脚本
 

@@ -57,7 +57,7 @@ DEFAULT_THRESHOLDS = {
     'io_wait_crit': 40,
 }
 
-REPORT_LOG_PATH = '/www/server/os_tool/pve/logs/report.log'
+REPORT_LOG_PATH = '/www/server/log/pve_hardware_report.log'
 
 # SATA设备关键参数映射（复用自 monitor__disk_health_check.py）
 SATA_PARAMS = {
@@ -110,6 +110,33 @@ def run_command(cmd: str, timeout: int = 30) -> Tuple[str, str, int]:
         return "", f"命令超时: {cmd}", 1
     except Exception as e:
         return "", str(e), 1
+
+def with_sudo(cmd: str) -> str:
+    if os.geteuid() != 0:
+        return f"sudo -n {cmd}"
+    return cmd
+
+def ensure_writable_dir(log_dir: str) -> Tuple[str, bool]:
+    """确保日志目录可写，必要时回退到用户目录。"""
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        test_path = os.path.join(log_dir, ".jh-monitor-write-test")
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write("")
+        os.remove(test_path)
+        return log_dir, False
+    except Exception:
+        fallback_dir = os.path.join(os.path.expanduser("~"), "jh-monitor-logs")
+        os.makedirs(fallback_dir, exist_ok=True)
+        return fallback_dir, True
+
+def ensure_writable_log_path(log_path: str) -> Tuple[str, bool]:
+    """确保日志路径可写，必要时回退到用户目录。"""
+    log_dir = os.path.dirname(log_path) or "."
+    resolved_dir, fallback_used = ensure_writable_dir(log_dir)
+    if fallback_used:
+        return os.path.join(resolved_dir, os.path.basename(log_path)), True
+    return log_path, False
 
 def to_int(value: Any, default: int = 0) -> int:
     """尝试转换为整数"""
@@ -214,6 +241,11 @@ def determine_status(value: float, warn_threshold: float, crit_threshold: float,
             return 'warning'
         else:
             return 'normal'
+
+def all_fans_stopped(fans: List[Dict[str, Any]]) -> bool:
+    if not fans:
+        return False
+    return all(to_int(fan.get('value', 0)) == 0 for fan in fans)
 
 # ========================= 数据采集模块 =========================
 
@@ -381,9 +413,11 @@ class DiskCollector:
             'devices': [],
             'error': None
         }
+
+        smartctl_cmd = with_sudo("smartctl")
         
         # 扫描设备
-        stdout, stderr, code = run_command("smartctl --scan")
+        stdout, stderr, code = run_command(f"{smartctl_cmd} --scan")
         devices = []
         if code == 0 and stdout:
             for line in stdout.strip().split('\n'):
@@ -404,7 +438,7 @@ class DiskCollector:
         
         # 检查每个设备
         for device in devices:
-            stdout, stderr, code = run_command(f"smartctl -a {device}")
+            stdout, stderr, code = run_command(f"{smartctl_cmd} -a {device}")
             is_nvme = 'nvme' in device
             device_info = {
                 'device': device,
@@ -694,6 +728,12 @@ class NetworkCollector:
 
 class SensorCollector:
     """传感器信息采集器（温度、风扇、电压）"""
+    TEMP_VALID_MIN = 5.0
+    TEMP_VALID_MAX = 110.0
+    TEMP_IGNORED_SENSORS = {
+        'auxtin0',
+        'auxtin3',
+    }
     
     @staticmethod
     def collect(auto_install: bool = False) -> Dict[str, Any]:
@@ -728,13 +768,13 @@ class SensorCollector:
         
         # 尝试使用 sensors
         if sensors_available:
-            stdout, stderr, code = run_command("sensors 2>/dev/null")
+            stdout, stderr, code = run_command(with_sudo("sensors 2>/dev/null"))
             if code == 0 and stdout:
                 SensorCollector._parse_sensors(stdout, result)
         
         # 尝试使用 ipmitool
         if ipmitool_available:
-            stdout, stderr, code = run_command("ipmitool sensor 2>/dev/null")
+            stdout, stderr, code = run_command(with_sudo("ipmitool sensor 2>/dev/null"))
             if code == 0 and stdout:
                 SensorCollector._parse_ipmitool(stdout, result)
         
@@ -759,23 +799,23 @@ class SensorCollector:
         
         # 检测包管理器并安装
         if SensorCollector._check_tool('apt-get'):
-            stdout, stderr, code = run_command("apt-get update -qq && apt-get install -y lm-sensors", timeout=120)
+            stdout, stderr, code = run_command("sudo -n apt-get update -qq && sudo -n apt-get install -y lm-sensors" if os.geteuid() != 0 else "apt-get update -qq && apt-get install -y lm-sensors", timeout=120)
             if code == 0:
                 print("  ✓ lm-sensors 安装成功")
                 # 尝试检测传感器
-                run_command("sensors-detect --auto", timeout=60)
+                run_command(with_sudo("sensors-detect --auto"), timeout=60)
                 return True
         elif SensorCollector._check_tool('yum'):
-            stdout, stderr, code = run_command("yum install -y lm_sensors", timeout=120)
+            stdout, stderr, code = run_command(with_sudo("yum install -y lm_sensors"), timeout=120)
             if code == 0:
                 print("  ✓ lm-sensors 安装成功")
-                run_command("sensors-detect --auto", timeout=60)
+                run_command(with_sudo("sensors-detect --auto"), timeout=60)
                 return True
         elif SensorCollector._check_tool('dnf'):
-            stdout, stderr, code = run_command("dnf install -y lm_sensors", timeout=120)
+            stdout, stderr, code = run_command(with_sudo("dnf install -y lm_sensors"), timeout=120)
             if code == 0:
                 print("  ✓ lm-sensors 安装成功")
-                run_command("sensors-detect --auto", timeout=60)
+                run_command(with_sudo("sensors-detect --auto"), timeout=60)
                 return True
         
         print("  ✗ lm-sensors 安装失败")
@@ -788,7 +828,7 @@ class SensorCollector:
         
         # 检测包管理器并安装
         if SensorCollector._check_tool('apt-get'):
-            stdout, stderr, code = run_command("apt-get install -y ipmitool", timeout=120)
+            stdout, stderr, code = run_command(with_sudo("apt-get install -y ipmitool"), timeout=120)
             if code == 0:
                 print("  ✓ ipmitool 安装成功")
                 # 加载 IPMI 内核模块
@@ -796,14 +836,14 @@ class SensorCollector:
                 run_command("modprobe ipmi_si 2>/dev/null")
                 return True
         elif SensorCollector._check_tool('yum'):
-            stdout, stderr, code = run_command("yum install -y ipmitool", timeout=120)
+            stdout, stderr, code = run_command(with_sudo("yum install -y ipmitool"), timeout=120)
             if code == 0:
                 print("  ✓ ipmitool 安装成功")
                 run_command("modprobe ipmi_devintf 2>/dev/null")
                 run_command("modprobe ipmi_si 2>/dev/null")
                 return True
         elif SensorCollector._check_tool('dnf'):
-            stdout, stderr, code = run_command("dnf install -y ipmitool", timeout=120)
+            stdout, stderr, code = run_command(with_sudo("dnf install -y ipmitool"), timeout=120)
             if code == 0:
                 print("  ✓ ipmitool 安装成功")
                 run_command("modprobe ipmi_devintf 2>/dev/null")
@@ -827,11 +867,12 @@ class SensorCollector:
                 if match:
                     name = match.group(1).strip()
                     value = to_float(match.group(2))
-                    result['temperatures'].append({
-                        'name': name,
-                        'value': value,
-                        'unit': '°C'
-                    })
+                    if SensorCollector._is_valid_temperature(name, value):
+                        result['temperatures'].append({
+                            'name': name,
+                            'value': value,
+                            'unit': '°C'
+                        })
             
             # 风扇
             elif 'fan' in line.lower() and 'RPM' in line:
@@ -877,11 +918,12 @@ class SensorCollector:
             
             # 分类
             if unit == 'degrees C':
-                result['temperatures'].append({
-                    'name': name,
-                    'value': value,
-                    'unit': '°C'
-                })
+                if SensorCollector._is_valid_temperature(name, value):
+                    result['temperatures'].append({
+                        'name': name,
+                        'value': value,
+                        'unit': '°C'
+                    })
             elif unit == 'RPM':
                 result['fans'].append({
                     'name': name,
@@ -894,27 +936,58 @@ class SensorCollector:
                     'value': value,
                     'unit': 'V'
                 })
+    
+    @staticmethod
+    def _is_valid_temperature(name: str, value: float) -> bool:
+        """过滤明显异常的温度读数，避免误报。"""
+        if SensorCollector._is_ignored_temperature_sensor(name):
+            return False
+        if value is None:
+            return False
+        if value < SensorCollector.TEMP_VALID_MIN:
+            return False
+        if value > SensorCollector.TEMP_VALID_MAX:
+            return False
+        return True
+
+    @staticmethod
+    def _is_ignored_temperature_sensor(name: str) -> bool:
+        if not name:
+            return False
+        normalized = name.strip().lower()
+        return normalized in SensorCollector.TEMP_IGNORED_SENSORS
 
 class PowerCollector:
     """电源信息采集器"""
-    
+
     @staticmethod
     def collect() -> Dict[str, Any]:
         """采集电源信息"""
         result = {
             'status': 'unknown',
             'supplies': [],
-            'error': None
+            'error': None,
+            'warning': None
         }
+        tool_errors = []
+        tool_warnings = []
+
+        ipmitool_available = PowerCollector._check_tool('ipmitool')
         
         # 尝试使用 ipmitool
-        stdout, stderr, code = run_command("ipmitool chassis status 2>/dev/null")
-        if code == 0 and stdout:
-            for line in stdout.split('\n'):
-                if 'Power' in line:
-                    result['supplies'].append({
-                        'info': line.strip()
-                    })
+        if ipmitool_available:
+            stdout, stderr, code = run_command(with_sudo("ipmitool chassis status"))
+            if code == 0 and stdout:
+                for line in stdout.split('\n'):
+                    if 'Power' in line:
+                        result['supplies'].append({
+                            'info': line.strip()
+                        })
+            else:
+                if PowerCollector._ipmi_device_missing(stdout, stderr):
+                    tool_warnings.append("未检测到电源")
+                else:
+                    tool_errors.append("ipmitool 读取电源信息失败")
         
         # 尝试从 /sys 读取
         stdout, stderr, code = run_command("find /sys/class/hwmon -name 'power*_input' 2>/dev/null")
@@ -929,21 +1002,52 @@ class PowerCollector:
                             'power': value,
                             'unit': 'W'
                         })
+        elif code != 0:
+            tool_errors.append("读取 /sys/class/hwmon 电源信息失败")
         
         if not result['supplies']:
-            result['error'] = "未检测到电源信息（可能需要 IPMI 支持）"
+            if tool_errors:
+                result['error'] = "；".join(tool_errors)
+                result['status'] = 'error'
+            elif tool_warnings:
+                result['warning'] = "；".join(tool_warnings)
+                result['status'] = 'warning'
+            else:
+                result['warning'] = "未检测到电源信息（可能需要 IPMI 支持）"
+                result['status'] = 'warning'
+        else:
+            result['status'] = 'normal'
         
         return result
+
+    @staticmethod
+    def _check_tool(tool_name: str) -> bool:
+        """检查工具是否已安装"""
+        stdout, stderr, code = run_command(f"which {tool_name}")
+        return code == 0 and stdout.strip() != ''
+
+    @staticmethod
+    def _ipmi_device_missing(stdout: str, stderr: str) -> bool:
+        """判断是否为 IPMI 设备不存在"""
+        combined = f"{stdout or ''}\n{stderr or ''}"
+        return "Could not open device" in combined and "/dev/ipmi" in combined
 
 # ========================= 报告生成器 =========================
 
 class HardwareReporter:
     """硬件报告生成器"""
     
-    def __init__(self, thresholds: Dict[str, float], network_interfaces: List[str] = None, auto_install: bool = False):
+    def __init__(
+        self,
+        thresholds: Dict[str, float],
+        network_interfaces: List[str] = None,
+        auto_install: bool = False,
+        enable_log: bool = True,
+    ):
         self.thresholds = thresholds
         self.network_interfaces = network_interfaces
         self.auto_install = auto_install
+        self.enable_log = enable_log
         self.report_data = {}
         self.issues = []
         self.report_lines = []
@@ -1166,13 +1270,6 @@ class HardwareReporter:
                             'detail': f'磁盘 {dev["device"]} 检测到媒体/数据完整性错误'
                         })
                     unsafe_shutdowns = to_int(nvme.get('unsafe_shutdowns'))
-                    if unsafe_shutdowns > 0:
-                        self.issues.append({
-                            'category': '磁盘健康',
-                            'severity': 'warning',
-                            'message': f'{dev["device"]} 不安全关机 {unsafe_shutdowns}',
-                            'detail': f'磁盘 {dev["device"]} 存在不安全关机记录'
-                        })
                 
                 temp = dev.get('temperature')
                 if temp is not None:
@@ -1230,22 +1327,14 @@ class HardwareReporter:
                         'detail': f'传感器 {temp["name"]} 温度过高'
                     })
             
-            for fan in sensors.get('fans', []):
-                value = fan['value']
-                if value == 0:
-                    self.issues.append({
-                        'category': '风扇',
-                        'severity': 'critical',
-                        'message': f'{fan["name"]} 停转',
-                        'detail': f'风扇 {fan["name"]} 转速为 0'
-                    })
-                elif value < 500:
-                    self.issues.append({
-                        'category': '风扇',
-                        'severity': 'warning',
-                        'message': f'{fan["name"]} 转速低 ({value} RPM)',
-                        'detail': f'风扇 {fan["name"]} 转速异常'
-                    })
+            fans = sensors.get('fans', [])
+            if all_fans_stopped(fans):
+                self.issues.append({
+                    'category': '风扇',
+                    'severity': 'critical',
+                    'message': '所有风扇停转',
+                    'detail': f'检测到 {len(fans)} 个风扇转速为 0'
+                })
     
     def _analyze_cpu(self):
         """分析CPU"""
@@ -1518,11 +1607,17 @@ class HardwareReporter:
         fans = sensors.get('fans', [])
         if fans:
             self.log("  风扇传感器:")
+            all_stopped = all_fans_stopped(fans)
             for fan in fans:
                 value = fan['value']
                 unit = fan['unit']
                 # 风扇转速为0或过低可能有问题
-                fan_color = Colors.RED if value == 0 else Colors.ORANGE if value < 500 else Colors.GREEN
+                if value == 0:
+                    fan_color = Colors.RED if all_stopped else Colors.ORANGE
+                elif value < 500:
+                    fan_color = Colors.ORANGE
+                else:
+                    fan_color = Colors.GREEN
                 self.log(f"    {fan['name']}: {color_text(f'{value} {unit}', fan_color)}")
         
         # 电压
@@ -1542,7 +1637,10 @@ class HardwareReporter:
         power = self.report_data.get('power', {})
         
         if power.get('error'):
-            self.log(f"  {color_text('提示:', Colors.YELLOW)} {power['error']}")
+            self.log(f"  {color_text('错误:', Colors.RED)} {power['error']}")
+            return
+        if power.get('warning'):
+            self.log(f"  {color_text(power['warning'], Colors.ORANGE)}")
             return
         
         supplies = power.get('supplies', [])
@@ -1596,14 +1694,17 @@ class HardwareReporter:
             self.log(f"  {item}")
         self.log("")
     
-    def save_reports(self, log_dir: str = '/tmp/logs/pve') -> str:
+    def save_reports(self, log_dir: str = '/www/server/log/') -> str:
         """
         保存报告到文件
         
         Returns:
             str: HTML报告文件路径
         """
-        os.makedirs(log_dir, exist_ok=True)
+        original_log_dir = log_dir
+        log_dir, fallback_used = ensure_writable_dir(log_dir)
+        if fallback_used:
+            self.log(color_text(f"提示: 无法写入 {original_log_dir}，报告将保存到 {log_dir}", Colors.YELLOW))
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
@@ -1642,8 +1743,12 @@ class HardwareReporter:
         
         return html_report_path
 
-    def write_report_log(self, log_path: str = REPORT_LOG_PATH) -> bool:
+    def write_report_log(self, log_path: str = REPORT_LOG_PATH, return_payload_only: bool = False) -> Any:
         """写入报告数据日志"""
+        original_log_path = log_path
+        log_path, fallback_used = ensure_writable_log_path(log_path)
+        if fallback_used:
+            print(color_text(f"提示: 无法写入 {original_log_path}，已改用 {log_path}", Colors.YELLOW))
         now = datetime.now()
         self.end_time = self.end_time or now
         hostname = run_command("hostname")[0].strip() or "PVE服务器"
@@ -1827,10 +1932,16 @@ class HardwareReporter:
             fans = sensors.get('fans', [])
             if fans:
                 fan_lines = []
+                all_stopped = all_fans_stopped(fans)
                 for fan in fans:
                     value = fan.get('value', 0)
                     unit = fan.get('unit', '')
-                    color = 'red' if value == 0 else 'orange' if value < 500 else 'auto'
+                    if value == 0:
+                        color = 'red' if all_stopped else 'orange'
+                    elif value < 500:
+                        color = 'orange'
+                    else:
+                        color = 'auto'
                     fan_lines.append(f"{fan.get('name', '-')}: <span style='color: {color}'>{value} {unit}</span>")
                 sensor_tips.append({
                     "name": "风扇传感器",
@@ -1849,6 +1960,11 @@ class HardwareReporter:
         power = self.report_data.get('power', {})
         if power.get('error'):
             collect_errors.append(f"电源：{power.get('error')}")
+        elif power.get('warning'):
+            power_tips.append({
+                "name": "电源",
+                "desc": f"<span style='color: orange'>{power.get('warning')}</span>"
+            })
         else:
             supplies = power.get('supplies', [])
             if supplies:
@@ -1907,14 +2023,15 @@ class HardwareReporter:
                 "thresholds": self.thresholds,
             },
         }
+        if return_payload_only:
+            return report_payload
         try:
             os.makedirs(os.path.dirname(log_path), exist_ok=True)
             with open(log_path, 'a', encoding='utf-8') as f:
                 f.write(json.dumps(report_payload, ensure_ascii=False) + '\n')
-            return True
         except Exception as e:
             print(color_text(f"写入报告日志失败: {e}", Colors.RED))
-            return False
+        return report_payload
     
     def _cleanup_old_logs(self, log_dir: str, pattern: str, keep: int):
         """清理旧日志，保留最近N份"""
@@ -2148,9 +2265,15 @@ class HardwareReporter:
             # 风扇传感器
             fans = sensors.get('fans', [])
             if fans:
+                all_stopped = all_fans_stopped(fans)
                 for fan in fans:
                     value = fan['value']
-                    color = 'red' if value == 0 else 'orange' if value < 500 else 'auto'
+                    if value == 0:
+                        color = 'red' if all_stopped else 'orange'
+                    elif value < 500:
+                        color = 'orange'
+                    else:
+                        color = 'auto'
                     sensor_rows.append(f"<tr><td>风扇 ({fan['name']})</td><td><span style='color: {color}'>{value} {fan['unit']}</span></td></tr>")
             
             # 电压传感器
@@ -2164,7 +2287,11 @@ class HardwareReporter:
         # 生成电源信息表格
         power_rows = []
         power = self.report_data.get('power', {})
-        if not power.get('error'):
+        if power.get('error'):
+            power_rows.append(f"<tr><td>电源异常</td><td><span style='color: red'>{power.get('error')}</span></td></tr>")
+        elif power.get('warning'):
+            power_rows.append(f"<tr><td>电源信息</td><td><span style='color: orange'>{power.get('warning')}</span></td></tr>")
+        else:
             supplies = power.get('supplies', [])
             for supply in supplies:
                 if 'info' in supply:
@@ -2403,7 +2530,8 @@ blockquote{margin-right:0px}
     
     def log(self, message: str = ""):
         """记录日志"""
-        print(message)
+        if self.enable_log:
+            print(message)
         self.report_lines.append(message)
     
     def log_section(self, message: str, color: str = None):
@@ -2442,7 +2570,7 @@ def main():
     parser.add_argument('--send-email', action='store_true', help='发送HTML报告到邮箱')
     parser.add_argument('--email', type=str, default=None, help='收件人邮箱地址（默认使用PVE配置的邮箱）')
     parser.add_argument('--email-subject', type=str, default=None, help='邮件主题（默认自动生成）')
-    parser.add_argument('--log-dir', type=str, default='/tmp/logs/pve', help='日志保存目录')
+    parser.add_argument('--log-dir', type=str, default='/var/log/pve', help='日志保存目录')
     
     args = parser.parse_args()
     
@@ -2504,4 +2632,14 @@ def main():
         sys.exit(0)
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] in ('send', 'get_report_data'):
+        action = sys.argv[1]
+        enable_log = (action == 'send')
+        reporter = HardwareReporter(DEFAULT_THRESHOLDS, None, False, enable_log=enable_log)
+        reporter.collect_all()
+        reporter.analyze_and_report()
+        report_payload = reporter.write_report_log()
+        if action == 'get_report_data':
+            print(json.dumps(report_payload, ensure_ascii=False))
+        sys.exit(0)
     main()

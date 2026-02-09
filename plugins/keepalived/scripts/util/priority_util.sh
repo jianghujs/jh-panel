@@ -2,7 +2,7 @@
 # Utilities for manipulating keepalived instance priority.
 
 PRIORITY_DEFAULT_CONF="{$SERVER_PATH}/keepalived/etc/keepalived/keepalived.conf"
-PRIORITY_DEFAULT_INSTANCE="VI_MYSQL"
+PRIORITY_DEFAULT_INSTANCE="VI_1"
 
 priority_util_log() {
     if declare -F log >/dev/null 2>&1; then

@@ -12,7 +12,8 @@ UTIL_DIR="$SCRIPT_DIR/util"
 . "$UTIL_DIR/wireguard_util.sh"
 . "$UTIL_DIR/keepalived_util.sh"
 
-FAIL_PRIORITY="${FAIL_PRIORITY:-90}"
+DESIRED_PRIORITY="90"
+KEEPALIVED_INSTANCE="VI_1"
 
 # 日志初始化
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_backup.log}"
@@ -21,10 +22,8 @@ log() { logger_log "$@"; }
 mysql_client_set_logger log
 
 main() {
-    local target_priority="${1:-$FAIL_PRIORITY}"
-    log "notify_backup 触发，目标 priority: $target_priority"
+    log "notify_backup 触发"
 
-    
     # 设置数据库为只读模式，防止执行过程写入数据
     log "执行 set_db_read_only 设置数据库只读"
     local readonly_output readonly_rc
@@ -81,6 +80,14 @@ main() {
     fi
     log "OpenResty 停止完成"
     
+     # 设置优先级
+    priority_update "$DESIRED_PRIORITY"
+    if [ $? -ne 0 ]; then
+        log "priority_update 更新失败"
+        exit 1
+    fi
+    log "priority_update 更新成功"
+
 
     # 发送通知
     log "发送降级通知"

@@ -10,7 +10,7 @@ import sys
 
 server_path = "{$SERVER_PATH}"
 panel_dir = f"{server_path}/jh-panel"
-log_file = f"{server_path}/keepalived/notify_master.log"
+log_file = f"{server_path}/keepalived/logs/notify_master.log"
 keepalived_instance = "VI_1"
 desired_priority = "100"
 alert_config = f"{server_path}/keepalived/config/alert_settings.json"

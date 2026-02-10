@@ -11,7 +11,7 @@ import time
 
 server_path = "{$SERVER_PATH}"
 panel_dir = f"{server_path}/jh-panel"
-log_file = f"{server_path}/keepalived/notify_backup.log"
+log_file = f"{server_path}/keepalived/logs/notify_backup.log"
 keepalived_instance = "VI_1"
 desired_priority = "90"
 alert_config = f"{server_path}/keepalived/config/alert_settings.json"

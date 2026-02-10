@@ -41,7 +41,7 @@ main() {
     fi
     log "OpenResty 停止完成"
     
-     # 设置优先级
+    # 2. 设置优先级
     priority_update "$DESIRED_PRIORITY"
     if [ $? -ne 0 ]; then
         log "priority_update 更新失败"
@@ -49,7 +49,7 @@ main() {
     fi
     log "priority_update 更新成功"
 
-    # 2. 设置数据库为只读模式，防止执行过程写入数据
+    # 3. 设置数据库为只读模式，防止执行过程写入数据
     log "执行 set_db_read_only 设置数据库只读"
     local readonly_output readonly_rc
     pushd {$SERVER_PATH}/jh-panel > /dev/null
@@ -68,8 +68,26 @@ main() {
         exit 1
     fi
 
+    
+    # 4. 重启 MySQL，确保状态正常
+    log "重启 MySQL，确保状态正常"
+    local restart_output restart_rc
+    pushd /www/server/jh-panel > /dev/null
+    restart_output=$(python3 plugins/mysql-apt/index.py restart 2>&1)
+    restart_rc=$?
+    popd > /dev/null
+    if [ $restart_rc -ne 0 ]; then
+        log "mysql restart 命令执行失败: $restart_output"
+        exit 1
+    fi
+    if [ "$restart_output" != "ok" ]; then
+        log "mysql restart 失败: $restart_output"
+        exit 1
+    fi
+    log "MySQL 重启完成"
 
-    # 3. 执行 init_slave_status 初始化从库状态
+
+    # 5. 执行 init_slave_status 初始化从库状态
     log "执行 init_slave_status 初始化从库状态"
     local init_output init_rc
     pushd {$SERVER_PATH}/jh-panel > /dev/null
@@ -88,7 +106,7 @@ main() {
         exit 1
     fi
 
-    # 4. 发送通知
+    # 6. 发送通知
     log "发送降级通知"
     pushd {$SERVER_PATH}/jh-panel > /dev/null 
     python3 {$SERVER_PATH}/jh-panel/plugins/keepalived/scripts/util/notify_util.py backup

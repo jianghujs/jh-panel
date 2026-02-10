@@ -2742,6 +2742,9 @@ def waitRelayLogApplied(db, max_wait=30):
         except Exception as e:
             mw.writeLog('mysql-apt', '读取从库状态失败: {}'.format(e))
             break
+        if isinstance(status, BaseException) or isinstance(status, str):
+            mw.writeLog('mysql-apt', '读取从库状态失败: {}'.format(status))
+            break
 
         if not status:
             mw.writeLog('mysql-apt', '未检测到从库状态，跳过 Relay Log 检查')

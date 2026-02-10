@@ -9,7 +9,7 @@ import sys
 import time
 
 
-server_path = "/www/server"
+server_path = "{$SERVER_PATH}"
 panel_dir = f"{server_path}/jh-panel"
 log_file = f"{server_path}/keepalived/logs/keepalived_wg_check.log"
 wg_interface = "wg0"

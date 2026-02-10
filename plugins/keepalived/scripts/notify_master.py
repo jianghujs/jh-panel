@@ -8,7 +8,7 @@ import json
 import os
 import sys
 
-server_path = "/www/server"
+server_path = "{$SERVER_PATH}"
 panel_dir = f"{server_path}/jh-panel"
 log_file = f"{server_path}/keepalived/notify_master.log"
 keepalived_instance = "VI_1"

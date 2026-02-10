@@ -16,7 +16,6 @@ UTIL_DIR="$SCRIPT_DIR/util"
 DESIRED_PRIORITY="100"
 KEEPALIVED_INSTANCE="VI_1"
 KEEPALIVED_SERVICE="keepalived"
-RESTART_KEEPALIVED_ON_PROMOTE="1"
 
 # 日志初始化
 LOG_FILE="${LOG_FILE:-{$SERVER_PATH}/keepalived/notify_master.log}"
@@ -67,12 +66,6 @@ main() {
 
     # 更新优先级
     priority_update "$DESIRED_PRIORITY"
-
-    if [ "$RESTART_KEEPALIVED_ON_PROMOTE" = "1" ]; then
-        keepalived_restart "$KEEPALIVED_SERVICE"
-    else
-        log "跳过 keepalived 重启 (RESTART_KEEPALIVED_ON_PROMOTE=$RESTART_KEEPALIVED_ON_PROMOTE)"
-    fi
 
     # 发送通知
     log "发送提升为主通知"

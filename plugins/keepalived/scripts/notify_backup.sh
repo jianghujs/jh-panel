@@ -86,6 +86,7 @@ main() {
     fi
     log "MySQL 重启完成"
 
+    sleep 1
 
     # 5. 执行 init_slave_status 初始化从库状态
     log "执行 init_slave_status 初始化从库状态"

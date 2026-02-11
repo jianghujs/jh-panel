@@ -8,6 +8,7 @@ import os
 import json
 import re
 import datetime
+import shlex
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -328,12 +329,13 @@ class switchTools:
 
         send_conf = lsyncd_list_result.get("data") or {}
         lsyncd_list = send_conf.get("list") or []
-        names = [item.get("name", "") for item in lsyncd_list if item.get("name")]
+        names = [item.get("name", "").strip() for item in lsyncd_list if item.get("name")]
         if names:
             names_str = "|".join(names)
             res = mw.execShell(
-                "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch names:{} status:disabled".format(
-                    names_str
+                "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch {} {}".format(
+                    shlex.quote("names:{}".format(names_str)),
+                    shlex.quote("status:disabled"),
                 )
             )
             if res[2] != 0:
@@ -363,12 +365,13 @@ class switchTools:
 
         send_conf = lsyncd_list_result.get("data") or {}
         lsyncd_list = send_conf.get("list") or []
-        names = [item.get("name", "") for item in lsyncd_list if item.get("name")]
+        names = [item.get("name", "").strip() for item in lsyncd_list if item.get("name")]
         if names:
             names_str = "|".join(names)
             res = mw.execShell(
-                "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch names:{} status:enabled".format(
-                    names_str
+                "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch {} {}".format(
+                    shlex.quote("names:{}".format(names_str)),
+                    shlex.quote("status:enabled"),
                 )
             )
             if res[2] != 0:

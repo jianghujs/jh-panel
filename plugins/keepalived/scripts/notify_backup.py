@@ -30,6 +30,18 @@ def log(message: str) -> None:
     mw.writeFileLog(f"{mw.getDate()} [notify_backup] {message}", log_file)
 
 
+def log_run_start() -> None:
+    log("--------------------------------------------------")
+    log("notify_backup 开始执行")
+    log("--------------------------------------------------")
+
+
+def log_run_end() -> None:
+    log("--------------------------------------------------")
+    log("notify_backup 执行结束")
+    log("--------------------------------------------------")
+
+
 def update_priority(target: str) -> bool:
     cmd = (
         f"python3 {panel_dir}/plugins/keepalived/tool.py update_priority "
@@ -56,6 +68,20 @@ def parse_status(output: str) -> bool:
     if isinstance(status, str):
         return status.lower() == "true"
     return False
+
+
+def run_switch_cmd(action: str, subcommand: str, arg: str | None = None) -> bool:
+    cmd = f"python3 {panel_dir}/scripts/switch.py {subcommand}"
+    if arg is not None:
+        cmd = f"{cmd} {shlex.quote(arg)}"
+    ok, output = run_with_retry(
+        action,
+        cmd,
+        lambda rc, out: (rc == 0, f"命令执行失败: {out}".strip()),
+    )
+    if ok and output:
+        log(f"{action} 输出: {output}")
+    return ok
 
 
 def send_notify() -> None:
@@ -162,7 +188,7 @@ def run_with_retry(action: str, cmd: str, checker) -> tuple[bool, str]:
 
 
 def main() -> int:
-    log("notify_backup 触发")
+    log_run_start()
     try:
         # 1) 停止 OpenResty，先下掉业务入口
         log("停止 OpenResty")
@@ -227,17 +253,69 @@ def main() -> int:
             return 1
         log(f"init_slave_status 输出: {output}")
 
-        # 5) 发送降级通知
+        # 5) 调整计划任务
+        cron_actions = [
+            ("开启 备份数据库 定时任务", "openCrontab", "备份数据库[backupAll]"),
+            ("开启 xtrabackup 定时任务", "openCrontab", "[勿删]xtrabackup-cron"),
+            ("开启 xtrabackup-inc全量备份 定时任务", "openCrontab", "[勿删]xtrabackup-inc全量备份"),
+            ("开启 xtrabackup-inc增量备份 定时任务", "openCrontab", "[勿删]xtrabackup-inc增量备份"),
+            ("关闭 备份网站配置 定时任务", "closeCrontab", "备份网站配置[backupAll]"),
+            ("关闭 备份插件配置 定时任务", "closeCrontab", "备份插件配置[backupAll]"),
+            ("关闭 lsyncd实时任务定时同步 定时任务", "closeCrontab", "[勿删]lsyncd实时任务定时同步"),
+            ("关闭 续签Let's Encrypt证书 定时任务", "closeCrontab", "[勿删]续签Let's Encrypt证书"),
+        ]
+        for action, cmd, arg in cron_actions:
+            log(action)
+            if not run_switch_cmd(action, cmd, arg):
+                return 1
+
+        # 6) 关闭 SSL 证书到期预提醒
+        log("关闭 SSL证书到期预提醒")
+        if not run_switch_cmd("关闭 SSL证书到期预提醒", "setNotifyValue", '{"ssl_cert":-1}'):
+            return 1
+
+        # 7) 同步 standby 公钥到 authorized_keys
+        log("启用 standby 同步")
+        if not run_switch_cmd("启用 standby 同步", "enableStandbySync"):
+            return 1
+
+        # 8) 关闭 rsyncd 任务并清理进程
+        log("关闭 rsyncd 任务")
+        if not run_switch_cmd("关闭 lsyncd 任务", "disableAllLsyncdTask"):
+            return 1
+        log("清理 rsync 进程")
+        ok, output = run_with_retry(
+            "清理 rsync 进程",
+            "ps aux | grep '/bin/[r]sync' | awk '{print $2}' | xargs -r kill -9",
+            lambda rc, out: (rc == 0, f"命令执行失败: {out}".strip()),
+        )
+        if ok and output:
+            log(f"清理 rsync 进程 输出: {output}")
+        if not ok:
+            return 1
+
+        # 9) 关闭主从同步异常提醒
+        log("关闭 主从同步异常提醒")
+        if not run_switch_cmd("关闭 主从同步异常提醒", "closeMysqlSlaveNotify"):
+            return 1
+
+        # 10) 关闭 Rsync 状态异常提醒
+        log("关闭 Rsync 状态异常提醒")
+        if not run_switch_cmd("关闭 Rsync状态异常提醒", "closeRsyncStatusNotify"):
+            return 1
+
+        # 11) 发送降级通知
         log("发送降级通知")
         send_notify()
         log("通知发送完毕")
 
-        log("notify_backup 执行完毕")
         return 0
     except Exception as exc:
         log(f"执行异常: {exc}")
         send_error_notify("notify_backup 运行异常", str(exc))
         return 1
+    finally:
+        log_run_end()
 
 
 if __name__ == "__main__":

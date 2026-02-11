@@ -240,6 +240,146 @@ class switchTools:
     def setNotifyValue(self, params):
         systemApi.setNotifyValue(params)
         print("设置监控阈值完成!")  
+
+    def enableStandbySync(self, standby_sync_pub="/root/.ssh/standby_sync.pub", authorized_keys="/root/.ssh/authorized_keys"):
+        if not os.path.exists(standby_sync_pub):
+            print("standby_sync.pub 不存在，跳过同步公钥")
+            return True
+
+        key_raw = mw.readFile(standby_sync_pub) or ""
+        key = key_raw.strip()
+        if not key:
+            print("standby_sync.pub 为空，跳过同步公钥")
+            return True
+
+        try:
+            os.makedirs(os.path.dirname(authorized_keys), 0o700)
+        except OSError:
+            if not os.path.isdir(os.path.dirname(authorized_keys)):
+                print("创建 .ssh 目录失败")
+                return False
+
+        auth_raw = mw.readFile(authorized_keys) or ""
+        for line in auth_raw.splitlines():
+            if line.strip() == key:
+                print("authorized_keys 已包含 standby_sync 公钥")
+                return True
+
+        try:
+            with open(authorized_keys, "a") as f:
+                if auth_raw and not auth_raw.endswith("\n"):
+                    f.write("\n")
+                f.write(key + "\n")
+        except Exception as exc:
+            print("写入 authorized_keys 失败: {}".format(exc))
+            return False
+
+        print("standby_sync 公钥已写入 authorized_keys")
+        return True
+
+    def disableStandbySync(self, standby_sync_pub="/root/.ssh/standby_sync.pub", authorized_keys="/root/.ssh/authorized_keys"):
+        if not os.path.exists(standby_sync_pub):
+            print("standby_sync.pub 不存在，跳过移除同步公钥")
+            return True
+
+        key_raw = mw.readFile(standby_sync_pub) or ""
+        key = key_raw.strip()
+        if not key:
+            print("standby_sync.pub 为空，跳过移除同步公钥")
+            return True
+
+        auth_raw = mw.readFile(authorized_keys) or ""
+        if not auth_raw:
+            print("authorized_keys 不存在或为空，跳过移除同步公钥")
+            return True
+
+        lines = [line for line in auth_raw.splitlines() if line.strip() != key]
+        if len(lines) == len(auth_raw.splitlines()):
+            print("authorized_keys 未包含 standby_sync 公钥")
+            return True
+
+        try:
+            with open(authorized_keys, "w") as f:
+                if lines:
+                    f.write("\n".join(lines) + "\n")
+                else:
+                    f.write("")
+        except Exception as exc:
+            print("移除同步公钥失败: {}".format(exc))
+            return False
+
+        print("已从 authorized_keys 移除 standby_sync 公钥")
+        return True
+
+    def disableAllLsyncdTask(self):
+        try:
+            lsyncd_cmd_res = mw.execShell("python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_list")
+            if lsyncd_cmd_res[2] != 0:
+                print("获取 lsyncd 列表失败: {}".format(lsyncd_cmd_res[1]))
+                return False
+            lsyncd_list_result = json.loads(lsyncd_cmd_res[0])
+        except Exception as exc:
+            print("获取 lsyncd 列表失败: {}".format(exc))
+            return False
+
+        if not lsyncd_list_result.get("status", False):
+            print("获取 lsyncd 列表失败: {}".format(lsyncd_list_result.get("msg", "")))
+            return False
+
+        send_conf = lsyncd_list_result.get("data") or {}
+        lsyncd_list = send_conf.get("list") or []
+        names = [item.get("name", "") for item in lsyncd_list if item.get("name")]
+        if names:
+            names_str = "|".join(names)
+            res = mw.execShell(
+                "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch names:{} status:disabled".format(
+                    names_str
+                )
+            )
+            if res[2] != 0:
+                print("关闭 lsyncd 任务失败: {}".format(res[1]))
+                return False
+        res = mw.execShell("systemctl stop lsyncd")
+        if res[2] != 0:
+            print("停止 lsyncd 服务失败: {}".format(res[1]))
+            return False
+        print("关闭 lsyncd 任务完成")
+        return True
+
+    def enableAllLsyncdTask(self):
+        try:
+            lsyncd_cmd_res = mw.execShell("python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_list")
+            if lsyncd_cmd_res[2] != 0:
+                print("获取 lsyncd 列表失败: {}".format(lsyncd_cmd_res[1]))
+                return False
+            lsyncd_list_result = json.loads(lsyncd_cmd_res[0])
+        except Exception as exc:
+            print("获取 lsyncd 列表失败: {}".format(exc))
+            return False
+
+        if not lsyncd_list_result.get("status", False):
+            print("获取 lsyncd 列表失败: {}".format(lsyncd_list_result.get("msg", "")))
+            return False
+
+        send_conf = lsyncd_list_result.get("data") or {}
+        lsyncd_list = send_conf.get("list") or []
+        names = [item.get("name", "") for item in lsyncd_list if item.get("name")]
+        if names:
+            names_str = "|".join(names)
+            res = mw.execShell(
+                "python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_status_batch names:{} status:enabled".format(
+                    names_str
+                )
+            )
+            if res[2] != 0:
+                print("启用 lsyncd 任务失败: {}".format(res[1]))
+                return False
+        res = mw.execShell("systemctl restart lsyncd")
+        if res[2] != 0:
+            print("重启 lsyncd 服务失败: {}".format(res[1]))
+            return False
+        print("启用 lsyncd 任务完成")
+        return True
    
 if __name__ == "__main__":
     st = switchTools()
@@ -287,3 +427,19 @@ if __name__ == "__main__":
       """
       params = json.loads(sys.argv[2])
       st.setNotifyValue(params)
+    elif type == 'enableStandbySync':
+      ok = st.enableStandbySync()
+      if ok is False:
+        sys.exit(1)
+    elif type == 'disableStandbySync':
+      ok = st.disableStandbySync()
+      if ok is False:
+        sys.exit(1)
+    elif type == 'disableAllLsyncdTask':
+      ok = st.disableAllLsyncdTask()
+      if ok is False:
+        sys.exit(1)
+    elif type == 'enableAllLsyncdTask':
+      ok = st.enableAllLsyncdTask()
+      if ok is False:
+        sys.exit(1)

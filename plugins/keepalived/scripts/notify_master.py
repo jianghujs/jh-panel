@@ -101,7 +101,7 @@ def send_notify() -> None:
         log("通知总开关未开启，跳过")
         return
 
-    should_notify = bool(config.get("notify_promote", False))
+    should_notify = bool(config.get("notify_promote", True))
     content = "节点升为主节点"
 
     if not should_notify:

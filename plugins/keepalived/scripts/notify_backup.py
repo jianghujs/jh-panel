@@ -126,7 +126,7 @@ def send_notify() -> None:
         return
 
     should_notify = bool(config.get("notify_demote", False))
-    content = "Keepalived 状态变更为 BACKUP (备节点)。\nVIP 已释放。"
+    content = "节点已降为从节点"
 
     if not should_notify:
         log("通知未开启，跳过")
@@ -142,7 +142,7 @@ def send_notify() -> None:
 
     local_ip = mw.getLocalIp()
     current_time = mw.getDate()
-    notify_title = f"节点状态变更通知：{title} {current_time} "
+    notify_title = f"✅ 节点降级为从成功：{title} {current_time} "
     notify_msg = "{}|节点[{}:{}]\n{}".format(current_time, title, local_ip, content)
     mw.execShell(f"python3 {panel_dir}/tools.py notify_msg '{notify_title}' '{notify_msg}' keepalived")
 
@@ -181,12 +181,12 @@ def send_error_notify(action: str, detail: str) -> None:
     current_time = mw.getDate()
     safe_detail = detail or "无输出"
     content = (
-        "Keepalived 动作执行异常。\n"
+        "降级执行失败。\n"
         f"动作: {action}\n"
-        f"最后一次输出: {safe_detail}\n"
-        f"已重试 {retry_times} 次仍失败。"
+        f"最后输出: {safe_detail}\n"
+        f"重试 {retry_times} 次仍失败。"
     )
-    notify_title = f"节点执行异常通知：{title} {current_time} "
+    notify_title = f"❌ 节点降级为从失败：{title} {current_time} "
     notify_msg = "{}|节点[{}:{}]\n{}".format(current_time, title, local_ip, content)
     cmd = (
         f"python3 {panel_dir}/tools.py notify_msg "

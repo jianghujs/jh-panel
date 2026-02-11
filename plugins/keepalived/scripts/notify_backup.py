@@ -125,7 +125,7 @@ def send_notify() -> None:
         log("通知总开关未开启，跳过")
         return
 
-    should_notify = bool(config.get("notify_demote", False))
+    should_notify = bool(config.get("notify_demote", True))
     content = "节点已降为从节点"
 
     if not should_notify:

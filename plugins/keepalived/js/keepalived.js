@@ -355,31 +355,18 @@ function keepalivedLoadAlertSettings(version){
 }
 
 function keepalivedRenderAlertSettings(version, settings){
-    var optionList = [
-        {
-            field: 'notify_promote',
-            label: '提升为主邮件通知',
-            desc: '当节点提升为主并持有 VIP 时发送邮件提醒。'
-        },
-        {
-            field: 'notify_demote',
-            label: '降级为备邮件通知',
-            desc: '节点降级释放 VIP 时发送降级提醒。'
-        }
-    ];
-    var switchRows = optionList.map(function(opt){
-        var checked = settings[opt.field] ? 'checked' : '';
-        return '<div class="keepalived-alert-row">\
-            <div class="keepalived-alert-info">\
-                <div class="keepalived-alert-label">' + opt.label + '</div>\
-                <div class="keepalived-alert-desc">' + opt.desc + '</div>\
-            </div>\
-            <label class="keepalived-switch">\
-                <input type="checkbox" data-field="' + opt.field + '" ' + checked + '>\
-                <span class="keepalived-switch-slider"></span>\
-            </label>\
-        </div>';
-    }).join('');
+    var enabled = !!settings.notify_enabled;
+    var checked = enabled ? 'checked' : '';
+    var switchRows = '<div class="keepalived-alert-row">\
+        <div class="keepalived-alert-info">\
+            <div class="keepalived-alert-label">状态变更通知</div>\
+            <div class="keepalived-alert-desc">包含状态变更完成通知、状态变更异常通知。</div>\
+        </div>\
+        <label class="keepalived-switch">\
+            <input type="checkbox" data-field="notify_enabled" ' + checked + '>\
+            <span class="keepalived-switch-slider"></span>\
+        </label>\
+    </div>';
 
     var card = '<div class="keepalived-alert-card">\
         <div class="keepalived-alert-card-title">状态告警设置：</div>\
@@ -393,16 +380,15 @@ function keepalivedRenderAlertSettings(version, settings){
 }
 
 function keepalivedSaveAlertSettings(version){
-    var switches = $('#keepalived-alert-settings').find('input[type="checkbox"][data-field]');
-    if(switches.length === 0){
+    var switchItem = $('#keepalived-alert-settings').find('input[type="checkbox"][data-field="notify_enabled"]');
+    if(switchItem.length === 0){
         layer.msg('未找到配置项', {icon:2});
         return;
     }
-    var payload = {};
-    switches.each(function(){
-        var field = $(this).data('field');
-        payload[field] = $(this).is(':checked') ? '1' : '0';
-    });
+    var enabled = switchItem.is(':checked') ? '1' : '0';
+    var payload = {
+        notify_enabled: enabled
+    };
     kpPost('save_alert_settings', version, payload, function(res){
         layer.msg(res.msg || '保存成功', {icon:1});
         keepalivedLoadAlertSettings(version);

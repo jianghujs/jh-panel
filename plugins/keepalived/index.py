@@ -378,8 +378,7 @@ def getAlertSettingsPath():
 
 def _defaultAlertSettings():
     return {
-        'notify_promote': False,
-        'notify_demote': False,
+        'notify_enabled': False,
         'monitor_enabled': False,
         'updated_at': int(time.time()),
         'monitor_last_run': 0
@@ -399,8 +398,7 @@ def _loadAlertSettings():
         data = {}
     base = _defaultAlertSettings()
     base.update({
-        'notify_promote': bool(data.get('notify_promote', False)),
-        'notify_demote': bool(data.get('notify_demote', False)),
+        'notify_enabled': bool(data.get('notify_enabled', False)),
         'monitor_enabled': bool(data.get('monitor_enabled', False)),
     })
     if 'updated_at' in data:
@@ -432,11 +430,8 @@ def saveAlertSettings():
             return value.lower() in ['1', 'true', 'yes', 'on']
         return bool(value)
 
-    if 'notify_promote' in args:
-        settings['notify_promote'] = parse_bool(args['notify_promote'])
-        changed = True
-    if 'notify_demote' in args:
-        settings['notify_demote'] = parse_bool(args['notify_demote'])
+    if 'notify_enabled' in args:
+        settings['notify_enabled'] = parse_bool(args['notify_enabled'])
         changed = True
     if 'monitor_enabled' in args:
         settings['monitor_enabled'] = parse_bool(args['monitor_enabled'])

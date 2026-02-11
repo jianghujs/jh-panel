@@ -66,7 +66,7 @@ def send_notify() -> None:
         log("通知配置解析失败，跳过")
         return
 
-    should_notify = bool(config.get("notify_promote", False))
+    should_notify = bool(config.get("notify_enabled", False))
     content = "Keepalived 状态变更为 MASTER (主节点)。\nVIP 已绑定，服务已接管。"
 
     if not should_notify:

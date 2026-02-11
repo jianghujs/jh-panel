@@ -72,6 +72,29 @@ def parse_status(output: str) -> bool:
     return False
 
 
+def is_slave_running() -> bool | None:
+    cmd = "python3 plugins/mysql-apt/index.py get_master_status"
+    try:
+        out, err, rc = mw.execShell(cmd)
+    except Exception as exc:
+        log(f"获取主从状态异常: {exc}")
+        return None
+
+    if rc != 0:
+        detail = (err or out or "").strip()
+        log(f"获取主从状态失败: {detail or '无输出'}")
+        return None
+
+    try:
+        data = json.loads((out or "").strip())
+    except Exception:
+        log("获取主从状态解析失败")
+        return None
+
+    slave_status = data.get("data", {}).get("slave_status")
+    return bool(slave_status)
+
+
 def run_switch_cmd(action: str, subcommand: str, arg: str | None = None) -> bool:
     cmd = f"python3 {panel_dir}/scripts/switch.py {subcommand}"
     if arg is not None:
@@ -264,18 +287,25 @@ def main() -> int:
         time.sleep(1)
 
         # 4) 初始化从库状态
-        log("|- 执行 init_slave_status 初始化从库状态")
-        ok, output = run_with_retry(
-            "init_slave_status 初始化从库状态",
-            "python3 plugins/mysql-apt/index.py init_slave_status",
-            lambda rc, out: (
-                rc == 0 and parse_status(out),
-                f"返回失败状态或响应无法解析: {out}" if rc == 0 else f"命令执行失败: {out}",
-            ),
-        )
-        if not ok:
-            return 1
-        log(f"init_slave_status 输出: {output}")
+        log("|- 检查从库状态")
+        slave_running = is_slave_running()
+        if slave_running:
+            log("从库已启动，跳过初始化")
+        else:
+            if slave_running is None:
+                log("从库状态未知，继续初始化")
+            log("|- 执行 init_slave_status 初始化从库状态")
+            ok, output = run_with_retry(
+                "init_slave_status 初始化从库状态",
+                "python3 plugins/mysql-apt/index.py init_slave_status",
+                lambda rc, out: (
+                    rc == 0 and parse_status(out),
+                    f"返回失败状态或响应无法解析: {out}" if rc == 0 else f"命令执行失败: {out}",
+                ),
+            )
+            if not ok:
+                return 1
+            log(f"init_slave_status 输出: {output}")
 
         # 5) 调整计划任务
         cron_actions = [

@@ -24,7 +24,9 @@ if sys.platform != "darwin":
     os.chdir(panel_dir)
 
 sys.path.append("/www/server/jh-panel/class/core")
+sys.path.append("/www/server/jh-panel/class/plugin")
 import mw
+from retry_tool import retry
 
 def log(message: str) -> None:
     mw.writeFileLog(f"{mw.getDate()} [notify_backup] {message}", log_file)
@@ -93,10 +95,14 @@ def send_notify() -> None:
     try:
         config = json.loads(content_raw)
     except Exception:
-        log("通知配置解析失败，跳过")
+        log("通知配置解析失败，跳过 ❌")
         return
 
-    should_notify = bool(config.get("notify_enabled", False))
+    if not bool(config.get("notify_enabled", False)):
+        log("通知总开关未开启，跳过")
+        return
+
+    should_notify = bool(config.get("notify_demote", False))
     content = "Keepalived 状态变更为 BACKUP (备节点)。\nVIP 已释放。"
 
     if not should_notify:
@@ -120,15 +126,21 @@ def send_notify() -> None:
 
 def send_error_notify(action: str, detail: str) -> None:
     content_raw = mw.readFile(alert_config)
-    should_notify = True
-    if content_raw:
-        try:
-            config = json.loads(content_raw)
-            should_notify = bool(config.get("notify_enabled", True))
-        except Exception:
-            log("通知配置解析失败，仍尝试发送异常通知")
-    else:
-        log("通知配置不存在，仍尝试发送异常通知")
+    if not content_raw:
+        log("通知配置不存在，跳过异常通知")
+        return
+
+    try:
+        config = json.loads(content_raw)
+    except Exception:
+        log("通知配置解析失败，跳过异常通知 ❌")
+        return
+
+    if not bool(config.get("notify_enabled", False)):
+        log("通知总开关未开启，跳过异常通知")
+        return
+
+    should_notify = bool(config.get("notify_exception", True))
 
     if not should_notify:
         log("异常通知未开启，跳过")
@@ -160,38 +172,50 @@ def send_error_notify(action: str, detail: str) -> None:
     mw.execShell(cmd)
 
 
+class RetryableError(RuntimeError):
+    pass
+
+
 def run_with_retry(action: str, cmd: str, checker) -> tuple[bool, str]:
     last_output = ""
     last_reason = ""
-    for attempt in range(1, retry_times + 1):
+    attempt = 0
+
+    @retry(max_retry=retry_times, delay=retry_interval)
+    def _run():
+        nonlocal attempt, last_output, last_reason
+        attempt += 1
         try:
             out, err, rc = mw.execShell(cmd)
         except Exception as exc:
             last_reason = f"执行异常: {exc}"
-            log(f"{action} 失败({attempt}/{retry_times}): {last_reason}")
-            if attempt < retry_times:
-                time.sleep(retry_interval)
-            continue
+            log(f"{action} 失败({attempt}/{retry_times}): {last_reason} ❌")
+            raise RetryableError(last_reason)
 
         output = (out or err or "").strip()
         last_output = output
         ok, reason = checker(rc, output)
         if ok:
-            return True, output
+            return output
         last_reason = reason or output or "无输出"
-        log(f"{action} 失败({attempt}/{retry_times}): {last_reason}")
-        if attempt < retry_times:
-            time.sleep(retry_interval)
+        log(f"{action} 失败({attempt}/{retry_times}): {last_reason} ❌")
+        raise RetryableError(last_reason)
 
-    send_error_notify(action, last_reason)
-    return False, last_output
+    try:
+        output = _run()
+        return True, output
+    except Exception as exc:
+        if not last_reason:
+            last_reason = str(exc) or "执行异常"
+        send_error_notify(action, last_reason)
+        return False, last_output
 
 
 def main() -> int:
     log_run_start()
     try:
         # 1) 停止 OpenResty，先下掉业务入口
-        log("停止 OpenResty")
+        log("|- 停止 OpenResty")
         ok, _ = run_with_retry(
             "OpenResty 停止",
             "python3 plugins/openresty/index.py stop",
@@ -202,16 +226,16 @@ def main() -> int:
         )
         if not ok:
             return 1
-        log("OpenResty 停止完成")
+        log("OpenResty 停止完成 ✅")
 
         # 2) 降低 keepalived priority
         if not update_priority(desired_priority):
-            log("priority_update 更新失败")
+            log("priority_update 更新失败 ❌")
             return 1
-        log("priority_update 更新成功")
+        log("priority_update 更新成功 ✅")
 
         # 3) 数据库切只读并重启，保证从库一致
-        log("执行 set_db_read_only 设置数据库只读")
+        log("|- 执行 set_db_read_only 设置数据库只读")
         ok, output = run_with_retry(
             "set_db_read_only 设置数据库只读",
             "python3 plugins/mysql-apt/index.py set_db_read_only",
@@ -224,7 +248,7 @@ def main() -> int:
             return 1
         log(f"set_db_read_only 输出: {output}")
 
-        log("重启 MySQL，确保状态正常")
+        log("|- 重启 MySQL，确保状态正常")
         ok, _ = run_with_retry(
             "MySQL 重启",
             "python3 plugins/mysql-apt/index.py restart",
@@ -235,12 +259,12 @@ def main() -> int:
         )
         if not ok:
             return 1
-        log("MySQL 重启完成")
+        log("MySQL 重启完成 ✅")
 
         time.sleep(1)
 
         # 4) 初始化从库状态
-        log("执行 init_slave_status 初始化从库状态")
+        log("|- 执行 init_slave_status 初始化从库状态")
         ok, output = run_with_retry(
             "init_slave_status 初始化从库状态",
             "python3 plugins/mysql-apt/index.py init_slave_status",
@@ -265,25 +289,25 @@ def main() -> int:
             ("关闭 续签Let's Encrypt证书 定时任务", "closeCrontab", "[勿删]续签Let's Encrypt证书"),
         ]
         for action, cmd, arg in cron_actions:
-            log(action)
+            log(f"|- {action}")
             if not run_switch_cmd(action, cmd, arg):
                 return 1
 
         # 6) 关闭 SSL 证书到期预提醒
-        log("关闭 SSL证书到期预提醒")
+        log("|- 关闭 SSL证书到期预提醒")
         if not run_switch_cmd("关闭 SSL证书到期预提醒", "setNotifyValue", '{"ssl_cert":-1}'):
             return 1
 
         # 7) 同步 standby 公钥到 authorized_keys
-        log("启用 standby 同步")
+        log("|- 启用 standby 同步")
         if not run_switch_cmd("启用 standby 同步", "enableStandbySync"):
             return 1
 
         # 8) 关闭 rsyncd 任务并清理进程
-        log("关闭 rsyncd 任务")
+        log("|- 关闭 rsyncd 任务")
         if not run_switch_cmd("关闭 lsyncd 任务", "disableAllLsyncdTask"):
             return 1
-        log("清理 rsync 进程")
+        log("|- 清理 rsync 进程")
         ok, output = run_with_retry(
             "清理 rsync 进程",
             "ps aux | grep '/bin/[r]sync' | awk '{print $2}' | xargs -r kill -9",
@@ -295,23 +319,23 @@ def main() -> int:
             return 1
 
         # 9) 关闭主从同步异常提醒
-        log("关闭 主从同步异常提醒")
+        log("|- 关闭 主从同步异常提醒")
         if not run_switch_cmd("关闭 主从同步异常提醒", "closeMysqlSlaveNotify"):
             return 1
 
         # 10) 关闭 Rsync 状态异常提醒
-        log("关闭 Rsync 状态异常提醒")
+        log("|- 关闭 Rsync 状态异常提醒")
         if not run_switch_cmd("关闭 Rsync状态异常提醒", "closeRsyncStatusNotify"):
             return 1
 
         # 11) 发送降级通知
-        log("发送降级通知")
+        log("|- 发送降级通知")
         send_notify()
-        log("通知发送完毕")
+        log("通知发送完毕 ✅")
 
         return 0
     except Exception as exc:
-        log(f"执行异常: {exc}")
+        log(f"执行异常: {exc} ❌")
         send_error_notify("notify_backup 运行异常", str(exc))
         return 1
     finally:

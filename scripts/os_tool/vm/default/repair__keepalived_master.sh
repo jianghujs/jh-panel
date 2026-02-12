@@ -7,6 +7,7 @@ NOTIFY_MASTER="/www/server/keepalived/scripts/notify_master.py"
 NOTIFY_BACKUP="/www/server/keepalived/scripts/notify_backup.py"
 DEFAULT_REMOTE_PORT="10022"
 PANEL_DIR="/www/server/jh-panel"
+DEFAULT_VRRP_INSTANCE="VI_1"
 
 print_plan() {
   echo "=========================="
@@ -56,7 +57,7 @@ ensure_remote_keepalived() {
 update_local_priority() {
   echo "|- 设置本地 keepalived priority=100..."
   local update_output
-  update_output=$(python3 "${PANEL_DIR}/plugins/keepalived/tool.py" update_priority VI_1 100)
+  update_output=$(python3 "${PANEL_DIR}/plugins/keepalived/tool.py" update_priority "${VRRP_INSTANCE}" 100)
   if [ $? -ne 0 ]; then
     show_error "错误: 本地 keepalived priority 修改失败"
     exit 1
@@ -72,7 +73,7 @@ update_local_priority() {
 update_remote_priority() {
   echo "|- 设置对端 keepalived priority=90..."
   local update_output
-  update_output=$(remote_exec "python3 ${PANEL_DIR}/plugins/keepalived/tool.py update_priority VI_1 90")
+  update_output=$(remote_exec "python3 ${PANEL_DIR}/plugins/keepalived/tool.py update_priority ${VRRP_INSTANCE} 90")
   if [ $? -ne 0 ]; then
     show_error "错误: 对端 keepalived priority 修改失败"
     exit 1
@@ -162,6 +163,7 @@ if [ -z "${remote_ip}" ]; then
 fi
 
 prompt "请输入对端服务器SSH端口(默认: ${DEFAULT_REMOTE_PORT}): " remote_port "${DEFAULT_REMOTE_PORT}"
+prompt "请输入 keepalived vrrp_instance 名称(默认: ${DEFAULT_VRRP_INSTANCE}): " VRRP_INSTANCE "${DEFAULT_VRRP_INSTANCE}"
 
 if [ ! -x "${KEEPALIVED_INIT}" ]; then
   show_error "错误: keepalived 启动脚本不存在: ${KEEPALIVED_INIT}"

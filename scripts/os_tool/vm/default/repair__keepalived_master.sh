@@ -15,8 +15,7 @@ print_plan() {
   echo "1. 确保本地、对端的 keepalived 启动"
   echo "2. 确认 VIP 在本地还是对端"
   echo "3. 如果当前为备，执行对端的 keepalived 脚本确保漂移到本地"
-  # echo "4. 在本地执行 /www/server/keepalived/scripts/notify_master.py"
-  # echo "5. 在对端执行 /www/server/keepalived/scripts/notify_backup.py"
+  echo "4. (可选) 执行上下线脚本修复配置"
   echo "=========================="
 }
 
@@ -182,8 +181,10 @@ if [ -z "${vip_list}" ]; then
 fi
 
 check_vip_location
+performed_failover=0
 
 if [ ${remote_has_vip} -eq 1 ]; then
+  performed_failover=1
   if [ ${local_has_vip} -eq 1 ]; then
     echo "|- 检测到 VIP 同时在对端，正在清理对端以保证本机为主..."
   else
@@ -203,41 +204,13 @@ if [ ${remote_has_vip} -eq 1 ]; then
     exit 1
   fi
 
-  remote_exec "cd ${PANEL_DIR} && python3 ${PANEL_DIR}/plugins/keepalived/index.py stop"
-  sleep 2
-  remote_exec "cd ${PANEL_DIR} && python3 ${PANEL_DIR}/plugins/keepalived/index.py start"
+  remote_exec "cd ${PANEL_DIR} && python3 ${PANEL_DIR}/plugins/keepalived/index.py restart"
   if [ $? -ne 0 ]; then
     show_error "错误: 对端 keepalived 启动失败"
     exit 1
   fi
   show_info "|- 对端 keepalived 重启完成✅"
 fi
-
-if [ ! -f "${NOTIFY_MASTER}" ]; then
-  show_error "错误: notify_master.py 不存在: ${NOTIFY_MASTER}"
-  exit 1
-fi
-
-# echo "|- 执行本地 notify_master.py..."
-# python3 "${NOTIFY_MASTER}"
-# if [ $? -ne 0 ]; then
-#   show_error "错误: notify_master.py 执行失败"
-#   exit 1
-# fi
-# show_info "|- notify_master.py 执行完成✅"
-
-# if ! remote_exec "[ -f '${NOTIFY_BACKUP}' ]"; then
-#   show_error "错误: 对端 notify_backup.py 不存在: ${NOTIFY_BACKUP}"
-#   exit 1
-# fi
-
-# echo "|- 执行对端 notify_backup.py..."
-# remote_exec "python3 ${NOTIFY_BACKUP}"
-# if [ $? -ne 0 ]; then
-#   show_error "错误: 对端 notify_backup.py 执行失败"
-#   exit 1
-# fi
-# show_info "|- 对端 notify_backup.py 执行完成✅"
 
 echo ""
 echo "|- 最终检查 VIP 是否在本机..."
@@ -247,6 +220,39 @@ if [ ${local_has_vip} -eq 0 ]; then
   exit 1
 fi
 show_info "|- VIP 已在本机✅"
+
+if [ ${performed_failover} -eq 0 ]; then
+  prompt "是否需要执行上下线脚本修复配置？（默认n）[y/n]: " notify_choice "n"
+  if [ "${notify_choice}" == "y" ]; then
+    if [ ! -f "${NOTIFY_MASTER}" ]; then
+      show_error "错误: notify_master.py 不存在: ${NOTIFY_MASTER}"
+      exit 1
+    fi
+
+    echo "|- 执行本地 notify_master.py..."
+    python3 "${NOTIFY_MASTER}"
+    if [ $? -ne 0 ]; then
+      show_error "错误: notify_master.py 执行失败"
+      exit 1
+    fi
+    show_info "|- notify_master.py 执行完成✅"
+
+    if ! remote_exec "[ -f '${NOTIFY_BACKUP}' ]"; then
+      show_error "错误: 对端 notify_backup.py 不存在: ${NOTIFY_BACKUP}"
+      exit 1
+    fi
+
+    echo "|- 执行对端 notify_backup.py..."
+    remote_exec "python3 ${NOTIFY_BACKUP}"
+    if [ $? -ne 0 ]; then
+      show_error "错误: 对端 notify_backup.py 执行失败"
+      exit 1
+    fi
+    show_info "|- 对端 notify_backup.py 执行完成✅"
+  fi
+else
+  show_info "|- 已执行 keepalived 漂移脚本，跳过上下线修复步骤✅"
+fi
 
 echo ""
 echo "==========================修复 keepalived 主节点完成✅=========================="

@@ -284,7 +284,7 @@ def main() -> int:
         #     return 1
 
         # 等待备启动防止出现异常提醒
-        time.sleep(3)
+        time.sleep(10)
 
         # 9) 开启主从同步异常提醒
         log("|- 开启 主从同步异常提醒")

@@ -8,6 +8,7 @@ import json
 import os
 import shlex
 import sys
+import time
 
 server_path = "{$SERVER_PATH}"
 panel_dir = f"{server_path}/jh-panel"
@@ -277,10 +278,13 @@ def main() -> int:
         if not run_switch_cmd("启用 lsyncd 任务", "enableAllLsyncdTask"):
             return 1
 
-        # 8) 开启邮件通知
-        log("|- 开启 邮件通知")
-        if not run_switch_cmd("开启 邮件通知", "openEmailNotify"):
-            return 1
+        # # 8) 开启邮件通知
+        # log("|- 开启 邮件通知")
+        # if not run_switch_cmd("开启 邮件通知", "openEmailNotify"):
+        #     return 1
+
+        # 等待备启动防止出现异常提醒
+        time.sleep(3)
 
         # 9) 开启主从同步异常提醒
         log("|- 开启 主从同步异常提醒")

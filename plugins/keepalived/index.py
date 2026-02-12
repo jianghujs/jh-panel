@@ -243,15 +243,19 @@ def _setPriorityValue(priority_int, vrrp_instance=None):
     if not os.path.exists(conf):
         return False, '未找到配置文件!'
 
-    instance_name = vrrp_instance.strip() if vrrp_instance else None
+    instance_name = vrrp_instance.strip() if vrrp_instance else ''
     tpl_content = ''
     tpl = getConfTpl()
     if os.path.exists(tpl):
         tpl_content = mw.readFile(tpl)
 
     content = mw.readFile(conf)
+    if instance_name and not config_util.has_vrrp_instance(content, instance_name):
+        return True, '未找到 vrrp_instance {0}, 已跳过'.format(instance_name)
+
+    instance_arg = instance_name if instance_name else None
     try:
-        form_data = config_util.get_vrrp_form_data(content, tpl_content, instance_name)
+        form_data = config_util.get_vrrp_form_data(content, tpl_content, instance_arg)
     except config_util.KeepalivedConfigError as exc:
         return False, str(exc)
 
@@ -272,7 +276,7 @@ def _setPriorityValue(priority_int, vrrp_instance=None):
     }
 
     try:
-        new_content = config_util.build_vrrp_content(content, values, instance_name)
+        new_content = config_util.build_vrrp_content(content, values, instance_arg)
     except config_util.KeepalivedConfigError as exc:
         return False, str(exc)
 

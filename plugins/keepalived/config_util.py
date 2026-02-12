@@ -51,6 +51,11 @@ def _find_vrrp_block(content, instance_name=None):
     return None
 
 
+def has_vrrp_instance(conf_content, instance_name=None):
+    instance = instance_name.strip() if instance_name else VRRP_INSTANCE_NAME
+    return _find_vrrp_block(conf_content, instance) is not None
+
+
 def _extract_block(lines, start_idx):
     block = []
     depth = 0

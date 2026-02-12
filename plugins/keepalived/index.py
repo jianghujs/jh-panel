@@ -230,10 +230,20 @@ def setPriority():
     except Exception:
         return mw.returnJson(False, '优先级必须为正整数!')
 
+    instance_name = args.get('vrrp_instance', '').strip()
+    ok, msg = _setPriorityValue(priority_int, instance_name)
+    return mw.returnJson(ok, msg)
+
+
+def _setPriorityValue(priority_int, vrrp_instance=None):
+    if not isinstance(priority_int, int) or priority_int < 1:
+        return False, '优先级必须为正整数!'
+
     conf = getConf()
     if not os.path.exists(conf):
-        return mw.returnJson(False, '未找到配置文件!')
+        return False, '未找到配置文件!'
 
+    instance_name = vrrp_instance.strip() if vrrp_instance else None
     tpl_content = ''
     tpl = getConfTpl()
     if os.path.exists(tpl):
@@ -241,13 +251,13 @@ def setPriority():
 
     content = mw.readFile(conf)
     try:
-        form_data = config_util.get_vrrp_form_data(content, tpl_content)
+        form_data = config_util.get_vrrp_form_data(content, tpl_content, instance_name)
     except config_util.KeepalivedConfigError as exc:
-        return mw.returnJson(False, str(exc))
+        return False, str(exc)
 
     current_priority = str(form_data.get('priority', '')).strip()
     if current_priority != '' and current_priority == str(priority_int):
-        return mw.returnJson(True, '优先级已是 {0}'.format(priority_int))
+        return True, '优先级已是 {0}'.format(priority_int)
 
     peer_text = form_data.get('unicast_peer_list', '')
     peer_list = [p.strip() for p in peer_text.splitlines() if p.strip() != '']
@@ -262,12 +272,12 @@ def setPriority():
     }
 
     try:
-        new_content = config_util.build_vrrp_content(content, values)
+        new_content = config_util.build_vrrp_content(content, values, instance_name)
     except config_util.KeepalivedConfigError as exc:
-        return mw.returnJson(False, str(exc))
+        return False, str(exc)
 
     mw.writeFile(conf, new_content)
-    return mw.returnJson(True, '优先级已更新为 {0}'.format(priority_int))
+    return True, '优先级已更新为 {0}'.format(priority_int)
 
 
 def getStatusPanel():
@@ -675,7 +685,15 @@ def stop():
 
 
 def restart():
-    status = kpOp('restart')
+    status = stop()
+    if status != 'ok':
+        return status
+
+    priority_ok, priority_msg = _setPriorityValue(90, "VI_1")
+    if not priority_ok:
+        return priority_msg
+
+    status = start()
 
     log_file = runLog()
     mw.execShell("echo '' > " + log_file)

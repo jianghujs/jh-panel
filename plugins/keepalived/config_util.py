@@ -26,13 +26,14 @@ def _leading_spaces(line):
     return match.group(1)
 
 
-def _find_vrrp_block(content):
+def _find_vrrp_block(content, instance_name=None):
+    instance = instance_name.strip() if instance_name else VRRP_INSTANCE_NAME
     lines = content.splitlines()
     block_lines = []
     start = -1
     depth = 0
     seen_brace = False
-    target = re.compile(r'^\s*vrrp_instance\s+' + VRRP_INSTANCE_NAME + r'\b')
+    target = re.compile(r'^\s*vrrp_instance\s+' + re.escape(instance) + r'\b')
 
     for idx, line in enumerate(lines):
         if start == -1 and target.search(line):
@@ -115,7 +116,7 @@ def _parse_vrrp_block(block_text):
     return data
 
 
-def _get_vrrp_defaults(tpl_content):
+def _get_vrrp_defaults(tpl_content, instance_name=None):
     default = {
         'interface': '',
         'virtual_ipaddress': '',
@@ -130,7 +131,7 @@ def _get_vrrp_defaults(tpl_content):
     if not tpl_content:
         return default
 
-    block = _find_vrrp_block(tpl_content)
+    block = _find_vrrp_block(tpl_content, instance_name)
     if not block:
         return default
 
@@ -273,14 +274,15 @@ def _merge_vrrp_values(current, defaults):
     return merged
 
 
-def get_vrrp_form_data(conf_content, tpl_content):
-    block = _find_vrrp_block(conf_content)
+def get_vrrp_form_data(conf_content, tpl_content, instance_name=None):
+    instance = instance_name.strip() if instance_name else VRRP_INSTANCE_NAME
+    block = _find_vrrp_block(conf_content, instance)
     if not block:
-        raise KeepalivedConfigError('未找到 vrrp_instance ' + VRRP_INSTANCE_NAME + ' 配置块!')
+        raise KeepalivedConfigError('未找到 vrrp_instance ' + instance + ' 配置块!')
 
     block_text = "\n".join(block['lines'])
     current = _parse_vrrp_block(block_text)
-    defaults = _get_vrrp_defaults(tpl_content)
+    defaults = _get_vrrp_defaults(tpl_content, instance)
     merged = _merge_vrrp_values(current, defaults)
 
     return {
@@ -294,10 +296,11 @@ def get_vrrp_form_data(conf_content, tpl_content):
     }
 
 
-def build_vrrp_content(conf_content, values):
-    block = _find_vrrp_block(conf_content)
+def build_vrrp_content(conf_content, values, instance_name=None):
+    instance = instance_name.strip() if instance_name else VRRP_INSTANCE_NAME
+    block = _find_vrrp_block(conf_content, instance)
     if not block:
-        raise KeepalivedConfigError('未找到 vrrp_instance ' + VRRP_INSTANCE_NAME + ' 配置块!')
+        raise KeepalivedConfigError('未找到 vrrp_instance ' + instance + ' 配置块!')
 
     new_block_lines = _rewrite_vrrp_block(block['lines'], values)
     lines = conf_content.splitlines()

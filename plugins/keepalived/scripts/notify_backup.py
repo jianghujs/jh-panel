@@ -294,7 +294,18 @@ def main() -> int:
             return 1
         log("priority_update 更新成功 ✅")
 
-        # 3) 数据库切只读并重启，保证从库一致
+        
+        # 3) 关闭主从同步异常提醒
+        log("|- 关闭 主从同步异常提醒")
+        if not run_switch_cmd("关闭 主从同步异常提醒", "closeMysqlSlaveNotify"):
+            return 1
+
+        # 4) 关闭 Rsync 状态异常提醒
+        log("|- 关闭 Rsync 状态异常提醒")
+        if not run_switch_cmd("关闭 Rsync状态异常提醒", "closeRsyncStatusNotify"):
+            return 1
+
+        # 5) 数据库切只读并重启，保证从库一致
         log("|- 执行 set_db_read_only 设置数据库只读")
         ok, output = run_with_retry(
             "set_db_read_only 设置数据库只读",
@@ -323,7 +334,7 @@ def main() -> int:
 
         time.sleep(1)
 
-        # 4) 初始化从库状态
+        # 6) 初始化从库状态
         log("|- 检查从库状态")
         slave_running = is_slave_running()
         if slave_running:
@@ -344,7 +355,7 @@ def main() -> int:
                 return 1
             log(f"init_slave_status 输出: {output}")
 
-        # 5) 调整计划任务
+        # 7) 调整计划任务
         cron_actions = [
             ("开启 备份数据库 定时任务", "openCrontab", "备份数据库[backupAll]"),
             ("开启 xtrabackup 定时任务", "openCrontab", "[勿删]xtrabackup-cron"),
@@ -360,17 +371,17 @@ def main() -> int:
             if not run_switch_cmd(action, cmd, arg):
                 return 1
 
-        # 6) 关闭 SSL 证书到期预提醒
+        # 8) 关闭 SSL 证书到期预提醒
         log("|- 关闭 SSL证书到期预提醒")
         if not run_switch_cmd("关闭 SSL证书到期预提醒", "setNotifyValue", '{"ssl_cert":-1}'):
             return 1
 
-        # 7) 同步 standby 公钥到 authorized_keys
+        # 9) 同步 standby 公钥到 authorized_keys
         log("|- 启用 standby 同步")
         if not run_switch_cmd("启用 standby 同步", "enableStandbySync"):
             return 1
 
-        # 8) 关闭 rsyncd 任务并清理进程
+        # 10) 关闭 rsyncd 任务并清理进程
         log("|- 关闭 rsyncd 任务")
         if not run_switch_cmd("关闭 lsyncd 任务", "disableAllLsyncdTask"):
             return 1
@@ -383,16 +394,6 @@ def main() -> int:
         if ok and output:
             log(f"清理 rsync 进程 输出: {output}")
         if not ok:
-            return 1
-
-        # 9) 关闭主从同步异常提醒
-        log("|- 关闭 主从同步异常提醒")
-        if not run_switch_cmd("关闭 主从同步异常提醒", "closeMysqlSlaveNotify"):
-            return 1
-
-        # 10) 关闭 Rsync 状态异常提醒
-        log("|- 关闭 Rsync 状态异常提醒")
-        if not run_switch_cmd("关闭 Rsync状态异常提醒", "closeRsyncStatusNotify"):
             return 1
 
         # 11) 发送降级通知

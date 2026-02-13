@@ -283,23 +283,23 @@ def main() -> int:
         # if not run_switch_cmd("开启 邮件通知", "openEmailNotify"):
         #     return 1
 
-        # 等待备启动防止出现异常提醒
-        time.sleep(30)
+        # 9) 发送提升为主通知
+        log("|- 发送提升为主通知")
+        send_notify()
+        log("通知发送完毕 ✅")
 
-        # 9) 开启主从同步异常提醒
+        # 等待备启动防止出现异常提醒
+        time.sleep(60)
+
+        # 10) 开启主从同步异常提醒
         log("|- 开启 主从同步异常提醒")
         if not run_switch_cmd("开启 主从同步异常提醒", "openMysqlSlaveNotify"):
             return 1
 
-        # 10) 开启 Rsync 状态异常提醒
+        # 11) 开启 Rsync 状态异常提醒
         log("|- 开启 Rsync 状态异常提醒")
         if not run_switch_cmd("开启 Rsync状态异常提醒", "openRsyncStatusNotify"):
             return 1
-
-        # 11) 发送提升为主通知
-        log("|- 发送提升为主通知")
-        send_notify()
-        log("通知发送完毕 ✅")
 
         return 0
     except Exception as exc:

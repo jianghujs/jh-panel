@@ -9,10 +9,12 @@ import os
 import shlex
 import sys
 import time
+import fcntl
 
 server_path = "{$SERVER_PATH}"
 panel_dir = f"{server_path}/jh-panel"
 log_file = f"{server_path}/keepalived/logs/notify_master.log"
+lock_file = f"{server_path}/keepalived/notify.lock"
 keepalived_instance = "VI_1"
 desired_priority = "100"
 alert_config = f"{server_path}/keepalived/config/alert_settings.json"
@@ -28,6 +30,8 @@ sys.path.append("/www/server/jh-panel/class/plugin")
 import mw
 from retry_tool import retry
 
+lock_fd = None
+
 def log(message: str) -> None:
     mw.writeFileLog(f"{mw.getDate()} [notify_master] {message}", log_file)
 
@@ -42,6 +46,36 @@ def log_run_end() -> None:
     log("--------------------------------------------------")
     log("notify_master 执行结束")
     log("--------------------------------------------------")
+
+
+def acquire_lock() -> bool:
+    global lock_fd
+    try:
+        os.makedirs(os.path.dirname(lock_file), exist_ok=True)
+        lock_fd = open(lock_file, "w")
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except BlockingIOError:
+        log("检测到另一个 notify 正在执行，跳过本次运行")
+        return False
+    except Exception as exc:
+        log(f"获取执行锁失败: {exc}，为避免并发，本次退出")
+        return False
+
+
+def release_lock() -> None:
+    global lock_fd
+    if lock_fd is None:
+        return
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+    except Exception:
+        pass
+    try:
+        lock_fd.close()
+    except Exception:
+        pass
+    lock_fd = None
 
 
 def update_priority(target: str) -> bool:
@@ -213,6 +247,9 @@ def run_with_retry(action: str, cmd: str, checker) -> tuple[bool, str]:
 
 def main() -> int:
     log_run_start()
+    if not acquire_lock():
+        log_run_end()
+        return 0
 
     try:
         # 1) 清理从库配置，准备升主
@@ -307,6 +344,7 @@ def main() -> int:
         send_error_notify("notify_master 运行异常", str(exc))
         return 1
     finally:
+        release_lock()
         log_run_end()
 
 

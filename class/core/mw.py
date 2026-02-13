@@ -2243,6 +2243,26 @@ def getControlNotifyConfig():
     control_notify_config['keepalived_status_notice'] = control_notify_value_data['keepalived_status_notice'] if 'keepalived_status_notice' in control_notify_value_data else 0
     return control_notify_config
 
+def hasRsyncdRealtimeTask():
+    try:
+        conf_path = getServerDir() + '/rsyncd/config.json'
+        if not os.path.exists(conf_path):
+            return False
+        conf_body = readFile(conf_path)
+        if not conf_body:
+            return False
+        conf = json.loads(conf_body)
+        send = conf.get('send', {})
+        slist = send.get('list', [])
+        for item in slist:
+            status = item.get('status', 'enabled')
+            realtime = str(item.get('realtime', '')).lower()
+            if status != 'disabled' and realtime == 'true':
+                return True
+        return False
+    except Exception:
+        return False
+
 
 def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mysqlInfo):
     control_notify_pl = 'data/control_notify.pl'
@@ -2345,10 +2365,11 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
 
         # Rsync状态
         if (control_notify_config['rsync_status_notice'] == 1):
-            lsyncd_status_cmd = 'systemctl status lsyncd | grep active | grep "running"'
-            lsyncd_status_data = execShell(lsyncd_status_cmd)
-            if lsyncd_status_data[0] == '':
-                error_msg_arr.append('Rsync实时同步异常')
+            if hasRsyncdRealtimeTask():
+                lsyncd_status_cmd = 'systemctl status lsyncd | grep active | grep "running"'
+                lsyncd_status_data = execShell(lsyncd_status_cmd)
+                if lsyncd_status_data[0] == '':
+                    error_msg_arr.append('Rsync实时同步异常')
 
         # Keepalived状态
         if (control_notify_config['keepalived_status_notice'] == 1):

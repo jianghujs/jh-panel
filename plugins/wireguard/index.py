@@ -70,11 +70,14 @@ def checkArgs(data, ck=[]):
     return (True, mw.returnJson(True, 'ok'))
 
 
-def getTextArg(arg):
+def getTextArg(arg, space_plus=True):
     args = getArgs()
     if arg not in args:
         return ''
-    return unquote(args[arg], 'utf-8').replace('+', ' ').replace("\r\n", "\n").replace("\\n", "\n")
+    value = unquote(args[arg], 'utf-8')
+    if space_plus:
+        value = value.replace('+', ' ')
+    return value.replace("\r\n", "\n").replace("\\n", "\n")
 
 
 def _command_exists(cmd):
@@ -200,13 +203,18 @@ def _service_enabled(iface):
 def _wg_quick_action(iface, action):
     if not iface:
         return '接口名为空'
-    if _command_exists('systemctl'):
-        cmd = 'systemctl ' + action + ' wg-quick@' + iface
-        out, err, rc = mw.execShell(cmd)
+    if not _command_exists('wg-quick'):
+        if not _command_exists('systemctl'):
+            return '未找到 wg-quick 命令'
+        if action == 'start':
+            out, err, rc = mw.execShell('systemctl start wg-quick@' + iface)
+        elif action == 'stop':
+            out, err, rc = mw.execShell('systemctl stop wg-quick@' + iface)
+        else:
+            out, err, rc = mw.execShell('systemctl stop wg-quick@' + iface + ' && systemctl start wg-quick@' + iface)
         if rc == 0:
             return 'ok'
-    if not _command_exists('wg-quick'):
-        return '未找到 wg-quick 命令'
+        return (err or out or '执行失败').strip()
     if action == 'start':
         out, err, rc = mw.execShell('wg-quick up ' + iface)
     elif action == 'stop':
@@ -437,7 +445,7 @@ def saveConfig():
     if not data[0]:
         return data[1]
     name = args['name'].strip()
-    content = getTextArg('content')
+    content = getTextArg('content', False)
     path = _config_path(name)
     if not path:
         return mw.returnJson(False, '接口名称不合法')
@@ -475,7 +483,37 @@ def applyConfig():
         return mw.returnJson(False, '配置文件不存在')
     result = _wg_quick_action(name, 'restart')
     if result == 'ok':
-        return mw.returnJson(True, '应用成功')
+        return mw.returnJson(True, '重启成功')
+    return mw.returnJson(False, result)
+
+
+def startConfig():
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+    if not data[0]:
+        return data[1]
+    name = args['name'].strip()
+    path = _config_path(name)
+    if not path or not os.path.exists(path):
+        return mw.returnJson(False, '配置文件不存在')
+    result = _wg_quick_action(name, 'start')
+    if result == 'ok':
+        return mw.returnJson(True, '启用成功')
+    return mw.returnJson(False, result)
+
+
+def stopConfig():
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+    if not data[0]:
+        return data[1]
+    name = args['name'].strip()
+    path = _config_path(name)
+    if not path or not os.path.exists(path):
+        return mw.returnJson(False, '配置文件不存在')
+    result = _wg_quick_action(name, 'stop')
+    if result == 'ok':
+        return mw.returnJson(True, '停用成功')
     return mw.returnJson(False, result)
 
 
@@ -674,6 +712,10 @@ if __name__ == "__main__":
         print(deleteConfig())
     elif func == 'apply_config':
         print(applyConfig())
+    elif func == 'start_config':
+        print(startConfig())
+    elif func == 'stop_config':
+        print(stopConfig())
     elif func == 'generate_keypair':
         print(generateKeypair())
     elif func == 'get_key_info':

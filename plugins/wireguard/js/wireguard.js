@@ -113,7 +113,7 @@ function wireguardKeyPanel(version){
             <div class="info-r wg-key-area"><textarea readonly name="wg_private_key" placeholder="尚未生成"></textarea></div>\
         </div>\
         <div class="line">\
-            <span class="tname">操作</span>\
+            <span class="tname"></span>\
             <div class="info-r">\
                 <button class="btn btn-success btn-sm" id="wg_key_action" onclick="wireguardGenerateKey(\'' + version + '\')">生成密钥</button>\
                 <button class="btn btn-default btn-sm" onclick="wireguardLoadKey(\'' + version + '\')">刷新</button>\
@@ -171,6 +171,14 @@ function wireguardConfigPanel(version){
             for (var i=0;i<list.length;i++){
                 var item = list[i];
                 var state = item.interface_up ? '<span class="wg-status-badge success">已启用</span>' : '<span class="wg-status-badge danger">未启用</span>';
+                var actionHtml = '<button class="btn btn-default btn-xs" onclick="wireguardEditConfig(\'' + version + '\',\'' + item.name + '\')">编辑</button>';
+                if (item.interface_up){
+                    actionHtml += '<button class="btn btn-danger btn-xs" onclick="wireguardStopConfig(\'' + version + '\',\'' + item.name + '\')">停用</button>';
+                } else {
+                    actionHtml += '<button class="btn btn-success btn-xs" onclick="wireguardStartConfig(\'' + version + '\',\'' + item.name + '\')">启用</button>';
+                }
+                actionHtml += '<button class="btn btn-default btn-xs" onclick="wireguardRestartConfig(\'' + version + '\',\'' + item.name + '\')">重启</button>';
+                actionHtml += '<button class="btn btn-danger btn-xs" onclick="wireguardDeleteConfig(\'' + version + '\',\'' + item.name + '\')">删除</button>';
                 table += '<tr>\
                     <td>' + wireguardEscapeHtml(item.name) + '</td>\
                     <td>' + wireguardEscapeHtml(item.address || '-') + '</td>\
@@ -178,11 +186,7 @@ function wireguardConfigPanel(version){
                     <td>' + wireguardEscapeHtml(item.peer_count || 0) + '</td>\
                     <td>' + wireguardEscapeHtml(item.last_handshake || '-') + '</td>\
                     <td>' + state + '</td>\
-                    <td>\
-                        <button class="btn btn-default btn-xs" onclick="wireguardEditConfig(\'' + version + '\',\'' + item.name + '\')">编辑</button>\
-                        <button class="btn btn-default btn-xs" onclick="wireguardApplyConfig(\'' + version + '\',\'' + item.name + '\')">应用</button>\
-                        <button class="btn btn-danger btn-xs" onclick="wireguardDeleteConfig(\'' + version + '\',\'' + item.name + '\')">删除</button>\
-                    </td>\
+                    <td>' + actionHtml + '</td>\
                 </tr>';
             }
         }
@@ -287,9 +291,32 @@ function wireguardEditConfig(version, name){
 function wireguardApplyConfig(version, name){
     wgPost('apply_config', version, {name: name}, function(res){
         var payload = wireguardParsePayload(res.data) || {};
-        layer.msg(payload.msg || '完成', {icon: payload.status ? 1 : 2});
+        showMsg(payload.msg || '完成', null, {icon: payload.status ? 1 : 2});
         wireguardConfigPanel(version);
     });
+}
+
+function wireguardStartConfig(version, name){
+    wgPost('start_config', version, {name: name}, function(res){
+        var payload = wireguardParsePayload(res.data) || {};
+        showMsg(payload.msg || '启用完成', null, {icon: payload.status ? 1 : 2});
+        wireguardConfigPanel(version);
+    });
+}
+
+function wireguardStopConfig(version, name){
+    layer.confirm('确认停用配置 ' + name + ' ?', {icon:3, title:'停用确认'}, function(index){
+        layer.close(index);
+        wgPost('stop_config', version, {name: name}, function(res){
+            var payload = wireguardParsePayload(res.data) || {};
+            showMsg(payload.msg || '停用完成', null, {icon: payload.status ? 1 : 2});
+            wireguardConfigPanel(version);
+        });
+    });
+}
+
+function wireguardRestartConfig(version, name){
+    wireguardApplyConfig(version, name);
 }
 
 function wireguardDeleteConfig(version, name){

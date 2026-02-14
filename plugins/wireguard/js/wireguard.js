@@ -157,7 +157,7 @@ function wireguardDoGenerateKey(version){
 function wireguardConfigPanel(version){
     var header = '<div class="mb15">\
         <button class="btn btn-success btn-sm" onclick="wireguardNewConfigModal(\'' + version + '\')">新增配置</button>\
-        <button class="btn btn-warning btn-sm" onclick="wireguardP2PWizardModal(\'' + version + '\')">点对点配置向导</button>\
+        <button class="btn btn-success btn-sm" onclick="wireguardP2PWizardModal(\'' + version + '\')">点对点配置向导</button>\
         <button class="btn btn-default btn-sm" onclick="wireguardConfigPanel(\'' + version + '\')">刷新</button>\
     </div>';
     wgPost('list_configs', version, {}, function(res){

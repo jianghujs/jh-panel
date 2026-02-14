@@ -195,7 +195,7 @@ function wireguardBuildTemplate(iface, defaults, keyInfo){
     var address = defaults.address || '10.0.0.1/24';
     var listenPort = defaults.listen_port || '51820';
     var privateKey = (keyInfo && keyInfo.private_key) ? keyInfo.private_key : '<PRIVATE_KEY>';
-    var allowedIps = '10.0.0.2/32,10.0.0.100/32';
+    var allowedIps = '10.0.0.1/32,10.0.0.2/32,10.0.0.100/32';
     var peerEndpoint = '<PEER_IP>:' + listenPort;
     var lines = [
         '[Interface]',
@@ -316,7 +316,7 @@ function wireguardP2PWizardModal(version){
                 <span style="margin-left:8px;color:#888;font-size:12px;">可在对端执行：wg show 或 cat /etc/wireguard/publickey 获取</span>\
             </div>\
         </div></div>\
-        <div class="line"><span class="tname">AllowedIPs</span><div class="info-r"><input class="bt-input-text" name="wg_w_allowed" style="width:360px" value="10.0.0.2/32,10.0.0.100/32" /></div></div>\
+        <div class="line"><span class="tname">AllowedIPs</span><div class="info-r"><input class="bt-input-text" name="wg_w_allowed" style="width:360px" value="10.0.0.1/32,10.0.0.2/32,10.0.0.100/32" /></div></div>\
         <div class="line"><span class="tname">Keepalive</span><div class="info-r"><input class="bt-input-text" name="wg_w_keepalive" style="width:220px" value="25" /></div></div>\
         <div class="line"><span class="tname">选项</span><div class="info-r">\
             <label class="mr10"><input type="checkbox" name="wg_w_forward" checked /> 启用转发规则</label>\

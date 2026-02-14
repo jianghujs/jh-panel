@@ -8,6 +8,8 @@ import json
 import shutil
 import shlex
 import ipaddress
+import glob
+from urllib.parse import unquote
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -52,11 +54,11 @@ def getArgs():
         if t.strip() == '':
             tmp = {}
         else:
-            t = t.split(':')
+            t = t.split(':', 1)
             tmp[t[0]] = t[1]
     elif args_len > 1:
         for i in range(len(args)):
-            t = args[i].split(':')
+            t = args[i].split(':', 1)
             tmp[t[0]] = t[1]
     return tmp
 
@@ -66,6 +68,13 @@ def checkArgs(data, ck=[]):
         if not ck[i] in data:
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
+
+
+def getTextArg(arg):
+    args = getArgs()
+    if arg not in args:
+        return ''
+    return unquote(args[arg], 'utf-8').replace('+', ' ').replace("\r\n", "\n").replace("\\n", "\n")
 
 
 def _command_exists(cmd):
@@ -149,7 +158,27 @@ def _backup_file(path):
     ts = time.strftime('%Y%m%d_%H%M%S')
     backup_path = path + '.bak.' + ts
     shutil.copy2(path, backup_path)
+    try:
+        backups = sorted(glob.glob(path + '.bak.*'), reverse=True)
+        for old in backups[3:]:
+            try:
+                os.remove(old)
+            except Exception:
+                pass
+    except Exception:
+        pass
     return backup_path
+
+
+def _normalize_config_content(content):
+    if not isinstance(content, str):
+        return content
+    if '\n' not in content and '\\n' in content:
+        content = content.replace('\\r\\n', '\n')
+        content = content.replace('\\n', '\n')
+    if '\r\n' in content:
+        content = content.replace('\r\n', '\n')
+    return content
 
 
 def _interface_up(iface):
@@ -408,7 +437,7 @@ def saveConfig():
     if not data[0]:
         return data[1]
     name = args['name'].strip()
-    content = args['content']
+    content = getTextArg('content')
     path = _config_path(name)
     if not path:
         return mw.returnJson(False, '接口名称不合法')
@@ -571,6 +600,9 @@ def createConfig():
     post_down = []
     if enable_forward:
         post_up, post_down = _default_post_rules(iface)
+
+    if peer_endpoint and ':' not in peer_endpoint and listen_port:
+        peer_endpoint = peer_endpoint + ':' + str(listen_port)
 
     peer = {
         'public_key': peer_public_key,

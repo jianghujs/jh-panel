@@ -195,7 +195,7 @@ function wireguardBuildTemplate(iface, defaults, keyInfo){
     var address = defaults.address || '10.0.0.1/24';
     var listenPort = defaults.listen_port || '51820';
     var privateKey = (keyInfo && keyInfo.private_key) ? keyInfo.private_key : '<PRIVATE_KEY>';
-    var allowedIps = '10.0.0.1/32,10.0.0.100/32';
+    var allowedIps = '10.0.0.2/32,10.0.0.100/32';
     var peerEndpoint = '<PEER_IP>:' + listenPort;
     var lines = [
         '[Interface]',
@@ -311,9 +311,12 @@ function wireguardP2PWizardModal(version){
         <div class="line"><span class="tname">对端端口</span><div class="info-r"><input class="bt-input-text" name="wg_w_peer_port" style="width:220px" value="51820" /></div></div>\
         <div class="line"><span class="tname">对端公钥</span><div class="info-r">\
             <textarea class="bt-input-text" name="wg_w_peer_pub" style="width:360px;height:70px"></textarea>\
-            <div style="margin-top:6px;color:#888;font-size:12px;">可在对端执行：wg show 或 cat /etc/wireguard/publickey 获取</div>\
+            <div style="margin-top:6px;">\
+                <button type="button" class="btn btn-default btn-xs" onclick="return wireguardCopyLocalPublicKey(\'' + version + '\')">复制本机公钥</button>\
+                <span style="margin-left:8px;color:#888;font-size:12px;">可在对端执行：wg show 或 cat /etc/wireguard/publickey 获取</span>\
+            </div>\
         </div></div>\
-        <div class="line"><span class="tname">AllowedIPs</span><div class="info-r"><input class="bt-input-text" name="wg_w_allowed" style="width:360px" value="10.0.0.1/32,10.0.0.100/32" /></div></div>\
+        <div class="line"><span class="tname">AllowedIPs</span><div class="info-r"><input class="bt-input-text" name="wg_w_allowed" style="width:360px" value="10.0.0.2/32,10.0.0.100/32" /></div></div>\
         <div class="line"><span class="tname">Keepalive</span><div class="info-r"><input class="bt-input-text" name="wg_w_keepalive" style="width:220px" value="25" /></div></div>\
         <div class="line"><span class="tname">选项</span><div class="info-r">\
             <label class="mr10"><input type="checkbox" name="wg_w_forward" checked /> 启用转发规则</label>\
@@ -321,6 +324,7 @@ function wireguardP2PWizardModal(version){
         </div></div>\
     </div>';
     layer.open({
+        type: 1,
         title: '点对点配置向导',
         area: ['700px','520px'],
         content: html,
@@ -329,7 +333,7 @@ function wireguardP2PWizardModal(version){
             var iface = $('input[name="wg_w_iface"]').val();
             var address = $('input[name="wg_w_address"]').val();
             var peerHost = $('input[name="wg_w_peer_host"]').val();
-            var peerPort = $('input[name="wg_w_peer_port"]').val();
+            var peerPort = $.trim($('input[name="wg_w_peer_port"]').val());
             var peerPub = $('textarea[name="wg_w_peer_pub"]').val();
             var allowed = $('input[name="wg_w_allowed"]').val();
             var keepalive = $('input[name="wg_w_keepalive"]').val();
@@ -337,11 +341,15 @@ function wireguardP2PWizardModal(version){
                 layer.msg('对端公网IP不能为空', {icon:2});
                 return;
             }
+            if (!peerPort){
+                layer.msg('对端端口不能为空', {icon:2});
+                return;
+            }
             if (!peerPub){
                 layer.msg('对端公钥不能为空', {icon:2});
                 return;
             }
-            var endpoint = peerHost + (peerPort ? (':' + peerPort) : '');
+            var endpoint = peerHost + ':' + peerPort;
             var data = {
                 iface: iface,
                 address: address,
@@ -355,7 +363,7 @@ function wireguardP2PWizardModal(version){
             };
             wgPost('create_config', version, data, function(res){
                 var payload = wireguardParsePayload(res.data) || {};
-                layer.msg(payload.msg || '完成', {icon: payload.status ? 1 : 2});
+                showMsg(payload.msg || '完成', null, {icon: payload.status ? 1 : 2});
                 if (payload.status){
                     layer.close(index);
                     wireguardConfigPanel(version);
@@ -363,4 +371,27 @@ function wireguardP2PWizardModal(version){
             });
         }
     });
+}
+
+function wireguardCopyLocalPublicKey(version){
+    wgPost('get_key_info', version, {}, function(res){
+        var payload = wireguardParsePayload(res.data) || {};
+        var data = payload.data || {};
+        var key = data.public_key || '';
+        if (!key){
+            layer.msg('本机公钥为空，请先生成密钥', {icon:2});
+            return;
+        }
+        var $temp = $('<textarea>');
+        $('body').append($temp);
+        $temp.val(key).select();
+        try{
+            document.execCommand('copy');
+            layer.msg('已复制本机公钥', {icon:1});
+        }catch(e){
+            layer.msg('复制失败，请手动复制', {icon:2});
+        }
+        $temp.remove();
+    });
+    return false;
 }

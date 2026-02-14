@@ -164,7 +164,7 @@ function wireguardConfigPanel(version){
         var payload = wireguardParsePayload(res.data) || {};
         var list = payload.data || [];
         var table = '<div class="divtable wg-config-table"><table class="table table-hover table-bordered">\
-            <thead><tr><th>接口</th><th>地址</th><th>端口</th><th>Peer数</th><th>最后一次握手</th><th>状态</th><th width="210">操作</th></tr></thead><tbody>';
+            <thead><tr><th>接口</th><th>地址</th><th>端口</th><th>Peer数</th><th>最后一次握手</th><th>状态</th><th width="180">操作</th></tr></thead><tbody>';
         if (!list.length){
             table += '<tr><td colspan="7" style="text-align:center;">暂无配置</td></tr>';
         } else {

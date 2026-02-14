@@ -1,8 +1,4 @@
-# keepalived-status-panel Specification
-
-## Purpose
-TBD - created by archiving change add-keepalived-status-panel. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
 ### Requirement: Keepalived 状态面板
 Keepalived 插件 SHALL 提供一个“状态面板”标签页，类似 rsyncd 实时服务面板的布局，集中展示服务运行状态，并在存在多个 vrrp_instance 时展示每个实例的 VIP、优先级与 VIP 归属状态。
 
@@ -25,4 +21,3 @@ Keepalived 插件 SHALL 提供一个“状态面板”标签页，类似 rsyncd 
 #### Scenario: 扩展状态信息
 - **当** 后端可获取其它运行指标（如 keepalived 进程状态、配置摘要、VRRP 角色等）
 - **则** 状态面板可以同步展示这些信息，每项使用清晰标签/描述，保持布局与 rsyncd 面板一致。
-

@@ -1,0 +1,17 @@
+{
+  "sort": 8,
+  "ps": "[<span style='color:red;'>内网</span>]轻量高性能的 VPN 组网工具",
+  "name": "wireguard",
+  "title": "WireGuard",
+  "shell": "install.sh",
+  "versions": ["1.0"],
+  "tip": "soft",
+  "checks": "server/wireguard",
+  "path": "server/wireguard",
+  "display": 1,
+  "author": "wireguard",
+  "date": "2026-02-14",
+  "home": "https://www.wireguard.com/",
+  "type": "soft",
+  "pid": "4"
+}

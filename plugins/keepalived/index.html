@@ -33,11 +33,10 @@
 			<p onclick="pluginService('keepalived');">服务</p>
 			<p onclick="pluginInitD('keepalived');">自启动</p>
 			<p class="bgw" onclick="keepalivedStatusPanel($('.plugin_version').attr('version'));">状态</p>
-			<p onclick="keepalivedVrrpPanel($('.plugin_version').attr('version'));">基本配置</p>
 			<p onclick="pluginConfigTpl('keepalived',$('.plugin_version').attr('version'));">配置文件</p>
 			<p onclick="keepalivedScriptsPanel($('.plugin_version').attr('version'));">脚本编辑</p>
 			<!-- <p onclick="pluginConfigListTpl('keepalived',$('.plugin_version').attr('version'),'config_scripts_tpl','read_config_tpl');">脚本模板</p> -->
-			<p onclick="pluginLogs('keepalived','','run_log');">日志</p>
+			<p onclick="keepalivedLogsPanel($('.plugin_version').attr('version'));">日志</p>
 		</div>
 		<div class="bt-w-con pd15">
 			<div class="soft-man-con"></div>

@@ -216,6 +216,40 @@ def _getVipSummary():
     return vip, pure_vip, interface, priority
 
 
+def _getVrrpInstancesSummary():
+    conf = getConf()
+    if not os.path.exists(conf):
+        return []
+    content = mw.readFile(conf)
+    if not content:
+        return []
+    try:
+        instances = config_util.list_vrrp_instances(content)
+    except Exception:
+        instances = []
+
+    summary = []
+    for instance in instances:
+        vip = instance.get('virtual_ipaddress', '')
+        pure_vip = vip.split('/')[0] if vip else ''
+        vip_cmd_output = ''
+        vip_owned = False
+        if pure_vip != '':
+            cmd = "ip addr | grep -w " + pure_vip
+            vip_cmd_output = mw.execShell(cmd)[0].strip()
+            vip_owned = vip_cmd_output != ''
+        summary.append({
+            'name': instance.get('name', ''),
+            'vip': vip,
+            'pure_vip': pure_vip,
+            'vip_owned': vip_owned,
+            'vip_interface': instance.get('interface', ''),
+            'vip_check_output': vip_cmd_output,
+            'priority': instance.get('priority', '')
+        })
+    return summary
+
+
 def setPriority():
     args = getArgs()
     data = checkArgs(args, ['priority'])
@@ -285,13 +319,15 @@ def _setPriorityValue(priority_int, vrrp_instance=None):
 
 
 def getStatusPanel():
-    vip, pure_vip, interface, priority = _getVipSummary()
-    vip_cmd_output = ''
-    vip_owned = False
-    if pure_vip != '':
-        cmd = "ip addr | grep -w " + pure_vip
-        vip_cmd_output = mw.execShell(cmd)[0].strip()
-        vip_owned = vip_cmd_output != ''
+    instances = _getVrrpInstancesSummary()
+    primary = instances[0] if len(instances) > 0 else {
+        'vip': '',
+        'pure_vip': '',
+        'vip_owned': False,
+        'vip_interface': '',
+        'vip_check_output': '',
+        'priority': ''
+    }
 
     service_state = status()
 
@@ -305,16 +341,17 @@ def getStatusPanel():
     pid_list = [pid for pid in pid_output.split() if pid.strip() != '']
 
     data = {
-        'vip': vip,
-        'pure_vip': pure_vip,
-        'vip_owned': vip_owned,
-        'vip_interface': interface,
-        'vip_check_output': vip_cmd_output,
+        'vip': primary.get('vip', ''),
+        'pure_vip': primary.get('pure_vip', ''),
+        'vip_owned': primary.get('vip_owned', False),
+        'vip_interface': primary.get('vip_interface', ''),
+        'vip_check_output': primary.get('vip_check_output', ''),
         'service_status': service_state,
         'log': log_content,
         'pid_list': pid_list,
         'timestamp': int(time.time()),
-        'priority': priority
+        'priority': primary.get('priority', ''),
+        'instances': instances
     }
     return mw.returnJson(True, 'OK', data)
 
@@ -468,32 +505,58 @@ def getCheckMysqlScriptPath():
     return getServerDir() + '/scripts/chk_mysql.sh'
 
 
-SCRIPT_EDITABLE_DEFS = [
-    ('chk_mysql', 'chk_mysql.sh', 'MySQL健康检查脚本，负责触发降级或恢复逻辑'),
-    ('notify_master', 'notify_master.sh', '主节点脚本，执行VIP漂移后的提升与通知'),
-    ('notify_backup', 'notify_backup.sh', '备节点脚本，负责降级释放VIP并通知外部系统')
-]
+SCRIPT_DESCRIPTIONS = {
+    'chk_mysql.sh': 'MySQL健康检查脚本，负责触发降级或恢复逻辑',
+    'notify_master.sh': '主节点脚本，执行VIP漂移后的提升与通知',
+    'notify_backup.sh': '备节点脚本，负责降级释放VIP并通知外部系统'
+}
 
 
 def _getEditableScripts():
     scripts = []
     scripts_dir = os.path.join(getServerDir(), 'scripts')
-    for key, filename, desc in SCRIPT_EDITABLE_DEFS:
-        path = os.path.join(scripts_dir, filename)
-        scripts.append({
-            'id': key,
-            'name': filename,
-            'display_name': filename,
-            'description': desc,
-            'path': path,
-            'exists': os.path.exists(path)
-        })
+    if not os.path.exists(scripts_dir):
+        return scripts
+
+    for root, dirs, files in os.walk(scripts_dir):
+        if '__pycache__' in dirs:
+            dirs[:] = [d for d in dirs if d != '__pycache__']
+        files.sort()
+        for filename in files:
+            path = os.path.join(root, filename)
+            if not os.path.isfile(path):
+                continue
+            rel_path = os.path.relpath(path, scripts_dir)
+            scripts.append({
+                'id': rel_path,
+                'name': filename,
+                'display_name': rel_path,
+                'description': SCRIPT_DESCRIPTIONS.get(filename, ''),
+                'path': path,
+                'exists': True
+            })
+    scripts.sort(key=lambda item: item.get('display_name', ''))
     return scripts
 
 
 def getEditableScripts():
     scripts = _getEditableScripts()
     return mw.returnJson(True, 'OK', scripts)
+
+
+def getLogFiles():
+    logs_dir = os.path.join(getServerDir(), 'logs')
+    logs = []
+    if not os.path.exists(logs_dir):
+        return mw.returnJson(True, 'OK', logs)
+    for entry in sorted(os.listdir(logs_dir)):
+        path = os.path.join(logs_dir, entry)
+        if os.path.isfile(path):
+            logs.append({
+                'name': entry,
+                'path': path
+            })
+    return mw.returnJson(True, 'OK', logs)
 
 
 def shellQuote(value):
@@ -822,5 +885,7 @@ if __name__ == "__main__":
         print(setPriority())
     elif func == 'get_script_editor_targets':
         print(getEditableScripts())
+    elif func == 'get_log_files':
+        print(getLogFiles())
     else:
         print('error')

@@ -51,6 +51,37 @@ def _find_vrrp_block(content, instance_name=None):
     return None
 
 
+def list_vrrp_instances(conf_content):
+    instances = []
+    lines = conf_content.splitlines()
+    idx = 0
+    total = len(lines)
+    pattern = re.compile(r'^\s*vrrp_instance\s+([^\s{]+)')
+    while idx < total:
+        line = lines[idx]
+        match = pattern.match(line)
+        if not match:
+            idx += 1
+            continue
+        instance_name = match.group(1).strip()
+        block_lines, end_idx = _extract_block(lines, idx)
+        block_text = "\n".join(block_lines)
+        parsed = _parse_vrrp_block(block_text)
+        instances.append({
+            'name': instance_name,
+            'interface': parsed['interface'],
+            'virtual_ipaddress': parsed['virtual_ipaddress'],
+            'unicast_enabled': parsed['unicast_enabled'],
+            'unicast_src_ip': parsed['unicast_src_ip'],
+            'unicast_peer_list': parsed['unicast_peer_list'],
+            'priority': parsed['priority'],
+            'auth_pass': parsed['auth_pass'],
+            'panel_unicast_disabled': parsed['panel_unicast_disabled']
+        })
+        idx = end_idx + 1
+    return instances
+
+
 def has_vrrp_instance(conf_content, instance_name=None):
     instance = instance_name.strip() if instance_name else VRRP_INSTANCE_NAME
     return _find_vrrp_block(conf_content, instance) is not None

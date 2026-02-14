@@ -1,0 +1,33 @@
+<style>
+.wg-status-card{padding:15px;}
+.wg-status-card .item{margin-bottom:12px;font-size:14px;}
+.wg-status-card .label{display:inline-block;min-width:140px;color:#666;}
+.wg-status-badge{display:inline-block;margin-left:6px;font-weight:bold;}
+.wg-status-badge.success{color:#5cb85c;}
+.wg-status-badge.danger{color:#d9534f;}
+.wg-status-actions button{margin-right:8px;}
+.wg-key-area textarea{width:360px;min-height:70px;}
+.wg-config-table .btn{margin-right:6px;}
+.wg-conf-preview textarea{width:100%;min-height:160px;font-family:Menlo,Monaco,Consolas,monospace;}
+</style>
+<div class="bt-form">
+    <div class='plugin_version'></div>
+    <div class="bt-w-main">
+        <div class="bt-w-menu">
+            <p onclick="pluginService('wireguard');">服务</p>
+            <p onclick="pluginInitD('wireguard');">自启动</p>
+            <p onclick="wireguardKeyPanel($('.plugin_version').attr('version'));">密钥初始化</p>
+            <p class="bgw" onclick="wireguardConfigPanel($('.plugin_version').attr('version'));">配置列表</p>
+        </div>
+        <div class="bt-w-con pd15">
+            <div class="soft-man-con"></div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+resetPluginWinHeight(560);
+resetPluginWinWidth(900);
+$.getScript("/plugins/file?name=wireguard&f=js/wireguard.js", function(){
+    wireguardConfigPanel($('.plugin_version').attr('version'));
+});
+</script>

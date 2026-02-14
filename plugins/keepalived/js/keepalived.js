@@ -169,6 +169,12 @@ var keepalivedScriptEditorState = {
     version: ''
 };
 
+var keepalivedLogViewerState = {
+    logs: [],
+    currentPath: '',
+    version: ''
+};
+
 function keepalivedVrrpPanel(version){
     kpPost('get_vrrp_form', version, {}, function(res){
         var resData = keepalivedParsePayload(res.data);
@@ -302,31 +308,61 @@ function keepalivedStatusPanel(version){
         var serviceBadge = data.service_status === 'start'
             ? '<span class="keepalived-status-badge success">运行中</span>'
             : '<span class="keepalived-status-badge danger">未运行</span>';
-        var vipBadge = data.vip_owned
-            ? '<span class="keepalived-status-badge success">是</span>'
-            : '<span class="keepalived-status-badge danger">否</span>';
-
-        var vipText = data.vip ? '（' + keepalivedEscapeHtml(data.vip) + '）' : '';
+        var instances = data.instances || [];
+        var primaryInstance = instances.length ? instances[0] : null;
         var startStopClass = data.service_status === 'start' ? 'btn-danger' : 'btn-success';
         var startStopStyle = data.service_status === 'start' ? 'background-color:#d9534f;color:#fff;' : 'background-color:#5cb85c;color:#fff;';
-        var priorityText = (data.priority !== undefined && data.priority !== null && data.priority !== '') ? data.priority : '未知';
-        var priorityNum = parseInt(data.priority, 10);
+        var priorityText = (primaryInstance && primaryInstance.priority !== undefined && primaryInstance.priority !== null && primaryInstance.priority !== '') ? primaryInstance.priority : '未知';
+        var priorityNum = parseInt(priorityText, 10);
         var priorityButtons = '';
         var priorityClass = '';
         if(priorityNum === 100){
-            priorityButtons = '<button class="btn btn-danger btn-sm" onclick="keepalivedAdjustPriority(90, \'' + version + '\')">设置为低优先级</button>';
+            priorityButtons = '<button class="btn btn-danger btn-sm" onclick="keepalivedAdjustPriority(90, \'' + version + '\', \'' + (primaryInstance ? primaryInstance.name : '') + '\')">设置为低优先级</button>';
             priorityClass = 'success';
         }else if(priorityNum === 90){
-            priorityButtons = '<button class="btn btn-success btn-sm" onclick="keepalivedAdjustPriority(100, \'' + version + '\')">设置为高优先级</button>';
+            priorityButtons = '<button class="btn btn-success btn-sm" onclick="keepalivedAdjustPriority(100, \'' + version + '\', \'' + (primaryInstance ? primaryInstance.name : '') + '\')">设置为高优先级</button>';
             priorityClass = 'danger';
         }
         var priorityDisplay = '<span class="keepalived-status-priority' + (priorityClass ? (' ' + priorityClass) : '') + '">' + keepalivedEscapeHtml(priorityText) + '</span>';
         var priorityButtonsHtml = priorityButtons || '';
 
+        var instanceRows = '';
+        if(instances.length === 0){
+            instanceRows = '<tr><td colspan="4">未发现 vrrp_instance 配置</td></tr>';
+        }else{
+            $.each(instances, function(_, item){
+                var nameText = keepalivedEscapeHtml(item.name || '-');
+                var vipText = item.vip ? keepalivedEscapeHtml(item.vip) : '未配置';
+                var priorityTextRow = (item.priority !== undefined && item.priority !== null && item.priority !== '') ? keepalivedEscapeHtml(item.priority) : '未知';
+                var vipOwned = '-';
+                if(item.vip){
+                    vipOwned = item.vip_owned
+                        ? '<span class="keepalived-status-badge success">是</span>'
+                        : '<span class="keepalived-status-badge danger">否</span>';
+                }
+                instanceRows += '<tr>\
+                    <td>' + nameText + '</td>\
+                    <td>' + vipText + '</td>\
+                    <td>' + priorityTextRow + '</td>\
+                    <td>' + vipOwned + '</td>\
+                </tr>';
+            });
+        }
+
+        var instancesTable = '<div class="item">\
+            <span class="label-text">实例状态：</span>\
+            <div style="margin-top:8px;">\
+                <table class="table table-hover table-bordered" style="margin-bottom:0;">\
+                    <thead><tr><th>实例</th><th>VIP</th><th>优先级</th><th>持有VIP</th></tr></thead>\
+                    <tbody>' + instanceRows + '</tbody>\
+                </table>\
+            </div>\
+        </div>';
+
         var html = '<div class="keepalived-status-simple">\
             <div class="item"><span class="label-text">Keepalived 服务状态：</span>' + serviceBadge + '</div>\
-            <div class="item"><span class="label-text">是否持有 VIP：</span>' + vipBadge + vipText + '</div>\
-            <div class="item"><span class="label-text">当前优先级：</span>' + priorityDisplay + '</div>\
+            <div class="item"><span class="label-text">默认实例优先级：</span>' + priorityDisplay + '</div>\
+            ' + instancesTable + '\
             <div class="keepalived-status-buttons">\
                 <button class="btn btn-sm ' + startStopClass + '" style="' + startStopStyle + '" onclick="keepalivedServiceControl(\'' + (data.service_status === 'start' ? 'stop' : 'start') + '\', \'' + version + '\')">' + (data.service_status === 'start' ? '停止' : '启动') + '</button>\
                 <button class="btn btn-default btn-sm" onclick="keepalivedServiceControl(\'restart\', \'' + version + '\')">重启</button>\
@@ -415,12 +451,16 @@ function keepalivedServiceControl(action, version){
     }
 }
 
-function keepalivedAdjustPriority(targetPriority, version){
+function keepalivedAdjustPriority(targetPriority, version, instanceName){
     var alias = targetPriority === 90 ? '低优先级' : '高优先级';
     var confirmText = '确认将优先级设置为 ' + targetPriority + '（' + alias + '）吗？';
     layer.confirm(confirmText, {title:'确认操作',icon:0}, function(index){
         layer.close(index);
-        kpPost('set_priority', version, {priority: String(targetPriority)}, function(res){
+        var payload = {priority: String(targetPriority)};
+        if(instanceName){
+            payload.vrrp_instance = instanceName;
+        }
+        kpPost('set_priority', version, payload, function(res){
             layer.msg(res.msg || '优先级已更新', {icon:1});
             setTimeout(function(){
                 keepalivedStatusPanel(version);
@@ -443,16 +483,32 @@ function keepalivedShowVipStatus(version){
             layer.msg('未能获取 VIP 状态', {icon:2});
             return;
         }
-        var vipBadge = data.vip_owned
-            ? '<span class="keepalived-status-badge success">是</span>'
-            : '<span class="keepalived-status-badge danger">否</span>';
-        var content = '<div class="pd15">\
-            <p>VIP：' + keepalivedEscapeHtml(data.vip || '未配置') + '</p>\
-            <p>接口：' + keepalivedEscapeHtml(data.vip_interface || '-') + '</p>\
-            <p>当前是否持有：' + vipBadge + '</p>\
-            <p style="margin-top:10px;">检查输出：</p>\
-            <pre class="status-pre" style="height:160px;overflow:auto;">' + keepalivedEscapeHtml(data.vip_check_output || '') + '</pre>\
-        </div>';
+        var instances = data.instances || [];
+        if(instances.length === 0){
+            instances = [{
+                name: '',
+                vip: data.vip || '',
+                vip_interface: data.vip_interface || '',
+                vip_owned: data.vip_owned,
+                vip_check_output: data.vip_check_output || ''
+            }];
+        }
+        var contentBlocks = '';
+        $.each(instances, function(_, item){
+            var vipBadge = item.vip_owned
+                ? '<span class="keepalived-status-badge success">是</span>'
+                : '<span class="keepalived-status-badge danger">否</span>';
+            var title = item.name ? ('实例：' + keepalivedEscapeHtml(item.name)) : '实例';
+            contentBlocks += '<div style="margin-bottom:15px;">\
+                <div style="font-weight:bold;margin-bottom:6px;">' + title + '</div>\
+                <p>VIP：' + keepalivedEscapeHtml(item.vip || '未配置') + '</p>\
+                <p>接口：' + keepalivedEscapeHtml(item.vip_interface || '-') + '</p>\
+                <p>当前是否持有：' + vipBadge + '</p>\
+                <p style="margin-top:10px;">检查输出：</p>\
+                <pre class="status-pre" style="height:160px;overflow:auto;">' + keepalivedEscapeHtml(item.vip_check_output || '') + '</pre>\
+            </div>';
+        });
+        var content = '<div class="pd15">' + contentBlocks + '</div>';
         layer.open({
             type: 1,
             title: 'VIP 状态',
@@ -614,5 +670,86 @@ function keepalivedSaveCurrentScript(){
             return;
         }
         layer.msg('保存成功', {icon:1});
+    }, 'json');
+}
+
+function keepalivedLogsPanel(version){
+    kpPost('get_log_files', version, {}, function(res){
+        var resData = keepalivedParsePayload(res.data);
+        var logs = (resData && resData.data) ? resData.data : [];
+        keepalivedLogViewerState.logs = logs;
+        keepalivedLogViewerState.version = version;
+        keepalivedLogViewerState.currentPath = '';
+
+        var html = '<div class="keepalived-log-viewer pd15">\
+            <div class="line">\
+                <span class="tname" style="text-align: left; width: 70px;">日志选择</span>\
+                <div class="info-r">\
+                    <select id="keepalived-log-select" class="bt-input-text" style="width:320px;"></select>\
+                    <button class="btn btn-default btn-sm" id="keepalived-log-list-refresh" style="margin-left:5px;">刷新列表</button>\
+                    <button class="btn btn-default btn-sm" id="keepalived-log-refresh" style="margin-left:5px;">刷新内容</button>\
+                    <div class="c9" style="margin-top:4px;">路径：<span class="keepalived-log-current-path">-</span></div>\
+                </div>\
+            </div>\
+            <textarea id="keepalived-log-body" class="bt-input-text" style="width:100%;height:360px;margin-top:15px;" readonly></textarea>\
+        </div>';
+        $(".soft-man-con").html(html);
+
+        var select = $('#keepalived-log-select');
+        if(!logs.length){
+            keepalivedSetLogContent('未找到日志文件');
+            return;
+        }
+        $.each(logs, function(_, item){
+            var label = item.name || item.path;
+            var option = $('<option></option>').val(item.path).text(label);
+            select.append(option);
+        });
+        select.change(function(){
+            keepalivedLoadLogContent($(this).val());
+        });
+        $('#keepalived-log-list-refresh').click(function(){
+            keepalivedLogsPanel(version);
+        });
+        $('#keepalived-log-refresh').click(function(){
+            keepalivedLoadLogContent($('#keepalived-log-select').val());
+        });
+
+        var firstPath = logs[0].path;
+        select.val(firstPath);
+        keepalivedLoadLogContent(firstPath);
+    });
+}
+
+function keepalivedSetLogContent(content){
+    $('#keepalived-log-body').val(content || '');
+}
+
+function keepalivedLoadLogContent(path){
+    if(!path){
+        keepalivedSetLogContent('');
+        $('.keepalived-log-current-path').text('-');
+        return;
+    }
+    keepalivedLogViewerState.currentPath = path;
+    $('.keepalived-log-current-path').text(path);
+    var loadT = layer.msg('日志读取中...', {icon:16,time:0,shade:[0.3,'#000']});
+    var postData = 'path=' + encodeURIComponent(path) + '&line=200';
+    $.post('/files/get_last_body', postData, function(res){
+        layer.close(loadT);
+        if(!res.status){
+            layer.msg(res.msg || '读取日志失败', {icon:2});
+            keepalivedSetLogContent('');
+            return;
+        }
+        var content = res.data || '';
+        if(content === ''){
+            content = '当前没有日志!';
+        }
+        keepalivedSetLogContent(content);
+        var logBody = document.getElementById('keepalived-log-body');
+        if(logBody){
+            logBody.scrollTop = logBody.scrollHeight;
+        }
     }, 'json');
 }

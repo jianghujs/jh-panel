@@ -11,7 +11,7 @@ import sys
 import time
 import fcntl
 
-server_path = "{$SERVER_PATH}"
+server_path = "/www/server"
 panel_dir = f"{server_path}/jh-panel"
 log_file = f"{server_path}/keepalived/logs/notify_backup.log"
 lock_file = f"{server_path}/keepalived/notify.lock"
@@ -104,8 +104,6 @@ def parse_status(output: str) -> bool:
     if isinstance(status, str):
         return status.lower() == "true"
     return False
-
-
 def is_slave_running() -> bool | None:
     cmd = "python3 plugins/mysql-apt/index.py get_master_status"
     try:
@@ -354,6 +352,17 @@ def main() -> int:
             if not ok:
                 return 1
             log(f"init_slave_status 输出: {output}")
+
+        # 6.1) 发送主从心跳，避免主异常提醒
+        log("|- 发送主从心跳")
+        out, err, rc = mw.execShell(
+            f"cd {panel_dir} && python3 {panel_dir}/plugins/mysql-apt/index.py save_slave_status_to_master"
+        )
+        output = (out or err or "").strip()
+        if rc == 0:
+            log(f"主从心跳 执行完成: {output or '无输出'}")
+        else:
+            log(f"主从心跳 执行失败(忽略): {output or '无输出'}")
 
         # 7) 调整计划任务
         cron_actions = [

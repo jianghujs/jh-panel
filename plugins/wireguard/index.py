@@ -260,6 +260,11 @@ def initdInstall():
         return "Apple Computer does not support"
     if _command_exists('systemctl'):
         mw.execShell('systemctl enable wg-quick@' + DEFAULT_INTERFACE)
+    private_path, public_path = _fallback_key_paths()
+    private_key = _read_key_file(private_path)
+    public_key = _read_key_file(public_path)
+    if not private_key or not public_key:
+        generateKeypair()
     return 'ok'
 
 

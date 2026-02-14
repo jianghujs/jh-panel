@@ -38,6 +38,7 @@ Install_App()
 
 	if command -v wg >/dev/null 2>&1; then
 		echo 'WireGuard 安装完成'
+		cd ${rootPath} && python3 ${rootPath}/plugins/wireguard/index.py initd_install
 	else
 		echo 'WARN: 未检测到 wg 命令，请确认安装结果'
 	fi

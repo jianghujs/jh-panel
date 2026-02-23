@@ -39,6 +39,7 @@ class reportTools:
     __END_TIMESTAMP = None
     __START_DATE = None
     __END_DATE = None
+    __YESTERDAY_TIMESTAMP = None
     __ENABLE_LOG = True
 
     def __init__(self, enable_log=True):
@@ -53,6 +54,7 @@ class reportTools:
         self.__END_TIME = datetime.fromtimestamp(self.__END_TIMESTAMP)
         self.__START_DATE = datetime.fromtimestamp(self.__START_TIMESTAMP).date()
         self.__END_DATE = datetime.fromtimestamp(self.__END_TIMESTAMP).date()
+        self.__YESTERDAY_TIMESTAMP = self.__START_TIMESTAMP - 86400
 
     def _log(self, message):
         """打印日志的辅助方法"""
@@ -81,6 +83,64 @@ class reportTools:
             "average": total / len(data) if data else 0,
             "overCount": overCount
         }
+
+    def get_directory_size(self, path):
+        """获取目录大小"""
+        try:
+            dir_info = mw.M('directory_size').dbfile('system').where("path=?", (path,)).order('addtime desc').limit('1').select()
+            if not isinstance(dir_info, list):
+                dir_info = list(dir_info)
+            if dir_info and len(dir_info) > 0:
+                return int(dir_info[0].get('size', 0))
+            if not os.path.exists(path):
+                return 0
+            cmd = f"du -sb {path} | cut -f1"
+            result = mw.execShell(cmd)
+            if result[0]:
+                return int(result[0].strip())
+            return 0
+        except Exception:
+            return 0
+
+    def get_directory_size_change(self, path):
+        """获取目录大小变化"""
+        try:
+            yesterday_dir_info = mw.M('directory_size').dbfile('system').field('id,size,addtime').where(
+                "path=? AND addtime>=? AND addtime<=?", (path, self.__YESTERDAY_TIMESTAMP, self.__START_TIMESTAMP)
+            ).order('addtime desc').limit('1').select()
+            if not isinstance(yesterday_dir_info, list):
+                yesterday_dir_info = list(yesterday_dir_info)
+
+            current_dir_info = mw.M('directory_size').dbfile('system').field('id,size,addtime').where(
+                "path=? AND addtime>=? AND addtime<=?", (path, self.__START_TIMESTAMP, self.__END_TIMESTAMP)
+            ).order('addtime desc').limit('1').select()
+            if not isinstance(current_dir_info, list):
+                current_dir_info = list(current_dir_info)
+
+            yesterday_size = 0
+            if yesterday_dir_info and len(yesterday_dir_info) > 0 and isinstance(yesterday_dir_info[0], dict):
+                yesterday_size = int(yesterday_dir_info[0].get('size', 0))
+
+            current_size = 0
+            if current_dir_info and len(current_dir_info) > 0 and isinstance(current_dir_info[0], dict) and 'size' in current_dir_info[0]:
+                current_size = int(current_dir_info[0]['size'])
+            else:
+                current_size = self.get_directory_size(path)
+
+            if not current_dir_info or len(current_dir_info) == 0:
+                mw.M('directory_size').dbfile('system').add('path,size,addtime', (path, current_size, self.__END_TIMESTAMP))
+
+            return {
+                'yesterday_size': yesterday_size,
+                'current_size': current_size,
+                'change': current_size - yesterday_size
+            }
+        except Exception:
+            return {
+                'yesterday_size': 0,
+                'current_size': 0,
+                'change': 0
+            }
 
     def writeReportLog(self, report_data):
         json_data = json.dumps(report_data, default=json_serializer)
@@ -162,6 +222,26 @@ class reportTools:
             sysinfo_tips.append({
                 "name": "磁盘（%s）" % disk['path'],
                 "desc": f"已使用<span style='color: {'red' if (disk_notify_value != -1 and disk_size_percent > disk_notify_value) else ('orange' if (disk_notify_value != -1 and disk_size_percent > (disk_notify_value*0.8)) else 'auto')}'>{disk['size'][3]}（{disk['size'][1]}/{disk['size'][0]}）</span>"
+            })
+
+        # 磁盘使用情况分析
+        self._log("  |- 获取磁盘使用情况分析...")
+        disk_usage_tips = []
+        disk_usage_targets = [
+            ("数据库", "/www/server/mysql-apt/data"),
+            ("项目上传文件", "/www/wwwstorage"),
+            ("系统日志", "/var/log"),
+            ("网站日志", "/www/wwwlogs"),
+        ]
+        for name, path in disk_usage_targets:
+            dir_change = self.get_directory_size_change(path)
+            current_size = mw.toSize(dir_change.get('current_size', 0))
+            change_value = dir_change.get('change', 0)
+            change_size = mw.toSize(change_value)
+            change_sign = '+' if change_value > 0 else ''
+            disk_usage_tips.append({
+                "name": name,
+                "desc": "当前大小：%s<br/>较昨日：%s%s" % (current_size, change_sign, change_size)
             })
 
         # 最后监控时间
@@ -364,6 +444,7 @@ class reportTools:
             "end_date": str(self.__END_DATE),
 
             "sysinfo_tips": sysinfo_tips,
+            "disk_usage_tips": disk_usage_tips,
 
             # 备份相关
             "mysql_master_slave_info": mysql_master_slave_info,
@@ -399,6 +480,7 @@ class reportTools:
 
             report_data = self.getReportData()
             sysinfo_tips = report_data.get('sysinfo_tips', [])
+            disk_usage_tips = report_data.get('disk_usage_tips', [])
             backup_tips = report_data.get('backup_tips', [])
             siteinfo_tips = report_data.get('siteinfo_tips', [])
             jianghujsinfo_tips = report_data.get('jianghujsinfo_tips', [])
@@ -455,6 +537,11 @@ table tr td:nth-child(2) {
 %(sysinfo_tips)s
 </table>
 
+<h3>磁盘使用情况分析：</h3>
+<table border>
+%(disk_usage_tips)s
+</table>
+
 <h3>备份：</h3>
 
 <table border>
@@ -490,6 +577,7 @@ table tr td:nth-child(2) {
                 "start_date": self.__START_DATE,
                 "end_date": self.__END_DATE,
                 "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
+                "disk_usage_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in disk_usage_tips),
                 "backup_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in backup_tips),
                 "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
                 "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),

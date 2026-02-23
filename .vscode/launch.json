@@ -1,0 +1,6 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {"command":"codex-dsp","name":"codex","request":"launch","type":"node-terminal"}
+  ]
+}

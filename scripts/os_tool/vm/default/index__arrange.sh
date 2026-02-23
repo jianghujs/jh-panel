@@ -30,6 +30,7 @@ show_menu() {
     echo "5. 整理项目配置文件数据库连接信息，统一使用数据库自己的用户"
     echo "6. 清理系统crontab"
     echo "7. 将使用自定义证书的站点改为letsencrypt证书"
+    echo "8. 清理数据库_record_history表（分析生成清理SQL）"
     echo "========================================================"
 }
 
@@ -64,5 +65,8 @@ case $choice in
     ;;
 7)
     download_and_run arrange__change_site_ssl_to_letsencrypt.sh
+    ;;
+8)
+    download_and_run arrange__cleanup_record_history.sh
     ;;
 esac

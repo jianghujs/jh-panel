@@ -33,12 +33,6 @@ mysql_exec() {
     fi
 }
 
-if [ -n "$db_password" ]; then
-    echo "mysql_cmd：mysql -u$db_user -p****** -h$db_host -P$db_port"
-else
-    echo "mysql_cmd：mysql -u$db_user -h$db_host -P$db_port"
-fi
-
 # 连接mysql查询数据库列表
 databases=$(mysql_exec -e "SHOW DATABASES;" | awk '{if(NR>1) print $0}')
 
@@ -110,6 +104,20 @@ format_bytes() {
 
 trim() {
     echo "$1" | awk '{$1=$1;print}'
+}
+
+print_sql_with_highlight() {
+    if [ -t 1 ]; then
+        local color_kw=$'\033[1;36m'
+        local color_comment=$'\033[0;90m'
+        local color_reset=$'\033[0m'
+        sed -E \
+            -e "s#--.*#${color_comment}&${color_reset}#g" \
+            -e "s#\\<(DELETE|FROM|WHERE|SET|SELECT|INSERT|UPDATE|CREATE|DROP|ALTER|TRUNCATE)\\>#${color_kw}\\1${color_reset}#g" \
+            "$sql_file"
+    else
+        cat "$sql_file"
+    fi
 }
 
 pick_time_column() {
@@ -189,34 +197,24 @@ for db in "${selected_db_arr[@]}"; do
         continue
     fi
 
-    echo ""
-    echo "===================== 数据库：${db} ====================="
-    echo "数据库：${db}" >> "$report_file"
-
     tables=$(mysql_exec -N -e "SELECT table_name FROM information_schema.tables WHERE table_schema='${db}' AND table_type='BASE TABLE' AND table_name LIKE '%\\_record_history%' ESCAPE '\\\\' ORDER BY table_name;")
 
     if [ -z "$tables" ]; then
-        echo "未找到匹配 _record_history 的数据表。"
         echo "未找到匹配 _record_history 的数据表。" >> "$report_file"
-        echo "" >> "$report_file"
         continue
     fi
 
     for table in $tables; do
-        echo "|- 处理表：${db}.${table}"
-
         time_info=$(pick_time_column "$db" "$table" || true)
         if [ -z "$time_info" ]; then
             read -p "未找到时间字段，请输入 ${db}.${table} 的时间字段（留空跳过）：" manual_col
             manual_col=$(trim "$manual_col")
             if [ -z "$manual_col" ]; then
-                echo "   跳过 ${db}.${table}"
                 echo "跳过：${table}（未指定时间字段）" >> "$report_file"
                 continue
             fi
             time_info=$(mysql_exec -N -e "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='${db}' AND table_name='${table}' AND column_name='${manual_col}' LIMIT 1;")
             if [ -z "$time_info" ]; then
-                echo "   字段 ${manual_col} 不存在，跳过 ${db}.${table}"
                 echo "跳过：${table}（字段不存在：${manual_col}）" >> "$report_file"
                 continue
             fi
@@ -230,13 +228,11 @@ for db in "${selected_db_arr[@]}"; do
         cutoff_display=$(echo "$condition_info" | awk -F'|' '{print $2}')
 
         if [ -z "$condition" ]; then
-            echo "   不支持的时间字段类型：${time_type}，跳过 ${db}.${table}"
             echo "跳过：${table}（不支持的类型：${time_type}）" >> "$report_file"
             continue
         fi
 
         if ! table_stats=$(mysql_exec -N -e "SELECT IFNULL(table_rows,0), IFNULL(data_length,0), IFNULL(index_length,0) FROM information_schema.tables WHERE table_schema='${db}' AND table_name='${table}' LIMIT 1;"); then
-            echo "   获取表信息失败，跳过 ${db}.${table}"
             echo "跳过：${table}（获取表信息失败）" >> "$report_file"
             continue
         fi
@@ -247,7 +243,6 @@ for db in "${selected_db_arr[@]}"; do
         total_bytes=$((data_length + index_length))
 
         if ! delete_rows=$(mysql_exec -N -e "SELECT COUNT(*) FROM \`${db}\`.\`${table}\` WHERE ${condition};"); then
-            echo "   统计删除行数失败，跳过 ${db}.${table}"
             echo "跳过：${table}（统计删除行数失败）" >> "$report_file"
             continue
         fi
@@ -263,10 +258,6 @@ for db in "${selected_db_arr[@]}"; do
         total_est_bytes=$((total_est_bytes + est_bytes))
 
         est_size_human=$(format_bytes "$est_bytes")
-
-        echo "   时间字段：${time_col} (${time_type})"
-        echo "   预计删除行数：${delete_rows} / 总行数：${total_rows}"
-        echo "   预计清理大小：${est_size_human}"
 
         {
             echo "表：${table}"
@@ -287,14 +278,7 @@ for db in "${selected_db_arr[@]}"; do
             echo ""
         } >> "$sql_file"
     done
-
-    echo "" >> "$report_file"
 done
-
-echo ""
-echo "========================= 汇总 ========================="
-echo "预计删除总行数：${total_est_rows}"
-echo "预计清理总大小：$(format_bytes "$total_est_bytes")"
 
 {
     echo "汇总："
@@ -302,21 +286,16 @@ echo "预计清理总大小：$(format_bytes "$total_est_bytes")"
     echo "- 预计清理总大小：$(format_bytes "$total_est_bytes")"
 } >> "$report_file"
 
-echo ""
-echo "SQL 文件：${sql_file}"
-echo "报告文件：${report_file}"
-
-echo ""
+echo "预计清理总大小：$(format_bytes "$total_est_bytes")"
+echo "清理 SQL 内容："
+print_sql_with_highlight
 read -p "是否执行清理 SQL？（默认n）[y/N] " execute_now
 execute_now=${execute_now:-n}
 
 case $execute_now in
     [Yy]* )
-        echo "开始执行清理 SQL..."
         mysql_exec < "$sql_file"
-        echo "清理执行完成✅"
         ;;
     * )
-        echo "已生成清理 SQL，未执行。"
         ;;
 esac

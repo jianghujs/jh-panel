@@ -3,7 +3,7 @@
 # Startup script for the Keepalived daemon
 #
 # processname: keepalived
-# pidfile: /var/run/keepalived.pid
+# pidfile: /run/keepalived.pid
 # config: /etc/keepalived/keepalived.conf
 # chkconfig: - 21 79
 # description: Start and stop Keepalived

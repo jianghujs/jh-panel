@@ -8,6 +8,7 @@ After=network-online.target syslog.target
 
 [Service]
 Type=forking
+PIDFile=/run/keepalived.pid
 ExecStart={$SERVER_PATH}/keepalived/sbin/keepalived -D
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure

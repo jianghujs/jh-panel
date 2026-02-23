@@ -721,6 +721,32 @@ def initDreplace():
     return file_bin
 
 
+def ensureSystemdPidFile():
+    system_dir = mw.systemdCfgDir()
+    system_service = system_dir + '/' + getPluginName() + '.service'
+    if not os.path.exists(system_service):
+        return False
+
+    content = mw.readFile(system_service)
+    if not content:
+        return False
+
+    target_line = 'PIDFile=/run/keepalived.pid'
+    if re.search(r'^\s*PIDFile\s*=\s*/run/keepalived\.pid\s*$', content, re.M):
+        return True
+
+    if re.search(r'^\s*PIDFile\s*=', content, re.M):
+        content = re.sub(r'^\s*PIDFile\s*=.*$', target_line, content, flags=re.M)
+    elif '[Service]' in content:
+        content = content.replace('[Service]', '[Service]\n' + target_line, 1)
+    else:
+        content = content.rstrip() + '\n\n[Service]\n' + target_line + '\n'
+
+    mw.writeFile(system_service, content)
+    mw.execShell('systemctl daemon-reload')
+    return True
+
+
 def kpOp(method):
     file = initDreplace()
 
@@ -816,6 +842,8 @@ def initdInstall():
         mw.execShell('sysrc ' + getPluginName() + '_enable="YES"')
         return 'ok'
 
+    ensureSystemdPidFile()
+    
     mw.execShell('systemctl enable ' + getPluginName())
     return 'ok'
 

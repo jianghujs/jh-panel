@@ -275,6 +275,7 @@ for db in "${selected_db_arr[@]}"; do
             echo "-- Cutoff: ${cutoff_display}"
             echo "-- Estimated delete rows: ${delete_rows} / total ${total_rows}"
             echo "DELETE FROM \`${db}\`.\`${table}\` WHERE ${condition};"
+            echo "OPTIMIZE TABLE \`${db}\`.\`${table}\`;"
             echo ""
         } >> "$sql_file"
     done

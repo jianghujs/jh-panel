@@ -2361,7 +2361,17 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                             or (slave_status_item.get('delay', '-1') == 'None' 
                             or int(slave_status_item.get('delay', '999')) > 0)
                         ):  
-                        error_msg_arr.append('MySQL主从同步异常')
+                        addtime_value = slave_status_item.get('addtime', 0)
+                        try:
+                            addtime_value = int(addtime_value)
+                        except Exception:
+                            addtime_value = 0
+                        last_sync_time = getDataFromInt(addtime_value) if addtime_value > 0 else '未知'
+                        slave_ip = slave_status_item.get('ip', '')
+                        if slave_ip:
+                            error_msg_arr.append('MySQL主从同步异常[从库:{}，最后同步时间：{}]'.format(slave_ip, last_sync_time))
+                        else:
+                            error_msg_arr.append('MySQL主从同步异常[最后同步时间：{}]'.format(last_sync_time))
 
         # Rsync状态
         if (control_notify_config['rsync_status_notice'] == 1):

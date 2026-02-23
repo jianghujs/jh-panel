@@ -540,17 +540,42 @@ table tr td:nth-child(2) {
                   slave_status_conn.close()
                   mysql_master_slave_info["slave_status_list"] = slave_status
                   
+                  slave_status_desc_list = []
+                  for item in slave_status:
+                      addtime_value = item.get('addtime', 0)
+                      try:
+                          addtime_value = int(addtime_value)
+                      except Exception:
+                          addtime_value = 0
+                      last_sync_time = mw.toTime(addtime_value) if addtime_value > 0 else '未知'
+
+                      io_ok = item.get('io_running', '') == 'Yes' and addtime_value > int(self.__START_TIMESTAMP)
+                      delay_value = item.get('delay', '-1')
+                      delay_bad = False
+                      try:
+                          delay_bad = (delay_value == 'None' or int(delay_value) > 0)
+                      except Exception:
+                          delay_bad = True
+                      is_abnormal = (not io_ok) or delay_bad
+
+                      status_color = 'auto' if not is_abnormal else 'red'
+                      status_text = '正常' if not is_abnormal else '异常'
+                      delay_color = 'auto' if not delay_bad else 'orange'
+                      last_sync_line = f"最后同步时间：{last_sync_time}<br/>" if is_abnormal else ""
+
+                      slave_status_desc_list.append(
+                          f"""IP：{item.get('ip', '')}<br/>
+状态：<span style=\"color: {status_color}\">{status_text}</span><br/>
+延迟：<span style=\"color: {delay_color}\">{item.get('delay', '异常')}</span><br/>
+{last_sync_line}
+"""
+                      )
+
                   backup_tips.append({
                       "name": 'MySQL主从同步',
-                      "desc":"""
+                      "desc": """
 %s
-                      """ % (
-                        ''.join(f"""
-IP：{item.get('ip', '')}<br/>
-状态：<span style=\"color: {'auto' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', 0)) > int(self.__START_TIMESTAMP)) else 'red'}\">{'正常' if (item.get('io_running', '') == 'Yes' and int(item.get('addtime', '0')) > self.__START_TIMESTAMP) else '异常'}</span><br/> 
-延迟：<span style=\"color: {'auto' if (item.get('delay', '-1') != 'None' and int(item.get('delay', '-1')) == 0) else 'orange'}\">{item.get('delay', '异常')}</span>
-\n""" for item in slave_status)
-                      )
+                      """ % (''.join(slave_status_desc_list))
                   })
             except Exception as e:
               slave_status = []

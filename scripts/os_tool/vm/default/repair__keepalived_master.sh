@@ -1,21 +1,22 @@
 #!/bin/bash
 source /www/server/jh-panel/scripts/util/msg.sh
 
-KEEPALIVED_INIT="/www/server/keepalived/init.d/keepalived"
 KEEPALIVED_CONF="/www/server/keepalived/etc/keepalived/keepalived.conf"
 NOTIFY_MASTER="/www/server/keepalived/scripts/notify_master.py"
 NOTIFY_BACKUP="/www/server/keepalived/scripts/notify_backup.py"
 DEFAULT_REMOTE_PORT="10022"
 PANEL_DIR="/www/server/jh-panel"
 DEFAULT_VRRP_INSTANCE="VI_1"
+DEFAULT_WG_INTERFACE="wg0"
 
 print_plan() {
   echo "=========================="
   echo "即将执行以下流程："
   echo "1. 确保本地、对端的 keepalived 启动"
-  echo "2. 确认 VIP 在本地还是对端"
-  echo "3. 如果当前为备，执行对端的 keepalived 脚本确保漂移到本地"
-  echo "4. (可选) 执行上下线脚本修复配置"
+  echo "2. 先停止 keepalived，(可选) 重启 WireGuard，最后再启动 keepalived"
+  echo "3. 确认 VIP 在本地还是对端"
+  echo "4. 如果当前为备，执行对端的 keepalived 脚本确保漂移到本地"
+  echo "5. 修复两边 keepalived 状态"
   echo "=========================="
 }
 
@@ -28,7 +29,7 @@ ensure_local_keepalived() {
   echo "|- 检查本地 keepalived 状态..."
   if ! pgrep -x keepalived >/dev/null; then
     echo "|- 本地 keepalived 未运行，正在启动..."
-    bash "${KEEPALIVED_INIT}" start
+    systemctl start keepalived
     sleep 1
   fi
   if ! pgrep -x keepalived >/dev/null; then
@@ -40,7 +41,7 @@ ensure_local_keepalived() {
 
 ensure_remote_keepalived() {
   echo "|- 检查对端 keepalived 状态..."
-  remote_exec "pgrep -x keepalived >/dev/null || bash ${KEEPALIVED_INIT} start"
+  remote_exec "pgrep -x keepalived >/dev/null || systemctl start keepalived"
   if [ $? -ne 0 ]; then
     show_error "错误: 对端 keepalived 启动失败"
     exit 1
@@ -51,6 +52,138 @@ ensure_remote_keepalived() {
     exit 1
   fi
   show_info "|- 对端 keepalived 运行中✅"
+}
+
+validate_iface() {
+  local iface="$1"
+  [[ "${iface}" =~ ^[A-Za-z0-9_.-]+$ ]]
+}
+
+get_vrrp_interface() {
+  if [ ! -f "${KEEPALIVED_CONF}" ]; then
+    return 0
+  fi
+  awk -v inst="${VRRP_INSTANCE}" '
+    $1 == "vrrp_instance" && $2 == inst {in_instance=1; next}
+    in_instance && $1 == "}" {in_instance=0}
+    in_instance && $1 == "interface" {print $2; exit}
+  ' "${KEEPALIVED_CONF}"
+}
+
+restart_wireguard_local() {
+  echo "|- 重启本地 WireGuard(${WG_INTERFACE})..."
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl restart wg-quick@"${WG_INTERFACE}"
+  elif command -v wg-quick >/dev/null 2>&1; then
+    wg-quick down "${WG_INTERFACE}" >/dev/null 2>&1 || true
+    wg-quick up "${WG_INTERFACE}"
+  else
+    show_error "错误: 未找到 systemctl 或 wg-quick，无法重启 WireGuard"
+    exit 1
+  fi
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl is-active --quiet wg-quick@"${WG_INTERFACE}"
+  else
+    ip link show "${WG_INTERFACE}" >/dev/null 2>&1
+  fi
+
+  if [ $? -ne 0 ]; then
+    show_error "错误: 本地 WireGuard 重启失败"
+    exit 1
+  fi
+  show_info "|- 本地 WireGuard 重启完成✅"
+}
+
+restart_wireguard_remote() {
+  echo "|- 重启对端 WireGuard(${WG_INTERFACE})..."
+  remote_exec "WG_INTERFACE='${WG_INTERFACE}' bash -lc 'if command -v systemctl >/dev/null 2>&1; then systemctl restart wg-quick@${WG_INTERFACE}; elif command -v wg-quick >/dev/null 2>&1; then wg-quick down ${WG_INTERFACE} >/dev/null 2>&1 || true; wg-quick up ${WG_INTERFACE}; else exit 1; fi; if command -v systemctl >/dev/null 2>&1; then systemctl is-active --quiet wg-quick@${WG_INTERFACE}; else ip link show ${WG_INTERFACE} >/dev/null 2>&1; fi'"
+  if [ $? -ne 0 ]; then
+    show_error "错误: 对端 WireGuard 重启失败"
+    exit 1
+  fi
+  show_info "|- 对端 WireGuard 重启完成✅"
+}
+
+stop_keepalived_local() {
+  echo "|- 停止本地 keepalived..."
+  systemctl stop keepalived
+  if pgrep -x keepalived >/dev/null; then
+    show_error "错误: 本地 keepalived 停止失败"
+    exit 1
+  fi
+  show_info "|- 本地 keepalived 已停止✅"
+}
+
+stop_keepalived_remote() {
+  echo "|- 停止对端 keepalived..."
+  remote_exec "systemctl stop keepalived"
+  if [ $? -ne 0 ]; then
+    show_error "错误: 对端 keepalived 停止失败"
+    exit 1
+  fi
+  remote_exec "pgrep -x keepalived >/dev/null"
+  if [ $? -eq 0 ]; then
+    show_error "错误: 对端 keepalived 仍在运行"
+    exit 1
+  fi
+  show_info "|- 对端 keepalived 已停止✅"
+}
+
+start_keepalived_local() {
+  echo "|- 启动本地 keepalived..."
+  systemctl start keepalived
+  if ! pgrep -x keepalived >/dev/null; then
+    show_error "错误: 本地 keepalived 启动失败"
+    exit 1
+  fi
+  show_info "|- 本地 keepalived 启动完成✅"
+}
+
+start_keepalived_remote() {
+  echo "|- 启动对端 keepalived..."
+  remote_exec "systemctl start keepalived"
+  if [ $? -ne 0 ]; then
+    show_error "错误: 对端 keepalived 启动失败"
+    exit 1
+  fi
+  remote_exec "pgrep -x keepalived >/dev/null"
+  if [ $? -ne 0 ]; then
+    show_error "错误: 对端 keepalived 未运行"
+    exit 1
+  fi
+  show_info "|- 对端 keepalived 启动完成✅"
+}
+
+repair_keepalived_master_status() {
+  echo "|- 修复本地 keepalived 主状态..."
+  if [ ! -f "${NOTIFY_MASTER}" ]; then
+    show_error "错误: notify_master.py 不存在: ${NOTIFY_MASTER}"
+    exit 1
+  fi
+
+  echo "|- 执行本地 notify_master.py..."
+  python3 "${NOTIFY_MASTER}"
+  if [ $? -ne 0 ]; then
+    show_error "错误: notify_master.py 执行失败"
+    exit 1
+  fi
+  show_info "|- notify_master.py 执行完成✅"
+}
+
+repair_keepalived_backup_status() {
+  echo "|- 修复对端 keepalived 备状态..."
+  if ! remote_exec "[ -f '${NOTIFY_BACKUP}' ]"; then
+    show_error "错误: 对端 notify_backup.py 不存在: ${NOTIFY_BACKUP}"
+    exit 1
+  fi
+  echo "|- 执行对端 notify_backup.py..."
+  remote_exec "python3 ${NOTIFY_BACKUP}"
+  if [ $? -ne 0 ]; then
+    show_error "错误: 对端 notify_backup.py 执行失败"
+    exit 1
+  fi
+  show_info "|- notify_backup.py 执行完成✅"
 }
 
 update_local_priority() {
@@ -164,15 +297,45 @@ fi
 prompt "请输入对端服务器SSH端口(默认: ${DEFAULT_REMOTE_PORT}): " remote_port "${DEFAULT_REMOTE_PORT}"
 prompt "请输入 keepalived vrrp_instance 名称(默认: ${DEFAULT_VRRP_INSTANCE}): " VRRP_INSTANCE "${DEFAULT_VRRP_INSTANCE}"
 
-if [ ! -x "${KEEPALIVED_INIT}" ]; then
-  show_error "错误: keepalived 启动脚本不存在: ${KEEPALIVED_INIT}"
+default_wg_interface=$(get_vrrp_interface)
+if [ -z "${default_wg_interface}" ]; then
+  default_wg_interface="${DEFAULT_WG_INTERFACE}"
+fi
+prompt "请输入 WireGuard 接口名(默认: ${default_wg_interface}): " WG_INTERFACE "${default_wg_interface}"
+if ! validate_iface "${WG_INTERFACE}"; then
+  show_error "错误: WireGuard 接口名不合法: ${WG_INTERFACE}"
+  exit 1
+fi
+prompt "是否重启 WireGuard(${WG_INTERFACE})？（默认y）[y/n]: " wg_choice "y"
+SKIP_NOTIFY_BACKUP=1
+
+if ! command -v systemctl >/dev/null; then
+  show_error "错误: 未找到 systemctl 命令"
   exit 1
 fi
 
+echo "|- 开始停止两端 keepalived..."
+stop_keepalived_local
+stop_keepalived_remote
+
+if [ "${wg_choice}" == "y" ]; then
+  echo "|- 开始重启两端 wireguard..."
+  restart_wireguard_local
+  restart_wireguard_remote
+fi
+
+echo "|- 开始启动两端 keepalived..."
+start_keepalived_local
+start_keepalived_remote
+
 ensure_local_keepalived
 ensure_remote_keepalived
+
 update_local_priority
 update_remote_priority
+
+sleep 5
+
 
 vip_list=$(get_vips)
 if [ -z "${vip_list}" ]; then
@@ -190,7 +353,7 @@ if [ ${remote_has_vip} -eq 1 ]; then
   else
     echo "|- 当前本机为备，正在执行对端 keepalived 脚本以漂移 VIP 到本地..."
   fi
-  remote_exec "bash ${KEEPALIVED_INIT} stop"
+  remote_exec "systemctl stop keepalived"
   if [ $? -ne 0 ]; then
     show_error "错误: 对端 keepalived 停止失败"
     exit 1
@@ -204,7 +367,7 @@ if [ ${remote_has_vip} -eq 1 ]; then
     exit 1
   fi
 
-  remote_exec "cd ${PANEL_DIR} && python3 ${PANEL_DIR}/plugins/keepalived/index.py restart"
+  remote_exec "systemctl restart keepalived"
   if [ $? -ne 0 ]; then
     show_error "错误: 对端 keepalived 启动失败"
     exit 1
@@ -221,38 +384,9 @@ if [ ${local_has_vip} -eq 0 ]; then
 fi
 show_info "|- VIP 已在本机✅"
 
-if [ ${performed_failover} -eq 0 ]; then
-  prompt "是否需要执行上下线脚本修复配置？（默认n）[y/n]: " notify_choice "n"
-  if [ "${notify_choice}" == "y" ]; then
-    if [ ! -f "${NOTIFY_MASTER}" ]; then
-      show_error "错误: notify_master.py 不存在: ${NOTIFY_MASTER}"
-      exit 1
-    fi
-
-    echo "|- 执行本地 notify_master.py..."
-    python3 "${NOTIFY_MASTER}"
-    if [ $? -ne 0 ]; then
-      show_error "错误: notify_master.py 执行失败"
-      exit 1
-    fi
-    show_info "|- notify_master.py 执行完成✅"
-
-    if ! remote_exec "[ -f '${NOTIFY_BACKUP}' ]"; then
-      show_error "错误: 对端 notify_backup.py 不存在: ${NOTIFY_BACKUP}"
-      exit 1
-    fi
-
-    echo "|- 执行对端 notify_backup.py..."
-    remote_exec "python3 ${NOTIFY_BACKUP}"
-    if [ $? -ne 0 ]; then
-      show_error "错误: 对端 notify_backup.py 执行失败"
-      exit 1
-    fi
-    show_info "|- 对端 notify_backup.py 执行完成✅"
-  fi
-else
-  show_info "|- 已执行 keepalived 漂移脚本，跳过上下线修复步骤✅"
-fi
+echo "|- 开始触发本地 notify_master..."
+repair_keepalived_master_status
+# repair_keepalived_backup_status
 
 echo ""
 echo "==========================修复 keepalived 主节点完成✅=========================="

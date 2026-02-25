@@ -217,7 +217,7 @@ function wireguardBuildTemplate(iface, defaults, keyInfo){
         'PublicKey = <PEER_PUBLIC_KEY>',
         'AllowedIPs = ' + allowedIps,
         'Endpoint = ' + peerEndpoint,
-        'PersistentKeepalive = 25'
+        'PersistentKeepalive = 15'
     ];
     return lines.join('\n') + '\n';
 }

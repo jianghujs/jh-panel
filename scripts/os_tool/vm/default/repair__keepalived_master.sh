@@ -4,10 +4,13 @@ source /www/server/jh-panel/scripts/util/msg.sh
 KEEPALIVED_CONF="/www/server/keepalived/etc/keepalived/keepalived.conf"
 NOTIFY_MASTER="/www/server/keepalived/scripts/notify_master.py"
 NOTIFY_BACKUP="/www/server/keepalived/scripts/notify_backup.py"
+NOTIFY_LOCK="/www/server/keepalived/notify.lock"
 DEFAULT_REMOTE_PORT="10022"
 PANEL_DIR="/www/server/jh-panel"
 DEFAULT_VRRP_INSTANCE="VI_1"
 DEFAULT_WG_INTERFACE="wg0"
+NOTIFY_WAIT_TIMEOUT=120
+NOTIFY_WAIT_INTERVAL=2
 
 print_plan() {
   echo "=========================="
@@ -153,6 +156,23 @@ start_keepalived_remote() {
     exit 1
   fi
   show_info "|- 对端 keepalived 启动完成✅"
+}
+
+wait_for_notify_unlock() {
+  local elapsed=0
+  if ! command -v flock >/dev/null 2>&1; then
+    show_error "错误: 未找到 flock 命令，无法等待 notify 执行完成"
+    exit 1
+  fi
+  while [ ${elapsed} -lt ${NOTIFY_WAIT_TIMEOUT} ]; do
+    if flock -n "${NOTIFY_LOCK}" -c "true" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "${NOTIFY_WAIT_INTERVAL}"
+    elapsed=$((elapsed + NOTIFY_WAIT_INTERVAL))
+  done
+  show_error "错误: 等待 notify 结束超时(${NOTIFY_WAIT_TIMEOUT}s)"
+  exit 1
 }
 
 repair_keepalived_master_status() {
@@ -383,6 +403,9 @@ if [ ${local_has_vip} -eq 0 ]; then
   exit 1
 fi
 show_info "|- VIP 已在本机✅"
+
+echo "|- 等待 notify_backup 执行完成..."
+wait_for_notify_unlock
 
 echo "|- 开始触发本地 notify_master..."
 repair_keepalived_master_status

@@ -8,6 +8,7 @@ import os
 import re
 import shlex
 import sys
+import time
 
 server_path = "/www/server"
 panel_dir = f"{server_path}/jh-panel"
@@ -17,6 +18,8 @@ keepalived_conf = f"{server_path}/keepalived/etc/keepalived/keepalived.conf"
 ping_count = 1
 ping_timeout = 1
 min_success = 1
+retry_times = 3
+retry_interval = 1
 
 if sys.platform != "darwin":
     os.chdir(panel_dir)
@@ -117,25 +120,38 @@ def main() -> int:
     count = parse_int(os.environ.get("NETWORK_PING_COUNT", ""), ping_count)
     timeout = parse_int(os.environ.get("NETWORK_PING_TIMEOUT", ""), ping_timeout)
     required = parse_int(os.environ.get("NETWORK_MIN_SUCCESS", ""), min_success)
+    retries = parse_int(os.environ.get("NETWORK_RETRY_TIMES", ""), retry_times)
+    interval = parse_int(os.environ.get("NETWORK_RETRY_INTERVAL", ""), retry_interval)
 
     targets = build_targets()
     if not targets:
         log("WARN: 未找到检测目标，跳过网络检查")
         return 0
 
-    success = 0
-    for target in targets:
-        if ping_target(target, count, timeout):
-            log(f"ping {target} 成功 ✅")
-            success += 1
-        else:
-            log(f"ping {target} 失败 ❌")
+    if retries < 1:
+        retries = 1
+    if interval < 0:
+        interval = 0
 
-    if success >= required:
-        log(f"网络检查通过 ✅ (成功 {success}/{len(targets)})")
-        return 0
+    for attempt in range(1, retries + 1):
+        success = 0
+        for target in targets:
+            if ping_target(target, count, timeout):
+                log(f"ping {target} 成功 ✅")
+                success += 1
+            else:
+                log(f"ping {target} 失败 ❌")
 
-    log(f"网络检查失败 ❌ (成功 {success}/{len(targets)})")
+        if success >= required:
+            log(f"网络检查通过 ✅ (成功 {success}/{len(targets)})")
+            return 0
+
+        log(f"网络检查失败 ❌ (成功 {success}/{len(targets)})")
+        if attempt < retries and interval > 0:
+            log(f"等待 {interval}s 后重试({attempt}/{retries})...")
+            time.sleep(interval)
+
+    log(f"网络检查失败(重试 {retries} 次仍未通过) ❌")
     return 1
 
 

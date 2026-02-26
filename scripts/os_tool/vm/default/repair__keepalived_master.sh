@@ -347,11 +347,10 @@ start_keepalived_remote
 
 ensure_local_keepalived
 ensure_remote_keepalived
-
 update_local_priority
 update_remote_priority
 
-sleep 5
+sleep 10
 
 
 vip_list=$(get_vips)

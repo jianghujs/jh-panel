@@ -75,20 +75,16 @@ get_vrrp_interface() {
 
 restart_wireguard_local() {
   echo "|- 重启本地 WireGuard(${WG_INTERFACE})..."
-  if command -v systemctl >/dev/null 2>&1; then
-    systemctl restart wg-quick@"${WG_INTERFACE}"
-  elif command -v wg-quick >/dev/null 2>&1; then
+  if command -v wg-quick >/dev/null 2>&1; then
     wg-quick down "${WG_INTERFACE}" >/dev/null 2>&1 || true
     wg-quick up "${WG_INTERFACE}"
+    ip link show "${WG_INTERFACE}" >/dev/null 2>&1
+  elif command -v systemctl >/dev/null 2>&1; then
+    systemctl restart wg-quick@"${WG_INTERFACE}"
+    systemctl is-active --quiet wg-quick@"${WG_INTERFACE}"
   else
     show_error "错误: 未找到 systemctl 或 wg-quick，无法重启 WireGuard"
     exit 1
-  fi
-
-  if command -v systemctl >/dev/null 2>&1; then
-    systemctl is-active --quiet wg-quick@"${WG_INTERFACE}"
-  else
-    ip link show "${WG_INTERFACE}" >/dev/null 2>&1
   fi
 
   if [ $? -ne 0 ]; then
@@ -100,7 +96,7 @@ restart_wireguard_local() {
 
 restart_wireguard_remote() {
   echo "|- 重启对端 WireGuard(${WG_INTERFACE})..."
-  remote_exec "WG_INTERFACE='${WG_INTERFACE}' bash -lc 'if command -v systemctl >/dev/null 2>&1; then systemctl restart wg-quick@${WG_INTERFACE}; elif command -v wg-quick >/dev/null 2>&1; then wg-quick down ${WG_INTERFACE} >/dev/null 2>&1 || true; wg-quick up ${WG_INTERFACE}; else exit 1; fi; if command -v systemctl >/dev/null 2>&1; then systemctl is-active --quiet wg-quick@${WG_INTERFACE}; else ip link show ${WG_INTERFACE} >/dev/null 2>&1; fi'"
+  remote_exec "WG_INTERFACE='${WG_INTERFACE}' bash -lc 'if command -v wg-quick >/dev/null 2>&1; then wg-quick down ${WG_INTERFACE} >/dev/null 2>&1 || true; wg-quick up ${WG_INTERFACE}; ip link show ${WG_INTERFACE} >/dev/null 2>&1; elif command -v systemctl >/dev/null 2>&1; then systemctl restart wg-quick@${WG_INTERFACE}; systemctl is-active --quiet wg-quick@${WG_INTERFACE}; else exit 1; fi'"
   if [ $? -ne 0 ]; then
     show_error "错误: 对端 WireGuard 重启失败"
     exit 1

@@ -102,6 +102,22 @@ Install_App()
 	Install_Arping
 }
 
+Update_App()
+{
+	echo '正在更新keepalived脚本文件...' > $install_tmp
+	scripts_src=$rootPath/plugins/keepalived/scripts
+	scripts_dst=$serverPath/keepalived/scripts
+	if [ ! -d "$scripts_src" ]; then
+		echo "keepalived 脚本目录不存在: $scripts_src" >> $install_tmp
+		return
+	fi
+
+	rm -rf "$scripts_dst"
+
+	cd ${rootPath} && python3 ${rootPath}/plugins/keepalived/index.py initd_install
+	echo $(date "+%Y-%m-%d %H:%M:%S") '更新完成' >> $install_tmp
+}
+
 Uninstall_App()
 {
 	if [ -f /usr/lib/systemd/system/keepalived.service ];then
@@ -129,6 +145,8 @@ Uninstall_App()
 action=$1
 if [ "${1}" == 'install' ];then
 	Install_App
+elif [ "${1}" == 'update' ];then
+	Update_App
 else
 	Uninstall_App
 fi

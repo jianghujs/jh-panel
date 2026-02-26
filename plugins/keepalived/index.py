@@ -832,15 +832,12 @@ def initdInstall():
     if current_os == 'darwin':
         return "Apple Computer does not support"
 
-    # freebsd initd install
-    if current_os.startswith('freebsd'):
-        import shutil
-        source_bin = initDreplace()
-        initd_bin = getInitDFile()
-        shutil.copyfile(source_bin, initd_bin)
-        mw.execShell('chmod +x ' + initd_bin)
-        mw.execShell('sysrc ' + getPluginName() + '_enable="YES"')
-        return 'ok'
+    import shutil
+    source_bin = initDreplace()
+    initd_bin = getInitDFile()
+    shutil.copyfile(source_bin, initd_bin)
+    mw.execShell('chmod +x ' + initd_bin)
+    mw.execShell('sysrc ' + getPluginName() + '_enable="YES"')
 
     ensureSystemdPidFile()
     

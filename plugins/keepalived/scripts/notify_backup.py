@@ -352,7 +352,9 @@ def main() -> int:
             if not ok:
                 return 1
             log(f"init_slave_status 输出: {output}")
-
+        
+        time.sleep(3)
+        
         # 6.1) 发送主从心跳，避免主异常提醒
         log("|- 发送主从心跳")
         out, err, rc = mw.execShell(

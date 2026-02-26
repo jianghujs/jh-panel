@@ -26,7 +26,7 @@ import mw
 
 
 def log(message: str) -> None:
-    mw.writeFileLog(f"{mw.getDate()} [chk_network] {message}", log_file)
+    mw.writeFileLog(f"{mw.getDate()} [chk_network] {message}", log_file, 2 * 1024 * 1024, 1)
 
 
 def parse_int(value: str, default: int) -> int:

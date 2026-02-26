@@ -24,7 +24,7 @@ sys.path.append("/www/server/jh-panel/class/core")
 import mw
 
 def log(message: str) -> None:
-    mw.writeFileLog(f"{mw.getDate()} - {message}", log_file)
+    mw.writeFileLog(f"{mw.getDate()} - {message}", log_file, 2 * 1024 * 1024, 1)
 
 
 def main() -> int:

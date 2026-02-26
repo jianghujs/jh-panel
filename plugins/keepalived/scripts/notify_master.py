@@ -33,7 +33,7 @@ from retry_tool import retry
 lock_fd = None
 
 def log(message: str) -> None:
-    mw.writeFileLog(f"{mw.getDate()} [notify_master] {message}", log_file)
+    mw.writeFileLog(f"{mw.getDate()} [notify_master] {message}", log_file, 2 * 1024 * 1024, 1)
 
 
 def log_run_start() -> None:

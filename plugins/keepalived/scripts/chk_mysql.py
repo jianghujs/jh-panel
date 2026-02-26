@@ -34,7 +34,7 @@ import mw
 
 
 def log(message: str) -> None:
-    mw.writeFileLog(f"{mw.getDate()} [chk_mysql] {message}", log_file)
+    mw.writeFileLog(f"{mw.getDate()} [chk_mysql] {message}", log_file, 2 * 1024 * 1024, 1)
 
 
 def quote(value: str) -> str:

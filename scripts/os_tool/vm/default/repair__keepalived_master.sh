@@ -340,8 +340,6 @@ if [ "${wg_choice}" == "y" ]; then
   restart_wireguard_remote
 fi
 
-update_local_priority
-update_remote_priority
 
 echo "|- 开始启动两端 keepalived..."
 start_keepalived_local
@@ -349,6 +347,9 @@ start_keepalived_remote
 
 ensure_local_keepalived
 ensure_remote_keepalived
+
+update_local_priority
+update_remote_priority
 
 sleep 5
 

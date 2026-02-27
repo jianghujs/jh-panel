@@ -48,17 +48,61 @@ def log_run_end() -> None:
     log("--------------------------------------------------")
 
 
+def _close_lock_fd() -> None:
+    global lock_fd
+    if lock_fd is None:
+        return
+    try:
+        lock_fd.close()
+    except Exception:
+        pass
+    lock_fd = None
+
+
+def _write_lock_pid() -> None:
+    if lock_fd is None:
+        return
+    try:
+        lock_fd.seek(0)
+        lock_fd.truncate()
+        lock_fd.write(str(os.getpid()))
+        lock_fd.flush()
+    except Exception:
+        pass
+
+
+def cleanup_notify_processes() -> None:
+    cmd = f"python3 {panel_dir}/plugins/keepalived/tool.py cleanup_notify_processes {os.getpid()}"
+    mw.execShell(cmd)
+
+
 def acquire_lock() -> bool:
     global lock_fd
+    cleanup_notify_processes()
     try:
         os.makedirs(os.path.dirname(lock_file), exist_ok=True)
         lock_fd = open(lock_file, "w")
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _write_lock_pid()
         return True
     except BlockingIOError:
-        log("检测到另一个 notify 正在执行，跳过本次运行")
-        return False
+        _close_lock_fd()
+        cleanup_notify_processes()
+        try:
+            lock_fd = open(lock_file, "w")
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _write_lock_pid()
+            return True
+        except BlockingIOError:
+            _close_lock_fd()
+            log("仍有 notify 进程运行，跳过本次运行")
+            return False
+        except Exception as exc:
+            _close_lock_fd()
+            log(f"获取执行锁失败: {exc}，为避免并发，本次退出")
+            return False
     except Exception as exc:
+        _close_lock_fd()
         log(f"获取执行锁失败: {exc}，为避免并发，本次退出")
         return False
 
@@ -71,11 +115,7 @@ def release_lock() -> None:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
     except Exception:
         pass
-    try:
-        lock_fd.close()
-    except Exception:
-        pass
-    lock_fd = None
+    _close_lock_fd()
 
 
 def update_priority(target: str) -> bool:

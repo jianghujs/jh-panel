@@ -20,6 +20,8 @@ ping_timeout = 1
 min_success = 1
 retry_times = 3
 retry_interval = 1
+quiet_start_hour = 1
+quiet_end_hour = 3
 
 if sys.platform != "darwin":
     os.chdir(panel_dir)
@@ -37,6 +39,17 @@ def parse_int(value: str, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def in_quiet_hours(start_hour: int, end_hour: int, now: time.struct_time | None = None) -> bool:
+    if start_hour == end_hour:
+        return False
+    if now is None:
+        now = time.localtime()
+    hour = now.tm_hour
+    if start_hour < end_hour:
+        return start_hour <= hour < end_hour
+    return hour >= start_hour or hour < end_hour
 
 
 def read_unicast_peers(path: str) -> list[str]:
@@ -122,6 +135,12 @@ def main() -> int:
     required = parse_int(os.environ.get("NETWORK_MIN_SUCCESS", ""), min_success)
     retries = parse_int(os.environ.get("NETWORK_RETRY_TIMES", ""), retry_times)
     interval = parse_int(os.environ.get("NETWORK_RETRY_INTERVAL", ""), retry_interval)
+    quiet_start = parse_int(os.environ.get("NETWORK_QUIET_START", ""), quiet_start_hour)
+    quiet_end = parse_int(os.environ.get("NETWORK_QUIET_END", ""), quiet_end_hour)
+
+    if in_quiet_hours(quiet_start, quiet_end):
+        log(f"处于免切换时间段({quiet_start:02d}:00-{quiet_end:02d}:00)，跳过网络检查")
+        return 0
 
     targets = build_targets()
     if not targets:

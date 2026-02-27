@@ -82,6 +82,7 @@ def cleanup_notify_processes(keywords=None, exclude_pid=None):
         try:
             os.kill(pid, signal.SIGKILL)
             cleaned += 1
+            print('killed pid=%s cmd=%s' % (pid, cmdline))
         except Exception:
             pass
     return cleaned

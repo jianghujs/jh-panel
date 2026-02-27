@@ -56,16 +56,16 @@ def cleanup_notify_processes(keywords=None, exclude_pid=None):
     if keywords is None:
         keywords = DEFAULT_NOTIFY_KEYWORDS
     if not keywords:
-        return 0
+        return []
     if exclude_pid is None:
         exclude_pid = os.getpid()
 
     try:
         out, _, _ = mw.execShell("ps -eo pid=,args=")
     except Exception:
-        return 0
+        return []
 
-    cleaned = 0
+    killed = []
     for line in (out or "").splitlines():
         parts = line.strip().split(None, 1)
         if len(parts) < 2:
@@ -81,11 +81,10 @@ def cleanup_notify_processes(keywords=None, exclude_pid=None):
             continue
         try:
             os.kill(pid, signal.SIGKILL)
-            cleaned += 1
-            print('killed pid=%s cmd=%s' % (pid, cmdline))
+            killed.append({'pid': pid, 'cmd': cmdline})
         except Exception:
             pass
-    return cleaned
+    return killed
 
 
 if __name__ == '__main__':
@@ -109,8 +108,8 @@ if __name__ == '__main__':
             exclude_pid = None
             if len(sys.argv) > 2 and sys.argv[2].isdigit():
                 exclude_pid = int(sys.argv[2])
-            cleaned = cleanup_notify_processes(exclude_pid=exclude_pid)
-            print(mw.returnJson(True, 'ok', cleaned))
+            killed = cleanup_notify_processes(exclude_pid=exclude_pid)
+            print(mw.returnJson(True, 'ok', {'count': len(killed), 'killed': killed}))
         except Exception as exc:
             print(mw.returnJson(False, str(exc) or 'fail'))
     else:

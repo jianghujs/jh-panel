@@ -73,7 +73,25 @@ def _write_lock_pid() -> None:
 
 def cleanup_notify_processes() -> None:
     cmd = f"python3 {panel_dir}/plugins/keepalived/tool.py cleanup_notify_processes {os.getpid()}"
-    mw.execShell(cmd)
+    out, err, _ = mw.execShell(cmd)
+    output = (out or err or "").strip()
+    if not output:
+        return
+    try:
+        data = json.loads(output)
+    except Exception:
+        log(f"notify 进程清理返回解析失败: {output}")
+        return
+    payload = data.get("data") or {}
+    killed = payload.get("killed") or []
+    if not killed:
+        log("notify 进程清理完成，未发现需要清理的进程")
+        return
+    log(f"notify 进程清理完成，清理 {len(killed)} 个进程")
+    for item in killed:
+        pid = item.get("pid")
+        cmdline = item.get("cmd")
+        log(f"清理 notify 进程 pid={pid} cmd={cmdline}")
 
 
 def acquire_lock() -> bool:

@@ -392,6 +392,9 @@ def copyScripts():
 
     copied = False
     for root, _, files in os.walk(src_scripts_path):
+        if '__pycache__' in root.split(os.sep):
+            continue
+
         rel_path = os.path.relpath(root, src_scripts_path)
         if rel_path == '.':
             target_root = dst_scripts_path
@@ -401,6 +404,9 @@ def copyScripts():
                 os.makedirs(target_root)
 
         for fname in files:
+            if fname.endswith('.pyc'):
+                continue
+
             src_file = os.path.join(root, fname)
             dst_file = os.path.join(target_root, fname)
 
@@ -408,7 +414,7 @@ def copyScripts():
                 continue
 
             content = mw.readFile(src_file)
-            if content is None:
+            if content is False or content is None:
                 continue
 
             content = contentReplace(content)

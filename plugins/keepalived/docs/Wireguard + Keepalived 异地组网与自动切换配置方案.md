@@ -286,7 +286,7 @@ out, err, rc = mw.execShell(f"wg show {wg_interface} dump")
 ```python
 keepalived_conf = "/www/server/keepalived/etc/keepalived/keepalived.conf"
 
-targets = build_targets()  # 默认：网关 + keepalived.conf 中 unicast_peer
+network_targets = []  # 留空时默认：网关 + keepalived.conf 中 unicast_peer
 ping_count = 1
 ping_timeout = 1
 min_success = 1
@@ -294,9 +294,9 @@ min_success = 1
 
 **行为摘要**：
 
-- 默认 ping 网关 + `unicast_peer`；
-- 可用环境变量覆盖：`NETWORK_TARGETS`/`NETWORK_PING_COUNT`/`NETWORK_PING_TIMEOUT`/`NETWORK_MIN_SUCCESS`；
-- 免切换时间段默认关闭，设置 `NETWORK_QUIET_ENABLED=1` 后才会按 `NETWORK_QUIET_START`/`NETWORK_QUIET_END` 跳过检查；
+- `network_targets` 留空时，默认 ping 网关 + `unicast_peer`；
+- 所有检查参数直接在脚本顶部配置，不再读取环境变量；
+- 免切换时间段默认关闭，开启后按 `quiet_start_hour`/`quiet_end_hour` 跳过检查；
 - 日志写入 `logs/keepalived_network_check.log`。
 
 #### 3.3.3 切换为 MASTER（notify_master.py）

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import os
-import re
 import shlex
 import sys
 import time
@@ -15,6 +14,7 @@ panel_dir = f"{server_path}/jh-panel"
 log_file = f"{server_path}/keepalived/logs/keepalived_network_check.log"
 keepalived_conf = f"{server_path}/keepalived/etc/keepalived/keepalived.conf"
 
+network_targets: list[str] = []
 ping_count = 1
 ping_timeout = 1
 min_success = 1
@@ -33,26 +33,6 @@ import mw
 
 def log(message: str) -> None:
     mw.writeFileLog(f"{mw.getDate()} [chk_network] {message}", log_file, 2 * 1024 * 1024, 3)
-
-
-def parse_int(value: str, default: int) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def parse_bool(value: str, default: bool = False) -> bool:
-    if value is None:
-        return default
-    normalized = str(value).strip().lower()
-    if not normalized:
-        return default
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-    return default
 
 
 def in_quiet_hours(start_hour: int, end_hour: int, now: time.struct_time | None = None) -> bool:
@@ -107,14 +87,9 @@ def get_default_gateway() -> str:
 
 
 def build_targets() -> list[str]:
-    env_targets = os.environ.get("NETWORK_TARGETS", "").strip()
-    targets: list[str] = []
+    targets = [target.strip() for target in network_targets if target and target.strip()]
 
-    if env_targets:
-        for item in re.split(r"[\s,]+", env_targets):
-            if item:
-                targets.append(item)
-    else:
+    if not targets:
         gateway = get_default_gateway()
         if gateway:
             targets.append(gateway)
@@ -144,17 +119,8 @@ def ping_target(target: str, count: int, timeout: int) -> bool:
 def main() -> int:
     log("开始网络健康检查")
 
-    count = parse_int(os.environ.get("NETWORK_PING_COUNT", ""), ping_count)
-    timeout = parse_int(os.environ.get("NETWORK_PING_TIMEOUT", ""), ping_timeout)
-    required = parse_int(os.environ.get("NETWORK_MIN_SUCCESS", ""), min_success)
-    retries = parse_int(os.environ.get("NETWORK_RETRY_TIMES", ""), retry_times)
-    interval = parse_int(os.environ.get("NETWORK_RETRY_INTERVAL", ""), retry_interval)
-    quiet_start = parse_int(os.environ.get("NETWORK_QUIET_START", ""), quiet_start_hour)
-    quiet_end = parse_int(os.environ.get("NETWORK_QUIET_END", ""), quiet_end_hour)
-    quiet_enabled = parse_bool(os.environ.get("NETWORK_QUIET_ENABLED", ""), quiet_enabled)
-
-    if quiet_enabled and in_quiet_hours(quiet_start, quiet_end):
-        log(f"处于免切换时间段({quiet_start:02d}:00-{quiet_end:02d}:00)，跳过网络检查")
+    if quiet_enabled and in_quiet_hours(quiet_start_hour, quiet_end_hour):
+        log(f"处于免切换时间段({quiet_start_hour:02d}:00-{quiet_end_hour:02d}:00)，跳过网络检查")
         return 0
 
     targets = build_targets()
@@ -162,21 +128,19 @@ def main() -> int:
         log("WARN: 未找到检测目标，跳过网络检查")
         return 0
 
-    if retries < 1:
-        retries = 1
-    if interval < 0:
-        interval = 0
+    retries = max(1, retry_times)
+    interval = max(0, retry_interval)
 
     for attempt in range(1, retries + 1):
         success = 0
         for target in targets:
-            if ping_target(target, count, timeout):
+            if ping_target(target, ping_count, ping_timeout):
                 log(f"ping {target} 成功 ✅")
                 success += 1
             else:
                 log(f"ping {target} 失败 ❌")
 
-        if success >= required:
+        if success >= min_success:
             log(f"网络检查通过 ✅ (成功 {success}/{len(targets)})")
             return 0
 

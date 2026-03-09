@@ -296,6 +296,7 @@ min_success = 1
 
 - 默认 ping 网关 + `unicast_peer`；
 - 可用环境变量覆盖：`NETWORK_TARGETS`/`NETWORK_PING_COUNT`/`NETWORK_PING_TIMEOUT`/`NETWORK_MIN_SUCCESS`；
+- 免切换时间段默认关闭，设置 `NETWORK_QUIET_ENABLED=1` 后才会按 `NETWORK_QUIET_START`/`NETWORK_QUIET_END` 跳过检查；
 - 日志写入 `logs/keepalived_network_check.log`。
 
 #### 3.3.3 切换为 MASTER（notify_master.py）

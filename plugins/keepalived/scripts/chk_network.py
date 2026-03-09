@@ -20,6 +20,7 @@ ping_timeout = 1
 min_success = 1
 retry_times = 3
 retry_interval = 1
+quiet_enabled = False
 quiet_start_hour = 1
 quiet_end_hour = 3
 
@@ -39,6 +40,19 @@ def parse_int(value: str, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def parse_bool(value: str, default: bool = False) -> bool:
+    if value is None:
+        return default
+    normalized = str(value).strip().lower()
+    if not normalized:
+        return default
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 def in_quiet_hours(start_hour: int, end_hour: int, now: time.struct_time | None = None) -> bool:
@@ -137,8 +151,9 @@ def main() -> int:
     interval = parse_int(os.environ.get("NETWORK_RETRY_INTERVAL", ""), retry_interval)
     quiet_start = parse_int(os.environ.get("NETWORK_QUIET_START", ""), quiet_start_hour)
     quiet_end = parse_int(os.environ.get("NETWORK_QUIET_END", ""), quiet_end_hour)
+    quiet_enabled = parse_bool(os.environ.get("NETWORK_QUIET_ENABLED", ""), quiet_enabled)
 
-    if in_quiet_hours(quiet_start, quiet_end):
+    if quiet_enabled and in_quiet_hours(quiet_start, quiet_end):
         log(f"处于免切换时间段({quiet_start:02d}:00-{quiet_end:02d}:00)，跳过网络检查")
         return 0
 

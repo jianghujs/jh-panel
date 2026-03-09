@@ -433,6 +433,7 @@ def main() -> int:
             ("关闭 备份网站配置 定时任务", "closeCrontab", "备份网站配置[backupAll]"),
             ("关闭 备份插件配置 定时任务", "closeCrontab", "备份插件配置[backupAll]"),
             ("关闭 lsyncd实时任务定时同步 定时任务", "closeCrontab", "[勿删]lsyncd实时任务定时同步"),
+            ("关闭 lsyncd实时任务心跳 定时任务", "closeCrontab", "[勿删]lsyncd实时任务心跳"),
             ("关闭 续签Let's Encrypt证书 定时任务", "closeCrontab", "[勿删]续签Let's Encrypt证书"),
         ]
         for action, cmd, arg in cron_actions:

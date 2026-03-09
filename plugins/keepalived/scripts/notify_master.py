@@ -351,6 +351,7 @@ def main() -> int:
             ("开启 备份网站配置 定时任务", "openCrontab", "备份网站配置[backupAll]"),
             ("开启 备份插件配置 定时任务", "openCrontab", "备份插件配置[backupAll]"),
             ("开启 lsyncd实时任务定时同步 定时任务", "openCrontab", "[勿删]lsyncd实时任务定时同步"),
+            ("开启 lsyncd实时任务心跳 定时任务", "openCrontab", "[勿删]lsyncd实时任务心跳"),
             ("开启 续签Let's Encrypt证书 定时任务", "openCrontab", "[勿删]续签Let's Encrypt证书"),
         ]
         for action, cmd, arg in cron_actions:

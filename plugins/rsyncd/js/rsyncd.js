@@ -698,6 +698,25 @@ function lsyncdRealtime(){
           <button id="lsyncd-all-sync-delete" style="display: none;"\
               class="btn btn-danger btn-sm" onclick="deleteLsyncdAllSyncCron();">删除</button>\
         </div>\
+        <div class="card mt10" id="lsyncd-heartbeat-cron">\
+          <span class="flex align-center mb10">每天定时心跳实时任务：</span>\
+          <div class="mb10">\
+              <span>每天</span>\
+              <span>\
+                  <input type="hidden" name="id" value="">\
+                  <input type="number" name="hour" value="0" maxlength="2" max="23" min="0">\
+                  <span class="name">:</span>\
+                  <input type="number" name="minute" value="5" maxlength="2" max="59" min="0">\
+              </span>\
+              <span>向每个实时同步源目录的 .rsyncd_heartbeat 写入一行，触发同步</span>\
+          </div>\
+          <button id="lsyncd-heartbeat-add" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="addLsyncdHeartbeatCron();">创建</button>\
+          <button id="lsyncd-heartbeat-update" style="display: none;"\
+              class="btn btn-success btn-sm" onclick="updateLsyncdHeartbeatCron();">修改</button>\
+          <button id="lsyncd-heartbeat-delete" style="display: none;"\
+              class="btn btn-danger btn-sm" onclick="deleteLsyncdHeartbeatCron();">删除</button>\
+        </div>\
 
       </div>\
     </div>\
@@ -709,6 +728,7 @@ function lsyncdRealtime(){
   
   getLsyncdLogCutCron();
   getLsyncdAllSyncCron();
+  getLsyncdHeartbeatCron();
   lsyncdServiceStatus();
 }
 
@@ -1026,6 +1046,24 @@ popd > /dev/null
   backupTo: 'localhost' };
 var lsyncdAllSyncCron = {...defaultLsyncdAllSyncCron}
 
+var defaultLsyncdHeartbeatCron = {
+  name: '[勿删]lsyncd实时任务心跳',
+  type: 'day',
+  where1: '',
+  week: '',
+  sType: 'toShell',
+  stype: 'toShell',
+  sName: '',
+  sBody: `
+#!/bin/bash
+pushd /www/server/jh-panel > /dev/null
+python3 /www/server/jh-panel/plugins/rsyncd/index.py lsyncd_realtime_heartbeat
+popd > /dev/null
+  `,
+  backupTo: 'localhost'
+};
+var lsyncdHeartbeatCron = {...defaultLsyncdHeartbeatCron}
+
 
 function toggleLsyncdAllSyncPeriod(type) {
   var card = $("#lsyncd-all-sync-cron");
@@ -1159,6 +1197,28 @@ function getLsyncdAllSyncCron() {
   },'json');
 }
 
+function getLsyncdHeartbeatCron() {
+  $.post('/crontab/get', { name: lsyncdHeartbeatCron.name },function(rdata){
+    const { status } = rdata;
+    if (status) {
+      const { id, where_hour: hour, where_minute: minute } = rdata.data;
+      $("#lsyncd-heartbeat-cron #lsyncd-heartbeat-add").css("display", "none");
+      $("#lsyncd-heartbeat-cron #lsyncd-heartbeat-update").css("display", "inline-block");
+      $("#lsyncd-heartbeat-cron #lsyncd-heartbeat-delete").css("display", "inline-block");
+      $("#lsyncd-heartbeat-cron input[name='id']").val(id);
+      $("#lsyncd-heartbeat-cron input[name='hour']").val(hour);
+      $("#lsyncd-heartbeat-cron input[name='minute']").val(minute);
+    } else {
+      $("#lsyncd-heartbeat-cron #lsyncd-heartbeat-add").css("display", "inline-block");
+      $("#lsyncd-heartbeat-cron #lsyncd-heartbeat-update").css("display", "none");
+      $("#lsyncd-heartbeat-cron #lsyncd-heartbeat-delete").css("display", "none");
+      $("#lsyncd-heartbeat-cron input[name='id']").val("");
+      $("#lsyncd-heartbeat-cron input[name='hour']").val(0);
+      $("#lsyncd-heartbeat-cron input[name='minute']").val(5);
+    }
+  },'json');
+}
+
 
 function deleteLsyncdLogCutCron(e) {
   var id = $("#lsyncd-log-cut-cron input[name='id']").val();
@@ -1183,6 +1243,19 @@ function deleteLsyncdAllSyncCron(e) {
     })
   }
 }
+
+function deleteLsyncdHeartbeatCron(e) {
+  var id = $("#lsyncd-heartbeat-cron input[name='id']").val();
+  if (id) {
+    safeMessage('确认删除', '确定删除定时任务吗', function(){
+        $.post('/crontab/del', { id },function(rdata){
+            getLsyncdHeartbeatCron();
+            layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+        },'json');
+    })
+  }
+}
+
 function addLsyncdLogCutCron() {
   var hour =  $("#lsyncd-log-cut-cron input[name='hour']").val();
   var minute =  $("#lsyncd-log-cut-cron input[name='minute']").val();
@@ -1207,6 +1280,15 @@ function addLsyncdAllSyncCron() {
   },'json');
 }
 
+function addLsyncdHeartbeatCron() {
+  var hour = $("#lsyncd-heartbeat-cron input[name='hour']").val();
+  var minute = $("#lsyncd-heartbeat-cron input[name='minute']").val();
+  $.post('/crontab/add', { ...lsyncdHeartbeatCron, hour, minute },function(rdata){
+    getLsyncdHeartbeatCron();
+    layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+  },'json');
+}
+
 function updateLsyncdLogCutCron() {
   var id = $("#lsyncd-log-cut-cron input[name='id']").val();
   var hour =  $("#lsyncd-log-cut-cron input[name='hour']").val();
@@ -1228,6 +1310,18 @@ function updateLsyncdAllSyncCron() {
       var params = buildLsyncdAllSyncCronParams(id);
       $.post('/crontab/modify_crond', params,function(rdata){
           getLsyncdAllSyncCron();
+          layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
+      },'json');
+  }
+}
+
+function updateLsyncdHeartbeatCron() {
+  var id = $("#lsyncd-heartbeat-cron input[name='id']").val();
+  var hour = $("#lsyncd-heartbeat-cron input[name='hour']").val();
+  var minute = $("#lsyncd-heartbeat-cron input[name='minute']").val();
+  if (id) {
+      $.post('/crontab/modify_crond', { ...lsyncdHeartbeatCron, id, hour, minute },function(rdata){
+          getLsyncdHeartbeatCron();
           layer.msg(rdata.msg,{icon:rdata.status?1:2}, 5000);
       },'json');
   }

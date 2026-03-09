@@ -1032,6 +1032,51 @@ def lsyncdRealtimeAllRun():
 
     return mw.returnJson(True, '成功!')
 
+
+def lsyncdRealtimeHeartbeat():
+    data = getDefaultConf()
+    slist = data['send']["list"]
+    now = time.strftime('%Y-%m-%d %H:%M:%S')
+    touched_paths = set()
+    results = []
+
+    for item in slist:
+        if item.get('status', 'enabled') != 'enabled' or item.get('realtime') != 'true':
+            continue
+
+        source_path = item.get('path', '')
+        if source_path == '':
+            continue
+
+        heartbeat_path = os.path.join(source_path, '.rsyncd_heartbeat')
+        normalized_path = os.path.realpath(heartbeat_path)
+        if normalized_path in touched_paths:
+            continue
+
+        touched_paths.add(normalized_path)
+
+        try:
+            if not os.path.exists(source_path):
+                os.makedirs(source_path, exist_ok=True)
+
+            lines = []
+            if os.path.exists(heartbeat_path):
+                content = mw.readFile(heartbeat_path)
+                if content:
+                    lines = [line for line in content.splitlines() if line.strip()]
+
+            lines = lines[-2:]
+            lines.append(f"{now} rsyncd heartbeat")
+            mw.writeFile(heartbeat_path, "\n".join(lines) + "\n")
+            results.append(f"OK: {heartbeat_path}")
+        except Exception as e:
+            results.append(f"FAIL: {heartbeat_path} => {str(e)}")
+
+    if not results:
+        return mw.returnJson(True, '没有可执行的实时任务')
+
+    return mw.returnJson(True, '\n'.join(results))
+
 def lsyncdConfLog():
     logs_path = getServerDir() + "/lsyncd.log"
     return logs_path
@@ -1211,6 +1256,8 @@ if __name__ == "__main__":
         print(lsyncdLog())
     elif func == 'lsyncd_realtime_all_run':
         print(lsyncdRealtimeAllRun())
+    elif func == 'lsyncd_realtime_heartbeat':
+        print(lsyncdRealtimeHeartbeat())
     elif func == 'lsyncd_conf_log':
         print(lsyncdConfLog())
     elif func == 'lsyncd_get_exclude':

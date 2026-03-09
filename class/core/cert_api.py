@@ -23,6 +23,7 @@ import time
 import os
 import sys
 import argparse
+import random
 
 if os.path.exists('/www/server/jh-panel'):
     os.chdir('/www/server/jh-panel')
@@ -1620,8 +1621,10 @@ fullchain.pem       粘贴到证书输入框
 
                 # 多证书续签时添加延时，避免触发 API 速率限制
                 if len(order_index) > 1 and n < len(order_index):
-                    writeLog("|-等待 30 秒后处理下一张证书...")
-                    time.sleep(30)
+                    random_delay = random.randint(1, 10)
+                    total_delay = 30 + random_delay
+                    writeLog("|-等待 {} 秒后处理下一张证书...".format(total_delay))
+                    time.sleep(total_delay)
             return cert
         except Exception as ex:
             ex = str(ex)

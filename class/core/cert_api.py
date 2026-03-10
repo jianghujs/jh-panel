@@ -1396,8 +1396,8 @@ fullchain.pem       粘贴到证书输入框
         api = site_api.site_api()
         if os.path.exists(auth_to):
             if mw.M('sites').where('path=?', auth_to).count() == 1:
-                site_id = m.M('sites').where('path=?', auth_to).getField('id')
-                site_name = m.M('sites').where(
+                site_id = mw.M('sites').where('path=?', auth_to).getField('id')
+                site_name = mw.M('sites').where(
                     'path=?', auth_to).getField('name')
 
                 rdata = api.getSiteRunPath(site_id)
@@ -1409,6 +1409,8 @@ fullchain.pem       粘贴到证书输入框
 
             else:
                 site_name = self.getSiteNameByDomains(domains)
+        if not site_name:
+            site_name = self.getSiteNameByDomains(domains)
         is_rep = api.httpToHttps(site_name)
         try:
             
@@ -1430,6 +1432,14 @@ fullchain.pem       粘贴到证书输入框
             cert = self.downloadCert(index)
             writeLog("|-申请成功，正在部署到站点..")
             time.sleep(5)
+
+            if site_name:
+                deploy_result = api.deploySsl(site_name, "lets")
+                if not deploy_result['status'] and deploy_result['msg'] != '已部署Lets':
+                    raise Exception("部署证书失败: {}".format(deploy_result['msg']))
+            else:
+                writeLog("|-未匹配到站点，跳过自动部署，仅保存续签证书文件")
+
             self.__config['orders'][index]['renew_time'] = int(time.time())
 
             # 清理失败重试记录

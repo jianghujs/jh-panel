@@ -2007,6 +2007,107 @@ def writeNotify(data):
     return writeFile(p, json.dumps(data))
 
 
+def getSystemTaskAlertStatePath():
+    return 'data/system_task_alert_state.json'
+
+
+def buildSystemTaskRecoveryMessage(problem_key):
+    if problem_key == 'cpu-high':
+        return 'CPU负载已恢复正常'
+    if problem_key == 'memory-high':
+        return '内存负载已恢复正常'
+    if problem_key.startswith('disk-usage:'):
+        disk_path = problem_key.split(':', 1)[1]
+        return '磁盘[' + disk_path + ']占用已恢复正常'
+    if problem_key.startswith('ssl-cert:'):
+        site_name = problem_key.split(':', 1)[1]
+        return '网站[' + site_name + ']SSL证书状态已恢复正常'
+    if problem_key.startswith('mysql-slave:'):
+        slave_key = problem_key.split(':', 1)[1]
+        return 'MySQL主从同步已恢复正常[从库:' + slave_key + ']'
+    if problem_key == 'rsync-realtime':
+        return 'Rsync实时同步已恢复正常'
+    if problem_key == 'keepalived-service':
+        return 'Keepalived服务已恢复正常'
+    return '监控项[' + problem_key + ']已恢复正常'
+
+
+def loadSystemTaskAlertState():
+    state_path = getSystemTaskAlertStatePath()
+    default_state = {'active_keys': [], 'alerts': {}}
+
+    try:
+        state_dir = os.path.dirname(state_path)
+        if state_dir and not os.path.exists(state_dir):
+            os.makedirs(state_dir)
+
+        if not os.path.exists(state_path):
+            writeFile(state_path, json.dumps(default_state))
+            return default_state
+
+        state_body = readFile(state_path)
+        if not state_body:
+            writeFile(state_path, json.dumps(default_state))
+            return default_state
+
+        state_data = json.loads(state_body)
+        if not isinstance(state_data, dict):
+            raise ValueError('invalid monitor alert state')
+
+        active_keys = state_data.get('active_keys', [])
+        if not isinstance(active_keys, list):
+            raise ValueError('invalid monitor alert keys')
+
+        state_alerts = state_data.get('alerts', {})
+        if not isinstance(state_alerts, dict):
+            state_alerts = {}
+
+        normalized_alerts = {}
+        for key in active_keys:
+            if key in [None, '']:
+                continue
+            key = str(key)
+            alert_info = state_alerts.get(key, {})
+            if not isinstance(alert_info, dict):
+                alert_info = {}
+            normalized_alerts[key] = {
+                'recovery_message': str(alert_info.get('recovery_message', buildSystemTaskRecoveryMessage(key))),
+            }
+
+        normalized_state = {
+            'active_keys': sorted(list(normalized_alerts.keys())),
+            'alerts': normalized_alerts,
+        }
+
+        if normalized_state != state_data:
+            writeFile(state_path, json.dumps(normalized_state))
+
+        return normalized_state
+    except Exception:
+        writeFile(state_path, json.dumps(default_state))
+        return default_state
+
+
+def saveSystemTaskAlertState(active_alerts):
+    state_path = getSystemTaskAlertStatePath()
+    normalized_alerts = {}
+    for key, alert_info in active_alerts.items():
+        if key in [None, '']:
+            continue
+        key = str(key)
+        if not isinstance(alert_info, dict):
+            alert_info = {}
+        normalized_alerts[key] = {
+            'recovery_message': str(alert_info.get('recovery_message', buildSystemTaskRecoveryMessage(key))),
+        }
+    state_data = {
+        'active_keys': sorted(list(normalized_alerts.keys())),
+        'alerts': normalized_alerts,
+    }
+    writeFile(state_path, json.dumps(state_data))
+    return state_data
+
+
 def tgbotNotifyChatID():
     data = getNotifyData(True)
     if 'tgbot' in data and 'enable' in data['tgbot']:
@@ -2287,12 +2388,21 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
         site_list = siteInfo['site_list']
 
         # writeFile('/root/test.txt', '\nCPU状态:' + str(cpuInfo) + '\n网络状态:' + str(networkInfo) + '\n磁盘状态:' + str(diskInfo) + '\n站点状态:' + str(siteInfo) + '\nMySql:' + str(mysqlInfo))
-        
-        
-        error_msg_arr = []
+        active_alert_state = loadSystemTaskAlertState()
+        previous_alerts = active_alert_state.get('alerts', {})
+        previous_active_keys = set(active_alert_state.get('active_keys', []))
+
+        monitor_problems = []
+
+        def addMonitorProblem(problem_key, message, recovery_message):
+            monitor_problems.append({
+                'key': problem_key,
+                'message': message,
+                'recovery_message': recovery_message,
+            })
+
         # CPU
         if (control_notify_config['cpu'] != -1) and (cpu_percent > control_notify_config['cpu']):
-            
             # 获取CPU占用前5的进程
             top_cmd = "ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf \"<tr><td>%s %s</td><td>%.1f%%</td><td>%.1f%%</td></tr>\", $11, $14, $3, $4}'"
             cpu_rank_content = execShell(top_cmd)[0].strip()
@@ -2304,7 +2414,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
     </tr>
 """
             cpu_rank_html = generateCommonTableMsg(cpu_rank_header, cpu_rank_content)
-            error_msg_arr.append('<p>CPU负载过高[{}%]</p><p>CPU占用TOP5进程：\n{}</p>'.format(cpu_percent, cpu_rank_html))
+            addMonitorProblem('cpu-high', '<p>CPU负载过高[{}%]</p><p>CPU占用TOP5进程：\n{}</p>'.format(cpu_percent, cpu_rank_html), 'CPU负载已恢复正常')
             
         # 内存
         if (control_notify_config['memory'] != -1) and (mem_percent > control_notify_config['memory']):
@@ -2319,7 +2429,7 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
     </tr>
 """
             mem_rank_html = generateCommonTableMsg(mem_rank_header, mem_rank_content)
-            error_msg_arr.append("<p>内存负载过高[" + str(mem_percent) + "%]</p>\n<p>内存占用TOP5进程：</p>\n" + mem_rank_html)
+            addMonitorProblem('memory-high', "<p>内存负载过高[" + str(mem_percent) + "%]</p>\n<p>内存占用TOP5进程：</p>\n" + mem_rank_html, '内存负载已恢复正常')
             
         # 磁盘容量
         if (control_notify_config['disk'] != -1) and len(disk_list) > 0:
@@ -2329,17 +2439,14 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                 disk_size_percent = int(disk['size'][3].replace('%', ''))
 
                 if disk_size_percent > control_notify_config['disk']:
-                    error_msg_arr.append('磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']')
+                    addMonitorProblem('disk-usage:' + disk['path'], '磁盘[' + disk['path'] + ']占用过高[' + str(disk_size_percent) + '%' + ']', '磁盘[' + disk['path'] + ']占用已恢复正常')
         
         # 网站SSL证书
-        site_ssl_lock_data_key = '网站SSL证书异常通知'
-        if (control_notify_config['ssl_cert'] != -1) and not checkLockValid(site_ssl_lock_data_key, 'day_start') and len(site_list) > 0:
+        if (control_notify_config['ssl_cert'] != -1) and len(site_list) > 0:
             for site in site_list:
                 site_name = site['name']
                 cert_data = site['cert_data']
                 ssl_type = site['ssl_type']
-                # 网站名称 + 当前日期
-                # site_notify_lock_key = str(site_name) + '_' + str(now_day) 
                 if site['status'] == '1' and cert_data is not None:
                     cert_endtime = int(cert_data['endtime'])
                     site_error_msg = ''
@@ -2353,13 +2460,13 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                             site_error_msg = '网站[' + site['name'] + ']SSL证书已过期[' + str(cert_endtime) + '天' + ']，未正常续签'
                     
                     if site_error_msg != '':
-                        error_msg_arr.append(site_error_msg)
+                        addMonitorProblem('ssl-cert:' + site_name, site_error_msg, '网站[' + site_name + ']SSL证书状态已恢复正常')
         
         # MySQL从库状态
         if (control_notify_config['mysql_slave_status_notice'] == 1):
             slave_status = mysqlInfo.get('slave_status', None)
             if slave_status is not None and len(slave_status) > 0:
-                for slave_status_item in slave_status:
+                for slave_index, slave_status_item in enumerate(slave_status):
                     if  (
                             not (slave_status_item.get('io_running', '') == 'Yes' and int(slave_status_item.get('addtime', 0)) > four_hours_ago_timestamp) 
                             or (slave_status_item.get('delay', '-1') == 'None' 
@@ -2372,10 +2479,11 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                             addtime_value = 0
                         last_sync_time = getDataFromInt(addtime_value) if addtime_value > 0 else '未知'
                         slave_ip = slave_status_item.get('ip', '')
+                        slave_key = slave_ip if slave_ip else str(slave_index)
                         if slave_ip:
-                            error_msg_arr.append('MySQL主从同步异常[从库:{}，最后同步时间：{}]'.format(slave_ip, last_sync_time))
+                            addMonitorProblem('mysql-slave:' + slave_key, 'MySQL主从同步异常[从库:{}，最后同步时间：{}]'.format(slave_ip, last_sync_time), 'MySQL主从同步已恢复正常[从库:{}]'.format(slave_ip))
                         else:
-                            error_msg_arr.append('MySQL主从同步异常[最后同步时间：{}]'.format(last_sync_time))
+                            addMonitorProblem('mysql-slave:' + slave_key, 'MySQL主从同步异常[最后同步时间：{}]'.format(last_sync_time), 'MySQL主从同步已恢复正常')
 
         # Rsync状态
         if (control_notify_config['rsync_status_notice'] == 1):
@@ -2383,19 +2491,48 @@ def generateMonitorReportAndNotify(cpuInfo, networkInfo, diskInfo, siteInfo, mys
                 lsyncd_status_cmd = 'systemctl status lsyncd | grep active | grep "running"'
                 lsyncd_status_data = execShell(lsyncd_status_cmd)
                 if lsyncd_status_data[0] == '':
-                    error_msg_arr.append('Rsync实时同步异常')
+                    addMonitorProblem('rsync-realtime', 'Rsync实时同步异常', 'Rsync实时同步已恢复正常')
 
         # Keepalived状态
         if (control_notify_config['keepalived_status_notice'] == 1):
             keepalived_status = execShell('systemctl is-active keepalived')[0].strip()
             if keepalived_status != 'active':
-                error_msg_arr.append('Keepalived服务异常')
+                addMonitorProblem('keepalived-service', 'Keepalived服务异常', 'Keepalived服务已恢复正常')
+
+        current_active_keys = set([item['key'] for item in monitor_problems])
+        current_alerts = {}
+        new_problem_messages = []
+        for item in monitor_problems:
+            current_alerts[item['key']] = {
+                'recovery_message': item['recovery_message'],
+            }
+            if item['key'] not in previous_active_keys:
+                new_problem_messages.append(item['message'])
+        recovered_keys = sorted(list(previous_active_keys.difference(current_active_keys)))
+        recovered_messages = []
+        for recovered_key in recovered_keys:
+            alert_info = previous_alerts.get(recovered_key, {})
+            if not isinstance(alert_info, dict):
+                alert_info = {}
+            recovered_messages.append(alert_info.get('recovery_message', buildSystemTaskRecoveryMessage(recovered_key)))
+
+        if len(recovered_messages) > 0:
+            recovery_notify_msg = generateCommonNotifyMessage('<br/>- '.join(recovered_messages))
+            notifyMessage(title='🟢服务器异常恢复：{} {}'.format(getConfig('title'), getDateFromNow()), msg=recovery_notify_msg, msgtype="html", stype='面板监控恢复', trigger_time=0)
 
         # 发送异常报告
-        if (len(error_msg_arr) > 0):
-            notify_msg = generateCommonNotifyMessage('<br/>- '.join(error_msg_arr) + '<br/>请注意!')
-            notifyMessage(title='🔴服务器异常通知：{} {}'.format(getConfig('title'), getDateFromNow()), msg=notify_msg, msgtype="html", stype='面板监控', trigger_time=600)
-            updateLockData(site_ssl_lock_data_key)
+        if len(new_problem_messages) > 0:
+            notify_msg = generateCommonNotifyMessage('<br/>- '.join(new_problem_messages) + '<br/>请注意!')
+            if notifyMessage(title='🔴服务器异常通知：{} {}'.format(getConfig('title'), getDateFromNow()), msg=notify_msg, msgtype="html", stype='面板监控', trigger_time=0):
+                saveSystemTaskAlertState(current_alerts)
+            else:
+                saved_alerts = {}
+                for continued_key in previous_active_keys.intersection(current_active_keys):
+                    if continued_key in current_alerts:
+                        saved_alerts[continued_key] = current_alerts[continued_key]
+                saveSystemTaskAlertState(saved_alerts)
+        else:
+            saveSystemTaskAlertState(current_alerts)
 
 def generateCommonTableMsg(header_list, content_list):
     # 如果header_list是字符串数组，则转为对象数组，width设置为auto

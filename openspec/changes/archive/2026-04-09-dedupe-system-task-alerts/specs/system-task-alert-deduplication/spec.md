@@ -12,11 +12,12 @@ The system SHALL send a monitor alert when a specific `systemTask` problem key b
 - **THEN** the system does not send another notification for that problem key
 
 ### Requirement: Cleared problems can alert again after reoccurrence
-The system SHALL remove a problem key from the active monitor-alert state after the underlying issue is no longer detected, so that a later reoccurrence is treated as a new alert.
+The system SHALL send a recovery notification and remove a problem key from the active monitor-alert state after the underlying issue is no longer detected, so that a later reoccurrence is treated as a new alert.
 
-#### Scenario: Recovery clears active state
+#### Scenario: Recovery sends a notification and clears active state
 - **WHEN** a monitor cycle no longer detects a previously active problem key
-- **THEN** the system removes that problem key from persisted active monitor-alert state
+- **THEN** the system sends a recovery notification for that problem key
+- **AND** the system removes that problem key from persisted active monitor-alert state
 
 #### Scenario: Reoccurrence sends again after recovery
 - **WHEN** a problem key was previously removed because the issue cleared and a later monitor cycle detects the same key again

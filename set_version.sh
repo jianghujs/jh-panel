@@ -33,6 +33,10 @@ git push
 git tag -a "$input_version" -m "$input_version"
 git push --tags
 
+# 提交到origin
+git push origin
+git push origin --tags
+
 # 提交到gitee
 git push gitee
 git push gitee --tags

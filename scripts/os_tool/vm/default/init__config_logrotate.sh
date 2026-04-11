@@ -3,6 +3,9 @@
 set -e
 
 LOGROTATE_CONFIG="/etc/logrotate.d/large-log-limit"
+LOGROTATE_SERVICE="/etc/systemd/system/large-log-limit.service"
+LOGROTATE_TIMER="/etc/systemd/system/large-log-limit.timer"
+LOGROTATE_STATE="/var/lib/logrotate/large-log-limit.status"
 
 echo "开始初始化日志轮转配置..."
 
@@ -30,8 +33,34 @@ EOF
 
 echo "logrotate配置已写入: ${LOGROTATE_CONFIG}"
 
-if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files logrotate.timer >/dev/null 2>&1; then
-    systemctl enable --now logrotate.timer >/dev/null 2>&1 || true
+mkdir -p "$(dirname "${LOGROTATE_STATE}")"
+touch "${LOGROTATE_STATE}"
+
+cat > "${LOGROTATE_SERVICE}" <<EOF
+[Unit]
+Description=Run logrotate for large-log-limit only
+
+[Service]
+Type=oneshot
+ExecStart=$(command -v logrotate) -s ${LOGROTATE_STATE} ${LOGROTATE_CONFIG}
+EOF
+
+cat > "${LOGROTATE_TIMER}" <<'EOF'
+[Unit]
+Description=Run large-log-limit logrotate every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=1m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload
+    systemctl enable --now large-log-limit.timer >/dev/null 2>&1
 fi
 
 echo "初始化日志轮转配置完成."

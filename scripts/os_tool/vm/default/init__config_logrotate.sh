@@ -18,10 +18,12 @@ cat > "${LOGROTATE_CONFIG}" <<'EOF'
 /var/log/filebeat/filebeat
 /var/log/filebeat/*.log
 {
-    size 5G
-    rotate 0
+    size 1G
+    rotate 4
     missingok
     notifempty
+    compress
+    delaycompress
     copytruncate
 }
 EOF

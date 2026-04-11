@@ -37,10 +37,11 @@ scripts=(
 ["安装中文包"]="init__install_cn_language.sh"
 ["分配固定IP"]="init__set_static_ip.sh"
 ["配置SSH权限"]="init__ssh_root_login.sh"
+["初始化日志轮转"]="init__config_logrotate.sh"
 )
 
 # 定义一个数组来存储脚本的顺序
-script_order=("安装中文包" "分配固定IP" "配置SSH权限")
+script_order=("安装中文包" "分配固定IP" "配置SSH权限" "初始化日志轮转")
 
 if [ "$USE_PANEL_SCRIPT" != "true" ]; then
     scripts+=(["安装江湖面板"]="init__install_jhpanel.sh")

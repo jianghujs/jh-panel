@@ -13,8 +13,12 @@ if ! command -v logrotate >/dev/null 2>&1; then
     echo "未检测到logrotate，正在安装..."
     apt-get update
     apt-get install -y logrotate
+    echo "logrotate安装完成."
+else
+    echo "已检测到logrotate，无需安装."
 fi
 
+echo "开始写入logrotate配置..."
 cat > "${LOGROTATE_CONFIG}" <<'EOF'
 /var/log/syslog
 /var/log/daemon.log
@@ -33,9 +37,12 @@ EOF
 
 echo "logrotate配置已写入: ${LOGROTATE_CONFIG}"
 
+echo "开始初始化logrotate状态文件..."
 mkdir -p "$(dirname "${LOGROTATE_STATE}")"
 touch "${LOGROTATE_STATE}"
+echo "logrotate状态文件已准备: ${LOGROTATE_STATE}"
 
+echo "开始安装systemd service: ${LOGROTATE_SERVICE}"
 cat > "${LOGROTATE_SERVICE}" <<EOF
 [Unit]
 Description=Run logrotate for large-log-limit only
@@ -44,7 +51,9 @@ Description=Run logrotate for large-log-limit only
 Type=oneshot
 ExecStart=$(command -v logrotate) -s ${LOGROTATE_STATE} ${LOGROTATE_CONFIG}
 EOF
+echo "systemd service安装完成."
 
+echo "开始安装systemd timer: ${LOGROTATE_TIMER}"
 cat > "${LOGROTATE_TIMER}" <<'EOF'
 [Unit]
 Description=Run large-log-limit logrotate every 5 minutes
@@ -57,10 +66,20 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 EOF
+echo "systemd timer安装完成."
 
 if command -v systemctl >/dev/null 2>&1; then
+    echo "开始重载systemd配置..."
     systemctl daemon-reload
+    echo "开始启用并启动large-log-limit.timer..."
     systemctl enable --now large-log-limit.timer >/dev/null 2>&1
+    echo "large-log-limit.timer 已启用并启动."
+    echo "timer启用状态: $(systemctl is-enabled large-log-limit.timer 2>/dev/null || echo unknown)"
+    echo "timer运行状态: $(systemctl is-active large-log-limit.timer 2>/dev/null || echo unknown)"
+    echo "下次触发时间:"
+    systemctl list-timers large-log-limit.timer --no-pager 2>/dev/null || true
+else
+    echo "未检测到systemctl，请手动加载并启用 ${LOGROTATE_TIMER}"
 fi
 
 echo "初始化日志轮转配置完成."

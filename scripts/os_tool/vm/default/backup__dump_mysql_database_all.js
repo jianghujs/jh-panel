@@ -42,6 +42,7 @@ let replace = [
 ];
 
 let needExportData = false;
+let exportAllTableData = false;
 
 async function prompt(question, defaultValue) {
     return new Promise((resolve) => {
@@ -111,7 +112,9 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
     // 导出数据
     let currentDataRes = null;
     if (needExportData) {
-      let currentWithDataTables = res.tables.filter(item => withDataTables.includes(item.name)).map(item => item.name);
+      let currentWithDataTables = exportAllTableData
+        ? res.tables.filter(item => !item.isView).map(item => item.name)
+        : res.tables.filter(item => withDataTables.includes(item.name)).map(item => item.name);
       if (currentWithDataTables.length > 0) {
         currentDataRes = await mysqldump({
           connection,
@@ -139,7 +142,7 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
         if (ignoreTables.includes(tableData.name)) {
             return;
         }
-        if (withDataTables.includes(tableData.name) && currentDataRes) {
+        if ((exportAllTableData || withDataTables.includes(tableData.name)) && currentDataRes) {
           let currentData = currentDataRes.tables.find(item => item.name == tableData.name);
           if (currentData) {
             content += tableData.schema + '\n' + (currentData.data || '') + '\n' + (tableData.triggers && tableData.triggers.join('\n') || '') + '\n\n\n';
@@ -187,8 +190,11 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
   	let withDataTablesInput = null;
     if (needExportData) {  
       const defaultWithDataTablesInput = "_page,_resource,_constant,_constant_ui,_group,_role,_user_group_role,_user_group_role_page,_user_group_role_resource";
-      withDataTablesInput = await prompt(`请输入需要导出数据的表，多个用英文逗号隔开（默认为：${defaultWithDataTablesInput}）：`, defaultWithDataTablesInput);
-      withDataTables = withDataTablesInput.split(",").map(table => table.trim());
+      withDataTablesInput = await prompt(`请输入需要导出数据的表，多个用英文逗号隔开（输入all导出全部表，默认为：${defaultWithDataTablesInput}）：`, defaultWithDataTablesInput);
+      exportAllTableData = withDataTablesInput.trim().toLowerCase() === 'all';
+      withDataTables = exportAllTableData
+        ? []
+        : withDataTablesInput.split(",").map(table => table.trim()).filter(Boolean);
     }
 
     const knex = Knex({
@@ -247,7 +253,7 @@ async function dumpSql({ database, tables, ignoreTables, withDataTables, clearFi
     console.log(`- 忽略库：${ignoreDatabasesInput}`)
     console.log(`- 忽略表：${ignoreTablesInput}`)
     if (needExportData) {
-      console.log(`- 带数据表：${withDataTablesInput}`)
+      console.log(`- 带数据表：${exportAllTableData ? 'all（全部表）' : withDataTablesInput}`)
     }
     console.log(`- 导出目录：${sqlFileDir}`)
     console.log("---------------------------后续操作指引❗❗----------------------------")

@@ -60,6 +60,11 @@ default_selected_databases=${filtered_databases}
 read -p "请选择需要批量导出的数据库（多个数据库用英文逗号隔开，默认为$default_selected_databases）: " selected_databases
 selected_databases=${selected_databases:-$default_selected_databases}
 
+# 提示输入需要导出数据的表
+default_export_tables="all"
+read -p "请输入需要导出数据的表，多个用英文逗号隔开（输入all导出全部表，默认为：${default_export_tables}）：" export_tables
+export_tables=${export_tables:-$default_export_tables}
+
 # 选择存放备份的目录
 read -p "请选择存放备份的目录（默认为：/www/backup/mydumper/）: " backup_dir
 backup_dir=${backup_dir:-/www/backup/mydumper/}
@@ -80,7 +85,11 @@ fi
 # 循环需要导出的数据库，执行备份导出命令
 for db in $(echo $selected_databases | tr ',' ' '); do
     echo "|- 正在备份数据库${db}..."
-    mydumper -t 4 -u $db_user -p $db_password -h $db_host -P $db_port -B $db -o $backup_dir$db/
+    if [[ "${export_tables,,}" == "all" ]]; then
+        mydumper -t 4 -u "$db_user" -p "$db_password" -h "$db_host" -P "$db_port" -B "$db" -o "${backup_dir}${db}/"
+    else
+        mydumper -t 4 -u "$db_user" -p "$db_password" -h "$db_host" -P "$db_port" -B "$db" -T "$export_tables" -o "${backup_dir}${db}/"
+    fi
     echo "|- 数据库${db}备份完成✅ "
 done
                                              
@@ -91,6 +100,7 @@ echo "===========================批量导出完成✅==========================
 echo "- 数据库连接：${db_host}:${db_port}"
 echo "- 忽略的数据库：$ignored_databases"
 echo "- 导出的数据库：$selected_databases"
+echo "- 导出数据表：$export_tables"
 echo "- 导出数据库文件目录：$backup_dir"
 echo "---------------------------后续操作指引❗❗----------------------------"
 echo "请将${sqlFileDir}复制到目标服务器并执行批量导入工具进行批量导入"

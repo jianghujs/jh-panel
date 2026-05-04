@@ -1443,6 +1443,8 @@ fullchain.pem       粘贴到证书输入框
                     deploy_result = json.loads(deploy_result)
                 writeLog("|-部署接口解析结果: {}".format(deploy_result))
                 if not deploy_result['status'] and deploy_result['msg'] != '已部署Lets':
+                    writeLog("|-部署证书失败: site_name={}, msg={}, result={}".format(
+                        site_name, deploy_result['msg'], deploy_result))
                     raise Exception("部署证书失败: {}".format(deploy_result['msg']))
                 writeLog("|-部署结果校验通过: {}".format(deploy_result['msg']))
             else:

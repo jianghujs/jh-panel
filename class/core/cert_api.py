@@ -1388,6 +1388,20 @@ fullchain.pem       粘贴到证书输入框
                 break
         return siteName
 
+    def getSiteDeployCertTimeout(self, site_name):
+        if not site_name:
+            return 0
+
+        cert_path = mw.getWebConfSSLDir() + '/' + site_name + '/fullchain.pem'
+        if not os.path.exists(cert_path):
+            return 0
+
+        cert_data = mw.readFile(cert_path)
+        if not cert_data:
+            return 0
+
+        return self.getCertTimeout(cert_data)
+
     def renewCertTo(self, domains, auth_type, auth_to, index=None):
         site_name = None
         cert = {}
@@ -1550,10 +1564,31 @@ fullchain.pem       粘贴到证书输入框
                         self.__config['orders'][i][
                             'cert_timeout'] = int(time.time())
 
-                    if self.__config['orders'][i]['cert_timeout'] > start_time:
+                    site_name = self.getSiteNameByDomains(
+                        self.__config['orders'][i]['domains'])
+                    deploy_cert_timeout = self.getSiteDeployCertTimeout(site_name)
+                    order_cert_timeout = self.__config['orders'][i]['cert_timeout']
+
+                    if order_cert_timeout > start_time:
+                        # 证书已申请但站点仍未切到最新证书时，不跳过续签任务
+                        if deploy_cert_timeout and deploy_cert_timeout >= (order_cert_timeout - 3600):
+                            writeLog(
+                                "|-本次跳过域名: {}，站点已部署有效证书!".format(self.__config['orders'][i]['domains'][0]))
+                            continue
+
                         writeLog(
-                            "|-本次跳过域名: {}，未过期!".format(self.__config['orders'][i]['domains'][0]))
-                        continue
+                            "|-检测到站点未部署最新证书: domain={}, site_name={}, order_cert_timeout={}, deploy_cert_timeout={}，本次将重新申请并部署".format(
+                                self.__config['orders'][i]['domains'][0],
+                                site_name,
+                                order_cert_timeout,
+                                deploy_cert_timeout))
+
+                    else:
+                        writeLog(
+                            "|-证书已到续签窗口: domain={}, order_cert_timeout={}, deploy_cert_timeout={}".format(
+                                self.__config['orders'][i]['domains'][0],
+                                order_cert_timeout,
+                                deploy_cert_timeout))
 
                     # 已删除的网站直接跳过续签
                     if self.__config['orders'][i]['auth_to'].find('|') == -1 and self.__config['orders'][i]['auth_to'].find('/') != -1:

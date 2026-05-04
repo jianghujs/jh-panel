@@ -1411,7 +1411,9 @@ fullchain.pem       粘贴到证书输入框
                 site_name = self.getSiteNameByDomains(domains)
         if not site_name:
             site_name = self.getSiteNameByDomains(domains)
+        writeLog("|-续签部署预检查: site_name={}, auth_to={}".format(site_name, auth_to))
         is_rep = api.httpToHttps(site_name)
+        writeLog("|-HTTP转HTTPS检测结果: {}".format(is_rep))
         try:
             
             # raise Exception("测试续签异常!")
@@ -1434,9 +1436,15 @@ fullchain.pem       粘贴到证书输入框
             time.sleep(5)
 
             if site_name:
+                writeLog("|-开始部署Lets证书到站点: {}".format(site_name))
                 deploy_result = api.deploySsl(site_name, "lets")
+                writeLog("|-部署接口原始返回: {}".format(deploy_result))
+                if isinstance(deploy_result, str):
+                    deploy_result = json.loads(deploy_result)
+                writeLog("|-部署接口解析结果: {}".format(deploy_result))
                 if not deploy_result['status'] and deploy_result['msg'] != '已部署Lets':
                     raise Exception("部署证书失败: {}".format(deploy_result['msg']))
+                writeLog("|-部署结果校验通过: {}".format(deploy_result['msg']))
             else:
                 writeLog("|-未匹配到站点，跳过自动部署，仅保存续签证书文件")
 
@@ -1474,6 +1482,8 @@ fullchain.pem       粘贴到证书输入框
                     self.saveConfig()
             msg = str(e).split('>>>>')[0]
             writeLog("|-" + msg)
+            writeLog("|-续签部署上下文: domains={}, site_name={}, auth_to={}, index={}".format(domains, site_name, auth_to, index))
+            writeLog("|-{}".format(mw.getTracebackInfo()))
             
             # 发送通知
             notify_msg = mw.generateCommonNotifyMessage("|-续签[{}]SSL证书异常: {}".format(str(domains), msg) + '\n请注意!')
@@ -1483,6 +1493,7 @@ fullchain.pem       粘贴到证书输入框
         finally:
             is_rep_decode = json.loads(is_rep)
             if is_rep_decode['status']:
+                writeLog("|-恢复站点HTTP转HTTPS配置: {}".format(site_name))
                 api.closeToHttps(site_name)
         writeLog("-" * 70)
         return cert

@@ -474,51 +474,48 @@ class reportTools:
     def sendReport(self):
 
         print("报表：%s-%s" % (self.__START_TIME, self.__END_TIME))
+        
+        report_data = self.getReportData()
+        sysinfo_tips = report_data.get('sysinfo_tips', [])
+        disk_usage_tips = report_data.get('disk_usage_tips', [])
+        backup_tips = report_data.get('backup_tips', [])
+        siteinfo_tips = report_data.get('siteinfo_tips', [])
+        jianghujsinfo_tips = report_data.get('jianghujsinfo_tips', [])
+        dockerinfo_tips = report_data.get('dockerinfo_tips', [])
+        mysqlinfo_tips = report_data.get('mysqlinfo_tips', [])
+        summary_tips = report_data.get('summary_tips', [])
+        error_tips = report_data.get('error_tips', [])
 
-        control_notify_config = mw.getControlNotifyConfig()
-        if control_notify_config['notifyStatus'] == 'open':
-
-            report_data = self.getReportData()
-            sysinfo_tips = report_data.get('sysinfo_tips', [])
-            disk_usage_tips = report_data.get('disk_usage_tips', [])
-            backup_tips = report_data.get('backup_tips', [])
-            siteinfo_tips = report_data.get('siteinfo_tips', [])
-            jianghujsinfo_tips = report_data.get('jianghujsinfo_tips', [])
-            dockerinfo_tips = report_data.get('dockerinfo_tips', [])
-            mysqlinfo_tips = report_data.get('mysqlinfo_tips', [])
-            summary_tips = report_data.get('summary_tips', [])
-            error_tips = report_data.get('error_tips', [])
-
-            report_content = """
+        report_content = """
 <style>
 h3 { font-size: bold; }
 table {
-    border-top: 1px solid #999;
-    border-left: 1px solid #999;
-    border-spacing: 0;
-    width: 100%%;
+border-top: 1px solid #999;
+border-left: 1px solid #999;
+border-spacing: 0;
+width: 100%%;
 }
 table tr td {
-    padding: 5px;
-    line-height: 20px;
+padding: 5px;
+line-height: 20px;
 }
 table tr td:first-child {
-    width: 30%%;
+width: 30%%;
 }
 table tr td:nth-child(2) {
-    width: 70%%;
+width: 70%%;
 }
 .project-table tr td:first-child {
-    width: 70%%;
+width: 70%%;
 }
 .project-table tr td:nth-child(2) {
-    width: 30%%;
+width: 30%%;
 }
 .system-table tr td:first-child {
-    width: 40%%;
+width: 40%%;
 }
 .system-table tr td:nth-child(2) {
-    width: 60%%;
+width: 60%%;
 }
 
 </style>
@@ -526,10 +523,10 @@ table tr td:nth-child(2) {
 <h2>%(title)s(%(ip)s)-服务器运行报告 </h2>
 <h3 style="color: #cecece">日期：%(start_date)s至%(end_date)s</h3>
 <div style="display: flex; flex-direction: column;align-items: center;">
-    <h3>概要信息：</h3>
-    <ul>
-    %(summary_content)s
-    </ul>
+<h3>概要信息：</h3>
+<ul>
+%(summary_content)s
+</ul>
 </div>
 
 <h3>系统状态：</h3>
@@ -571,33 +568,33 @@ table tr td:nth-child(2) {
 <table border>
 %(mysqlinfo_tips)s
 </table>
-            """ % {
-                "title": mw.getConfig('title'),
-                "ip": mw.getHostAddr(),
-                "start_date": self.__START_DATE,
-                "end_date": self.__END_DATE,
-                "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
-                "disk_usage_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in disk_usage_tips),
-                "backup_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in backup_tips),
-                "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
-                "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
-                "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
-                "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', ''))),
-                "summary_content": ''.join(f"<li>{item}</li>\n" for item in summary_tips)
+        """ % {
+            "title": mw.getConfig('title'),
+            "ip": mw.getHostAddr(),
+            "start_date": self.__START_DATE,
+            "end_date": self.__END_DATE,
+            "sysinfo_tips":''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sysinfo_tips),
+            "disk_usage_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in disk_usage_tips),
+            "backup_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in backup_tips),
+            "siteinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(siteinfo_tips, key=lambda x: x.get('name', ''))),
+            "jianghujsinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(jianghujsinfo_tips, key=lambda x: x.get('name', ''))),
+            "dockerinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(dockerinfo_tips, key=lambda x: x.get('name', ''))),
+            "mysqlinfo_tips": ''.join(f"<tr><td>{item.get('name', '')}</td><td>{item.get('desc', '')}</td></tr>\n" for item in sorted(mysqlinfo_tips, key=lambda x: x.get('name', ''))),
+            "summary_content": ''.join(f"<li>{item}</li>\n" for item in summary_tips)
 
-            }
-            mw.notifyMessage(
-                msg=report_content, 
-                msgtype="html", 
-                title="%(title)s(%(ip)s)服务器报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": self.__START_DATE, "end_date": self.__END_DATE}, 
-                stype='服务器报告', 
-                trigger_time=0
-            )
+        }
+        mw.notifyMessage(
+            msg=report_content, 
+            msgtype="html", 
+            title="%(title)s(%(ip)s)服务器报告" % {"title": mw.getConfig('title'), "ip": mw.getHostAddr(), "start_date": self.__START_DATE, "end_date": self.__END_DATE}, 
+            stype='服务器报告', 
+            trigger_time=0
+        )
 
-            # 单独发送一条异常提醒
-            if len(error_tips) > 0:
-                error_tips_msg = mw.generateCommonNotifyMessage('<br\>' + '<br\>'.join(error_tips) + '<br\>请注意！')
-                mw.notifyMessage(msg=error_tips_msg, msgtype="html", title="🔴服务器异常通知：{} {}".format(mw.getConfig('title'), mw.getDateFromNow()), stype='服务器异常通知', trigger_time=0)
+        # 单独发送一条异常提醒
+        if len(error_tips) > 0:
+            error_tips_msg = mw.generateCommonNotifyMessage('<br\>' + '<br\>'.join(error_tips) + '<br\>请注意！')
+            mw.notifyMessage(msg=error_tips_msg, msgtype="html", title="🔴服务器异常通知：{} {}".format(mw.getConfig('title'), mw.getDateFromNow()), stype='服务器异常通知', trigger_time=0)
 
         return mw.returnJson(True, '设置成功!')
     

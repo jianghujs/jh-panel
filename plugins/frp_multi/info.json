@@ -1,0 +1,19 @@
+{
+	"sort": 7,
+	"ps": "frp内网穿透服务(多配置版)",
+	"name": "frp_multi",
+	"title": "FRP管理器(多配置版)",
+	"shell": "install.sh",
+	"versions":["0.44.0"],
+	"updates":["0.44.0"],
+	"tip": "soft",
+	"checks": "server/frp_multi",
+	"path": "server/frp_multi",
+	"display": 1,
+	"author": "DDSRem,midoks",
+	"date": "2022-07-11",
+	"home": "https://github.com/mw-plugin/frp",
+	"src_home": "https://github.com/fatedier/frp",
+	"type": 0,
+	"pid": "5"
+}

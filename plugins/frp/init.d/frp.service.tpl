@@ -12,72 +12,37 @@
 # Description:       starts the mw
 ### END INIT INFO
 
-
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 
-app_file={$SERVER_PATH}
+wrapper="{$SERVER_PATH}/frp-wrapper.sh"
 
 app_start(){
-    cd $app_file/frp
-	isStart=`ps -ef|grep frps |grep -v grep | grep -v python | awk '{print $2}'`
-	if [ "$isStart" == '' ];then
-        echo -e "Starting frps... \c"
-        $app_file/frp/frps -c $app_file/frp/frps.ini > $app_file/frp/frps.log 2>&1 &
-        echo -e "\033[32mdone\033[0m"
-    else
-        echo "Starting frps already running"
-    fi
-
-    isStart=`ps -ef|grep frpc |grep -v grep | grep -v python | awk '{print $2}'`
-    if [ "$isStart" == '' ];then
-        echo -e "Starting frpc... \c"
-        $app_file/frp/frpc -c $app_file/frp/frpc.ini > $app_file/frp/frps.log 2>&1 &
-        echo -e "\033[32mdone\033[0m"
-    else
-        echo "Starting frpc already running"
-    fi
+    echo "Starting frps..."
+    $wrapper server start
+    echo "Starting frpc..."
+    $wrapper client start
 }
 
 app_stop()
 {
-    echo -e "Stopping frps... \c";
-    arr=`ps -ef|grep frps |grep -v grep | grep -v python | awk '{print $2}'`
-    for p in ${arr[@]}
-    do
-        kill -9 $p &>/dev/null
-    done
-    echo -e "\033[32mdone\033[0m"
-
-    echo -e "Stopping frpc... \c";
-    arr=`ps -ef|grep frpc |grep -v grep | grep -v python | awk '{print $2}'`
-    for p in ${arr[@]}
-    do
-        kill -9 $p &>/dev/null
-    done
-    echo -e "\033[32mdone\033[0m"
+    echo "Stopping frps..."
+    $wrapper server stop
+    echo "Stopping frpc..."
+    $wrapper client stop
 }
 
 app_status()
 {
-    isStart=`ps -ef|grep frps |grep -v grep | grep -v python | awk '{print $2}'`
-    if [ "$isStart" == '0' ];then
-        echo -e "\033[32mfrps already running\033[0m"
-    else
-        echo -e "\033[31mfrps not running\033[0m"
-    fi
-
-    isStart=`ps -ef|grep frpc |grep -v grep | grep -v python | awk '{print $2}'`
-    if [ "$isStart" == '0' ];then
-        echo -e "\033[32mfrpc already running\033[0m"
-    else
-        echo -e "\033[31mfrpc not running\033[0m"
-    fi
+    echo "frps status:"
+    $wrapper server status
+    echo "frpc status:"
+    $wrapper client status
 }
 
 case "$1" in
     'start') app_start;;
     'stop') app_stop;;
-    'restart'|'reload') 
+    'restart'|'reload')
         app_stop
         app_start;;
     'status') app_status;;

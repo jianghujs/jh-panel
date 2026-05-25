@@ -1,16 +1,13 @@
 [Unit]
-Description=The nginx HTTP and reverse proxy server
+Description=frp client wrapper
 After=network.target remote-fs.target nss-lookup.target
 
 [Service]
-Type=simple
-ExecStart={$SERVER_PATH}/frp/frpc -c {$SERVER_PATH}/frp/frpc.ini
-KillSignal=SIGQUIT
-TimeoutStopSec=5
-KillMode=process
-PrivateTmp=true
-StandardOutput=syslog
-StandardError=inherit
+Type=oneshot
+RemainAfterExit=yes
+ExecStart={$WRAPPER_PATH} client start
+ExecStop={$WRAPPER_PATH} client stop
+ExecReload={$WRAPPER_PATH} client restart
 
 [Install]
 WantedBy=multi-user.target

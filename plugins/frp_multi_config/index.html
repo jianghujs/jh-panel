@@ -1,0 +1,21 @@
+<div class="bt-form">
+	<div class="bt-w-main">
+		<div class="bt-w-menu">
+			<p class="bgw" onclick="frpOpenMenu(this, function(){ pluginService('frp'); });">服务</p>
+			<p onclick="frpOpenMenu(this, function(){ pluginInitD('frp'); });">自启动</p>
+			<p onclick="frpOpenMenu(this, function(){ frpConfigPanel('server'); });">服务端配置</p>
+			<p onclick="frpOpenMenu(this, function(){ frpConfigPanel('client'); });">客户端配置</p>
+			<p onclick="frpOpenMenu(this, function(){ readme(); });">说明</p>
+		</div>
+		<div class="bt-w-con pd15">
+			<div class="soft-man-con"></div>
+		</div>
+	</div>
+</div>
+<script type="text/javascript">
+  
+resetPluginWinWidth(1000);
+$.getScript("/plugins/file?name=frp&f=js/frp.js", function(){
+	pluginService('frp');
+});
+</script>

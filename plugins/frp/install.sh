@@ -19,6 +19,7 @@ OSNAME_ID=`cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F
 
 VERSION=0.44.0
 
+pluginSourceDir=${rootPath}/plugins/frp/source
 
 serDir=/usr/lib/systemd/system
 if [ ! -d $serDir ];then
@@ -37,15 +38,29 @@ Install_Plugin()
 	rm -rf $serDir/frpc.service
 	rm -rf $serDir/frps.service
 	
+	localPkg=""
+	extractDir=""
 
 	if [ "$OSNAME" == "macos" ];then
-		wget  --no-check-certificate -O $APP_DIR/frp.tar.gz https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_darwin_amd64.tar.gz
+		localPkg=${pluginSourceDir}/frp_${VERSION}_darwin_amd64.tar.gz
+		extractDir=frp_${VERSION}_darwin_amd64
+		if [ -f "$localPkg" ] && [ -s "$localPkg" ];then
+			cp -f "$localPkg" $APP_DIR/frp.tar.gz
+		else
+			wget  --no-check-certificate -O $APP_DIR/frp.tar.gz https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_darwin_amd64.tar.gz
+		fi
 		cd $APP_DIR && tar -zxvf $APP_DIR/frp.tar.gz
-		mv $APP_DIR/frp_${VERSION}_darwin_amd64/* $serverPath/frp
+		mv $APP_DIR/${extractDir}/* $serverPath/frp
 	else
-		wget  --no-check-certificate -O $APP_DIR/frp.tar.gz https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_linux_amd64.tar.gz
+		localPkg=${pluginSourceDir}/frp_${VERSION}_linux_amd64.tar.gz
+		extractDir=frp_${VERSION}_linux_amd64
+		if [ -f "$localPkg" ] && [ -s "$localPkg" ];then
+			cp -f "$localPkg" $APP_DIR/frp.tar.gz
+		else
+			wget  --no-check-certificate -O $APP_DIR/frp.tar.gz https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_linux_amd64.tar.gz
+		fi
 		cd $APP_DIR && tar -zxvf $APP_DIR/frp.tar.gz
-		mv $APP_DIR/frp_${VERSION}_linux_amd64/* $serverPath/frp
+		mv $APP_DIR/${extractDir}/* $serverPath/frp
 	fi
 
 	# rm -rf $APP_DIR/frp.tar.gz
@@ -54,9 +69,9 @@ Install_Plugin()
 	echo ${VERSION} > $serverPath/frp/version.pl
 	echo 'install frpc' > $install_tmp
 
-	#初始化 
-	cd ${rootPath} && python3 ${rootPath}/plugins/frp/index.py start ${type}
-	cd ${rootPath} && python3 ${rootPath}/plugins/frp/index.py initd_install ${type}
+	# 初始化模式与服务模板
+	cd ${rootPath} && python3 ${rootPath}/plugins/frp/index.py initd_install
+	cd ${rootPath} && python3 ${rootPath}/plugins/frp/index.py start
 }
 
 
@@ -67,7 +82,9 @@ Uninstall_Plugin()
 	if [ ! -d $serDir ];then
 		echo "pass"
 	else
+		systemctl stop frps
 		systemctl stop frpc
+	  	rm -rf $serDir/frps.service
 	  	rm -rf $serDir/frpc.service
 	  	systemctl daemon-reload
 	fi

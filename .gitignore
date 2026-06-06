@@ -185,3 +185,5 @@ mdioks.session-journal
 node_modules
 package-lock.json
 package.json.checksum
+
+.codex

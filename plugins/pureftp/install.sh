@@ -58,10 +58,20 @@ Install_pureftp()
 	fi
 
 	#检测文件是否损坏.
-	md5_ok=451879495ba61c1d7dcfca8dd231119f
+	case "${VER}" in
+		1.0.54)
+			md5_ok=84ed6be2bb4309cb7f5b95af09ec17dd
+			;;
+		1.0.49)
+			md5_ok=451879495ba61c1d7dcfca8dd231119f
+			;;
+		*)
+			md5_ok=''
+			;;
+	esac
 	if [ -f $serverPath/source/pureftp/pure-ftpd-${VER}.tar.gz ];then
 		md5_check=`md5sum $serverPath/source/pureftp/pure-ftpd-${VER}.tar.gz  | awk '{print $1}'`
-		if [ "${md5_ok}" == "${md5_check}" ]; then
+		if [ "${md5_ok}" == "" ] || [ "${md5_ok}" == "${md5_check}" ]; then
 			echo "pure-ftpd file  check ok"
 		else
 			# 重新下载
@@ -76,7 +86,7 @@ Install_pureftp()
 	fi
 
 	cd $serverPath/source/pureftp/pure-ftpd-${VER} &&  ./configure --prefix=${serverPath}/pureftp \
-　　 	CFLAGS=-O2 \
+		CFLAGS=-O2 \
 		--with-puredb \
 		--with-quotas \
 		--with-cookie \

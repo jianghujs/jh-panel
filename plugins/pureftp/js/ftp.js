@@ -27,6 +27,18 @@ function ftpAsyncPost(method,args){
 	);
 }
 
+function pureftpConfig(){
+	pluginConfig('pureftp');
+
+	var timer = setInterval(function(){
+		if (!$('#textBody').length) return;
+		clearInterval(timer);
+
+		if ($('#pureftp-firewall-port-tips').length) return;
+		$('.soft-man-con').prepend('<div id="pureftp-firewall-port-tips" class="info-title-tips" style="margin-bottom:10px;"><p><span class="glyphicon glyphicon-alert" style="color: #f39c12; margin-right: 10px;"></span>请在防火墙中放行配置文件内设置的FTP端口；如启用了被动模式，也需要放行对应的被动端口范围。</p></div>');
+	}, 100);
+}
+
 function ftpListFind(){
     var search = $('#ftp_find_user').val();
     if (search==''){

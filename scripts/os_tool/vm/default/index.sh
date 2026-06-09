@@ -47,6 +47,7 @@ show_menu() {
     echo "8. 服务器状态检查"
     echo "9. 服务器切换"
     echo "10. 其他"
+    echo "11. 日志分析监测修复"
     echo "========================================================"
 }
 
@@ -88,6 +89,9 @@ case $choice in
     ;;
 10)
     download_and_run index__other.sh
+    ;;
+11)
+    download_and_run index__log.sh
     ;;
 esac
 

@@ -23,7 +23,7 @@ fi
 show_menu() {
     echo "==================vm os-tools=================="
     echo "请选择日志分析监测修复工具:"
-    echo "1. 诊断Filebeat到ES写入链路（自动开启debug日志并汇总常见问题）"
+    echo "1. 诊断Filebeat到ES写入链路（自动开启debug、触发测试写入并汇总常见问题）"
     echo "2. 修复Filebeat写入ES的mapping字段类型冲突（更新模板、rollover、可选清理registry）"
     echo "========================================================"
 }

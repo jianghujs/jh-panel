@@ -14,6 +14,8 @@ SHOW_DOCS=0
 VERBOSE=0
 AUTO_DEBUG=1
 DEBUG_SELECTORS="elasticsearch"
+TRIGGER_TEST=1
+WAIT_SECONDS=20
 MAX_LOG_LINES=10
 MAX_PREVIEW_CHARS=100
 EXIT_CODE=0
@@ -66,6 +68,9 @@ usage() {
   --verbose                 在终端显示详细列表；默认详细内容只写入 /tmp 日志
   --no-auto-debug           不自动开启 Filebeat debug 模式
   --debug-selectors LIST    Filebeat debug selectors。默认: elasticsearch
+  --trigger-test            重启 Filebeat 后复制最新一条监控数据为新文件，触发一次写入。默认开启
+  --no-trigger-test         重启 Filebeat 后不触发测试写入
+  --wait-seconds N          触发测试写入后等待秒数。默认: 20
   --no-color                禁用彩色输出
   --log-file PATH           指定完整诊断日志文件路径。默认写入 /tmp
   --max-preview-chars N     终端预览每行最多显示字符数。默认: 300
@@ -90,6 +95,9 @@ while [ $# -gt 0 ]; do
     --verbose) VERBOSE=1 ;;
     --no-auto-debug) AUTO_DEBUG=0 ;;
     --debug-selectors) shift; DEBUG_SELECTORS="${1:-}" ;;
+    --trigger-test) TRIGGER_TEST=1 ;;
+    --no-trigger-test) TRIGGER_TEST=0 ;;
+    --wait-seconds) shift; WAIT_SECONDS="${1:-20}" ;;
     --no-color) NO_COLOR=1 ;;
     --log-file) shift; DETAIL_LOG="${1:-}" ;;
     --max-preview-chars) shift; MAX_PREVIEW_CHARS="${1:-300}" ;;
@@ -285,6 +293,53 @@ curl_es() {
   else
     curl -sS "$url"
   fi
+}
+
+latest_source_file() {
+  find '/home/ansible_user/jh-monitor-data' '/home/ansible/jh-monitor-data' -maxdepth 1 -type f \( \
+    -name 'host-debian-system-status-*.json' -o \
+    -name 'host-debian-backup-*.ndjson' -o \
+    -name 'host-debian-xtrabackup-*.ndjson' -o \
+    -name 'host-debian-xtrabackup-inc-*.ndjson' \
+    \) -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | sed 's/^[^ ]* //'
+}
+
+retry_file_for_source() {
+  local src="$1" dir base ts
+  dir=$(dirname "$src")
+  base=$(basename "$src")
+  ts=$(date +%Y%m%d%H%M%S)
+  case "$base" in
+    host-debian-system-status-*.json) printf '%s/host-debian-system-status-retry-%s.json' "$dir" "$ts" ;;
+    host-debian-xtrabackup-inc-*.ndjson) printf '%s/host-debian-xtrabackup-inc-retry-%s.ndjson' "$dir" "$ts" ;;
+    host-debian-xtrabackup-*.ndjson) printf '%s/host-debian-xtrabackup-retry-%s.ndjson' "$dir" "$ts" ;;
+    host-debian-backup-*.ndjson) printf '%s/host-debian-backup-retry-%s.ndjson' "$dir" "$ts" ;;
+    *) printf '%s/host-debian-system-status-retry-%s.json' "$dir" "$ts" ;;
+  esac
+}
+
+trigger_test_ingest() {
+  [ "$TRIGGER_TEST" -eq 1 ] || return 0
+  section "触发测试写入（等待日志产生）"
+  local src dst last_line
+  src=$(latest_source_file || true)
+  if [ -z "$src" ] || [ ! -f "$src" ]; then
+    warn "没有找到可用于触发写入的监控源文件，跳过测试写入"
+    return 0
+  fi
+  last_line=$(grep -v '^[[:space:]]*$' "$src" 2>/dev/null | tail -n 1 || true)
+  if [ -z "$last_line" ]; then
+    warn "源文件没有非空记录: $src，跳过测试写入"
+    return 0
+  fi
+  dst=$(retry_file_for_source "$src")
+  printf '%s\n' "$last_line" > "$dst"
+  chmod 0644 "$dst" 2>/dev/null || true
+  pass "已生成测试写入文件: $dst"
+  info "来源最新记录: $src"
+  info "等待 ${WAIT_SECONDS}s 让 Filebeat 采集并产生日志"
+  sleep "$WAIT_SECONDS"
+  ok "等待完成，继续检查日志"
 }
 
 check_command_set() {
@@ -706,6 +761,7 @@ check_config_summary
 enable_filebeat_debug
 check_filebeat
 check_sources
+trigger_test_ingest
 check_registry
 check_logs
 check_es

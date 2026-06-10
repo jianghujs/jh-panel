@@ -1122,7 +1122,8 @@ add_component_to_template() {
   info "模板备份 (composed_of 修改前): $backup"
 
   put_body=$(mktemp)
-  python3 - "$get_body" "$put_body" "$COMPONENT_TEMPLATE" <<'PY_ADD'
+  local composed_list
+  composed_list=$(python3 - "$get_body" "$put_body" "$COMPONENT_TEMPLATE" <<'PY_ADD'
 import json, sys
 
 src_file = sys.argv[1]
@@ -1140,9 +1141,7 @@ if component_name not in composed:
 json.dump(body, open(dst_file, 'w'), ensure_ascii=False, indent=2)
 print(','.join(composed))
 PY_ADD
-
-  local composed_list
-  composed_list=$(python3 - "$get_body" "$put_body" "$COMPONENT_TEMPLATE" 2>&1)
+)
   info "index template composed_of: $composed_list"
 
   if [ "$APPLY" -eq 1 ]; then

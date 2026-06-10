@@ -83,9 +83,9 @@ if [ $choice == "y" ]; then
   # echo "check_and_continue \"关闭 服务器报告 定时任务\"" >> $script_file
   # echo "show_info \"|- 关闭 服务器报告 定时任务完成✅\"" >> $script_file
   
-  echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab \"[勿删]续签Let's Encrypt证书\"" >> $script_file
-  echo "check_and_continue \"关闭 续签Let's Encrypt证书 定时任务\"" >> $script_file
-  echo "show_info \"|- 关闭 续签Let's Encrypt证书 定时任务完成✅\"" >> $script_file
+  # echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab \"[勿删]续签Let's Encrypt证书\"" >> $script_file
+  # echo "check_and_continue \"关闭 续签Let's Encrypt证书 定时任务\"" >> $script_file
+  # echo "show_info \"|- 关闭 续签Let's Encrypt证书 定时任务完成✅\"" >> $script_file
 
   echo "" >> $script_file
   echo "# 调整监控" >> $script_file

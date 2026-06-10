@@ -323,66 +323,6 @@ json.dump(body, open(dst, 'w'), ensure_ascii=False, indent=2)
 PY
 }
 
-
-resolve_template_name() {
-  # When setup.template.name doesn't match any composable index template in ES,
-  # search by index_patterns matching TEMPLATE_PATTERN and use the first match.
-  # Also tries dropping the "-logs" / "-logs-*" suffix convention.
-  # Sets TEMPLATE_NAME to the resolved name; returns 0 on success.
-  local orig="$TEMPLATE_NAME"
-  local out code prefix stripped
-
-  # 1. Try exact name with common suffix variations
-  for stripped in "${orig%-logs}" "${orig%-logs-*}" "${orig%logs}logs" "${orig%logs-}"; do
-    [ "$stripped" = "$orig" ] && continue
-    out=$(mktemp)
-    code=$(curl_es GET "/_index_template/${stripped}" '' "$out")
-    rm -f "$out"
-    if [ "$code" = "200" ]; then
-      info "index template '$orig' 不存在，使用匹配的 '$stripped' 代替"
-      TEMPLATE_NAME="$stripped"
-      return 0
-    fi
-  done
-
-  # 2. Search all composable index templates for matching index_patterns
-  out=$(mktemp)
-  code=$(curl_es GET "/_index_template" '' "$out")
-  if [ "$code" = "200" ]; then
-    prefix="${TEMPLATE_PATTERN%\*}"
-    local found
-    found=$(python3 - "$out" "$prefix" <<'FINDPY'
-import json, sys
-try:
-    data = json.load(open(sys.argv[1]))
-    prefix = sys.argv[2]
-    for tmpl in data.get('index_templates', []):
-        name = tmpl.get('name', '')
-        it = tmpl.get('index_template', {})
-        patterns = it.get('index_patterns', [])
-        for pat in patterns:
-            pat_prefix = pat.rstrip('*')
-            if prefix.startswith(pat_prefix) or pat_prefix.startswith(prefix):
-                print(name)
-                sys.exit(0)
-except Exception:
-    pass
-FINDPY
-)
-    if [ -n "$found" ]; then
-      info "index template '$orig' 不存在，自动发现匹配的 template: '$found' (pattern prefix: $prefix)"
-      TEMPLATE_NAME="$found"
-      rm -f "$out"
-      return 0
-    fi
-  fi
-  rm -f "$out"
-
-  # 3. Give up
-  fail "无法找到匹配的 index template: 尝试了 '$orig' 及常见后缀变体和 pattern 搜索"
-  return 1
-}
-
 update_template() {
   section "更新 ES index template"
   local get_body put_body pairs code i backup
@@ -391,22 +331,10 @@ update_template() {
   pairs=$(mktemp)
   code=$(curl_es GET "/_index_template/${TEMPLATE_NAME}" '' "$get_body")
   if [ "$code" != "200" ]; then
-    info "index template '${TEMPLATE_NAME}' 直接查找返回 HTTP=$code，尝试自动发现匹配 template"
-    rm -f "$get_body"
-    if ! resolve_template_name; then
-      rm -f "$get_body" "$put_body" "$pairs"
-      return
-    fi
-    # Retry with resolved template name
-    get_body=$(mktemp)
-    code=$(curl_es GET "/_index_template/${TEMPLATE_NAME}" '' "$get_body")
-    if [ "$code" != "200" ]; then
-      cat "$get_body" >> "$LOG_FILE"
-      fail "读取 index template 失败: $TEMPLATE_NAME，HTTP=$code"
-      rm -f "$get_body" "$put_body" "$pairs"
-      return
-    fi
-    ok "已解析到 index template: $TEMPLATE_NAME"
+    cat "$get_body" >> "$LOG_FILE"
+    fail "读取 index template 失败: $TEMPLATE_NAME，HTTP=$code"
+    rm -f "$get_body" "$put_body" "$pairs"
+    return
   fi
 
   backup=$(mktemp "/tmp/${TEMPLATE_NAME}_index_template_backup_XXXXXX.json")
@@ -438,29 +366,12 @@ update_template() {
 }
 
 list_data_streams() {
-  local out code prefix
-  prefix="${TEMPLATE_PATTERN%\*}"
-  # Use prefix-based query for wildcard patterns; exact name for literal patterns
-  if [ "$prefix" != "$TEMPLATE_PATTERN" ]; then
-    code=$(curl_es GET "/_data_stream?prefix=${prefix}" '' "$out")
-  else
-    code=$(curl_es GET "/_data_stream/${TEMPLATE_PATTERN}" '' "$out")
-  fi
+  local out code
+  out=$(mktemp)
+  code=$(curl_es GET "/_data_stream/${TEMPLATE_PATTERN}" '' "$out")
   printf '\n== Data streams %s ==\n' "$TEMPLATE_PATTERN" >> "$LOG_FILE"
   cat "$out" >> "$LOG_FILE"
-  if [ "$code" != "200" ]; then
-    info "data stream API 查询返回 HTTP=$code，尝试通过 _cat/indices 查找 backing indices"
-    rm -f "$out"
-    out=$(mktemp)
-    code=$(curl_es GET "/_cat/indices/${TEMPLATE_PATTERN}?h=index" '' "$out")
-    printf '\n== Cat indices %s ==\n' "$TEMPLATE_PATTERN" >> "$LOG_FILE"
-    cat "$out" >> "$LOG_FILE"
-    if [ "$code" = "200" ]; then
-      grep '^\.ds-' "$out" | sed 's/^[[:space:]]*//' | sort -u
-    fi
-    rm -f "$out"
-    return 0
-  fi
+  if [ "$code" != "200" ]; then rm -f "$out"; return 0; fi
   python3 - "$out" <<'PY'
 import json, sys
 try:
@@ -593,12 +504,7 @@ latest_source_file() {
     -name 'host-debian-system-status-*.json' -o \
     -name 'host-debian-backup-*.ndjson' -o \
     -name 'host-debian-xtrabackup-*.ndjson' -o \
-    -name 'host-debian-xtrabackup-inc-*.ndjson' -o \
-    -name 'host-pve-system-status-*.json' -o \
-    -name 'host-pve-backup-*.ndjson' -o \
-    -name 'host-pve-xtrabackup-*.ndjson' -o \
-    -name 'host-pve-xtrabackup-inc-*.ndjson' -o \
-    -name 'host-pve-hardware-report-*.json' \
+    -name 'host-debian-xtrabackup-inc-*.ndjson' \
   \) -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | sed 's/^[^ ]* //'
 }
 
@@ -612,11 +518,6 @@ retry_file_for_source() {
     host-debian-xtrabackup-inc-*.ndjson) printf '%s/host-debian-xtrabackup-inc-retry-%s.ndjson' "$dir" "$ts" ;;
     host-debian-xtrabackup-*.ndjson) printf '%s/host-debian-xtrabackup-retry-%s.ndjson' "$dir" "$ts" ;;
     host-debian-backup-*.ndjson) printf '%s/host-debian-backup-retry-%s.ndjson' "$dir" "$ts" ;;
-    host-pve-system-status-*.json) printf '%s/host-pve-system-status-retry-%s.json' "$dir" "$ts" ;;
-    host-pve-xtrabackup-inc-*.ndjson) printf '%s/host-pve-xtrabackup-inc-retry-%s.ndjson' "$dir" "$ts" ;;
-    host-pve-xtrabackup-*.ndjson) printf '%s/host-pve-xtrabackup-retry-%s.ndjson' "$dir" "$ts" ;;
-    host-pve-backup-*.ndjson) printf '%s/host-pve-backup-retry-%s.ndjson' "$dir" "$ts" ;;
-    host-pve-hardware-report-*.json) printf '%s/host-pve-hardware-report-retry-%s.json' "$dir" "$ts" ;;
     *) printf '%s/host-debian-system-status-retry-%s.json' "$dir" "$ts" ;;
   esac
 }

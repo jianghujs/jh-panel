@@ -438,30 +438,14 @@ update_template() {
 }
 
 list_data_streams() {
-  local out code prefix
-  prefix="${TEMPLATE_PATTERN%\*}"
-  # Use prefix-based query for wildcard patterns; exact name for literal patterns
-  if [ "$prefix" != "$TEMPLATE_PATTERN" ]; then
-    code=$(curl_es GET "/_data_stream?prefix=${prefix}" '' "$out")
-  else
-    code=$(curl_es GET "/_data_stream/${TEMPLATE_PATTERN}" '' "$out")
-  fi
+  local out code names
+  out=$(mktemp)
+  # ES _data_stream supports wildcards in the URL path (e.g. host-pve-*)
+  code=$(curl_es GET "/_data_stream/${TEMPLATE_PATTERN}" '' "$out")
   printf '\n== Data streams %s ==\n' "$TEMPLATE_PATTERN" >> "$LOG_FILE"
   cat "$out" >> "$LOG_FILE"
-  if [ "$code" != "200" ]; then
-    info "data stream API 查询返回 HTTP=$code，尝试通过 _cat/indices 查找 backing indices"
-    rm -f "$out"
-    out=$(mktemp)
-    code=$(curl_es GET "/_cat/indices/${TEMPLATE_PATTERN}?h=index" '' "$out")
-    printf '\n== Cat indices %s ==\n' "$TEMPLATE_PATTERN" >> "$LOG_FILE"
-    cat "$out" >> "$LOG_FILE"
-    if [ "$code" = "200" ]; then
-      grep '^\.ds-' "$out" | sed 's/^[[:space:]]*//' | sort -u
-    fi
-    rm -f "$out"
-    return 0
-  fi
-  python3 - "$out" <<'PY'
+  if [ "$code" = "200" ]; then
+    names=$(python3 - "$out" <<'PY'
 import json, sys
 try:
     data = json.load(open(sys.argv[1]))
@@ -472,6 +456,25 @@ for ds in data.get('data_streams', []):
     if name:
         print(name)
 PY
+)
+    if [ -n "$names" ]; then
+      printf '%s\n' "$names"
+      rm -f "$out"
+      return 0
+    fi
+  fi
+  rm -f "$out"
+
+  # Fallback: derive data stream names from .ds-* backing indices via _cat/indices
+  info "_data_stream/${TEMPLATE_PATTERN} 没有返回结果，尝试通过 _cat/indices 反推 backing indices"
+  out=$(mktemp)
+  code=$(curl_es GET "/_cat/indices/${TEMPLATE_PATTERN}?h=index" '' "$out")
+  printf '\n== Cat indices %s ==\n' "$TEMPLATE_PATTERN" >> "$LOG_FILE"
+  cat "$out" >> "$LOG_FILE"
+  if [ "$code" = "200" ]; then
+    # Extract original data stream names from .ds-<name>-<date>-<gen> pattern
+    grep '^\.ds-' "$out" 2>/dev/null | sed -E 's|^\.ds-(.+)-[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9]+$|\1|' | sort -u
+  fi
   rm -f "$out"
 }
 

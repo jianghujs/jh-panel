@@ -300,8 +300,13 @@ latest_source_file() {
     -name 'host-debian-system-status-*.json' -o \
     -name 'host-debian-backup-*.ndjson' -o \
     -name 'host-debian-xtrabackup-*.ndjson' -o \
-    -name 'host-debian-xtrabackup-inc-*.ndjson' \
-    \) -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | sed 's/^[^ ]* //'
+    -name 'host-debian-xtrabackup-inc-*.ndjson' -o \
+    -name 'host-pve-system-status-*.json' -o \
+    -name 'host-pve-backup-*.ndjson' -o \
+    -name 'host-pve-xtrabackup-*.ndjson' -o \
+    -name 'host-pve-xtrabackup-inc-*.ndjson' -o \
+    -name 'host-pve-hardware-report-*.json' \
+  \) -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | sed 's/^[^ ]* //'
 }
 
 retry_file_for_source() {
@@ -314,6 +319,11 @@ retry_file_for_source() {
     host-debian-xtrabackup-inc-*.ndjson) printf '%s/host-debian-xtrabackup-inc-retry-%s.ndjson' "$dir" "$ts" ;;
     host-debian-xtrabackup-*.ndjson) printf '%s/host-debian-xtrabackup-retry-%s.ndjson' "$dir" "$ts" ;;
     host-debian-backup-*.ndjson) printf '%s/host-debian-backup-retry-%s.ndjson' "$dir" "$ts" ;;
+    host-pve-system-status-*.json) printf '%s/host-pve-system-status-retry-%s.json' "$dir" "$ts" ;;
+    host-pve-xtrabackup-inc-*.ndjson) printf '%s/host-pve-xtrabackup-inc-retry-%s.ndjson' "$dir" "$ts" ;;
+    host-pve-xtrabackup-*.ndjson) printf '%s/host-pve-xtrabackup-retry-%s.ndjson' "$dir" "$ts" ;;
+    host-pve-backup-*.ndjson) printf '%s/host-pve-backup-retry-%s.ndjson' "$dir" "$ts" ;;
+    host-pve-hardware-report-*.json) printf '%s/host-pve-hardware-report-retry-%s.json' "$dir" "$ts" ;;
     *) printf '%s/host-debian-system-status-retry-%s.json' "$dir" "$ts" ;;
   esac
 }
@@ -487,15 +497,15 @@ check_sources() {
     if [ -d "$root" ]; then
       info "源目录存在: $root"
       local count source_list
-      count=$(find "$root" -maxdepth 1 -type f \( -name 'host-debian-system-status-*.json' -o -name 'host-debian-xtrabackup-*.ndjson' -o -name 'host-debian-backup-*.ndjson' \) 2>/dev/null | wc -l)
+      count=$(find "$root" -maxdepth 1 -type f \( -name 'host-debian-system-status-*.json' -o -name 'host-debian-xtrabackup-*.ndjson' -o -name 'host-debian-backup-*.ndjson' -o -name 'host-pve-system-status-*.json' -o -name 'host-pve-xtrabackup-*.ndjson' -o -name 'host-pve-backup-*.ndjson' -o -name 'host-pve-hardware-report-*.json' \) 2>/dev/null | wc -l)
       info "$root 中监控文件数量: $count"
       if [ "$SOURCE_FILE_COUNT" = "未知" ]; then SOURCE_FILE_COUNT=0; fi
       SOURCE_FILE_COUNT=$((SOURCE_FILE_COUNT + count))
       if [ "$count" -gt 0 ]; then found=1; fi
       log_detail_section "源文件列表 $root"
-      find "$root" -maxdepth 1 -type f \( -name 'host-debian-system-status-*.json' -o -name 'host-debian-xtrabackup-*.ndjson' -o -name 'host-debian-backup-*.ndjson' \) -printf '%TY-%Tm-%Td %TH:%TM %10s %p\n' 2>/dev/null | sort >> "$DETAIL_LOG"
+      find "$root" -maxdepth 1 -type f \( -name 'host-debian-system-status-*.json' -o -name 'host-debian-xtrabackup-*.ndjson' -o -name 'host-debian-backup-*.ndjson' -o -name 'host-pve-system-status-*.json' -o -name 'host-pve-xtrabackup-*.ndjson' -o -name 'host-pve-backup-*.ndjson' -o -name 'host-pve-hardware-report-*.json' \) -printf '%TY-%Tm-%Td %TH:%TM %10s %p\n' 2>/dev/null | sort >> "$DETAIL_LOG"
       if [ "$VERBOSE" -eq 1 ]; then
-        find "$root" -maxdepth 1 -type f \( -name 'host-debian-system-status-*.json' -o -name 'host-debian-xtrabackup-*.ndjson' -o -name 'host-debian-backup-*.ndjson' \) -printf '%TY-%Tm-%Td %TH:%TM %10s %p\n' 2>/dev/null | sort | tail -n 12
+        find "$root" -maxdepth 1 -type f \( -name 'host-debian-system-status-*.json' -o -name 'host-debian-xtrabackup-*.ndjson' -o -name 'host-debian-backup-*.ndjson' -o -name 'host-pve-system-status-*.json' -o -name 'host-pve-xtrabackup-*.ndjson' -o -name 'host-pve-backup-*.ndjson' -o -name 'host-pve-hardware-report-*.json' \) -printf '%TY-%Tm-%Td %TH:%TM %10s %p\n' 2>/dev/null | sort | tail -n 12
       else
         info "源文件明细已写入: $DETAIL_LOG"
       fi
@@ -512,13 +522,13 @@ check_registry() {
   pass "registry 文件存在: $REGISTRY"
   local reg_size reg_matches
   reg_size=$(stat -c '%s' "$REGISTRY" 2>/dev/null || echo 0)
-  reg_matches=$(grep -E -c 'host-debian-(system-status|backup-|xtrabackup-)' "$REGISTRY" || true)
+  reg_matches=$(grep -E -c 'host-(debian|pve)-(system-status|backup-|xtrabackup-|hardware-report-)' "$REGISTRY" || true)
   info "registry 大小: $reg_size bytes"
   info "监控相关 registry 记录数: $reg_matches"
   REGISTRY_MATCH_COUNT="$reg_matches"
   if [ "$reg_matches" -gt 0 ]; then pass "Filebeat 已经扫描/读取过监控文件"; else warn "没有监控相关 registry 记录；Filebeat 可能还没有扫描到这些文件"; fi
   local registry_matches_text
-  registry_matches_text=$(grep -E 'host-debian-(system-status|backup-|xtrabackup-)' "$REGISTRY" 2>/dev/null || true)
+  registry_matches_text=$(grep -E 'host-(debian|pve)-(system-status|backup-|xtrabackup-|hardware-report-)' "$REGISTRY" 2>/dev/null || true)
   emit_detail "Registry 监控相关记录" "$registry_matches_text" "verbose" 8
 }
 
@@ -588,7 +598,7 @@ check_es() {
     cats=$(curl_es "/_cat/indices/${INDEX_PATTERN}?v&s=index" 2>&1)
     log_detail_section "ES 索引列表 $INDEX_PATTERN"
     printf '%s\n' "$cats" >> "$DETAIL_LOG"
-    if printf '%s' "$cats" | grep -Eq '(^health|\.ds-|filebeat-|host-debian-)'; then
+    if printf '%s' "$cats" | grep -Eq '(^health|\.ds-|filebeat-|host-debian-|host-pve-)'; then
       ES_INDEX_FOUND_STATE="正常"
       pass "已找到匹配的索引/数据流"
       if [ "$VERBOSE" -eq 1 ]; then

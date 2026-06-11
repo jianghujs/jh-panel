@@ -217,10 +217,10 @@ function planAdd(){
 	}
 	$("#set-Config input[name='minute']").val(minute);
 	
-	var saveAllDay = $("#saveAllDay").val();
-	var saveOther = $("#saveOther").val();
-	var saveMaxDay = $("#saveMaxDay").val();
-	if(saveAllDay < 0 || saveOther < 0){
+	var saveAllDay = $("#saveAllDay").val() || '';
+	var saveOther = $("#saveOther").val() || '';
+	var saveMaxDay = $("#saveMaxDay").val() || '';
+	if(saveAllDay !== '' && saveOther !== '' && (Number(saveAllDay) < 0 || Number(saveOther) < 0)){
 		layer.msg('不能有负数!',{icon:2});
 		return;
 	}
@@ -435,6 +435,14 @@ function initDropdownMenu(){
         toBackup('pluginSetting');
         $(".controls").html('备份插件');
         break;
+      case 'restoreSiteSetting':
+        toBackup('restoreSiteSetting');
+        $(".controls").html('恢复网站配置');
+        break;
+      case 'restorePluginSetting':
+        toBackup('restorePluginSetting');
+        $(".controls").html('恢复插件配置');
+        break;
 			case 'database':
 				toBackup('databases');
 				$(".controls").html('备份数据库');
@@ -467,6 +475,14 @@ function toBackup(type){
     case 'pluginSetting':
       sMsg = '备份插件配置';
       sType = "pluginSetting";
+      break;
+    case 'restoreSiteSetting':
+      sMsg = '恢复网站配置';
+      sType = "restoreSiteSetting";
+      break;
+    case 'restorePluginSetting':
+      sMsg = '恢复插件配置';
+      sType = "restorePluginSetting";
       break;
 		case 'databases':
 			sMsg = '备份数据库';
@@ -501,6 +517,7 @@ function toBackup(type){
 			orderOpt += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+rdata.orderOpt[i].name+'">'+rdata.orderOpt[i].title+'</a></li>'
 		}
 
+    var isRestore = (sType == 'restoreSiteSetting' || sType == 'restorePluginSetting');
     var extOpt = '';
     if (sType == 'databases') {
       // 增加一个备份方式（mysqldump、mydumper）的选项
@@ -530,7 +547,7 @@ function toBackup(type){
 					  </ul>\
 					</div>\
           '+ extOpt +'\
-					<div class="textname pull-left mr20">备份到</div>\
+					'+ (isRestore ? '' : '<div class="textname pull-left mr20">备份到</div>\
 					<div class="dropdown planBackupTo pull-left mr20">\
 					  <button class="btn btn-default dropdown-toggle" type="button" id="excode" data-toggle="dropdown" style="width:auto;">\
 						<b val="localhost">服务器磁盘</b> <span class="caret"></span>\
@@ -539,9 +556,9 @@ function toBackup(type){
 						<li><a role="menuitem" tabindex="-1" href="javascript:;" value="localhost">服务器磁盘</a></li>\
 						'+ orderOpt +'\
 					  </ul>\
-					</div>\
+					</div>') +'\
 				</div>\
-				<div class="clearfix ptb10">\
+				'+ (isRestore ? '' : '<div class="clearfix ptb10">\
 					<div class="typename controls c4 pull-left f14 text-right mr20">保留规则</div>\
 					<div class="plan_hms pull-left mr20 bt-input-text">\
 						<span><input type="number" name="saveAllDay" id="saveAllDay" value="3" maxlength="4" max="100" min="1"></span>\
@@ -551,7 +568,7 @@ function toBackup(type){
 						<span><input type="number" name="saveMaxDay" id="saveMaxDay" value="30" maxlength="4" max="100" min="1"></span>\
 						<span class="name">天</span>\
 					</div>\
-				</div>\
+				</div>') +'\
 			</div>';
 		$("#implement").html(sBody);
 		getselectname();
@@ -590,7 +607,7 @@ function editTaskInfo(id){
 				saveMaxDay: rdata.saveMaxDay,
 				urladdress: rdata.urladdress,
 			},
-			sTypeArray:[['toShell','Shell脚本'],['site','备份网站资源'],['siteSetting','备份网站配置'],['pluginSetting','备份插件配置'],['database','备份数据库'],['logs','日志切割'],['path','备份目录'],['rememory','释放内存'],['toUrl','访问URL']],
+			sTypeArray:[['toShell','Shell脚本'],['site','备份网站资源'],['siteSetting','备份网站配置'],['pluginSetting','备份插件配置'],['restoreSiteSetting','恢复网站配置'],['restorePluginSetting','恢复插件配置'],['database','备份数据库'],['logs','日志切割'],['path','备份目录'],['rememory','释放内存'],['toUrl','访问URL']],
 			cycleArray:[['day','每天'],['day-n','N天'],['hour','每小时'],['hour-n','N小时'],['minute-n','N分钟'],['week','每星期'],['month','每月']],
 			weekArray:[[1,'周一'],[2,'周二'],[3,'周三'],[4,'周四'],[5,'周五'],[6,'周六'],[7,'周日']],
 			sNameArray:[],
@@ -613,8 +630,11 @@ function editTaskInfo(id){
 					weekDom += '<li><a role="menuitem"  href="javascript:;" value="'+ obj['weekArray'][i][0] +'">'+ obj['weekArray'][i][1] +'</a></li>';
 				}
 
-				if(obj.from.stype == 'site' || obj.from.stype == 'database' || obj.from.stype == 'path' || obj.from.stype == 'logs'){
-					$.post('/crontab/get_data_list',{type:obj.from.stype  == 'database'?'databases':'sites'},function(rdata){
+				if(obj.from.stype == 'site' || obj.from.stype == 'database' || obj.from.stype == 'path' || obj.from.stype == 'logs' || obj.from.stype == 'restoreSiteSetting' || obj.from.stype == 'restorePluginSetting'){
+					var _listType = obj.from.stype;
+					if (obj.from.stype == 'database') _listType = 'databases';
+					else if (obj.from.stype == 'site' || obj.from.stype == 'path' || obj.from.stype == 'logs') _listType = 'sites';
+					$.post('/crontab/get_data_list',{type:_listType},function(rdata){
 						// console.log(rdata);
 						obj.sNameArray = rdata.data;
 						obj.sNameArray.unshift({name:'ALL',ps:'所有'});
@@ -995,6 +1015,7 @@ function toFile(){
 }
 
 //从脚本
+
 function toShell(){
 	var tBody = "<textarea class='txtsjs bt-input-text' name='sBody'></textarea>";
 	$("#implement").html(tBody);

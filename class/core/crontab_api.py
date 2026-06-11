@@ -445,10 +445,10 @@ class crontab_api:
                 bak_data = json.loads(t)
         
         # data获取
-        if stype == 'sites' or stype == 'siteSetting' or stype == 'logs': 
+        if stype == 'sites' or stype == 'siteSetting' or stype == 'restoreSiteSetting' or stype == 'logs': 
             data['data'] = mw.M('sites').field('name,ps').select()
 
-        if stype == 'pluginSetting':
+        if stype == 'pluginSetting' or stype == 'restorePluginSetting':
             data['data'] = mw.getBackupPluginList()
 
         if stype == 'databases':
@@ -588,6 +588,8 @@ fi
                 'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " '" + str(save) + "'",
                 'siteSetting':   head + "python3 " + script_dir + "/backup.py siteSetting " + param['sname'] + " '" + str(save) + "'",
                 'pluginSetting':   head + "python3 " + script_dir + "/backup.py pluginSetting " + param['sname'] + " '" + str(save) + "'",
+                'restoreSiteSetting':   head + "python3 " + script_dir + "/restore.py restoreSiteSetting " + param['sname'],
+                'restorePluginSetting':   head + "python3 " + script_dir + "/restore.py restorePluginSetting " + param['sname'],
                 'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " '" + str(save) + "'" + " " + param.get('dumpType', ''),
                 'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                 'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
@@ -600,6 +602,8 @@ fi
                     'site':   head + "python3 " + cfile + " site " + param['sname'] + " '" + str(save) + "'",
                     'siteSetting':   head + "python3 " + cfile + " siteSetting " + param['sname'] + " '" + str(save) + "'",
                     'pluginSetting':   head + "python3 " + cfile + " pluginSetting " + param['sname'] + " '" + str(save) + "'",
+                    'restoreSiteSetting':   head + "python3 " + script_dir + "/restore.py restoreSiteSetting " + param['sname'],
+                    'restorePluginSetting':   head + "python3 " + script_dir + "/restore.py restorePluginSetting " + param['sname'],
                     'database': head + "python3 " + cfile + " database " + param['sname'] + " '" + str(save) + "'",
                     'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                     'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'

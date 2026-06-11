@@ -19,7 +19,7 @@ log_file="/tmp/offline.log"
 echo "-----------------------"
 echo "即将生成服务器下线脚本到${script_file}，包含内容如下："
 echo "1. 开启xtrabackup增量备份、xtrabackup、mysqldump"
-echo "2. 关闭备份网站配置、备份插件配置、lsyncd实时任务定时同步、续签Let's Encrypt证书定时任务"
+echo "2. 关闭备份网站配置、备份插件配置、lsyncd实时任务定时同步、续签Let's Encrypt证书定时任务，开启恢复网站配置、恢复插件配置定时任务"
 echo "3. 关闭 SSL证书到期预提醒"
 echo "4. 配置同步公钥到authorized_keys"
 echo "5. 关闭rsyncd任务"
@@ -86,6 +86,14 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab \"[勿删]续签Let's Encrypt证书\"" >> $script_file
   echo "check_and_continue \"关闭 续签Let's Encrypt证书 定时任务\"" >> $script_file
   echo "show_info \"|- 关闭 续签Let's Encrypt证书 定时任务完成✅\"" >> $script_file
+
+  echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 恢复网站配置[所有]" >> $script_file
+  echo "check_and_continue \"开启 恢复网站配置 定时任务\"" >> $script_file
+  echo "show_info \"|- 开启 恢复网站配置 定时任务完成✅\"" >> $script_file
+
+  echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 恢复插件配置[所有]" >> $script_file
+  echo "check_and_continue \"开启 恢复插件配置 定时任务\"" >> $script_file
+  echo "show_info \"|- 开启 恢复插件配置 定时任务完成✅\"" >> $script_file
 
   echo "" >> $script_file
   echo "# 调整监控" >> $script_file

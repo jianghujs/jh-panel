@@ -38,7 +38,7 @@ echo "6. （可选）恢复插件数据"
 echo "7. ? 确认上线操作"
 echo "8. （可选）主从切换"
 echo "9. 关闭xtrabackup增量备份、xtrabackup、mysqldump"
-echo "10. 开启备份网站配置、备份插件配置、lsyncd实时任务定时同步、续签Let's Encrypt证书定时任务"
+echo "10. 开启备份网站配置、备份插件配置、lsyncd实时任务定时同步、续签Let's Encrypt证书定时任务，关闭恢复网站配置、恢复插件配置"
 echo "11. 从authorized_keys删除同步公钥"
 echo "12. 启动rsyncd任务"
 echo "13. 启动Openresty"
@@ -335,6 +335,14 @@ if [ $choice == "y" ]; then
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab \"[勿删]续签Let's Encrypt证书\"" >> $tmp_online_script_file
   echo "check_and_continue \"开启 续签Let's Encrypt证书 定时任务\"" >> $tmp_online_script_file
   echo "show_info \"|- 开启 续签Let's Encrypt证书 定时任务完成✅\"" >> $tmp_online_script_file
+
+  echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab 恢复网站配置[所有]" >> $tmp_online_script_file
+  echo "check_and_continue \"关闭 恢复网站配置 定时任务\"" >> $tmp_online_script_file
+  echo "show_info \"|- 关闭 恢复网站配置 定时任务完成✅\"" >> $tmp_online_script_file
+
+  echo "python3 /www/server/jh-panel/scripts/switch.py closeCrontab 恢复插件配置[所有]" >> $tmp_online_script_file
+  echo "check_and_continue \"关闭 恢复插件配置 定时任务\"" >> $tmp_online_script_file
+  echo "show_info \"|- 关闭 恢复插件配置 定时任务完成✅\"" >> $tmp_online_script_file
 
   echo "" >> $tmp_online_script_file
   echo "# 调整监控" >> $tmp_online_script_file

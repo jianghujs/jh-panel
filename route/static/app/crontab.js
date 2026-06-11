@@ -542,7 +542,7 @@ function toBackup(type){
 						<b id="sName" val="'+rdata.data[0].name+'">'+rdata.data[0].name+'['+rdata.data[0].ps+']</b> <span class="caret"></span>\
 					  </button>\
 					  <ul class="dropdown-menu" role="menu" aria-labelledby="backdata">\
-					  	<li><a role="menuitem" tabindex="-1" href="javascript:;" value="backupAll">所有</a></li>\
+					  	<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+ (isRestore ? 'restoreAll' : 'backupAll') +'">所有</a></li>\
 					  	'+sOpt+'\
 					  </ul>\
 					</div>\
@@ -575,7 +575,8 @@ function toBackup(type){
 		$(".dropdown ul li a").click(function(){
 			var sName = $("#sName").attr("val");
 			if(!sName) return;
-			$(".planname input[name='name']").val(sMsg+'['+sName+']');
+			var displayName = (sName == 'restoreAll' || sName == 'backupAll') ? '所有' : sName;
+			$(".planname input[name='name']").val(sMsg+'['+displayName+']');
 		});
 	},'json');
 }
@@ -686,7 +687,7 @@ function editTaskInfo(id){
 								<span class="typename c4 pull-left f14 text-right mr20">执行周期</span>\
 								<div class="dropdown  pull-left mr20">\
 									<button class="btn btn-default dropdown-toggle cycle_btn" type="button" data-toggle="dropdown" style="width:94px">\
-										<b val="'+ obj.from.stype +'">'+ cycleName +'</b>\
+										<b val="'+ obj.from.type +'">'+ cycleName +'</b>\
 										<span class="caret"></span>\
 									</button>\
 									<ul class="dropdown-menu" role="menu" aria-labelledby="cycle">'+ cycleDom +'</ul>\
@@ -708,8 +709,8 @@ function editTaskInfo(id){
 								<div class="clearfix ptb10">\
 									<span class="typename controls c4 pull-left f14 text-right mr20">'+ sTypeName  +'</span>\
 									<div style="line-height:34px"><div class="dropdown pull-left mr20 sName_btn" style="display:'+ (obj.from.sType != "path"?'block;':'none') +'">\
-										<button class="btn btn-default dropdown-toggle" type="button"  data-toggle="dropdown" style="width:auto" disabled="disabled">\
-											<b id="sName" val="'+ obj.from.sname +'">'+ obj.from.sname +'</b>\
+										<button class="btn btn-default dropdown-toggle sName_btn_btn" type="button"  data-toggle="dropdown" style="width:auto">\
+											<b id="sName" val="'+ obj.from.sname +'">'+ (sNameName || obj.from.sname) +'</b>\
 											<span class="caret"></span>\
 										</button>\
 										<ul class="dropdown-menu" role="menu" aria-labelledby="sName">'+ sNameDom +'</ul>\
@@ -785,6 +786,14 @@ function editTaskInfo(id){
         if(obj.from.stype == 'database') {
           $('.dump-type').show();
         }
+
+				if(obj.from.stype == 'restoreSiteSetting' || obj.from.stype == 'restorePluginSetting'){
+					// 恢复任务：保留 站点/插件 下拉；隐藏 '备份到' 与 '保留规则'
+					var $backupBtnDrop = $('.site_list .backup_btn').closest('.dropdown');
+					$backupBtnDrop.prev('.textname').hide();
+					$backupBtnDrop.hide();
+					$('.site_list .saveAllDay_create').closest('.clearfix.ptb10').hide();
+				}
 
 				obj.from.minute = $('.minute_create').val();
 				obj.from.hour = $('.hour_create').val();
@@ -916,6 +925,19 @@ function editTaskInfo(id){
 				$('[aria-labelledby="backupTo"] a').unbind().click(function () {
 					$('.backup_btn').find('b').attr('val',$(this).attr('value')).html($(this).html());
 					obj.from.backup_to = $(this).attr('value');
+				});
+
+				$('[aria-labelledby="sName"] a').unbind().click(function () {
+					$('.sName_btn').find('b').attr('val',$(this).attr('value')).html($(this).text());
+					obj.from.sname = $(this).attr('value');
+					// 任务名前缀[对象]部分同步
+					var _name = obj.from.name || '';
+					var _m = _name.match(/^(.*?)\[.*\]$/);
+					if (_m) {
+						var _label = obj.from.sname == 'ALL' ? '所有' : obj.from.sname;
+						obj.from.name = _m[1] + '[' + _label + ']';
+						$('.sName_create').val(obj.from.name);
+					}
 				});
 				$('.plan-submits').unbind().click(function(){
 					if(obj.from.type == 'hour-n'){

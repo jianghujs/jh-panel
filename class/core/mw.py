@@ -2586,8 +2586,10 @@ table tr td {
 
 def getBackupPluginList():
   return [
-    { "name": 'jianghujs', "path": "/www/server/jianghujs", "ps": 'JianghuJS管理器项目数据' },
-    { "name": 'docker', "path": "/www/server/docker", "ps": 'Docker管理器项目数据' }
+    { "name": 'jianghujs', "path": "/www/server/jianghujs", "ps": 'JianghuJS管理器项目数据', "backup_exclude": ['logs', '*.log'] },
+    { "name": 'docker', "path": "/www/server/docker", "ps": 'Docker管理器项目数据', "backup_exclude": ['logs', '*.log'] },
+    { "name": 'frp', "path": "/www/server/frp", "ps": 'FRP内网穿透配置', "backup_include": ['frpc.ini', 'frps.ini', 'ssl'], "backup_exclude": ['logs', '*.log'] },
+    { "name": 'frp_multi', "path": "/www/server/frp_multi", "ps": 'FRP内网穿透配置', "backup_include": ['frpc.ini', 'frps.ini', 'frpc_full.ini', 'config_mode.json', 'frpc.d', 'frps.d', 'ssl'], "backup_exclude": ['logs', '*.log'] }
   ]
 
 

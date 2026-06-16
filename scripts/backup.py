@@ -8,6 +8,8 @@ import os
 import json
 import datetime
 import re
+import shutil
+import zipfile
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -31,6 +33,78 @@ siteApi = site_api.site_api()
 
 
 class backupTools:
+
+    def _zip_dir(self, source_dir, filename, backup_exclude=None):
+        backup_exclude = backup_exclude or ['logs', '*.log']
+        with zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for root, dirs, files in os.walk(source_dir):
+                dirs[:] = [item for item in dirs if not self._isExcludedPath(item, backup_exclude)]
+                for file_name in files:
+                    rel_path = os.path.relpath(os.path.join(root, file_name), source_dir)
+                    if self._isExcludedPath(rel_path, backup_exclude) or self._isExcludedPath(file_name, backup_exclude):
+                        continue
+                    file_path = os.path.join(root, file_name)
+                    zip_file.write(file_path, rel_path)
+
+    def _isExcludedPath(self, rel_path, backup_exclude):
+        rel_path = rel_path.strip('/')
+        for rule in backup_exclude:
+            rule = str(rule).strip('/')
+            if rule == '':
+                continue
+            if rule.startswith('*.') and rel_path.endswith(rule[1:]):
+                return True
+            if rel_path == rule or rel_path.startswith(rule + '/') or ('/' + rule + '/') in ('/' + rel_path + '/'):
+                return True
+        return False
+
+    def _copy_path(self, source, target):
+        if not os.path.exists(source):
+            return 0
+        if os.path.isdir(source):
+            shutil.copytree(source, target, dirs_exist_ok=True)
+        else:
+            target_dir = os.path.dirname(target)
+            if target_dir and not os.path.exists(target_dir):
+                os.makedirs(target_dir, exist_ok=True)
+            shutil.copy2(source, target)
+        return 1
+
+    def _buildIncludedPluginBackup(self, plugin_path, tmp_plugin_path, backup_include):
+        item_count = 0
+        for item in backup_include:
+            item = str(item).strip('/')
+            if item == '':
+                continue
+            item_count += self._copy_path(os.path.join(plugin_path, item), os.path.join(tmp_plugin_path, item))
+        return item_count
+
+    def _backupPluginSettingToFile(self, plugin, filename):
+        name = plugin.get('name')
+        plugin_path = plugin.get('path')
+        backup_include = plugin.get('backup_include', [])
+        backup_exclude = plugin.get('backup_exclude', ['logs', '*.log'])
+        random_str = mw.getRandomString(8).lower()
+        tmp_path = '/tmp/pluginSetting/' + random_str
+        if os.path.exists(tmp_path):
+            mw.execShell('rm -rf ' + tmp_path)
+        os.makedirs(tmp_path, exist_ok=True)
+        tmp_plugin_path = os.path.join(tmp_path, name)
+
+        try:
+            if backup_include:
+                os.makedirs(tmp_plugin_path, exist_ok=True)
+                item_count = self._buildIncludedPluginBackup(plugin_path, tmp_plugin_path, backup_include)
+                if item_count == 0:
+                    print(f"插件[{name}]没有可备份的配置文件或目录")
+                    return False
+            else:
+                shutil.copytree(plugin_path, tmp_plugin_path, dirs_exist_ok=True)
+
+            self._zip_dir(tmp_plugin_path, filename, backup_exclude)
+            return os.path.exists(filename)
+        finally:
+            mw.execShell('rm -rf ' + tmp_path)
 
     def backupSite(self, name, save):
         sql = db.Sql()
@@ -162,7 +236,7 @@ rm -rf $tmp_path
         path = plugin.get('path')
 
         startTime = time.time()
-        if not path:
+        if not path or not os.path.exists(path):
             endDate = time.strftime('%Y/%m/%d %X', time.localtime())
             log = "插件[" + name + "]不存在!"
             print("★[" + endDate + "] " + log)
@@ -177,31 +251,7 @@ rm -rf $tmp_path
         filename = backup_path + "/" + name + "_" + \
             time.strftime('%Y%m%d_%H%M%S', time.localtime()) + '.tar.gz'
 
-        random_str = mw.getRandomString(8).lower()
-        tmp_path = '/tmp/pluginSetting/' + random_str
-        if os.path.exists(tmp_path):
-            mw.execShell('rm -rf ' + tmp_path)
-        mw.execShell('mkdir -p ' + tmp_path)
-
-        backup_cmd = f"""
-set -e
-plugin_name={name}
-plugin_path={path}
-tmp_path={tmp_path}
-tmp_plugin_path=$tmp_path/$plugin_name
-
-cp -r ${{plugin_path}} ${{tmp_plugin_path}} 
-cd $tmp_plugin_path
-zip -r {filename} .
-
-rm -rf $tmp_path
-        """
-        
-        # 写入临时文件用于执行
-        tempFilePath = tmp_path + '/zip.sh'
-        mw.writeFile(tempFilePath, backup_cmd)
-        mw.execShell('chmod 750 ' + tempFilePath)
-        mw.execShell('source /root/.bashrc && ' + tempFilePath, useTmpFile=True)
+        self._backupPluginSettingToFile(plugin, filename)
         endDate = time.strftime('%Y/%m/%d %X', time.localtime())
 
         if not os.path.exists(filename):
@@ -363,10 +413,20 @@ check_and_install "zstd"
         if os.path.exists(tmp_path):
             mw.execShell('rm -rf ' + tmp_path)
         mw.execShell('mkdir -p ' + tmp_path)
+        packaged_count = 0
         for plugin in plugin_list:
             name = plugin['name']
             plugin_path = plugin['path']
-            mw.execShell(f'pushd {plugin_path}/ > /dev/null && zip -r {tmp_path}/{name}.zip . && popd > /dev/null', useTmpFile=True)        
+            if not os.path.exists(plugin_path):
+                print(f"插件[{name}]不存在，跳过all包打包")
+                continue
+            self._backupPluginSettingToFile(plugin, f"{tmp_path}/{name}.zip")
+            if os.path.exists(f"{tmp_path}/{name}.zip"):
+                packaged_count += 1
+        if packaged_count == 0:
+            mw.execShell('rm -rf ' + tmp_path)
+            print('|----没有可打包的插件配置，跳过all包生成')
+            return
         mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null', useTmpFile=True)
         print('|----备份所有插件配置任务完成')
     

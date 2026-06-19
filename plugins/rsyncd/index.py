@@ -5,6 +5,7 @@ import random
 import os
 import re
 import json
+import shlex
 import re
 import sys
 import paramiko
@@ -578,6 +579,47 @@ def lsyncdReload():
         set_debounce_command('systemctl restart lsyncd', 3)
 
 
+def makeMountCheckCmd(t):
+    tools_py = mw.getPluginDir() + '/nfs-util/tools.py'
+    py_bin = mw.execShell('which python3')[0].strip() or 'python3'
+    local_cmd_list = [
+        py_bin,
+        tools_py,
+        'check_mount_dir',
+        '--path', t['path'],
+        '--label', 'rsync源目录'
+    ]
+
+    check_cmds = [' '.join([shlex.quote(x) for x in local_cmd_list])]
+    if t['conn_type'] == 'ssh':
+        if t['ip'] in ['127.0.0.1', 'localhost', '::1']:
+            target_cmd_list = [
+                py_bin,
+                tools_py,
+                'check_mount_dir',
+                '--path', t['target_path'],
+                '--label', 'rsync目标目录'
+            ]
+        else:
+            target_cmd_list = [
+                py_bin,
+                tools_py,
+                'check_remote_mount_dir',
+                '--host', t['ip'],
+                '--port', str(t['ssh_port']),
+                '--key-path', t['key_path'],
+                '--path', t['target_path'],
+                '--label', 'rsync目标目录'
+            ]
+        check_cmds.append(' '.join([shlex.quote(x) for x in target_cmd_list]))
+
+    cmd = '#!/bin/bash\nset -e\n'
+    cmd += 'if [ "' + '$' + '{RSYNCD_SKIP_MOUNT_CHECK:-0}" != "1" ]; then\n'
+    for check_cmd in check_cmds:
+        cmd += '    ' + check_cmd + '\n'
+    cmd += 'fi\n'
+    return cmd
+
 def makeLsyncdConf(data):
     # print(data)
 
@@ -632,8 +674,9 @@ def makeLsyncdConf(data):
             else:
                 cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr
+            cmd = makeMountCheckCmd(t) + cmd
             mw.writeFile(name_dir + "/cmd", cmd)
-            mw.execShell("cmod +x " + name_dir + "/cmd")
+            mw.execShell("chmod +x " + name_dir + "/cmd")
 
             if t.get('status', 'enabled') != 'disabled' and t['realtime'] == "true":
               realtime_log_dir = getServerDir() + '/logs'
@@ -984,7 +1027,7 @@ def checkLsyncdTaskDryRun(name):
       target_path = lsyncd_item['target_path']
       cmd = cmd.replace(" " + path, " " + path + "testsync.tmp")
       cmd = cmd.replace(":" + target_path, ":" + target_path + "testsync.tmp")
-    data = mw.execShell(f"bash {send_dir}/cmd")
+    data = mw.execShell(f"RSYNCD_SKIP_MOUNT_CHECK=1 bash {send_dir}/cmd")
     return data
 
 def lsyncdTest():

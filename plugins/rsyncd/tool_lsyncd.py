@@ -74,6 +74,27 @@ def lsyncdAddExclude(args):
     rsyncdApi.makeLsyncdConf(data)
     print(f"添加忽略项{exclude}到{info['name']}成功")
 
+
+def lsyncdRebuild(args={}):
+    name_reg = args.get('name_reg', '')
+
+    data = rsyncdApi.getDefaultConf()
+    slist = data['send']["list"]
+    if name_reg != '':
+      res = rsyncdApi.lsyncdListFindNameReg(slist, name_reg)
+      if not res[0]:
+        print(f"任务{name_reg}不存在")
+        return
+      info = slist[res[1]]
+      msg = f"重建任务{info['name']}成功"
+    else:
+      msg = f"重建全部任务成功，共{len(slist)}个任务"
+
+    data['send']["list"] = slist
+    rsyncdApi.setDefaultConf(data)
+    rsyncdApi.makeLsyncdConf(data)
+    print(msg)
+
 def updateLsyncdLogCutShell():
     task_name = "[勿删]lsyncd实时日志切割"
     cronInfo = mw.M('crontab').where(
@@ -112,5 +133,14 @@ if __name__ == "__main__":
       """
       exclude_config = json.loads(sys.argv[2])
       lsyncdAddExclude(exclude_config)
+    elif type == 'lsyncdRebuild':
+      """
+      python3 /www/server/jh-panel/plugins/rsyncd/tool_lsyncd.py lsyncdRebuild
+      python3 /www/server/jh-panel/plugins/rsyncd/tool_lsyncd.py lsyncdRebuild '{"name_reg":".*wwwroot"}'
+      """
+      rebuild_config = {}
+      if len(sys.argv) > 2:
+        rebuild_config = json.loads(sys.argv[2])
+      lsyncdRebuild(rebuild_config)
     elif type == 'updateLsyncdLogCutShell':
       updateLsyncdLogCutShell()

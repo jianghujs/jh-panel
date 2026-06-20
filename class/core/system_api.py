@@ -790,47 +790,62 @@ class system_api:
         siteInfo = {}
         site_list = mw.M('sites').field(
         "id,name,path,ps,status,addtime").order("id desc").select()
+
+        if not isinstance(site_list, list):
+            mw.writeFileLog('getSiteInfo query sites failed: ' + str(site_list), '/www/server/jh-panel/logs/system_task_error.log')
+            site_list = []
+
+        valid_site_list = []
         
         for site in site_list:
-            site_name = site['name']
-            # 配置
-            host_config_path = mw.getWebConfVhostDir() + '/' + site_name + '.conf' 
-            host_config_content = mw.readFile(host_config_path)
-            
-            if host_config_content:
-                if host_config_content.find('$server_port !~ 44') != -1:
-                    site['http_to_https'] = True
-                else:
-                    site['http_to_https'] = False
-                    
-            # SSL配置
-            ssl_path = mw.getWebConfSSLDir() + '/' + site_name
-            ssl_lets_path = mw.getWebConfSSLLetsDir() + '/' + site_name
-            ssl_acme_path = mw.getAcmeDir() + '/' + site_name
+            if not isinstance(site, dict):
+                mw.writeFileLog('getSiteInfo invalid site data: ' + str(site), '/www/server/jh-panel/logs/system_task_error.log')
+                continue
 
-            ssl_type = csr_path = key_path = cert_data = None
-            if os.path.exists(ssl_path):
-                csr_path = ssl_path + '/fullchain.pem'  # 生成证书路径
-                key_path = ssl_path + '/privkey.pem'    # 密钥文件路径
+            try:
+                site_name = site.get('name', '')
+                if not site_name:
+                    mw.writeFileLog('getSiteInfo missing site name: ' + str(site), '/www/server/jh-panel/logs/system_task_error.log')
+                    continue
 
-            if csr_path and key_path:
-                key = mw.readFile(key_path)
-                csr = mw.readFile(csr_path)
-                cert_data = mw.getCertName(csr_path)
-                if cert_data:
-                    cert_issuer = cert_data.get('issuer', '')
-                    if cert_issuer == 'R3':
-                        ssl_type = 'lets' 
+                # 配置
+                host_config_path = mw.getWebConfVhostDir() + '/' + site_name + '.conf' 
+                host_config_content = mw.readFile(host_config_path)
+                
+                if host_config_content:
+                    if host_config_content.find('$server_port !~ 44') != -1:
+                        site['http_to_https'] = True
                     else:
-                        ssl_type = 'custom'
+                        site['http_to_https'] = False
+                        
+                # SSL配置
+                ssl_path = mw.getWebConfSSLDir() + '/' + site_name
 
-            site['ssl_type'] = ssl_type
-            site['cert_data'] = cert_data
+                ssl_type = csr_path = key_path = cert_data = None
+                if os.path.exists(ssl_path):
+                    csr_path = ssl_path + '/fullchain.pem'  # 生成证书路径
+                    key_path = ssl_path + '/privkey.pem'    # 密钥文件路径
 
-        siteInfo['site_list'] = site_list
-        siteInfo['site_count'] = len(site_list)
-        siteInfo['active_count'] = len( list(filter(lambda x: x['status'] == '正在运行' or x['status'] == '1', site_list)))
-        siteInfo['ssl_count'] = len( list(filter(lambda x: x['cert_data'] is not None, site_list)))
+                if csr_path and key_path:
+                    cert_data = mw.getCertName(csr_path)
+                    if cert_data:
+                        cert_issuer = cert_data.get('issuer', '')
+                        if cert_issuer == 'R3':
+                            ssl_type = 'lets' 
+                        else:
+                            ssl_type = 'custom'
+
+                site['ssl_type'] = ssl_type
+                site['cert_data'] = cert_data
+                valid_site_list.append(site)
+            except Exception as e:
+                mw.writeFileLog('getSiteInfo parse site failed: ' + str(site) + ', error: ' + str(e), '/www/server/jh-panel/logs/system_task_error.log')
+                continue
+
+        siteInfo['site_list'] = valid_site_list
+        siteInfo['site_count'] = len(valid_site_list)
+        siteInfo['active_count'] = len( list(filter(lambda x: x.get('status') == '正在运行' or x.get('status') == '1', valid_site_list)))
+        siteInfo['ssl_count'] = len( list(filter(lambda x: x.get('cert_data') is not None, valid_site_list)))
         return siteInfo
 
     def getJianghujsInfo(self):

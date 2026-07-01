@@ -7,7 +7,6 @@ import sys
 import os
 import json
 from datetime import datetime
-import re
 import traceback
 
 if sys.platform != 'darwin':
@@ -417,6 +416,18 @@ class reportTools:
         if rsyncd_info is not None and  len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_delays', 0) > 0:
             summary_tips.append("<span style='color: orange;'>实时备份文件延迟%s个</span>" % rsyncd_info.get('realtime_delays', 0))
             error_tips.append("实时备份文件延迟%s个" % rsyncd_info.get('realtime_delays', 0))
+        # 实时同步状态异常提示
+        if rsyncd_info is not None and len(rsyncd_info.get('send_open_realtime_list', [])) > 0 and rsyncd_info.get('realtime_format_ok', True) is False:
+            reason = rsyncd_info.get('realtime_format_reason', '')
+            summary_tips.append("<span style='color: red;'>实时同步状态异常（%s）</span>" % reason)
+            error_tips.append("实时同步状态异常（%s）" % reason)
+        # 定时同步状态异常提示
+        if rsyncd_info is not None and len(rsyncd_info.get('fixtime_abnormal_tasks', [])) > 0:
+            abnormal_names = "、".join(t.get('name', '') for t in rsyncd_info.get('fixtime_abnormal_tasks', []))
+            summary_tips.append("<span style='color: red;'>定时同步状态异常：%s</span>" % abnormal_names)
+            error_tips.append("定时同步状态异常：" + "；".join(
+                f"{t.get('name','')}（{t.get('reason','')}）" for t in rsyncd_info.get('fixtime_abnormal_tasks', [])
+            ))
         
         # Keepalived概要信息
         keepalived_summary_tips = []
@@ -853,71 +864,48 @@ width: 60%%;
         self._log("  |- 检查Rsyncd同步状态...")
         rsyncd_info = None
         if os.path.exists('/www/server/rsyncd/'):
-            rsyncd_config_content = mw.readFile("/www/server/rsyncd/config.json")
-            rsyncd_config = json.loads(rsyncd_config_content)
-            send_list = rsyncd_config.get('send', {}).get('list', [])
-            send_count = len(send_list)
-            send_open_list = []
-            send_open_realtime_list = []
-            send_open_fixtime_list = []
-            send_open_count = len(send_open_list)
-            send_close_list = []
-            send_close_count = len(send_close_list)
-            last_realtime_sync_date = None
-            last_realtime_sync_timestamp = None
-            realtime_delays = 0
+            try:
+                sys.path.append('/www/server/jh-panel/plugins/rsyncd')
+                import tool_check as rsyncdToolCheck
+                rsyncd_info = rsyncdToolCheck.getRsyncdInfo(self.__START_TIMESTAMP)
+            except Exception as e:
+                traceback.print_exc()
+                print('获取Rsyncd同步状态失败', e)
+                rsyncd_info = None
 
-            for send_item in send_list:
-                if send_item.get('status', 'enabled') == 'enabled':
-                    sync_task_logs_dir = f'/www/server/rsyncd/send/{send_item.get("name", "")}/logs/'
-                    sync_task_logs_files = [(f, os.path.getmtime(os.path.join(sync_task_logs_dir, f))) for f in os.listdir(sync_task_logs_dir) if os.path.isfile(os.path.join(sync_task_logs_dir, f))]
-                    if len(sync_task_logs_files) > 0:
-                        sync_task_logs_files.sort(key=lambda x: x[1], reverse=True)
-                        latest_file, latest_time = sync_task_logs_files[0]
-                        send_item['last_sync_at'] = mw.toTime(latest_time)
-                    send_open_list.append(send_item)
-                    if send_item.get('realtime', 'false') == 'true':
-                        send_open_realtime_list.append(send_item)
-                    else:
-                        send_open_fixtime_list.append(send_item)
-                else:
-                    send_close_list.append(send_item)
-            # 获取最后的实时同步时间
-            if os.path.exists('/www/server/rsyncd/logs/lsyncd.status'):
-                real_time_status_file = mw.readFile("/www/server/rsyncd/logs/lsyncd.status")
-                last_sync_match = re.search(r"Lsyncd status report at ([\w\s:]+).*Sync", real_time_status_file)
-                if last_sync_match:
-                    last_realtime_sync_date_str = last_sync_match.group(1).replace('\n', '')
-                    last_realtime_sync_date = datetime.strptime(last_realtime_sync_date_str, "%a %b %d %H:%M:%S %Y")
-                    last_realtime_sync_timestamp = datetime.timestamp(last_realtime_sync_date)
-                realtime_delays_match = re.search(r"There are ([\d.]+) delays", real_time_status_file)
-                if realtime_delays_match:
-                    realtime_delays = int(realtime_delays_match.group(1))
-            
-            rsyncd_info = {
-                "last_realtime_sync_date": last_realtime_sync_date,
-                "last_realtime_sync_timestamp": last_realtime_sync_timestamp,
-                "realtime_delays": realtime_delays,
-                # "send_list": send_list,
-                "send_count": send_count,
-                "send_open_list": send_open_list,
-                "send_open_realtime_list": send_open_realtime_list,
-                "send_open_fixtime_list": send_open_fixtime_list,
-                "send_open_count": send_open_count,
-                # "send_close_list": send_close_list,
-                "send_close_count": send_close_count
-            }
+        if rsyncd_info is not None:
+            last_realtime_sync_date = rsyncd_info.get('last_realtime_sync_date')
+            realtime_delays = rsyncd_info.get('realtime_delays', 0)
+            realtime_format_ok = rsyncd_info.get('realtime_format_ok', True)
+            realtime_format_reason = rsyncd_info.get('realtime_format_reason', '')
+            send_list = rsyncd_info.get('send_list', rsyncd_info.get('send_open_list', []))
 
             backup_tips.append({
                 "name": 'Rsyncd',
                 "desc": """
 最后一次实时同步时间：%s<br/>
 实时同步延迟文件数：%s<br/>
+实时同步状态：%s<br/>
 最后一次定时同步时间：<br/>%s<br/>
                 """ % (
                     f'<span style="color:{"red" if last_realtime_sync_date is None or last_realtime_sync_date.timestamp() < self.__START_TIMESTAMP else "auto"}">{last_realtime_sync_date if last_realtime_sync_date else "无"}</span>',
                     f'<span style="color:{"orange" if realtime_delays > 0 else "auto"}">{realtime_delays}</span>',
-                    ''.join(f"- {item.get('name', '')}：<span style='color: {'red' if item.get('status', 'enabled') == 'disabled' or item.get('last_sync_at', '无') == '无' or item.get('last_sync_at', '无') < mw.toTime(self.__START_TIMESTAMP) else 'auto'}'>{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}</span><br/>\n" for item in send_list if item.get('realtime') == 'false')
+                    (f"<span style='color: auto'>正常</span>" if realtime_format_ok else f"<span style='color: red'>异常（{realtime_format_reason}）</span>"),
+                    ''.join(
+                        (
+                            f"- {item.get('name', '')}："
+                            f"<span style='color: {'red' if item.get('status', 'enabled') == 'disabled' or item.get('last_sync_at', '无') == '无' or item.get('last_sync_at', '无') < mw.toTime(self.__START_TIMESTAMP) else 'auto'}'>"
+                            f"{'未启用' if item.get('status', 'enabled') == 'disabled' else item.get('last_sync_at', '无')}"
+                            f"</span>"
+                            + (
+                                f" <span style='color: red'>[同步异常：{item.get('log_format_reason', '')}]</span>"
+                                if item.get('status', 'enabled') != 'disabled' and item.get('log_format_ok', True) is False
+                                else ""
+                            )
+                            + "<br/>\n"
+                        )
+                        for item in send_list if item.get('realtime') == 'false'
+                    )
                 )
             })
 

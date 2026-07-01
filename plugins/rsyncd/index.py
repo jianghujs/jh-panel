@@ -579,6 +579,20 @@ def lsyncdReload():
         set_debounce_command('systemctl restart lsyncd', 3)
 
 
+
+
+def normalizeMaxDeletePercent(value):
+    try:
+        value = int(float(value))
+    except Exception:
+        value = 30
+    if value < 0:
+        return 0
+    if value > 100:
+        return 100
+    return value
+
+
 def makeMountCheckCmd(t):
     tools_py = mw.getPluginDir() + '/nfs-util/tools.py'
     py_bin = mw.execShell('which python3')[0].strip() or 'python3'
@@ -674,7 +688,38 @@ def makeLsyncdConf(data):
             else:
                 cmd = rsync_bin + " -avzP --fake-super " + "--port=" + str(t['rsync']['port']) + " --bwlimit=" + t['rsync'][
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr
-            cmd = makeMountCheckCmd(t) + cmd
+            tool_run_py = shlex.quote(getPluginDir() + "/tool_run.py")
+            task_name_q = shlex.quote(t['name'])
+            notify_func = """notify_rsync_failure() {{
+    local exit_code="$1"
+    local phase="$2"
+    python3 {tool_run_py} notify_fail {task_name_q} "$exit_code" "$phase"
+}}
+""".format(tool_run_py=tool_run_py, task_name_q=task_name_q)
+            preflight_guard = """if [ "${{1:-}}" != "-f" ]; then
+    set +e
+    python3 {tool_run_py} preflight {task_name_q}
+    preflight_exit=$?
+    set -e
+    if [ "$preflight_exit" -ne 0 ]; then
+        notify_rsync_failure "$preflight_exit" "preflight"
+        exit "$preflight_exit"
+    fi
+else
+    echo "rsync preflight skipped by -f"
+fi
+""".format(tool_run_py=tool_run_py, task_name_q=task_name_q)
+            rsync_guard = '''
+set +e
+''' + cmd + '''
+rsync_exit=$?
+set -e
+if [ "$rsync_exit" -ne 0 ]; then
+    notify_rsync_failure "$rsync_exit" "rsync"
+    exit "$rsync_exit"
+fi
+'''
+            cmd = makeMountCheckCmd(t) + notify_func + preflight_guard + rsync_guard
             mw.writeFile(name_dir + "/cmd", cmd)
             mw.execShell("chmod +x " + name_dir + "/cmd")
 
@@ -803,7 +848,8 @@ def lsyncdGet():
         'realtime': "false",
         'delete': "false",
         'period': "minute",
-        "minute-n": 120
+        "minute-n": 120,
+        "max_delete_percent": 30
     }
     if res[0]:
         list_index = res[1]
@@ -813,6 +859,7 @@ def lsyncdGet():
         m = m.encode("utf-8")
         m = base64.b64encode(m)
         info['secret_key'] = m.decode("utf-8")
+        info['max_delete_percent'] = normalizeMaxDeletePercent(info.get('max_delete_percent', 30))
     return mw.returnJson(True, "OK", info)
 
 
@@ -907,6 +954,7 @@ def lsyncdAdd():
     hour = args['hour']
     minute = args['minute']
     minute_n = args['minute-n']
+    max_delete_percent = normalizeMaxDeletePercent(args.get('max_delete_percent', 30))
 
     
     if not mw.isAppleSystem():
@@ -926,6 +974,7 @@ def lsyncdAdd():
         "hour": hour,
         "minute": minute,
         "minute-n": minute_n,
+        "max_delete_percent": max_delete_percent,
     }
 
     if conn_type == "key":

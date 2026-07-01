@@ -87,6 +87,12 @@ function createSendTask(name = ''){
             period_minute_n = "selected";
         }
 
+        var maxDeletePercent = parseInt(data['max_delete_percent'], 10);
+        if (isNaN(maxDeletePercent)) {
+            maxDeletePercent = 30;
+        }
+        maxDeletePercent = Math.max(0, Math.min(100, maxDeletePercent));
+
         // 连接方式选中
         var conn_type_key = "";
         var conn_type_user = "";
@@ -107,7 +113,7 @@ function createSendTask(name = ''){
 
         var layerID = layer.open({
             type: 1,
-            area: ['600px','500px'],
+            area: ['600px','540px'],
             title: layerName+"发送任务",
             closeBtn: 1,
             shift: 0,
@@ -170,6 +176,13 @@ function createSendTask(name = ''){
                         <span data-toggle='tooltip' data-placement='top' title='【限速】限制数据同步任务的速度，防止因同步数据导致带宽跑高' class='bt-ico-ask' style='cursor: pointer;'>?</span>\
                         <span style='margin-left: 29px;margin-right: 10px;'>延迟</span><input class='bt-input-text' min='0' type='number' name='delay'  value='3' style='width:100px' /> 秒\
                         <span data-toggle='tooltip' data-placement='top' title='【延迟】在延迟时间周期内仅记录不同步，到达周期后一次性同步数据，以节省开销' class='bt-ico-ask' style='cursor: pointer;'>?</span>\
+                    </div>\
+                </div>\
+                <div class='line'>\
+                    <span class='tname'>删除保护</span>\
+                    <div class='info-r c4'>\
+                        <span>删除比例超过</span> <input class='bt-input-text' type='number' name='max_delete_percent' min='0' max='100' value='"+maxDeletePercent+"' style='width:100px' /> % 终止同步\
+                        <span data-toggle='tooltip' data-placement='top' title='同步前会先 dry-run 统计删除文件数/总文件数，超过该比例则终止本次同步。设置为100相当于关闭保护。' class='bt-ico-ask' style='cursor: pointer;'>?</span>\
                     </div>\
                 </div>\
                 <div class='line'>\
@@ -390,6 +403,11 @@ function createSendTask(name = ''){
                 args['hour'] = $('input[name="hour"]').val();
                 args['minute'] = $('input[name="minute"]').val();
                 args['minute-n'] = $('input[name="minute-n"]').val();
+                var maxDeletePercent = parseInt($('input[name="max_delete_percent"]').val(), 10);
+                if (isNaN(maxDeletePercent)) {
+                    maxDeletePercent = 30;
+                }
+                args['max_delete_percent'] = Math.max(0, Math.min(100, maxDeletePercent));
                 args['edit'] = (name!='')
 
                 if(args['conn_type'] == 'ssh') {

@@ -968,6 +968,7 @@ def lsyncdAdd():
         "path": path,
         "delete": delete,
         "realtime": realtime,
+        "status": "enabled",
         'delay': delay,
         "conn_type": conn_type,
         "period": period,
@@ -1042,6 +1043,7 @@ def lsyncdAdd():
     res = lsyncdListFindName(slist, info['name'])
     if res[0]:
         list_index = res[1]
+        info['status'] = slist[list_index].get('status', 'enabled')
         slist[list_index] = info
     else:
         slist.append(info)
@@ -1113,7 +1115,7 @@ def lsyncdRealtimeAllRun():
     data = getDefaultConf()
     slist = data['send']["list"]
     for i in range(len(slist)):
-        if slist[i]['status'] == 'enabled' and slist[i]['realtime'] == 'true':
+        if slist[i].get('status', 'enabled') == 'enabled' and slist[i].get('realtime') == 'true':
             print("|- 开始执行同步任务: " + slist[i]['name'])
             cmd = "bash %(send_dir)s/cmd | tee -a %(send_dir)s/logs/run_%(timestamp)s.log" % {
                 'send_dir': getServerDir() + "/send/" + slist[i]['name'], 'timestamp': '$(date +%Y%m%d_%H%M%S)'

@@ -57,6 +57,13 @@ def _check_fixtime_sync_status(content):
     """
     if content is None or not content.strip():
         return False, "本次同步日志为空，任务可能未执行或被中断"
+
+    has_rsync_summary = bool(re.search(r"sent\s+[\d,]+\s+bytes\s+received\s+[\d,]+\s+bytes", content)) and bool(re.search(r"total size is\s+[\d,]+", content))
+    if "rsync warning: some files vanished before they could be transferred (code 24)" in content and has_rsync_summary:
+        return True, ""
+    if "rsync warning ignored: exit 24" in content and has_rsync_summary:
+        return True, ""
+
     explicit_reasons = [
         ("rsync目标目录检查失败", "目标目录检查失败，可能挂载丢失或目录不可写"),
         ("目录访问超时", "目标目录访问超时，可能网络/挂载(NFS等)异常"),

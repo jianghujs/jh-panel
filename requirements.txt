@@ -9,6 +9,8 @@ flask-session==0.3.2
 flask-helper==0.19
 cache==1.0.3
 gevent==22.08.0
+zope.event==5.0
+zope.interface==6.4.post2
 gevent-websocket==0.10.1
 psutil==5.9.1
 chardet==3.0.4

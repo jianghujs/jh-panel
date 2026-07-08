@@ -112,6 +112,85 @@ def buildDryRunCmd(task, paths, rsync_bin):
     return cmd
 
 
+
+
+def getLatestRunLog(task):
+    paths = taskPaths(task)
+    log_dir = paths['log_dir']
+    if not os.path.isdir(log_dir):
+        return '', ''
+    files = []
+    for filename in os.listdir(log_dir):
+        full_path = os.path.join(log_dir, filename)
+        if filename.startswith('run_') and filename.endswith('.log') and os.path.isfile(full_path):
+            files.append((full_path, os.path.getmtime(full_path)))
+    if not files:
+        return '', ''
+    files.sort(key=lambda x: x[1], reverse=True)
+    latest_log = files[0][0]
+    return latest_log, mw.readFile(latest_log) or ''
+
+
+
+
+def isIgnorableVerificationFailure(content):
+    if not content or 'failed verification -- update discarded' not in content:
+        return False
+    severe_keywords = [
+        'Permission denied',
+        'Operation not permitted',
+        'Input/output error',
+        'No such file or directory',
+        'Connection refused',
+        'Connection timed out',
+        'connection unexpectedly closed',
+        'No route to host',
+        'mkstemp',
+        'mknod',
+        'change_dir',
+        'failed to open',
+    ]
+    return not any(keyword in content for keyword in severe_keywords)
+
+
+def getRsyncErrorSummary(content, max_lines=20):
+    if not content:
+        return ''
+    keywords = [
+        'rsync:',
+        'rsync error',
+        'failed:',
+        'Permission denied',
+        'Operation not permitted',
+        'No such file or directory',
+        'Input/output error',
+        'Connection refused',
+        'Connection timed out',
+        'connection unexpectedly closed',
+        'No route to host',
+        'some files/attrs were not transferred',
+    ]
+    lines = content.splitlines()
+    selected = []
+    for idx, line in enumerate(lines):
+        if any(keyword in line for keyword in keywords):
+            start = max(0, idx - 2)
+            end = min(len(lines), idx + 3)
+            selected.extend(lines[start:end])
+    if not selected:
+        return ''
+
+    result = []
+    seen = set()
+    for line in selected:
+        clean = line.rstrip()
+        if not clean or clean in seen:
+            continue
+        seen.add(clean)
+        result.append(clean)
+    return '\n'.join(result[-max_lines:])
+
+
 def runPreflight():
     if len(sys.argv) < 3:
         print('usage: tool_run.py preflight <task_name>')
@@ -172,8 +251,14 @@ def buildReason(task, exit_code, phase):
         '连接方式：%s' % task.get('conn_type', ''),
         '删除保护阈值：%s%%' % threshold,
         '日志目录：%s' % paths['log_dir'],
-        '提示：如确认需要跳过删除比例检查，可手动执行 bash cmd -f；rsync阶段失败仍需检查日志和连接状态。',
     ]
+    latest_log, latest_log_content = getLatestRunLog(task)
+    error_summary = getRsyncErrorSummary(latest_log_content)
+    if latest_log:
+        lines.append('最近日志：%s' % latest_log)
+    if error_summary:
+        lines.append('错误摘要：\n%s' % error_summary)
+    lines.append('提示：如确认需要跳过删除比例检查，可手动执行 bash cmd -f；rsync阶段失败仍需检查日志和连接状态。')
     return '\n'.join(lines)
 
 
@@ -188,6 +273,11 @@ def runNotifyFail():
     phase = sys.argv[4]
 
     task = loadTask(name)
+    latest_log, latest_log_content = getLatestRunLog(task)
+    if phase == 'rsync' and str(exit_code) == '23' and isIgnorableVerificationFailure(latest_log_content):
+        print('rsync verification failure ignored: %s' % (latest_log or task.get('name', '')))
+        return 0
+
     reason = buildReason(task, exit_code, phase)
 
     notify_msg = mw.generateCommonNotifyMessage(reason)

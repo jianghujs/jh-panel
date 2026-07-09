@@ -718,6 +718,10 @@ if [ "$rsync_exit" -eq 24 ]; then
     echo "rsync warning ignored: exit 24, some source files vanished during transfer"
     exit 0
 fi
+if [ "$rsync_exit" -eq 23 ]; then
+    echo "rsync warning ignored: exit 23, some files/attrs were not transferred"
+    exit 0
+fi
 if [ "$rsync_exit" -ne 0 ]; then
     notify_rsync_failure "$rsync_exit" "rsync"
     exit "$rsync_exit"

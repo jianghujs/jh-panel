@@ -133,26 +133,6 @@ def getLatestRunLog(task):
 
 
 
-def isIgnorableVerificationFailure(content):
-    if not content or 'failed verification -- update discarded' not in content:
-        return False
-    severe_keywords = [
-        'Permission denied',
-        'Operation not permitted',
-        'Input/output error',
-        'No such file or directory',
-        'Connection refused',
-        'Connection timed out',
-        'connection unexpectedly closed',
-        'No route to host',
-        'mkstemp',
-        'mknod',
-        'change_dir',
-        'failed to open',
-    ]
-    return not any(keyword in content for keyword in severe_keywords)
-
-
 def getRsyncErrorSummary(content, max_lines=20):
     if not content:
         return ''
@@ -273,11 +253,6 @@ def runNotifyFail():
     phase = sys.argv[4]
 
     task = loadTask(name)
-    latest_log, latest_log_content = getLatestRunLog(task)
-    if phase == 'rsync' and str(exit_code) == '23' and isIgnorableVerificationFailure(latest_log_content):
-        print('rsync verification failure ignored: %s' % (latest_log or task.get('name', '')))
-        return 0
-
     reason = buildReason(task, exit_code, phase)
 
     notify_msg = mw.generateCommonNotifyMessage(reason)

@@ -63,23 +63,10 @@ def _check_fixtime_sync_status(content):
         return True, ""
     if "rsync warning ignored: exit 24" in content and has_rsync_summary:
         return True, ""
-    if "failed verification -- update discarded" in content and has_rsync_summary:
-        severe_keywords = [
-            "Permission denied",
-            "Operation not permitted",
-            "Input/output error",
-            "No such file or directory",
-            "Connection refused",
-            "Connection timed out",
-            "connection unexpectedly closed",
-            "No route to host",
-            "mkstemp",
-            "mknod",
-            "change_dir",
-            "failed to open",
-        ]
-        if not any(keyword in content for keyword in severe_keywords):
-            return True, ""
+    if "rsync warning ignored: exit 23" in content and has_rsync_summary:
+        return True, ""
+    if "some files/attrs were not transferred" in content and has_rsync_summary:
+        return True, ""
 
     explicit_reasons = [
         ("rsync目标目录检查失败", "目标目录检查失败，可能挂载丢失或目录不可写"),

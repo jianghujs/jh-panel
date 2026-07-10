@@ -7,7 +7,9 @@
 				"name":"op_waf",
 				"add":{"func":"reload_hook"},
 				"update":{"func":"reload_hook"},
-				"delete":{"func":"reload_hook"}
+				"delete":{"func":"reload_hook"},
+				"start":{"func":"reload_hook"},
+				"stop":{"func":"reload_hook"}
 			}
 		}
 	],

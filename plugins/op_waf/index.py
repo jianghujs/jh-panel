@@ -1499,6 +1499,8 @@ if __name__ == "__main__":
         print(restart())
     elif func == 'reload':
         print(reload())
+    elif func == 'reload_hook':
+        print(reload_hook())
     elif func == 'install_pre_inspection':
         print(installPreInspection())
     elif func == 'conf':

@@ -21,6 +21,7 @@ import re
 import json
 import shutil
 import traceback    
+import shlex
 
 
 from flask import request
@@ -86,6 +87,41 @@ class site_api:
     def openrestyReload(self):
         data = mw.execShell("/www/server/openresty/bin/openresty -s reload")
         return ("重启openresty失败，请检查配置！\n" + data[0]) if data[0] else ''
+
+    def triggerSiteHook(self, event, site_id='', site_name=''):
+        plugin_dir = mw.getPluginDir()
+        if not os.path.exists(plugin_dir):
+            return
+
+        for plugin_name in os.listdir(plugin_dir):
+            info_path = os.path.join(plugin_dir, plugin_name, 'info.json')
+            script_path = os.path.join(plugin_dir, plugin_name, 'index.py')
+            if not os.path.exists(info_path) or not os.path.exists(script_path):
+                continue
+
+            try:
+                info = json.loads(mw.readFile(info_path))
+            except Exception:
+                continue
+
+            for hook in info.get('hook', []):
+                if not isinstance(hook, dict) or hook.get('tag') != 'site_cb':
+                    continue
+
+                site_cb = hook.get('site_cb', {})
+                event_conf = site_cb.get(event, {})
+                func = event_conf.get('func')
+                if not func:
+                    continue
+
+                cmd = 'python3 {script} {func}'.format(
+                    script=shlex.quote(script_path),
+                    func=shlex.quote(func)
+                )
+                output, error, code = mw.execShell(cmd, useTmpFile=True)
+                if code != 0 or error or output.strip() == 'error':
+                    mw.writeLog('插件Hook', '站点[{1}]事件[{2}]插件[{3}]执行失败: {4}',
+                                (site_name, event, plugin_name, error or output))
 
     ##### ----- start ----- ###
     def listApi(self):
@@ -266,6 +302,7 @@ class site_api:
             mw.writeFile(file, conf)
 
         mw.M('sites').where("id=?", (mid,)).setField('status', '0')
+        self.triggerSiteHook('stop', mid, name)
         mw.restartWeb()
         msg = mw.getInfo('网站[{1}]已被停用!', (name,))
         mw.writeLog('网站管理', msg)
@@ -285,6 +322,7 @@ class site_api:
             mw.writeFile(file, conf)
 
         mw.M('sites').where("id=?", (mid,)).setField('status', '1')
+        self.triggerSiteHook('start', mid, name)
         mw.restartWeb()
         msg = mw.getInfo('网站[{1}]已被启用!', (name,))
         mw.writeLog('网站管理', msg)

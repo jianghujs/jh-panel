@@ -71,6 +71,74 @@ def statInt(output, label):
     return None
 
 
+def collectPreflightChanges(output, limit=300):
+    deleted = []
+    changed = []
+    skipped_prefixes = (
+        'sending incremental file list',
+        'Number of files:',
+        'Number of created files:',
+        'Number of deleted files:',
+        'Number of regular files transferred:',
+        'Total file size:',
+        'Total transferred file size:',
+        'Literal data:',
+        'Matched data:',
+        'File list size:',
+        'File list generation time:',
+        'File list transfer time:',
+        'Total bytes sent:',
+        'Total bytes received:',
+        'sent ',
+        'total size is ',
+    )
+
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith('*deleting '):
+            deleted.append(line[len('*deleting '):])
+            continue
+        if line.startswith(skipped_prefixes):
+            continue
+        if re.match(r'^[<>ch\.\*][fdLDS][A-Za-z0-9\.\+\?]{8}\s+.+', line):
+            changed.append(line)
+            continue
+        if line.startswith(('cd', 'created directory ')):
+            changed.append(line)
+
+    return {
+        'deleted': deleted,
+        'changed': changed,
+        'deleted_more': max(0, len(deleted) - limit),
+        'changed_more': max(0, len(changed) - limit),
+        'deleted_items': deleted[:limit],
+        'changed_items': changed[:limit],
+    }
+
+
+def formatPreflightChanges(changes):
+    lines = []
+    deleted_items = changes.get('deleted_items', [])
+    changed_items = changes.get('changed_items', [])
+    if deleted_items:
+        lines.append('删除明细（dry-run，最多显示 %s 条）：' % len(deleted_items))
+        lines.extend(['- ' + item for item in deleted_items])
+        if changes.get('deleted_more', 0) > 0:
+            lines.append('- ... 还有 %s 条删除未显示' % changes['deleted_more'])
+    else:
+        lines.append('删除明细：无')
+
+    if changed_items:
+        lines.append('')
+        lines.append('变更明细（dry-run，最多显示 %s 条）：' % len(changed_items))
+        lines.extend(['- ' + item for item in changed_items])
+        if changes.get('changed_more', 0) > 0:
+            lines.append('- ... 还有 %s 条变更未显示' % changes['changed_more'])
+    return '\n'.join(lines)
+
+
 def writeAbortLog(log_dir, message):
     ts = time.strftime('%Y%m%d_%H%M%S')
     if not os.path.exists(log_dir):
@@ -82,7 +150,7 @@ def writeAbortLog(log_dir, message):
 
 
 def buildDryRunCmd(task, paths, rsync_bin):
-    cmd = [rsync_bin, '-avzPr', '--dry-run', '--stats']
+    cmd = [rsync_bin, '-avzPr', '--dry-run', '--stats', '--itemize-changes']
     if task.get('delete') == 'true':
         cmd.append('--delete')
 
@@ -204,10 +272,18 @@ def runPreflight():
     ratio = 0 if total_files == 0 else (deleted_files * 100.0 / total_files)
     summary = 'rsync preflight task=%s deleted=%s total=%s ratio=%.2f%% threshold=%s%%' % (
         name, deleted_files, total_files, ratio, threshold)
+    changes = collectPreflightChanges(output)
+    detail = formatPreflightChanges(changes)
     print(summary)
+    if changes.get('deleted_items'):
+        print('rsync preflight deleting preview:')
+        for item in changes['deleted_items'][:30]:
+            print('- ' + item)
+        if changes.get('deleted_more', 0) > 0:
+            print('- ... 还有 %s 条删除未显示' % changes['deleted_more'])
 
     if ratio > threshold:
-        writeAbortLog(paths['log_dir'], summary + '\nabort: delete ratio exceeds threshold, real rsync skipped')
+        writeAbortLog(paths['log_dir'], summary + '\nabort: delete ratio exceeds threshold, real rsync skipped\n\n' + detail)
         sys.exit(1)
 
 

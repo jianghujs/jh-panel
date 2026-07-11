@@ -48,43 +48,24 @@ Check_Zip(){
 	[ -s "$zip_file" ] && unzip -tq "$zip_file" >/dev/null 2>&1
 }
 
-Prepare_Lsqlite3(){
-	lsqlite3_zip=$serverPath/source/op_waf/lsqlite3_fsl09y.zip
-	lsqlite3_dir=$serverPath/source/op_waf/lsqlite3_fsl09y
-	lsqlite3_tmp=$serverPath/source/op_waf/lsqlite3_tmp
-	lsqlite3_urls="https://github.com/LuaDist/lsqlite3/archive/refs/heads/master.zip http://lua.sqlite.org/index.cgi/zip/lsqlite3_fsl09y.zip?uuid=fsl_9y"
+Patch_Lsqlite3_Source(){
+	lsqlite3_dir=$1
+	lsqlite3_c=$lsqlite3_dir/lsqlite3.c
+	[ -f "$lsqlite3_c" ] || Fail "lsqlite3 源码文件不存在: $lsqlite3_c"
 
-	if [ -d "$lsqlite3_dir" ];then
-		return 0
+	# Some mirrors still use the old luaL_reg alias, but OpenResty LuaJIT
+	# headers only expose luaL_Reg. Normalize it before compiling.
+	if grep -q "luaL_reg" "$lsqlite3_c";then
+		sed -i$BAK -e "s/\<luaL_reg\>/luaL_Reg/g" -e "s/\<luaL_Register\>/luaL_register/g" "$lsqlite3_c" || Fail "lsqlite3 LuaJIT 兼容修正失败"
+		rm -f "$lsqlite3_dir/lsqlite3.o" "$lsqlite3_dir/lsqlite3.so"
+	elif grep -q "luaL_Register" "$lsqlite3_c";then
+		sed -i$BAK "s/\<luaL_Register\>/luaL_register/g" "$lsqlite3_c" || Fail "lsqlite3 LuaJIT 兼容修正失败"
+		rm -f "$lsqlite3_dir/lsqlite3.o" "$lsqlite3_dir/lsqlite3.so"
 	fi
+}
 
-	if ! Check_Zip "$lsqlite3_zip";then
-		rm -f "$lsqlite3_zip"
-		for download_url in $lsqlite3_urls; do
-			echo "download lsqlite3: $download_url"
-			if Download_File "$download_url" "$lsqlite3_zip" && Check_Zip "$lsqlite3_zip";then
-				break
-			fi
-			rm -f "$lsqlite3_zip"
-		done
-	fi
-
-	Check_Zip "$lsqlite3_zip" || Fail "lsqlite3 源码包下载失败或不是有效 zip，请检查网络或手动放置有效文件: $lsqlite3_zip"
-
-	rm -rf "$lsqlite3_tmp"
-	mkdir -p "$lsqlite3_tmp"
-	unzip -q "$lsqlite3_zip" -d "$lsqlite3_tmp" || Fail "lsqlite3 源码包解压失败: $lsqlite3_zip"
-
-	if [ -d "$lsqlite3_tmp/lsqlite3_fsl09y" ];then
-		mv "$lsqlite3_tmp/lsqlite3_fsl09y" "$lsqlite3_dir"
-	elif [ -d "$lsqlite3_tmp/lsqlite3-master" ];then
-		mv "$lsqlite3_tmp/lsqlite3-master" "$lsqlite3_dir"
-	else
-		rm -rf "$lsqlite3_tmp"
-		Fail "lsqlite3 源码包目录结构异常"
-	fi
-	rm -rf "$lsqlite3_tmp"
-
+Ensure_Lsqlite3_Build_Files(){
+	lsqlite3_dir=$1
 	if [ ! -f "$lsqlite3_dir/lsqlite3-0.9.5-1.rockspec" ];then
 		[ -f "$lsqlite3_dir/Makefile" ] && mv "$lsqlite3_dir/Makefile" "$lsqlite3_dir/Makefile.origin"
 		cat > "$lsqlite3_dir/Makefile" <<'EOF'
@@ -147,6 +128,49 @@ EOF
 	fi
 }
 
+Prepare_Lsqlite3(){
+	lsqlite3_zip=$serverPath/source/op_waf/lsqlite3_fsl09y.zip
+	lsqlite3_dir=$serverPath/source/op_waf/lsqlite3_fsl09y
+	lsqlite3_tmp=$serverPath/source/op_waf/lsqlite3_tmp
+	lsqlite3_urls="https://github.com/LuaDist/lsqlite3/archive/refs/heads/master.zip http://lua.sqlite.org/index.cgi/zip/lsqlite3_fsl09y.zip?uuid=fsl_9y"
+
+	if [ -d "$lsqlite3_dir" ];then
+		Ensure_Lsqlite3_Build_Files "$lsqlite3_dir"
+		Patch_Lsqlite3_Source "$lsqlite3_dir"
+		return 0
+	fi
+
+	if ! Check_Zip "$lsqlite3_zip";then
+		rm -f "$lsqlite3_zip"
+		for download_url in $lsqlite3_urls; do
+			echo "download lsqlite3: $download_url"
+			if Download_File "$download_url" "$lsqlite3_zip" && Check_Zip "$lsqlite3_zip";then
+				break
+			fi
+			rm -f "$lsqlite3_zip"
+		done
+	fi
+
+	Check_Zip "$lsqlite3_zip" || Fail "lsqlite3 源码包下载失败或不是有效 zip，请检查网络或手动放置有效文件: $lsqlite3_zip"
+
+	rm -rf "$lsqlite3_tmp"
+	mkdir -p "$lsqlite3_tmp"
+	unzip -q "$lsqlite3_zip" -d "$lsqlite3_tmp" || Fail "lsqlite3 源码包解压失败: $lsqlite3_zip"
+
+	if [ -d "$lsqlite3_tmp/lsqlite3_fsl09y" ];then
+		mv "$lsqlite3_tmp/lsqlite3_fsl09y" "$lsqlite3_dir"
+	elif [ -d "$lsqlite3_tmp/lsqlite3-master" ];then
+		mv "$lsqlite3_tmp/lsqlite3-master" "$lsqlite3_dir"
+	else
+		rm -rf "$lsqlite3_tmp"
+		Fail "lsqlite3 源码包目录结构异常"
+	fi
+	rm -rf "$lsqlite3_tmp"
+
+	Ensure_Lsqlite3_Build_Files "$lsqlite3_dir"
+	Patch_Lsqlite3_Source "$lsqlite3_dir"
+}
+
 
 Install_App(){
 	
@@ -173,8 +197,8 @@ Install_App(){
 
 	Prepare_Lsqlite3
 
-	PATH=${serverPath}/openresty/luajit:${serverPath}/openresty/luajit/include/luajit-2.1:$PATH
-	export PATH=$PATH:$serverPath/op_waf/luarocks/bin
+	PATH=${serverPath}/op_waf/luarocks/bin:${serverPath}/openresty/luajit/bin:${serverPath}/openresty/luajit:${serverPath}/openresty/luajit/include/luajit-2.1:$PATH
+	export PATH
 
 	if [ ! -f $serverPath/op_waf/waf/conf/lsqlite3.so ];then
 		if [ "${sys_os}" == "Darwin" ];then

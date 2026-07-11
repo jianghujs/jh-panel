@@ -216,7 +216,7 @@ end
 
 local function waf_user_agent()
     -- user_agent 过滤
-    -- if not config['user-agent']['open'] or not C:is_site_config('user-agent') then return false end
+    if not config['user-agent']['open'] or not C:is_site_config('user-agent') then return false end
 
     -- C:D("waf_user_agent;user_agent_rules:"..json.encode(user_agent_rules)..",ua:"..tostring(params['request_header']['user-agent']))
     if C:ngx_match_list(user_agent_rules, params['request_header']['user-agent']) then

@@ -325,7 +325,13 @@ function saveRetry(siteName,type) {
         var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
         layer.close(create_layer);
-        wafGloablRefresh(1000);
+        setTimeout(function(){
+            if (siteName != undefined) {
+                siteWafConfig(siteName, 1);
+            } else {
+                wafGloabl();
+            }
+        },1000);
     });
 }
 
@@ -1154,6 +1160,11 @@ function html_decode(value) {
     return $('<div></div>').text(value).html();
 }
 
+function wafOpenState(value) {
+    if (value && typeof value == 'object' && value.hasOwnProperty('open')) return value.open;
+    return !!value;
+}
+
 //添加站点过滤规则
 function addSiteRule(siteName, ruleName) {
     var pdata = {
@@ -1342,7 +1353,7 @@ function addCdnHeader(siteName) {
     }
 
     owPost('add_site_cdn_header', pdata, function(data){
-        var rdata = $.parseJSON(data);
+        var rdata = $.parseJSON(data.data);
         layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
         if (rdata.status) {
             setTimeout(function(){
@@ -1384,6 +1395,18 @@ function setSiteObjState(siteName, obj) {
     // });
 }
 
+function set_site_rule_state(siteName, ruleName, index) {
+    owPost('set_site_rule_state', { siteName: siteName, ruleName: ruleName, index: index } , function(data){
+        var rdata = $.parseJSON(data.data);
+        layer.msg(rdata.msg, { icon: rdata.status ? 1 : 2 });
+        if (rdata.status) {
+            setTimeout(function(){
+                setSiteObjConf(siteName, ruleName, 1);
+            },1000);
+        }
+    });
+}
+
 
 //网站规则设置
 function setSiteObjConf(siteName, ruleName, type) {
@@ -1417,7 +1440,7 @@ function setSiteObjConf(siteName, ruleName, type) {
         tableFixed("SetSiteObjConf");
     }
 
-    getRuleByName(ruleName, function(data){
+    owPost('get_site_rule_conf', { siteName: siteName, ruleName: ruleName }, function(data){
         var tmp = $.parseJSON(data.data);
         var rdata = $.parseJSON(tmp.data);
         var tbody = '';
@@ -1496,7 +1519,7 @@ function siteWafConfig(siteName, type) {
                                     <td>'+ rdata.get.ps + '</td>\
                                     <td>\
                                         <div class="ssh-item" style="margin-left:0">\
-                                            <input class="btswitch btswitch-ios" id="closeget" type="checkbox" '+ (rdata.get ? 'checked' : '') + '>\
+                                            <input class="btswitch btswitch-ios" id="closeget" type="checkbox" '+ (wafOpenState(rdata.get) ? 'checked' : '') + '>\
                                             <label class="btswitch-btn" for="closeget" onclick="setSiteObjState(\''+ siteName + '\',\'get\')"></label>\
                                         </div>\
                                     </td>\
@@ -1506,7 +1529,7 @@ function siteWafConfig(siteName, type) {
                                     <td>'+ rdata.get.ps + '</td>\
                                     <td>\
                                         <div class="ssh-item" style="margin-left:0">\
-                                            <input class="btswitch btswitch-ios" id="closeargs" type="checkbox" '+ (rdata.get ? 'checked' : '') + '>\
+                                            <input class="btswitch btswitch-ios" id="closeargs" type="checkbox" '+ (wafOpenState(rdata.get) ? 'checked' : '') + '>\
                                             <label class="btswitch-btn" for="closeargs" onclick="setSiteObjState(\''+ siteName + '\',\'get\')"></label>\
                                         </div>\
                                     </td>\
@@ -1517,7 +1540,7 @@ function siteWafConfig(siteName, type) {
                                     <td>'+ rdata.post.ps + '</td>\
                                     <td>\
                                         <div class="ssh-item" style="margin-left:0">\
-                                            <input class="btswitch btswitch-ios" id="closepost" type="checkbox" '+ (rdata.post ? 'checked' : '') + '>\
+                                            <input class="btswitch btswitch-ios" id="closepost" type="checkbox" '+ (wafOpenState(rdata.post) ? 'checked' : '') + '>\
                                             <label class="btswitch-btn" for="closepost" onclick="setSiteObjState(\''+ siteName + '\',\'post\')"></label>\
                                         </div>\
                                     </td>\
@@ -1528,7 +1551,7 @@ function siteWafConfig(siteName, type) {
                                     <td>'+ rdata['user-agent'].ps + '</td>\
                                     <td>\
                                         <div class="ssh-item" style="margin-left:0">\
-                                            <input class="btswitch btswitch-ios" id="closeua" type="checkbox" '+ (rdata['user-agent'] ? 'checked' : '') + '>\
+                                            <input class="btswitch btswitch-ios" id="closeua" type="checkbox" '+ (wafOpenState(rdata['user-agent']) ? 'checked' : '') + '>\
                                             <label class="btswitch-btn" for="closeua" onclick="setSiteObjState(\''+ siteName + '\',\'user-agent\')"></label>\
                                         </div>\
                                     </td>\
@@ -1539,7 +1562,7 @@ function siteWafConfig(siteName, type) {
                                     <td>'+ rdata.cookie.ps + '</td>\
                                     <td>\
                                     <div class="ssh-item" style="margin-left:0">\
-                                        <input class="btswitch btswitch-ios" id="closecookie" type="checkbox" '+ (rdata.cookie ? 'checked' : '') + '>\
+                                        <input class="btswitch btswitch-ios" id="closecookie" type="checkbox" '+ (wafOpenState(rdata.cookie) ? 'checked' : '') + '>\
                                         <label class="btswitch-btn" for="closecookie" onclick="setSiteObjState(\''+ siteName + '\',\'cookie\')"></label>\
                                     </div>\
                                     </td>\
@@ -1549,7 +1572,7 @@ function siteWafConfig(siteName, type) {
                                     <td>常见扫描器</td><td>'+ rdata.scan.ps + '</td>\
                                     <td>\
                                         <div class="ssh-item" style="margin-left:0">\
-                                            <input class="btswitch btswitch-ios" id="closescan" type="checkbox" '+ (rdata.scan ? 'checked' : '') + '>\
+                                            <input class="btswitch btswitch-ios" id="closescan" type="checkbox" '+ (wafOpenState(rdata.scan) ? 'checked' : '') + '>\
                                             <label class="btswitch-btn" for="closescan" onclick="setSiteObjState(\''+ siteName + '\',\'scan\')"></label>\
                                         </div>\
                                     </td>\
@@ -1602,10 +1625,10 @@ function wafSite(){
             i += 1;
             tbody += '<tr>\
                     <td><a onclick="siteWafConfig(\''+ k + '\')" class="sitename btlink" title="' + k + '">' + k + '</a></td>\
-                    <td><input onclick="setSiteObjState(\''+ k + '\',\'get\')" type="checkbox" ' + (v.get ? 'checked' : '') + '><span class="' + back_css(v.total[1].value) + '" title="拦截GET渗透次数:' + v.total[1].value + '">' + v.total[1].value + '</span></td>\
-                    <td><input onclick="setSiteObjState(\''+ k + '\',\'post\')"  type="checkbox" ' + (v.post ? 'checked' : '') + '><span class="' + back_css(v.total[0].value) + '"  title="拦截POST渗透次数:' + v.total[0].value + '">' + v.total[0].value + '</span></td>\
-                    <td><input onclick="setSiteObjState(\''+ k + '\',\'user-agent\')"  type="checkbox" ' + (v['user-agent'] ? 'checked' : '') + '><span class="' + back_css(v.total[3].value) + '" title="拦截恶意User-Agent次数:' + v.total[3].value + '">' + v.total[3].value + '</span></td>\
-                    <td><input onclick="setSiteObjState(\''+ k + '\',\'cookie\')"  type="checkbox" ' + (v.cookie ? 'checked' : '') + '><span class="' + back_css(v.total[4].value) + '" title="拦截Cookie渗透次数:' + v.total[4].value + '">' + v.total[4].value + '</span></td>\
+                    <td><input onclick="setSiteObjState(\''+ k + '\',\'get\')" type="checkbox" ' + (wafOpenState(v.get) ? 'checked' : '') + '><span class="' + back_css(v.total[1].value) + '" title="拦截GET渗透次数:' + v.total[1].value + '">' + v.total[1].value + '</span></td>\
+                    <td><input onclick="setSiteObjState(\''+ k + '\',\'post\')"  type="checkbox" ' + (wafOpenState(v.post) ? 'checked' : '') + '><span class="' + back_css(v.total[0].value) + '"  title="拦截POST渗透次数:' + v.total[0].value + '">' + v.total[0].value + '</span></td>\
+                    <td><input onclick="setSiteObjState(\''+ k + '\',\'user-agent\')"  type="checkbox" ' + (wafOpenState(v['user-agent']) ? 'checked' : '') + '><span class="' + back_css(v.total[3].value) + '" title="拦截恶意User-Agent次数:' + v.total[3].value + '">' + v.total[3].value + '</span></td>\
+                    <td><input onclick="setSiteObjState(\''+ k + '\',\'cookie\')"  type="checkbox" ' + (wafOpenState(v.cookie) ? 'checked' : '') + '><span class="' + back_css(v.total[4].value) + '" title="拦截Cookie渗透次数:' + v.total[4].value + '">' + v.total[4].value + '</span></td>\
                     <td><input onclick="setSiteObjState(\''+ k + '\',\'cdn\')"  type="checkbox" ' + (v.cdn ? 'checked' : '') + '></td>\
                     <td><input onclick="setSiteObjState(\''+ k + '\',\'cc\')"  type="checkbox" ' + (v.cc.open ? 'checked' : '') + '><span class="' + back_css(v.total[2].value) + '" title="拦截CC攻击次数:' + v.total[2].value + '">' + v.total[2].value + '</span></td>\
                     <td>\

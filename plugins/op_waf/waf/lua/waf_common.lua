@@ -744,12 +744,16 @@ end
 
 
 function _M.is_site_config(self,cname)
+    local params = self.params
     local site_config = self.site_config
-    if site_config[server_name] ~= nil then
-        if cname == 'cc' then
-            return site_config[server_name][cname]['open']
-        else
-            return site_config[server_name][cname]
+    local server_name = params and params['server_name'] or nil
+    if server_name and site_config[server_name] ~= nil then
+        local value = site_config[server_name][cname]
+        if type(value) == 'table' and value['open'] ~= nil then
+            return value['open']
+        end
+        if value ~= nil then
+            return value
         end
     end
     return true

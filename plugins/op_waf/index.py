@@ -39,6 +39,14 @@ def getArgs():
     args_len = len(args)
 
     if args_len == 1:
+        raw = args[0].strip()
+        if raw.startswith('{') and raw.endswith('}'):
+            try:
+                return json.loads(raw)
+            except Exception:
+                pass
+
+    if args_len == 1:
         t = args[0].strip('{').strip('}')
         t = t.split(':', 1)
         tmp[t[0]] = t[1]
@@ -737,6 +745,91 @@ def getSiteRule():
     return mw.returnJson(True, 'ok!', cjson)
 
 
+def getRuleValue(rule):
+    if not isinstance(rule, list) or len(rule) < 2:
+        return ''
+    return rule[1]
+
+
+def mergeSiteRuleState(ruleName, rules, siteRuleState):
+    if not isinstance(siteRuleState, dict):
+        return rules
+
+    ruleState = siteRuleState.get(ruleName, {})
+    if not isinstance(ruleState, dict):
+        return rules
+
+    for rule in rules:
+        ruleValue = getRuleValue(rule)
+        if ruleValue in ruleState:
+            rule[0] = int(ruleState[ruleValue])
+    return rules
+
+
+def getSiteRuleConf():
+    args = getArgs()
+    data = checkArgs(args, ['siteName', 'ruleName'])
+    if not data[0]:
+        return data[1]
+
+    siteName = args['siteName']
+    ruleName = args['ruleName']
+
+    path = getJsonPath('site')
+    siteContent = mw.readFile(path)
+    siteContent = json.loads(siteContent)
+
+    rulePath = getRuleJsonPath(ruleName)
+    rules = mw.readFile(rulePath)
+    rules = json.loads(rules)
+
+    siteRuleState = {}
+    if siteName in siteContent:
+        siteRuleState = siteContent[siteName].get('rule_state', {})
+
+    rules = mergeSiteRuleState(ruleName, rules, siteRuleState)
+
+    cjson = mw.getJson(rules)
+    return mw.returnJson(True, 'ok!', cjson)
+
+
+def setSiteRuleState():
+    args = getArgs()
+    data = checkArgs(args, ['siteName', 'ruleName', 'index'])
+    if not data[0]:
+        return data[1]
+
+    siteName = args['siteName']
+    ruleName = args['ruleName']
+    index = int(args['index'])
+
+    path = getJsonPath('site')
+    siteContent = mw.readFile(path)
+    siteContent = json.loads(siteContent)
+
+    if siteName not in siteContent:
+        return mw.returnJson(False, '站点不存在!')
+
+    rulePath = getRuleJsonPath(ruleName)
+    rules = mw.readFile(rulePath)
+    rules = json.loads(rules)
+
+    if index < 0 or index >= len(rules):
+        return mw.returnJson(False, '规则不存在!')
+
+    ruleValue = getRuleValue(rules[index])
+    siteRuleState = siteContent[siteName].setdefault('rule_state', {})
+    ruleState = siteRuleState.setdefault(ruleName, {})
+    current = int(ruleState.get(ruleValue, rules[index][0]))
+    ruleState[ruleValue] = 0 if current == 1 else 1
+
+    cjson = mw.getJson(siteContent)
+    mw.writeFile(path, cjson)
+
+    setConfRestartWeb()
+    return mw.returnJson(True, '设置成功!')
+
+
 def addSiteRule():
     args = getArgs()
     data = checkArgs(args, ['siteName', 'ruleName', 'ruleValue'])
@@ -1013,7 +1106,32 @@ def setSafeVerify():
 
 
 def setSiteRetry():
-    return mw.returnJson(True, '设置成功-?!', [])
+    args = getArgs()
+    data = checkArgs(args, ['siteName', 'retry', 'retry_time',
+                            'retry_cycle', 'is_open_global'])
+    if not data[0]:
+        return data[1]
+
+    path = getJsonPath('site')
+    content = mw.readFile(path)
+    content = json.loads(content)
+
+    siteName = args['siteName']
+    if siteName not in content:
+        return mw.returnJson(False, '站点不存在!', [])
+
+    tmp = content[siteName].get('retry', {})
+    tmp['retry'] = int(args['retry'])
+    tmp['retry_time'] = int(args['retry_time'])
+    tmp['retry_cycle'] = int(args['retry_cycle'])
+    tmp['is_open_global'] = args['is_open_global']
+    content[siteName]['retry'] = tmp
+
+    cjson = mw.getJson(content)
+    mw.writeFile(path, cjson)
+
+    setConfRestartWeb()
+    return mw.returnJson(True, '设置成功!', [])
 
 
 def setCcConf():
@@ -1044,7 +1162,33 @@ def setCcConf():
 
 
 def setSiteCcConf():
-    return mw.returnJson(False, '暂未开发!', [])
+    args = getArgs()
+    data = checkArgs(args, ['siteName', 'cycle', 'limit',
+                            'endtime', 'is_open_global'])
+    if not data[0]:
+        return data[1]
+
+    path = getJsonPath('site')
+    content = mw.readFile(path)
+    content = json.loads(content)
+
+    siteName = args['siteName']
+    if siteName not in content:
+        return mw.returnJson(False, '站点不存在!', [])
+
+    tmp = content[siteName].get('cc', {})
+    tmp['cycle'] = int(args['cycle'])
+    tmp['limit'] = int(args['limit'])
+    tmp['endtime'] = int(args['endtime'])
+    tmp['is_open_global'] = args['is_open_global']
+    tmp['increase'] = args.get('increase', '0')
+    content[siteName]['cc'] = tmp
+
+    cjson = mw.getJson(content)
+    mw.writeFile(path, cjson)
+
+    setConfRestartWeb()
+    return mw.returnJson(True, '设置成功!', [])
 
 
 def saveScanRule():
@@ -1092,6 +1236,10 @@ def getSiteConfig():
 
         # print tmp
         content[x]['total'] = tmp
+
+        for k in ['get', 'post', 'user-agent', 'cookie', 'scan']:
+            if k in content[x] and isinstance(content[x][k], dict):
+                content[x][k] = content[x][k].get('open', True)
 
     content = mw.getJson(content)
     return mw.returnJson(True, 'ok!', content)
@@ -1517,6 +1665,10 @@ if __name__ == "__main__":
         print(modifyRule())
     elif func == 'get_site_rule':
         print(getSiteRule())
+    elif func == 'get_site_rule_conf':
+        print(getSiteRuleConf())
+    elif func == 'set_site_rule_state':
+        print(setSiteRuleState())
     elif func == 'add_site_rule':
         print(addSiteRule())
     elif func == 'add_ip_white':

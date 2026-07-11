@@ -415,6 +415,7 @@ def autoMakeConfig(conf_reload=False, cp_reload=False):
 
 
 def setConfRestartWeb():
+    makeOpDstRunLua(True)
     autoMakeConfig(True, False)
     mw.opWeb('stop')
     mw.opWeb('start')

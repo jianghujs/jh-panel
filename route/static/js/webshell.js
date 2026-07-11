@@ -12,6 +12,7 @@ class WebShell {
 			this.socketLoading = false;
 			this.interval = null;
 			this.connected = false;
+			this.closeCommand = "\x03";
 	}
 
 	static getInstance() {
@@ -31,6 +32,11 @@ class WebShell {
 				this.socket = null;
 		}
 		webShell = null;
+	}
+
+	setCloseCommand(command) {
+		this.closeCommand = command || "\x03";
+		return this;
 	}
 
 	async initTerm() {
@@ -142,10 +148,11 @@ class WebShell {
 							}.bind(this));
 					}.bind(this),
 					end: () => {
+						var closeCommand = this.closeCommand || "\x03";
+						this.closeCommand = "\x03";
+						this.socket.emit('webssh', closeCommand);
 						this.gterm.destroy();
 						clearInterval(this.interval);
-						// emit ctrl+c to stop the process
-						this.socket.emit('webssh', "\x03");
 						this.socket.off('server_response');
 					}
 			});

@@ -7,6 +7,8 @@ import time
 import subprocess
 import re
 import json
+import shlex
+import tempfile
 import paramiko
 from paramiko import RSAKey
 import psutil
@@ -245,6 +247,34 @@ def getSocketFile():
     rep = 'socket\s*=\s*(.*)'
     tmp = re.search(rep, content)
     return tmp.groups()[0].strip()
+
+
+def getMysqlTerminalCmd(version=''):
+    mysql_bin = getServerDir() + '/bin/usr/bin/mysql'
+    if not os.path.exists(mysql_bin):
+        mysql_bin = '/usr/bin/mysql'
+    if not os.path.exists(mysql_bin):
+        return mw.returnJson(False, '未找到mysql客户端命令')
+
+    try:
+        password = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
+        socket_file = getSocketFile()
+    except Exception as ex:
+        return mw.returnJson(False, '获取MySQL连接信息失败: ' + str(ex))
+
+    fd, client_conf = tempfile.mkstemp(prefix='mysql-apt-client-', suffix='.cnf')
+    os.close(fd)
+    os.chmod(client_conf, 0o600)
+    mw.writeFile(client_conf, '[client]\nuser=root\npassword={password}\nsocket={socket_file}\ndefault-character-set=utf8mb4\n'.format(
+        password=str(password or '').replace('\\', '\\\\').replace('\n', '\\n'),
+        socket_file=socket_file.replace('\\', '\\\\').replace('\n', '\\n')
+    ))
+
+    cmd = '{mysql_bin} --defaults-file={client_conf}; rm -f {client_conf}'.format(
+        mysql_bin=shlex.quote(mysql_bin),
+        client_conf=shlex.quote(client_conf)
+    )
+    return mw.returnJson(True, 'ok', cmd)
 
 
 def getErrorLogsFile():
@@ -3281,6 +3311,8 @@ if __name__ == "__main__":
         print(getMyPort())
     elif func == 'set_my_port':
         print(setMyPort())
+    elif func == 'get_mysql_terminal_cmd':
+        print(getMysqlTerminalCmd(version))
     elif func == 'init_pwd':
         print(initMysqlPwd())
     elif func == 'get_mysql_info':

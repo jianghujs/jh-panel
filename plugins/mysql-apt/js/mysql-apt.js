@@ -164,6 +164,25 @@ function myPort(){
     });
 }
 
+async function openMysqlTerminal(){
+    if (typeof WebShell == 'undefined') {
+        layer.msg('当前面板终端组件不可用', {icon: 2});
+        return;
+    }
+
+    var webShell = WebShell.getInstance().setCloseCommand('exit\n');
+    var socket = await webShell.open();
+    myPost('get_mysql_terminal_cmd', '', function(data){
+        var rdata = $.parseJSON(data.data);
+        if (!rdata.status) {
+            layer.msg(rdata.msg, {icon: 2});
+            return;
+        }
+
+        socket.emit('webssh', 'clear && ' + rdata.data + '\n');
+    }, '正在打开MySQL终端...');
+}
+
 
 //数据库存储信置
 function changeMySQLDataPath(act) {
@@ -1232,6 +1251,7 @@ function dbList(page, search){
             <button onclick="setRootPwd(0,\''+rdata.info['root_pwd']+'\')" title="设置MySQL管理员密码" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">root密码</button>\
             <button onclick="fixRootPwd(0)" title="更新真实ROOT密码到江湖面板" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">修复ROOT密码</button>\
             <button onclick="setDbAccess(\'root\')" title="ROOT权限" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">ROOT权限</button>\
+            <button onclick="openMysqlTerminal()" title="打开MySQL终端" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">打开终端</button>\
             <button onclick="getChecksumReport()" title="获取Checksum报告" class="btn btn-default btn-sm" type="button" style="margin-right: 5px;">获取Checksum报告</button>\
             <span style="float:right">              \
                 <button batch="true" style="float: right;display: none;margin-left:10px;" onclick="delDbBatch();" title="删除选中项" class="btn btn-default btn-sm">删除选中</button>\

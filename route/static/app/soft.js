@@ -342,11 +342,6 @@ function indexSoftHtml(callback){
 
     // init
     $("#indexsoft").html('');
-    var index_soft = '';
-    for (var i = 0; i < 12; i++) {
-        index_soft += '<div class="col-sm-3 col-md-3 col-lg-3 no-bg"></div>';
-    }
-    $("#indexsoft").html(index_soft);
 
     // var loadT = layer.msg('正在获取列表...', { icon: 16, time: 0, shade: [0.3, '#000'] });
     $.get('/plugins/index_list', function(rdata) {
@@ -407,18 +402,6 @@ function indexSoftHtml(callback){
 
         //缓存
         localStorage.setItem('menusoftcon', menusoftcon);
-
-        //软件位置移动
-        var softboxlen = $("#indexsoft > div").length;
-        var softboxsum = 12;
-        var softboxcon = '';
-        var softboxn = softboxlen;
-        if (softboxlen <= softboxsum) {
-            for (var i = 0; i < softboxsum - softboxlen; i++) {
-                softboxcon += '<div class="col-sm-3 col-md-3 col-lg-3 no-bg" data-id=""></div>';
-            }
-            $("#indexsoft").append(softboxcon);
-        }
 
         if (typeof callback=='function'){
             callback();

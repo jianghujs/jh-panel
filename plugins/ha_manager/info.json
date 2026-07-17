@@ -1,0 +1,17 @@
+{
+  "sort": 8,
+  "ps": "主备关系、SSH互信和状态自检管理插件",
+  "name": "ha_manager",
+  "title": "主备管理",
+  "shell": "install.sh",
+  "versions": ["1.0"],
+  "tip": "soft",
+  "checks": "server/ha_manager",
+  "path": "server/ha_manager",
+  "display": 1,
+  "author": "jianghu",
+  "date": "2026-07-14",
+  "home": "",
+  "type": "soft",
+  "pid": "4"
+}

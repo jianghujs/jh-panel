@@ -1,0 +1,40 @@
+<style>
+.pf-toolbar{margin-bottom:10px;}
+.pf-toolbar .btn{margin-right:6px;}
+.pf-table td,.pf-table th{vertical-align:middle!important;}
+.pf-badge{display:inline-block;font-weight:bold;}
+.pf-badge.on{color:#5cb85c;}
+.pf-badge.off{color:#999;}
+.pf-form input,.pf-form select{width:260px;}
+.pf-form textarea{width:360px;height:68px;}
+.pf-pre{width:100%;min-height:300px;background:#1f1f1f;color:#f5f5f5;border:0;padding:10px;font-family:Menlo,Monaco,Consolas,monospace;white-space:pre-wrap;}
+.pf-mini-pre{max-height:160px;overflow:auto;background:#f7f7f7;border:1px solid #eee;padding:8px;white-space:pre-wrap;}
+.pf-apply-wrap{display:inline-block;position:relative;margin-right:6px;}
+.pf-dirty-dot{position:absolute;right:0;top:-4px;width:9px;height:9px;background:#d9534f;border-radius:50%;box-shadow:0 0 0 2px #fff;}
+.pf-dirty-text{color:#d9534f;margin-left:6px;font-size:12px;}
+.pf-switch{position:relative;display:inline-block;width:44px;height:24px;margin:0;vertical-align:middle;}
+.pf-switch input{opacity:0;width:0;height:0;}
+.pf-switch-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#dcdfe6;border-radius:24px;transition:0.2s;}
+.pf-switch-slider:before{position:absolute;content:"";height:20px;width:20px;left:2px;bottom:2px;background-color:#fff;border-radius:50%;transition:0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.25);}
+.pf-switch input:checked + .pf-switch-slider{background-color:#64bd63;}
+.pf-switch input:checked + .pf-switch-slider:before{transform:translateX(20px);}
+</style>
+<div class="bt-form">
+    <div class='plugin_version'></div>
+        <div class="bt-w-main">
+        <div class="bt-w-menu">
+            <p class="bgw" onclick="pfRulesPanel($('.plugin_version').attr('version'));">转发规则</p>
+            <p onclick="pfLogsPanel($('.plugin_version').attr('version'));">日志</p>
+        </div>
+        <div class="bt-w-con pd15">
+            <div class="soft-man-con"></div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+resetPluginWinHeight(650);
+resetPluginWinWidth(980);
+$.getScript("/plugins/file?name=port_forward&f=js/port_forward.js", function(){
+    pfRulesPanel($('.plugin_version').attr('version'));
+});
+</script>

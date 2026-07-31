@@ -1,0 +1,18 @@
+{
+	"sort": 7,
+	"ps": "TCP NAT端口转发管理器",
+	"name": "port_forward",
+	"title": "端口转发管理器",
+	"shell": "install.sh",
+	"versions": ["1.0"],
+	"updates": ["1.0"],
+	"tip": "soft",
+	"checks": "server/port_forward",
+	"path": "server/port_forward",
+	"display": 1,
+	"author": "jianghujs",
+	"date": "2026-07-31",
+	"home": "https://github.com/jianghujs/jh-panel",
+	"type": 0,
+	"pid": "4"
+}

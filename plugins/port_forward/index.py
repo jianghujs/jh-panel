@@ -412,7 +412,9 @@ def _delete_rules_by_comment(comment):
 
 
 def _install_restore_service(enable=True):
-    system_dir = mw.systemdCfgDir()
+    system_dir = '/etc/systemd/system'
+    if not os.path.exists(system_dir):
+        system_dir = mw.systemdCfgDir()
     if not os.path.exists(system_dir):
         return False, 'systemd目录不存在: ' + system_dir
     tpl_path = getPluginDir() + '/init.d/port-forward-restore.service.tpl'
@@ -438,23 +440,22 @@ def _persist_runtime_rules():
         code, out, err = _run(command, timeout=30)
         if code == 0:
             return {'status': True, 'method': name, 'msg': out or 'saved'}
-    if os.path.isdir('/etc/iptables'):
-        code, out, err = _run('iptables-save > /etc/iptables/rules.v4', timeout=30)
-        if code == 0:
-            return {'status': True, 'method': 'iptables-save-rules.v4', 'msg': 'saved'}
-        return {'status': False, 'method': 'iptables-save-rules.v4', 'msg': err or out}
-    return {'status': False, 'method': 'none', 'msg': '未检测到iptables持久化组件，使用systemd恢复兜底'}
+    _run('mkdir -p /etc/iptables', timeout=10)
+    code, out, err = _run('iptables-save > /etc/iptables/rules.v4', timeout=30)
+    if code == 0:
+        return {'status': True, 'method': 'iptables-save-rules.v4', 'msg': 'saved'}
+    return {'status': False, 'method': 'none', 'msg': '未检测到iptables持久化组件，且写入/etc/iptables/rules.v4失败: ' + (err or out)}
 
 
 def _disable_restore_service():
-    system_dir = mw.systemdCfgDir()
-    service_path = system_dir + '/' + SERVICE_NAME
     _run('systemctl disable ' + shlex.quote(SERVICE_NAME))
-    if os.path.exists(service_path):
-        try:
-            os.remove(service_path)
-        except Exception:
-            pass
+    for system_dir in ['/etc/systemd/system', mw.systemdCfgDir()]:
+        service_path = system_dir + '/' + SERVICE_NAME
+        if os.path.exists(service_path):
+            try:
+                os.remove(service_path)
+            except Exception:
+                pass
     _run('systemctl daemon-reload')
 
 
@@ -536,10 +537,7 @@ def applyRules(restore=False):
             return mw.returnJson(False, msg, {'results': results})
     persistence = {'status': False, 'method': 'skipped', 'msg': 'restore mode'} if restore else _persist_runtime_rules()
     if not restore:
-        if persistence.get('status'):
-            _disable_restore_service()
-        else:
-            _install_restore_service(True)
+        _install_restore_service(True)
     _log('apply rules count=%s restore=%s persist=%s:%s' % (len(results), restore, persistence.get('method'), persistence.get('msg')))
     return mw.returnJson(True, '应用成功', {'results': results, 'persistence': persistence})
 

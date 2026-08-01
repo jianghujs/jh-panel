@@ -135,8 +135,7 @@ function pfRulesPanel(version){
                     <thead><tr><th>监听</th><th>目标</th><th>备注</th><th width="90">状态</th><th style="text-align:right">操作</th></tr></thead>\
                     <tbody>' + rows + '</tbody>\
                 </table>\
-            </div>\
-            <div class="c9">应用会写入iptables规则并尝试调用系统已安装的持久化工具保存；未检测到时使用systemd开机恢复兜底。</div>';
+            </div>';
         $('.soft-man-con').html(html);
     });
 }

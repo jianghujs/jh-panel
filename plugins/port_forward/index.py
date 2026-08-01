@@ -421,7 +421,7 @@ def _install_restore_service(enable=True):
     content = mw.readFile(tpl_path)
     if not content:
         return False, '服务模板不存在'
-    content = content.replace('{$ROOT_PATH}', mw.getRootDir())
+    content = content.replace('{$ROOT_PATH}', mw.getRunDir())
     service_path = system_dir + '/' + SERVICE_NAME
     mw.writeFile(service_path, content)
     _run('systemctl daemon-reload')

@@ -87,30 +87,7 @@ def _run(command, timeout=20):
 
 
 def _default_rules():
-    return [
-        {
-            'id': 'fw-mgmt-222',
-            'enabled': True,
-            'listen_ip': '192.168.201.15',
-            'listen_iface': 'ens18',
-            'listen_port': 2443,
-            'target_ip': '192.168.222.1',
-            'target_iface': 'ens20',
-            'target_port': 443,
-            'remark': '222 防火墙管理口',
-        },
-        {
-            'id': 'fw-mgmt-224',
-            'enabled': True,
-            'listen_ip': '192.168.201.15',
-            'listen_iface': 'ens18',
-            'listen_port': 4443,
-            'target_ip': '192.168.224.1',
-            'target_iface': 'ens19',
-            'target_port': 443,
-            'remark': '224 防火墙管理口',
-        },
-    ]
+    return []
 
 
 def _default_config():
@@ -173,8 +150,6 @@ def _normalize_config(data):
     if isinstance(raw_rules, list):
         for idx, raw_rule in enumerate(raw_rules):
             rules.append(_normalize_rule(raw_rule, idx))
-    if not rules:
-        rules = _default_rules()
     base.update({
         'version': _safe_int(data.get('version', 1), 1),
         'rule_prefix': RULE_PREFIX,

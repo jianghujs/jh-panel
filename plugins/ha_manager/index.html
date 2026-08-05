@@ -1,0 +1,65 @@
+<style>
+.ms-page{height:100%;}
+.ms-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;}
+.ms-title{font-size:15px;font-weight:600;color:#222;}
+.ms-sub{font-size:12px;color:#888;line-height:20px;}
+.ms-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.ms-card{border:1px solid #e8ebf0;border-radius:4px;background:#fff;padding:12px;min-height:82px;}
+.ms-card-label{font-size:12px;color:#888;}
+.ms-card-value{font-size:22px;line-height:30px;font-weight:600;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ms-card-note{font-size:12px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ms-card.normal{border-left:4px solid #5cb85c;}
+.ms-card.warn{border-left:4px solid #f0ad4e;}
+.ms-card.danger{border-left:4px solid #d9534f;}
+.ms-card.info{border-left:4px solid #337ab7;}
+.ms-panel{border:1px solid #e8ebf0;border-radius:4px;background:#fff;}
+.ms-panel-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #edf0f4;padding:12px 14px;}
+.ms-panel-body{padding:14px;}
+.ms-status-pill{display:inline-block;min-width:64px;text-align:center;border-radius:3px;padding:3px 8px;font-size:12px;border:1px solid transparent;}
+.ms-pill-normal{color:#2e7d32;background:#f0fff0;border-color:#bfe4bf;}
+.ms-pill-warn{color:#9a6200;background:#fff7e6;border-color:#f1d399;}
+.ms-pill-danger{color:#b02a25;background:#fff1f0;border-color:#f0c6c4;}
+.ms-pill-info{color:#245580;background:#eef7ff;border-color:#b8d7ef;}
+.ms-host-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.ms-host{border:1px solid #e9edf2;background:#fbfcfd;border-radius:4px;padding:12px;min-height:112px;}
+.ms-host.master{border-color:#bfe4bf;background:#f9fff9;}
+.ms-host.warn{border-color:#f1d399;background:#fffdf6;}
+.ms-host-name{font-weight:600;font-size:14px;color:#222;line-height:22px;}
+.ms-host-meta{font-size:12px;color:#777;line-height:20px;}
+.ms-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.ms-health{border:1px solid #edf0f4;border-radius:4px;padding:10px;min-height:68px;}
+.ms-health-label{font-size:12px;color:#888;}
+.ms-health-value{font-size:13px;color:#333;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ms-form .line .tname{width:130px;}
+.ms-form .bt-input-text{height:30px;}
+.ms-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;}
+.ms-option-grid label{font-weight:normal;color:#555;}
+.ms-log-box{height:320px;background:#1f2329;color:#d7dde8;border-radius:4px;padding:12px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;white-space:pre-wrap;}
+.ms-tip-list{color:#666;line-height:28px;margin:0;padding-left:18px;}
+.ms-actions .btn{margin-left:6px;}
+@media(max-width:900px){.ms-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.ms-health-grid{grid-template-columns:1fr;}}
+</style>
+
+<div class="bt-form ms-page">
+  <div class="bt-w-main">
+    <div class="bt-w-menu">
+      <p class="bgw" onclick="msOverview();">总览</p>
+      <p onclick="msConfigPanel();">绑定主备</p>
+      <p onclick="msMonitorPanel();">云监控</p>
+      <p onclick="msHealthPanel();">自检状态</p>
+      <p onclick="msLogPanel();">切换日志</p>
+      <p onclick="msReadmePanel();">说明</p>
+    </div>
+    <div class="bt-w-con pd15">
+      <div class="soft-man-con"></div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+resetPluginWinWidth(980);
+resetPluginWinHeight(620);
+$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js', function(){
+  msOverview();
+});
+</script>

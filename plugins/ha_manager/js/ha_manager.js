@@ -1,5 +1,6 @@
 var msState = {
   monitor_url: '',
+  pair_name: '生产面板主备',
   pair_id: 'HA_PANEL_CORE',
   host_id: 'H_PANEL_B',
   peer_host_id: 'H_PANEL_A',
@@ -32,8 +33,7 @@ var msState = {
     sync_ignore_dirs: 'node_modules,logs,run',
     restore_site_setting: false,
     restore_plugin_setting: false,
-    run_xtrabackup_inc_restore: false,
-    promote_mysql_master: true
+    run_xtrabackup_inc_restore: false
   },
   log: [
     '[2026-08-05 16:10:00] [system] [pending] 云监控创建切换任务 HSR_20260805161000_3f9a',
@@ -64,21 +64,128 @@ function msStatusText(status) {
   return '处理中';
 }
 
+var msCheckTemplate = [
+  {group: '计划任务', name: '备份数据库', master: '已启用', standby: '已启用'},
+  {group: '计划任务', name: 'xtrabackup', master: '已启用', standby: '已启用'},
+  {group: '计划任务', name: 'xtrabackup-inc 全量备份', master: '已启用', standby: '已启用'},
+  {group: '计划任务', name: '恢复网站配置', master: '已关闭', standby: '已启用'},
+  {group: '计划任务', name: '恢复插件配置', master: '已关闭', standby: '已启用'},
+  {group: '计划任务', name: 'lsyncd 实时同步', master: '运行中', standby: '已停止'},
+  {group: '计划任务', name: '证书续签任务', master: '已启用', standby: '已关闭'},
+  {group: '监控提醒', name: '主从同步异常提醒', master: '已关闭', standby: '已启用'},
+  {group: '监控提醒', name: 'Rsync 状态异常提醒', master: '已关闭', standby: '已启用'},
+  {group: 'SSH 同步', name: 'authorized_keys 同步公钥', master: '对端公钥已授权', standby: '对端公钥已授权'},
+  {group: 'SSH 同步', name: '对端 SSH 连接', master: '连接正常', standby: '连接正常'},
+  {group: 'rsync', name: 'rsyncd 任务', master: '运行中', standby: '已停止'},
+  {group: 'rsync', name: '残留 rsync 进程', master: '无残留', standby: '无残留'},
+  {group: 'Web 服务', name: 'OpenResty', master: '运行中', standby: '已停止'},
+  {group: '数据库', name: 'MySQL 主从状态', master: '无主从配置（作为主）', standby: '作为从库（复制链路正常）'}
+];
+
+function msCheckStatusIcon(status) {
+  if (status === 'pass') return '<span class="ms-check-icon ms-check-pass" title="正常">✓</span>';
+  if (status === 'unknown') return '<span class="ms-check-icon ms-check-unknown" title="未知">?</span>';
+  return '<span class="ms-check-icon ms-check-fail" title="异常">✗</span>';
+}
+
+function msRoleMark(role, disabled) {
+  if (disabled) return '<span class="ms-role-mark ms-role-disabled">未绑定</span>';
+  var cls = role === 'master' ? 'ms-role-master' : 'ms-role-standby';
+  var text = role === 'master' ? '主' : '备';
+  return '<span class="ms-role-mark ' + cls + '">' + text + '</span>';
+}
+
+function msHostDot(host) {
+  if (host.unbound) return '<span class="ms-host-dot ms-host-dot-unbound" title="未配置主备绑定"></span>';
+  if (host.switching) return '<span class="ms-host-dot ms-host-dot-switching" title="正在切换中：' + msHtml(host.switch_step || '等待执行') + '"></span>';
+  if (host.online === false) return '<span class="ms-host-dot ms-host-dot-offline" title="插件离线或采集失败"></span>';
+  return '<span class="ms-host-dot" title="插件在线"></span>';
+}
+
+function msHealthHosts() {
+  var localRole = msState.role;
+  var peerRole = localRole === 'master' ? 'standby' : 'master';
+  var peerBound = msState.bind_test_status === 'success';
+  return [
+    {name: '本机 ' + msState.host_id, role: localRole, current: true, online: true, switching: msState.switch_status === 'waiting_online', switch_step: '等待上线流程', health: msState.health},
+    {name: '对端 ' + msState.peer_host_id, role: peerRole, current: false, online: peerBound, unbound: !peerBound, switching: false, switch_step: '', health: {mysql: {status: 'normal'}, rsync: {status: 'normal'}, openresty: {status: 'normal'}}}
+  ];
+}
+
+function msMockHostChecks(host) {
+  var isMaster = host.role === 'master';
+  var result = {};
+  msCheckTemplate.forEach(function(item) {
+    var expected = isMaster ? item.master : item.standby;
+    var actual = expected;
+    var status = 'pass';
+    if (host.unbound) {
+      actual = '未配置主备绑定';
+      status = 'unknown';
+    } else if (host.online === false) {
+      actual = '未知（插件离线或采集失败）';
+      status = 'unknown';
+    } else if (item.name.indexOf('MySQL') !== -1 && host.health.mysql && host.health.mysql.status === 'warning') {
+      actual = host.health.mysql.text;
+      status = 'fail';
+    } else if (item.name.indexOf('OpenResty') !== -1 && host.health.openresty && host.health.openresty.status === 'warning') {
+      actual = host.health.openresty.text;
+      status = 'fail';
+    } else if (item.name.indexOf('rsync') !== -1 && host.health.rsync && host.health.rsync.status === 'warning') {
+      actual = host.health.rsync.text;
+      status = 'fail';
+    }
+    result[item.name] = {expected: expected, actual: actual, status: status};
+  });
+  return result;
+}
+
+function msCheckHostCard(host) {
+  var checks = msMockHostChecks(host);
+  var rows = '';
+  var currentGroup = '';
+  msCheckTemplate.forEach(function(item) {
+    if (item.group !== currentGroup) {
+      currentGroup = item.group;
+      rows += '<tr class="ms-check-group-row"><td colspan="2">' + msHtml(item.group) + '</td></tr>';
+    }
+    var check = checks[item.name];
+    var matched = check.status === 'pass';
+    var actualCls = matched ? 'ms-check-actual-pass' : 'ms-check-actual-fail';
+    if (host.unbound) actualCls = '';
+    var title = '当前状态: ' + check.actual + '\n期望状态: ' + check.expected;
+    rows += '<tr>' +
+      '<td class="ms-check-name">' + msHtml(item.name) + '</td>' +
+      '<td class="ms-check-actual ' + actualCls + '" title="' + msHtml(title) + '">' + msCheckStatusIcon(matched ? 'pass' : check.status) + msHtml(check.actual) + '</td>' +
+    '</tr>';
+  });
+  var nameCls = host.online === false || host.unbound ? 'ms-host-name ms-host-name-offline' : 'ms-host-name';
+  var cardCls = host.unbound ? 'ms-check-card ms-check-card-disabled' : 'ms-check-card';
+  return '<div class="' + cardCls + '">' +
+    '<div class="ms-check-head">' + msHostDot(host) + msRoleMark(host.role, host.unbound) + '<span class="' + nameCls + '">' + msHtml(host.name) + '</span>' + (host.current ? '<span class="ms-current-site-tag">当前</span>' : '') + '</div>' +
+    '<table class="table table-hover ms-check-table"><colgroup><col><col class="ms-check-status-col"></colgroup><thead><tr><th>检查项</th><th class="ms-check-status-head">状态</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+  '</div>';
+}
+
 function msOverview() {
   msSetActive(0);
   var monitorConfigured = !!msState.monitor_url;
-  var switchText = msState.role === 'master' ? '切换为备' : '切换为主';
-  var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">当前插件仅展示 UI 预览，后续接入云监控轮询、状态上报和上下线执行器。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msMockPoll()">模拟轮询</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">' + switchText + '</button></div></div>' +
-    '<div class="ms-grid">' +
-      '<div class="ms-card info"><div class="ms-card-label">本机角色</div><div class="ms-card-value">' + msHtml(msState.role) + '</div><div class="ms-card-note">期望角色: ' + msHtml(msState.desired_role) + '</div></div>' +
-      '<div class="ms-card warn"><div class="ms-card-label">切换任务</div><div class="ms-card-value">上线待执行</div><div class="ms-card-note">' + msHtml(msState.switch_run_id) + '</div></div>' +
-      '<div class="ms-card normal"><div class="ms-card-label">主备绑定</div><div class="ms-card-value">已配置</div><div class="ms-card-note">对端公网IP: ' + msHtml(msState.peer_public_ip) + '</div></div>' +
-      '<div class="ms-card ' + (monitorConfigured ? 'info' : 'warn') + '"><div class="ms-card-label">云监控上报</div><div class="ms-card-value">' + (monitorConfigured ? '已开启' : '未配置') + '</div><div class="ms-card-note">' + (monitorConfigured ? msHtml(msState.monitor_url) : '地址为空，不上传状态') + '</div></div>' +
-    '</div>' +
-    '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">本机与对端</div>' + msPill('warning', '等待上线') + '</div><div class="ms-panel-body">' +
-      '<div class="ms-host-row"><div class="ms-host warn"><div class="ms-host-name">本机 H_PANEL_B</div><div class="ms-host-meta">IP: 10.0.8.12</div><div class="ms-host-meta">当前: standby / 期望: master</div><div class="ms-host-meta">状态: 插件在线，等待上线流程</div></div>' +
-      '<div class="ms-host master"><div class="ms-host-name">对端 H_PANEL_A</div><div class="ms-host-meta">IP: 10.0.8.11</div><div class="ms-host-meta">当前: master / 期望: standby</div><div class="ms-host-meta">状态: 下线流程已完成</div></div></div>' +
-      '<div class="ms-health-grid">' + msHealthBox('mysql', msState.health.mysql) + msHealthBox('rsync', msState.health.rsync) + msHealthBox('OpenResty', msState.health.openresty) + '</div>' +
+  var bindConfigured = msState.bind_test_status === 'success';
+  var switchStatusText = msState.switch_status === 'waiting_online' ? '等待上线' : msState.switch_status === 'offline_done' ? '下线完成' : msState.switch_status === 'online_done' ? '上线完成' : '无执行中任务';
+  var switchStatus = msState.switch_status === 'waiting_online' ? 'warning' : 'normal';
+  var isSwitching = msState.switch_status === 'waiting_online';
+  var roleTitle = '当前角色: ' + msState.role + '\n期望角色: ' + msState.desired_role;
+  var switchingTip = '正在切换中\n' + roleTitle;
+  var loading = '<span class="ms-loading-state" title="' + msHtml(switchingTip) + '"><span class="ms-loading-icon"></span>切换中</span>';
+  var roleCell = '<span title="' + msHtml(roleTitle) + '">' + msRoleMark(msState.role) + '</span>' + (isSwitching ? ' ' + loading : '');
+  var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msMockPoll()">轮询云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
+    '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(switchStatus, switchStatusText) + '</div><div class="ms-panel-body">' +
+      '<table class="table table-hover ms-overview-table"><tbody>' +
+        '<tr><th>本机角色</th><td>' + roleCell + '</td><td class="ms-overview-actions" rowspan="4"><button class="btn btn-default btn-sm" onclick="msHealthPanel()">查看自检</button><button class="btn btn-default btn-sm" onclick="msLogPanel()">查看日志</button></td></tr>' +
+        '<tr><th>主备关系</th><td>' + msHtml(msState.pair_name) + ' <span class="c7">' + msHtml(msState.pair_id) + '</span></td></tr>' +
+        '<tr><th>对端绑定</th><td>' + (bindConfigured ? msPill('normal', '已绑定') + ' <span class="c7">' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</span>' : msPill('warning', '未验证') + ' <a class="btlink" href="javascript:;" onclick="msConfigPanel()">去绑定</a>') + '</td></tr>' +
+        '<tr><th>云监控</th><td>' + (monitorConfigured ? msPill('normal', '已开启') + ' <span class="c7">最近上报: ' + msHtml(msState.last_report_at) + '</span>' : msPill('warning', '未配置') + ' <a class="btlink" href="javascript:;" onclick="msMonitorPanel()">去配置</a>') + '</td></tr>' +
+      '</tbody></table>' +
     '</div></div>';
   $('.soft-man-con').html(html);
 }
@@ -108,37 +215,26 @@ function msInput(label, name, value, style, type) {
 function msMonitorPanel() {
   msSetActive(2);
   var configured = !!msState.monitor_url;
-  var html = '<div class="ms-panel"><div class="ms-panel-head"><div><div class="ms-title">云监控上报配置</div><div class="ms-sub">云监控地址默认留空；留空时插件只在本机工作，不上传主备状态和切换日志。</div></div>' + (configured ? msPill('normal', '已开启') : msPill('warning', '未配置')) + '</div><div class="ms-panel-body"><form class="bt-form ms-form" id="msMonitorForm">' +
+  var html = '<div class="ms-panel"><div class="ms-panel-head"><div><div class="ms-title">绑定云监控上报配置</div><div class="ms-sub">填写主备关系名称和云监控地址后，插件会把本机和对端状态注册并上报到云监控。</div></div>' + (configured ? msPill('normal', '已开启') : msPill('warning', '未配置')) + '</div><div class="ms-panel-body"><form class="bt-form ms-form" id="msMonitorForm">' +
+    msInput('主备关系名称', 'pair_name', msState.pair_name, 'width:260px') +
     msInput('云监控地址', 'monitor_url', msState.monitor_url, 'width:420px') +
     '<div class="line"><span class="tname">轮询/上报</span><div class="info-r c4"><input class="bt-input-text" type="number" name="poll_interval" value="' + msHtml(msState.poll_interval) + '" style="width:80px" /> 秒轮询 <input class="bt-input-text ml10" type="number" name="report_interval" value="' + msHtml(msState.report_interval) + '" style="width:80px" /> 秒上报</div></div>' +
-    '<div class="line"><span class="tname">状态</span><div class="info-r c4">' + (configured ? '已配置云监控地址，将按周期上传状态。' : '未配置云监控地址，不上传状态。') + '</div></div>' +
-    '<div class="line"><span class="tname"></span><div class="info-r"><button type="button" class="btn btn-default btn-sm" onclick="msTestMonitorMock()">测试云监控</button><button type="button" class="btn btn-success btn-sm ml5" onclick="msSaveMonitorMock()">保存配置</button><button type="button" class="btn btn-warning btn-sm ml5" onclick="msClearMonitorMock()">清空地址</button></div></div>' +
+    '<div class="line"><span class="tname">状态</span><div class="info-r c4">' + (configured ? '已配置云监控地址，将按主备关系名称注册并周期上传状态。' : '未配置云监控地址，不上传状态。') + '</div></div>' +
+    '<div class="line"><span class="tname"></span><div class="info-r"><button type="button" class="btn btn-default btn-sm" onclick="msTestMonitorMock()">测试云监控</button><button type="button" class="btn btn-success btn-sm ml5" onclick="msSaveMonitorMock()">保存并注册</button><button type="button" class="btn btn-warning btn-sm ml5" onclick="msClearMonitorMock()">清空地址</button></div></div>' +
     '</form></div></div>';
   $('.soft-man-con').html(html);
 }
 
 function msCheck(name, label, checked) {
-  return '<label><input type="checkbox" name="' + name + '" ' + (checked ? 'checked' : '') + '> ' + msHtml(label) + '</label>';
+  return '<label class="ms-option-check"><input type="checkbox" name="' + name + '" ' + (checked ? 'checked' : '') + '><span>' + msHtml(label) + '</span></label>';
 }
 
 function msHealthPanel() {
   msSetActive(3);
-  var monitorText = msState.monitor_url ? '云监控地址已配置，最近轮询成功' : '云监控地址为空，不上传状态';
-  var monitorStatus = msState.monitor_url ? 'normal' : 'warning';
-  var html = '<div class="ms-topbar"><div><div class="ms-title">自检状态</div><div class="ms-sub">第一版用于展示 mysql、rsync、OpenResty 和插件通信状态。</div></div><button class="btn btn-default btn-sm" onclick="msRefreshHealthMock()">重新自检</button></div>' +
-    '<div class="ms-panel"><div class="ms-panel-body"><table class="table table-hover"><thead><tr><th>检查项</th><th width="120">状态</th><th>结果</th><th width="160">最近检查</th></tr></thead><tbody>' +
-    msHealthRow('对端 SSH', msState.bind_test_status === 'success' ? 'normal' : 'warning', msState.bind_test_status === 'success' ? '已通过 ' + msState.peer_ssh_user + '@' + msState.peer_public_ip + ':' + msState.peer_ssh_port + ' 连接测试' : '尚未完成对端 SSH 连接测试', '16:12:08') +
-    msHealthRow('云监控连接', monitorStatus, monitorText, '16:12:08') +
-    msHealthRow('mysql', msState.health.mysql.status, msState.health.mysql.text, '16:12:08') +
-    msHealthRow('rsync / lsyncd', msState.health.rsync.status, msState.health.rsync.text, '16:12:06') +
-    msHealthRow('OpenResty', msState.health.openresty.status, msState.health.openresty.text, '16:12:04') +
-    msHealthRow('本地执行锁', 'normal', '当前没有其他切换任务占用锁', '16:12:03') +
-    '</tbody></table></div></div>';
+  var cards = msHealthHosts().map(msCheckHostCard).join('');
+  var html = '<div class="ms-topbar"><div><div class="ms-title">自检状态</div><div class="ms-sub">基于上下线脚本的每个步骤，检查本机和对端在当前角色下的期望状态是否满足。</div></div><button class="btn btn-default btn-sm" onclick="msRefreshHealthMock()">重新自检</button></div>' +
+    '<div class="ms-check-grid">' + cards + '</div>';
   $('.soft-man-con').html(html);
-}
-
-function msHealthRow(name, status, text, time) {
-  return '<tr><td>' + msHtml(name) + '</td><td>' + msPill(status, msStatusText(status)) + '</td><td>' + msHtml(text) + '</td><td>' + msHtml(time) + '</td></tr>';
 }
 
 function msLogPanel() {
@@ -186,12 +282,15 @@ function msOpenLocalSwitchDialog() {
   var title = targetRole === 'master' ? '切换为主' : '切换为备';
   layer.open({
     type: 1,
-    area: ['640px', targetRole === 'master' ? '520px' : '420px'],
+    area: ['750px', targetRole === 'master' ? '560px' : '460px'],
     title: title,
     closeBtn: 1,
     shadeClose: false,
     btn: ['确认执行', '取消'],
     content: msBuildLocalSwitchForm(targetRole),
+    success: function() {
+      msToggleSyncOptions();
+    },
     yes: function(index) {
       if (targetRole === 'standby' && !$('#msOfflineConfirm').is(':checked')) {
         layer.msg('请先确认对端可接管业务', {icon: 2});
@@ -205,8 +304,13 @@ function msOpenLocalSwitchDialog() {
 }
 
 function msBuildLocalSwitchForm(targetRole) {
+  var hostSelect = '<div class="ms-switch-hosts">' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="local" checked><span class="ms-switch-host-name">本机 ' + msHtml(msState.host_id) + '</span><div class="ms-switch-host-meta">当前: ' + msHtml(msState.role) + ' / IP: ' + msHtml(msState.options.local_ip) + '</div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="peer"><span class="ms-switch-host-name">对端 ' + msHtml(msState.peer_host_id) + '</span><div class="ms-switch-host-meta">SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
+  '</div>';
   if (targetRole === 'standby') {
-    return '<div class="pd15"><div class="c6 mb10">即将执行本机下线流程，将当前主机切换为备用机。</div>' +
+    return '<div class="pd15"><div class="c6 mb10">选择要执行下线流程的主机，将其切换为备用机。</div>' +
+      hostSelect +
       '<div class="ms-panel"><div class="ms-panel-body"><ul class="ms-tip-list">' +
       '<li>开启数据库备份、xtrabackup、xtrabackup-inc 全量/增量备份。</li>' +
       '<li>关闭网站配置备份、插件配置备份、lsyncd 实时同步、证书续签任务。</li>' +
@@ -217,23 +321,29 @@ function msBuildLocalSwitchForm(targetRole) {
       '</div>';
   }
   var o = msState.options;
-  return '<div class="pd15"><div class="c6 mb10">即将执行本机上线流程，将当前主机切换为主机。以下选项仅为 UI 预览。</div>' +
+  return '<div class="pd15"><div class="c6 mb10">选择要执行上线流程的主机，将其切换为主机。以下选项仅为 UI 预览。</div>' +
+    hostSelect +
     '<form class="bt-form ms-form" id="msLocalSwitchForm">' +
-    msInput('本机 IP', 'local_ip', o.local_ip, 'width:220px') +
-    msInput('对端 IP', 'remote_ip', o.remote_ip, 'width:220px') +
-    msInput('对端 SSH 端口', 'remote_ssh_port', o.remote_ssh_port, 'width:120px', 'number') +
-    msInput('同步目录', 'sync_file_dirs', o.sync_file_dirs, 'width:420px') +
-    msInput('忽略目录', 'sync_ignore_dirs', o.sync_ignore_dirs, 'width:420px') +
-    '<div class="line"><span class="tname">上线选项</span><div class="info-r"><div class="ms-option-grid">' +
+    '<div class="ms-switch-options"><div class="ms-switch-options-title">切换选项</div>' +
+      '<div class="ms-option-grid">' +
+      '<label class="ms-option-check"><input type="checkbox" name="sync_files" onchange="msToggleSyncOptions()" ' + (o.sync_files ? 'checked' : '') + '><span>同步文件</span></label>' +
       msCheck('run_checksum', '检查 checksum', o.run_checksum) +
       msCheck('allow_checksum_diff', '允许忽略 checksum 差异', o.allow_checksum_diff) +
-      msCheck('sync_files', '同步文件', o.sync_files) +
-      msCheck('promote_mysql_master', '提升数据库为主', o.promote_mysql_master) +
       msCheck('restore_site_setting', '恢复网站配置', o.restore_site_setting) +
-      msCheck('restore_plugin_setting', '恢复插件配置', o.restore_plugin_setting) +
+      msCheck('restore_plugin_setting', '面板插件配置', o.restore_plugin_setting) +
       msCheck('run_xtrabackup_inc_restore', '执行增量恢复', o.run_xtrabackup_inc_restore) +
-    '</div></div></div>' +
+      '</div>' +
+      '<div class="ms-sync-options ms-sync-group">' +
+        '<div class="ms-sync-field"><span>同步目录</span><input class="bt-input-text" type="text" name="sync_file_dirs" value="' + msHtml(o.sync_file_dirs) + '" /></div>' +
+        '<div class="ms-sync-field"><span>忽略目录</span><input class="bt-input-text" type="text" name="sync_ignore_dirs" value="' + msHtml(o.sync_ignore_dirs) + '" /></div>' +
+      '</div>' +
+    '</div>' +
     '</form></div>';
+}
+
+function msToggleSyncOptions() {
+  var checked = $('#msLocalSwitchForm [name=sync_files]').is(':checked');
+  $('.ms-sync-options').toggle(checked);
 }
 
 function msRunLocalSwitchMock(targetRole) {
@@ -262,7 +372,7 @@ function msSaveLocalSwitchOptionsMock() {
   if (!form.length) return;
   var data = {};
   form.serializeArray().forEach(function(item) { data[item.name] = item.value; });
-  ['run_checksum','allow_checksum_diff','sync_files','promote_mysql_master','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore'].forEach(function(key) {
+  ['run_checksum','allow_checksum_diff','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore'].forEach(function(key) {
     data[key] = form.find('[name=' + key + ']').is(':checked');
   });
   msState.options = $.extend(msState.options, data);
@@ -276,10 +386,11 @@ function msTestMonitorMock() {
 
 function msSaveMonitorMock() {
   var data = msReadMonitorForm();
+  msState.pair_name = data.pair_name || msState.pair_name;
   msState.monitor_url = data.monitor_url || '';
   msState.poll_interval = data.poll_interval || msState.poll_interval;
   msState.report_interval = data.report_interval || msState.report_interval;
-  layer.msg(msState.monitor_url ? 'UI 预览：云监控配置已保存' : 'UI 预览：地址为空，不上传状态', {icon: msState.monitor_url ? 1 : 0});
+  layer.msg(msState.monitor_url ? 'UI 预览：已按主备关系名称注册到云监控' : 'UI 预览：地址为空，不上传状态', {icon: msState.monitor_url ? 1 : 0});
   msMonitorPanel();
 }
 

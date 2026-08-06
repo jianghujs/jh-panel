@@ -15,6 +15,10 @@
 .ms-panel{border:1px solid #e8ebf0;border-radius:4px;background:#fff;}
 .ms-panel-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #edf0f4;padding:12px 14px;}
 .ms-panel-body{padding:14px;}
+.ms-overview-table{margin-bottom:0;}
+.ms-overview-table th,.ms-overview-table td{vertical-align:middle!important;}
+.ms-overview-table th{width:120px;color:#777;font-weight:normal;background:#fafafa;}
+.ms-overview-actions{display:flex;gap:6px;justify-content:flex-end;align-items:center;}
 .ms-status-pill{display:inline-block;min-width:64px;text-align:center;border-radius:3px;padding:3px 8px;font-size:12px;border:1px solid transparent;}
 .ms-pill-normal{color:#2e7d32;background:#f0fff0;border-color:#bfe4bf;}
 .ms-pill-warn{color:#9a6200;background:#fff7e6;border-color:#f1d399;}
@@ -30,14 +34,62 @@
 .ms-health{border:1px solid #edf0f4;border-radius:4px;padding:10px;min-height:68px;}
 .ms-health-label{font-size:12px;color:#888;}
 .ms-health-value{font-size:13px;color:#333;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ms-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.ms-check-card{border:1px solid #e6e9ef;border-radius:4px;background:#fff;overflow:hidden;}
+.ms-check-card-disabled{background:#fafafa;border-color:#eceff3;}
+.ms-check-card-disabled .ms-check-head{background:#f7f8fa;}
+.ms-check-card-disabled .ms-check-table th,.ms-check-card-disabled .ms-check-table td,.ms-check-card-disabled .ms-check-name,.ms-check-card-disabled .ms-host-name{color:#999!important;}
+.ms-check-head{height:48px;padding:10px 12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #edf0f4;}
+.ms-check-table{width:100%;margin-bottom:0;table-layout:fixed;}
+.ms-check-status-col{width:260px;}
+.ms-check-table th,.ms-check-table td{vertical-align:middle!important;}
+.ms-check-group-row td{background:#f7f8fa;color:#666;font-weight:600;}
+.ms-check-name{color:#333;}
+.ms-check-status-head{text-align:left;}
+.ms-check-actual{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:20px;}
+.ms-check-actual-pass{color:#2e7d32;}
+.ms-check-actual-fail{color:#b02a25;}
+.ms-check-icon{display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;margin-right:6px;font-size:12px;}
+.ms-check-pass{color:#2e7d32;background:#f0fff0;}
+.ms-check-warn{color:#9a6200;background:#fff7e6;}
+.ms-check-unknown{color:#777;background:#f1f3f5;}
+.ms-check-fail{color:#b02a25;background:#fff1f0;}
+.ms-role-mark{display:inline-block;min-width:22px;text-align:center;border-radius:3px;padding:2px 5px;font-size:12px;line-height:16px;}
+.ms-role-master{color:#2e7d32;background:#f0fff0;border:1px solid #bfe4bf;}
+.ms-role-standby{color:#245580;background:#eef7ff;border:1px solid #b8d7ef;}
+.ms-role-disabled{color:#999;background:#f5f5f5;border:1px solid #ddd;}
+.ms-current-site-tag{display:inline-block;border:1px solid #b8d7ef;background:#eef7ff;color:#245580;border-radius:3px;padding:2px 6px;font-size:12px;line-height:16px;}
+.ms-host-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5cb85c;flex:0 0 auto;}
+.ms-host-dot-switching{background:#f0ad4e;animation:msBlink 1.1s ease-in-out infinite;box-shadow:0 0 0 2px rgba(240,173,78,.18);}
+.ms-host-dot-offline{background:#d9534f;}
+.ms-host-dot-unbound{background:#b8bec6;}
+.ms-host-name-offline{color:#999;}
+.ms-loading-state{display:inline-flex;align-items:center;gap:5px;color:#9a6200;font-size:12px;line-height:18px;vertical-align:middle;}
+.ms-loading-icon{display:inline-block;width:12px;height:12px;border:2px solid #f1d399;border-top-color:#f0ad4e;border-radius:50%;animation:msSpin .8s linear infinite;box-sizing:border-box;}
+@keyframes msBlink{0%,100%{opacity:1;}50%{opacity:.35;}}
+@keyframes msSpin{to{transform:rotate(360deg);}}
 .ms-form .line .tname{width:130px;}
 .ms-form .bt-input-text{height:30px;}
-.ms-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;}
-.ms-option-grid label{font-weight:normal;color:#555;}
+.ms-switch-hosts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.ms-switch-host{display:block;border:1px solid #e6e9ef;border-radius:4px;background:#fff;padding:10px 12px;font-weight:normal;cursor:pointer;}
+.ms-switch-host input{margin-right:6px;}
+.ms-switch-host-name{font-weight:600;color:#333;}
+.ms-switch-host-meta{font-size:12px;color:#888;line-height:20px;margin-left:21px;}
+.ms-switch-options{border:1px solid #e6e9ef;border-radius:4px;background:#fff;padding:12px;margin-top:10px;}
+.ms-switch-options-title{font-weight:600;color:#333;margin-bottom:10px;}
+.ms-sync-group{border:1px solid #edf0f4;background:#fafbfc;border-radius:4px;padding:10px;margin-top:10px;}
+.ms-sync-options{display:none;}
+.ms-sync-field{display:flex;align-items:center;margin-top:8px;}
+.ms-sync-field:first-child{margin-top:0;}
+.ms-sync-field span{width:78px;color:#777;}
+.ms-sync-field .bt-input-text{width:460px;}
+.ms-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;}
+.ms-option-check{display:flex;align-items:center;height:26px;margin:0;font-weight:normal;color:#555;line-height:26px;}
+.ms-option-check input{margin:0 8px 0 0;flex:0 0 auto;}
 .ms-log-box{height:320px;background:#1f2329;color:#d7dde8;border-radius:4px;padding:12px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;white-space:pre-wrap;}
 .ms-tip-list{color:#666;line-height:28px;margin:0;padding-left:18px;}
 .ms-actions .btn{margin-left:6px;}
-@media(max-width:900px){.ms-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.ms-health-grid{grid-template-columns:1fr;}}
+@media(max-width:900px){.ms-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.ms-health-grid,.ms-check-grid{grid-template-columns:1fr;}}
 </style>
 
 <div class="bt-form ms-page">
@@ -45,7 +97,7 @@
     <div class="bt-w-menu">
       <p class="bgw" onclick="msOverview();">总览</p>
       <p onclick="msConfigPanel();">绑定主备</p>
-      <p onclick="msMonitorPanel();">云监控</p>
+      <p onclick="msMonitorPanel();">绑定云监控</p>
       <p onclick="msHealthPanel();">自检状态</p>
       <p onclick="msLogPanel();">切换日志</p>
       <p onclick="msReadmePanel();">说明</p>

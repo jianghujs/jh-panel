@@ -161,8 +161,9 @@ function msCheckHostCard(host) {
   });
   var nameCls = host.online === false || host.unbound ? 'ms-host-name ms-host-name-offline' : 'ms-host-name';
   var cardCls = host.unbound ? 'ms-check-card ms-check-card-disabled' : 'ms-check-card';
+  var switchingMark = host.switching ? '<span class="ms-loading-state" title="' + msHtml(host.switch_step || '正在切换中') + '"><span class="ms-loading-icon"></span>切换中</span>' : '';
   return '<div class="' + cardCls + '">' +
-    '<div class="ms-check-head">' + msHostDot(host) + msRoleMark(host.role, host.unbound) + '<span class="' + nameCls + '">' + msHtml(host.name) + '</span>' + (host.current ? '<span class="ms-current-site-tag">当前</span>' : '') + '</div>' +
+    '<div class="ms-check-head">' + msHostDot(host) + msRoleMark(host.role, host.unbound) + '<span class="' + nameCls + '">' + msHtml(host.name) + '</span>' + (host.current ? '<span class="ms-current-site-tag">当前</span>' : '') + switchingMark + '</div>' +
     '<table class="table table-hover ms-check-table"><colgroup><col><col class="ms-check-status-col"></colgroup><thead><tr><th>检查项</th><th class="ms-check-status-head">状态</th></tr></thead><tbody>' + rows + '</tbody></table>' +
   '</div>';
 }

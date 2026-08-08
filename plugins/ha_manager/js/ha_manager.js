@@ -3,7 +3,11 @@ var msState = {
   pair_name: '',
   pair_id: '',
   host_id: '',
+  host_name: '',
   peer_host_id: '',
+  peer_state: null,
+  peer_collect_status: '',
+  peer_collect_msg: '',
   peer_public_ip: '',
   peer_ssh_port: '22',
   peer_ssh_user: 'root',
@@ -148,9 +152,12 @@ function msHealthHosts() {
   var localRole = msState.role;
   var peerRole = localRole === 'master' ? 'standby' : 'master';
   var peerBound = msState.bind_test_status === 'success';
+  var localName = msState.host_name || msState.host_id || '本机';
+  var peerState = msState.peer_state || {};
+  var peerName = peerState.host_name || msState.peer_host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
   return [
-    {name: '本机 ' + msState.host_id, role: localRole, current: true, online: true, switching: msState.switch_status === 'waiting_online', switch_step: '等待上线流程', health: msState.health},
-    {name: '对端 ' + msState.peer_host_id, role: peerRole, current: false, online: peerBound, unbound: !peerBound, switching: false, switch_step: '', health: {mysql: {status: 'normal'}, rsync: {status: 'normal'}, openresty: {status: 'normal'}}}
+    {name: localName, role: localRole, current: true, online: true, switching: msState.switch_status === 'waiting_online', switch_step: '等待上线流程', health: msState.health},
+    {name: peerName, role: peerState.role || peerRole, current: false, online: peerBound && msState.peer_collect_status !== 'failed', unbound: !peerBound, switching: false, switch_step: '', health: peerState.health_detail || {mysql: {status: 'normal'}, rsync: {status: 'normal'}, openresty: {status: 'normal'}}}
   ];
 }
 
@@ -373,9 +380,12 @@ function msOpenLocalSwitchDialog() {
 }
 
 function msBuildLocalSwitchForm(targetRole) {
+  var localName = msState.host_name || msState.host_id || '本机';
+  var peerState = msState.peer_state || {};
+  var peerName = peerState.host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
   var hostSelect = '<div class="ms-switch-hosts">' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="local" checked><span class="ms-switch-host-name">本机 ' + msHtml(msState.host_id) + '</span><div class="ms-switch-host-meta">当前: ' + msHtml(msState.role) + ' / IP: ' + msHtml(msState.options.local_ip) + '</div></label>' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="peer"><span class="ms-switch-host-name">对端 ' + msHtml(msState.peer_host_id) + '</span><div class="ms-switch-host-meta">SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="local" checked><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">当前: ' + msHtml(msState.role) + ' / IP: ' + msHtml(msState.options.local_ip) + '</div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="peer"><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
   '</div>';
   if (targetRole === 'standby') {
     return '<div class="pd15"><div class="c6 mb10">选择要执行下线流程的主机，将其切换为备用机。</div>' +

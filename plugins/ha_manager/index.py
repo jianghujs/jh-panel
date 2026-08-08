@@ -131,14 +131,32 @@ def _host_id():
     return current
 
 
+def _panel_title():
+    title = ''
+    title_path = '/www/server/jh-panel/data/title.pl'
+    if os.path.exists(title_path):
+        title = mw.readFile(title_path).strip()
+    return title or '江湖面板'
+
+
+def _default_monitor_url():
+    port = ''
+    port_path = '/www/server/jh-monitor/data/port.pl'
+    if os.path.exists(port_path):
+        port = mw.readFile(port_path).strip()
+    port = port or '10844'
+    return 'http://{0}:{1}'.format(mw.getHostAddr(), port)
+
+
 def _default_config():
     return {
-        'monitor_url': '',
+        'monitor_url': _default_monitor_url(),
+        'monitor_disabled': False,
         'pair_name': '生产面板主备',
         'pair_id': '',
         'api_secret': hashlib.sha256((str(time.time()) + mw.getRandomString(16)).encode('utf-8')).hexdigest(),
         'host_id': _host_id(),
-        'host_name': os.uname().nodename,
+        'host_name': _panel_title(),
         'host_ip': mw.getHostAddr(),
         'peer_host_id': '',
         'peer_public_ip': '',
@@ -177,6 +195,9 @@ def _config():
     saved = _read_json(CONFIG_PATH, {})
     cfg.update(saved)
     cfg['options'].update(saved.get('options') or {})
+    cfg['host_name'] = _panel_title()
+    if not cfg.get('monitor_disabled') and not cfg.get('monitor_url'):
+        cfg['monitor_url'] = _default_monitor_url()
     if not cfg.get('pair_id'):
         source = cfg.get('host_id', '') + '_' + cfg.get('peer_public_ip', '')
         cfg['pair_id'] = 'HA_' + hashlib.sha1(source.encode('utf-8')).hexdigest()[:12].upper()
@@ -362,9 +383,13 @@ def _append_switch_log(switch_run_id, phase, status, text):
 
 def get_state():
     cfg = _config()
+    peer_state = collect_peer_state_raw(cfg)
     data = cfg.copy()
     data['health'] = _health_snapshot(cfg)
     data['state'] = _state(cfg)
+    data['peer_state'] = peer_state.get('data') if peer_state.get('status') else None
+    data['peer_collect_status'] = 'success' if peer_state.get('status') else 'failed'
+    data['peer_collect_msg'] = peer_state.get('msg', '')
     data['log'] = read_latest_log_text()
     return _return(True, 'ok', data)
 
@@ -479,6 +504,7 @@ def save_monitor():
     for key in ('pair_name', 'monitor_url', 'poll_interval', 'report_interval'):
         if key in data:
             cfg[key] = data.get(key)
+    cfg['monitor_disabled'] = False if cfg.get('monitor_url') else True
     cfg['poll_interval'] = int(cfg.get('poll_interval') or 10)
     cfg['report_interval'] = int(cfg.get('report_interval') or 30)
     _save_config(cfg)
@@ -491,6 +517,7 @@ def save_monitor():
 def clear_monitor():
     cfg = _config()
     cfg['monitor_url'] = ''
+    cfg['monitor_disabled'] = True
     _save_config(cfg)
     return _return(True, '已清空云监控地址', cfg)
 
@@ -587,12 +614,22 @@ def collect_peer_state_raw(cfg):
     if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': 'SSH未绑定或未验证'}
     remote_path = REMOTE_STATE_PATH
-    cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} 'cat {3}'".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), remote_path)
+    marker = '__HA_MANAGER_PANEL_TITLE__'
+    remote_cmd = "cat {0}; printf '\\n{1}\\n'; cat /www/server/jh-panel/data/title.pl 2>/dev/null || true".format(remote_path, marker)
+    cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} {3}".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), shlex.quote(remote_cmd))
     out, err, code = mw.execShell(cmd, timeout=8)
     if code != 0:
         return {'status': False, 'msg': err or out or 'SSH采集失败'}
     try:
-        return {'status': True, 'data': json.loads(out)}
+        state_text = out
+        panel_title = ''
+        if marker in out:
+            state_text, panel_title = out.split(marker, 1)
+            panel_title = panel_title.strip()
+        state = json.loads(state_text.strip())
+        if panel_title:
+            state['host_name'] = panel_title
+        return {'status': True, 'data': state}
     except Exception:
         return {'status': False, 'msg': '对端状态格式错误'}
 

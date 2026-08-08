@@ -711,6 +711,86 @@ def _unlock():
         os.remove(LOCK_PATH)
 
 
+def _remote_phase_options(cfg, phase):
+    options = dict(cfg.get('options') or {})
+    if phase == 'online':
+        options['local_ip'] = cfg.get('peer_public_ip')
+        options['remote_ip'] = cfg.get('host_ip')
+        options['remote_ssh_port'] = options.get('local_ssh_port') or '22'
+    return options
+
+
+def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机'):
+    cfg['switch_run_id'] = switch_run_id
+    cfg['switch_status'] = phase + '_running'
+    if options:
+        cfg['options'].update(options)
+    _save_config(cfg)
+    _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + ('上线' if phase == 'online' else '下线') + '脚本，目标角色：' + ('主' if role == 'master' else '备'))
+    _run_executor(phase, cfg)
+    cfg['role'] = role
+    cfg['desired_role'] = role
+    cfg['switch_status'] = phase + '_done'
+    _save_config(cfg)
+    _append_switch_log(switch_run_id, phase, 'success', label + ('上线' if phase == 'online' else '下线') + '脚本执行完成')
+    _state(cfg)
+    report_switch_event(cfg, phase, 'success', label + ('上线' if phase == 'online' else '下线') + '脚本执行完成')
+    return cfg
+
+
+def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
+    if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
+        raise RuntimeError('SSH未绑定或未验证，无法在对端执行切换脚本')
+    payload = {
+        'phase': phase,
+        'role': role,
+        'switch_run_id': switch_run_id,
+        'options': options or {},
+        'orchestrated': True
+    }
+    args = shlex.quote(json.dumps(payload, ensure_ascii=False))
+    remote_cmd = 'cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {0}'.format(args)
+    cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} {3}".format(
+        cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), shlex.quote(remote_cmd)
+    )
+    _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + ('上线' if phase == 'online' else '下线') + '脚本')
+    out, err, code = mw.execShell(cmd, timeout=300)
+    if code != 0:
+        raise RuntimeError('对端' + ('上线' if phase == 'online' else '下线') + '脚本执行失败: ' + (err or out))
+    try:
+        result = json.loads(out.strip().split('\n')[-1])
+    except Exception:
+        raise RuntimeError('对端切换返回格式错误: ' + out[-1000:])
+    if not result.get('status'):
+        raise RuntimeError(result.get('msg') or '对端切换失败')
+    _append_switch_log(switch_run_id, phase, 'success', '对端' + ('上线' if phase == 'online' else '下线') + '脚本执行完成')
+    return result.get('data') or {}
+
+
+def switch_phase():
+    data = _args()
+    cfg = _config()
+    phase = data.get('phase')
+    role = data.get('role') or ('master' if phase == 'online' else 'standby')
+    if phase not in ('offline', 'online'):
+        return _return(False, '切换阶段无效')
+    if role not in ('master', 'standby'):
+        return _return(False, '目标角色无效')
+    if not _lock():
+        return _return(False, '已有切换任务正在执行')
+    try:
+        switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
+        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, data.get('options') or {}, '本机')
+        return _return(True, '阶段执行完成', cfg)
+    except Exception as e:
+        _append_switch_log(cfg.get('switch_run_id') or data.get('switch_run_id') or 'failed', phase or 'switch', 'failed', str(e))
+        cfg['switch_status'] = 'failed'
+        _save_config(cfg)
+        return _return(False, '阶段执行失败: ' + str(e))
+    finally:
+        _unlock()
+
+
 def local_switch():
     data = _args()
     cfg = _config()
@@ -723,16 +803,20 @@ def local_switch():
         cfg['switch_status'] = 'running'
         cfg['options'].update(data.get('options') or {})
         _save_config(cfg)
-        phase = 'online' if target_role == 'master' else 'offline'
-        _append_switch_log(switch_run_id, phase, 'start', '本机开始执行切换为' + ('主' if target_role == 'master' else '备'))
-        _run_executor(phase, cfg)
-        cfg['role'] = target_role
+        if target_role == 'master':
+            _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标备用机（对端）执行下线脚本，再在目标主机（本机）执行上线脚本')
+            _run_remote_switch_phase(cfg, 'offline', 'standby', switch_run_id, _remote_phase_options(cfg, 'offline'))
+            cfg = _run_local_switch_phase(cfg, 'online', 'master', switch_run_id, data.get('options') or {}, '本机')
+        else:
+            _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标备用机（本机）执行下线脚本，再在目标主机（对端）执行上线脚本')
+            cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, data.get('options') or {}, '本机')
+            _run_remote_switch_phase(cfg, 'online', 'master', switch_run_id, _remote_phase_options(cfg, 'online'))
         cfg['desired_role'] = target_role
-        cfg['switch_status'] = phase + '_done'
+        cfg['switch_status'] = 'switch_done'
         _save_config(cfg)
-        _append_switch_log(switch_run_id, phase, 'success', '本机切换完成')
+        _append_switch_log(switch_run_id, 'switch', 'success', '切换主备完成')
         _state(cfg)
-        report_switch_event(cfg, phase, 'success', '本机切换完成')
+        report_switch_event(cfg, 'switch', 'success', '切换主备完成')
         return _return(True, '切换执行完成', cfg)
     except Exception as e:
         _append_switch_log(cfg.get('switch_run_id') or 'failed', 'switch', 'failed', str(e))

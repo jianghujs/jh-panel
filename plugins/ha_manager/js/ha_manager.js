@@ -388,7 +388,7 @@ function msBuildLocalSwitchForm(targetRole) {
     '<label class="ms-switch-host"><input type="radio" name="switch_host" value="peer"><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
   '</div>';
   if (targetRole === 'standby') {
-    return '<div class="pd15"><div class="c6 mb10">选择要执行下线流程的主机，将其切换为备用机。</div>' +
+    return '<div class="pd15"><div class="c6 mb10">确认后会先在本机执行下线脚本切为备用机，成功后再在对端执行上线脚本切为主机。</div>' +
       hostSelect +
       '<div class="ms-panel"><div class="ms-panel-body"><ul class="ms-tip-list">' +
       '<li>开启数据库备份、xtrabackup、xtrabackup-inc 全量/增量备份。</li>' +
@@ -400,7 +400,7 @@ function msBuildLocalSwitchForm(targetRole) {
       '</div>';
   }
   var o = msState.options;
-  return '<div class="pd15"><div class="c6 mb10">选择要执行上线流程的主机，将其切换为主机。</div>' +
+  return '<div class="pd15"><div class="c6 mb10">确认后会先在对端执行下线脚本切为备用机，成功后再在本机执行上线脚本切为主机。</div>' +
     hostSelect +
     '<form class="bt-form ms-form" id="msLocalSwitchForm">' +
     '<div class="ms-switch-options"><div class="ms-switch-options-title">切换选项</div>' +

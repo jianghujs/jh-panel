@@ -38,6 +38,8 @@ var msState = {
   log: ''
 };
 
+var msKeyInfo = {public_key: '', has_private: false, has_public: false, public_key_path: '/root/.ssh/id_rsa.pub'};
+
 function msPost(method, args, callback) {
   var loadT = layer.msg('正在处理...', {icon: 16, time: 0});
   $.post('/plugins/run', {name: 'ha_manager', func: method, args: JSON.stringify(args || {})}, function(res) {
@@ -53,6 +55,14 @@ function msPost(method, args, callback) {
     var data = res.data;
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch (e2) {}
+    }
+    if (data && typeof data === 'object' && data.hasOwnProperty('status') && data.hasOwnProperty('msg')) {
+      if (!data.status) {
+        layer.msg(data.msg || '插件接口请求失败', {icon: 2});
+        if (callback) callback(null, data);
+        return;
+      }
+      data = data.data || {};
     }
     if (callback) callback(data, res);
   }, 'json').fail(function() {
@@ -226,16 +236,38 @@ function msHealthBox(label, item) {
   return '<div class="ms-health"><div class="ms-health-label">' + msHtml(label) + ' ' + msPill(item.status, msStatusText(item.status)) + '</div><div class="ms-health-value" title="' + msHtml(item.text) + '">' + msHtml(item.text) + '</div></div>';
 }
 
-function msConfigPanel() {
+function msKeyPanel() {
   msSetActive(1);
+  var html = '<div class="bt-form">' +
+    '<div class="line"><span class="tname">公钥</span><div class="info-r c4"><textarea class="bt-input-text" readonly name="local_public_key" style="width:520px;height:82px;line-height:22px;background:#f7f8fa;" placeholder="尚未生成"></textarea></div></div>' +
+    '<div class="line"><span class="tname">私钥</span><div class="info-r c4"><textarea class="bt-input-text" readonly name="local_private_key" style="width:520px;height:82px;line-height:22px;background:#f7f8fa;" placeholder="尚未生成"></textarea></div></div>' +
+    '<div class="line"><span class="tname"></span><div class="info-r">' +
+      '<button type="button" class="btn btn-success btn-sm" id="msKeyActionBtn" onclick="return msGenerateLocalKey()">生成密钥</button>' +
+      '<button type="button" class="btn btn-default btn-sm ml5" onclick="return msLoadLocalKey()">刷新</button>' +
+      '<button type="button" class="btn btn-default btn-sm ml5" onclick="return msCopyLocalPublicKey()">复制公钥</button>' +
+      '<span id="msKeyPathTip" style="margin-left:8px;color:#888;font-size:12px;"></span>' +
+    '</div></div>' +
+  '</div>';
+  $('.soft-man-con').html(html);
+  msLoadLocalKey();
+}
+
+function msConfigPanel() {
+  msSetActive(2);
   var testPill = msState.bind_test_status === 'success' ? msPill('normal', 'SSH已通过') : msState.bind_test_status === 'failed' ? msPill('danger', 'SSH失败') : msPill('warning', '未测试');
-  var html = '<div class="ms-panel"><div class="ms-panel-head"><div><div class="ms-title">绑定对端江湖面板</div><div class="ms-sub">输入对方机器公网 IP 和 SSH 信息，测试连接后保存主备关系。</div></div>' + testPill + '</div><div class="ms-panel-body"><form class="bt-form ms-form" id="msConfigForm">' +
-    msInput('对方公网IP', 'peer_public_ip', msState.peer_public_ip, 'width:260px') +
+  var html = '<div class="ms-panel"><div class="ms-panel-head"><div><div class="ms-title">绑定对端江湖面板</div><div class="ms-sub">输入对方机器 IP 和 SSH 信息，测试连接后保存主备关系。</div></div>' + testPill + '</div><div class="ms-panel-body"><form class="bt-form ms-form" id="msConfigForm">' +
+    msInput('对方IP', 'peer_public_ip', msState.peer_public_ip, 'width:260px') +
     msInput('SSH端口', 'peer_ssh_port', msState.peer_ssh_port, 'width:120px', 'number') +
     msInput('SSH用户', 'peer_ssh_user', msState.peer_ssh_user, 'width:160px') +
-    '<div class="line"><span class="tname">对方公钥</span><div class="info-r c4"><textarea class="bt-input-text" name="peer_public_key" style="width:520px;height:92px;line-height:22px" placeholder="粘贴对方机器用于主备同步的 SSH 公钥">' + msHtml(msState.peer_public_key) + '</textarea></div></div>' +
+    '<div class="line"><span class="tname">对方公钥</span><div class="info-r">' +
+      '<textarea class="bt-input-text" name="peer_public_key" style="width:360px;height:70px" placeholder="粘贴对方机器用于主备同步的 SSH 公钥">' + msHtml(msState.peer_public_key) + '</textarea>' +
+      '<div style="margin-top:6px;margin-left: 130px;">' +
+        '<button type="button" class="btn btn-default btn-xs" onclick="return msCopyLocalPublicKey()">复制本机公钥</button>' +
+        '<span style="margin-left:8px;color:#888;font-size:12px;">把本机公钥复制到对方机器，用于对方回连采集。</span>' +
+      '</div>' +
+    '</div></div>' +
     '<div class="line"><span class="tname"></span><div class="info-r"><button type="button" class="btn btn-default btn-sm" onclick="msTestPeerSsh()">测试SSH连接</button><button type="button" class="btn btn-success btn-sm ml5" onclick="msSaveConfig()">保存绑定</button></div></div>' +
-    '<ul class="help-info-text c7"><li>真实实现时会把对方公钥写入本机授权配置，并通过 SSH 测试对端可达性。</li><li>主备关系ID由插件保存绑定时自动生成，不需要手动填写。</li><li>云监控地址在单独页签配置，默认留空时不会上传主备状态。</li></ul>' +
+    '<ul class="help-info-text c7"><li>保存绑定前先确认双方都已交换 SSH 公钥，并通过 SSH 测试对端可达性。</li><li>主备关系ID由插件保存绑定时自动生成，不需要手动填写。</li><li>云监控地址在单独页签配置，默认留空时不会上传主备状态。</li></ul>' +
     '</form></div></div>';
   $('.soft-man-con').html(html);
 }
@@ -245,7 +277,7 @@ function msInput(label, name, value, style, type) {
 }
 
 function msMonitorPanel() {
-  msSetActive(2);
+  msSetActive(3);
   var configured = !!msState.monitor_url;
   var html = '<div class="ms-panel"><div class="ms-panel-head"><div><div class="ms-title">绑定云监控上报配置</div><div class="ms-sub">填写主备关系名称和云监控地址后，插件会把本机和对端状态注册并上报到云监控。</div></div>' + (configured ? msPill('normal', '已开启') : msPill('warning', '未配置')) + '</div><div class="ms-panel-body"><form class="bt-form ms-form" id="msMonitorForm">' +
     msInput('主备关系名称', 'pair_name', msState.pair_name, 'width:260px') +
@@ -262,7 +294,7 @@ function msCheck(name, label, checked) {
 }
 
 function msHealthPanel() {
-  msSetActive(3);
+  msSetActive(4);
   var cards = msHealthHosts().map(msCheckHostCard).join('');
   var html = '<div class="ms-topbar"><div><div class="ms-title">自检状态</div><div class="ms-sub">基于上下线脚本的每个步骤，检查本机和对端在当前角色下的期望状态是否满足。</div></div><button class="btn btn-default btn-sm" onclick="msRefreshHealth()">重新自检</button></div>' +
     '<div class="ms-check-grid">' + cards + '</div>';
@@ -270,17 +302,17 @@ function msHealthPanel() {
 }
 
 function msLogPanel() {
-  msSetActive(4);
+  msSetActive(5);
   var html = '<div class="ms-topbar"><div><div class="ms-title">切换日志</div><div class="ms-sub">云监控日志文件: ' + msHtml(msState.log_path) + '</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msRefreshLog()">刷新日志</button><button class="btn btn-default btn-sm" onclick="msCopyLogPath()">复制路径</button></div></div>' +
     '<div class="ms-log-box" id="msLogBox">' + msHtml(msState.log) + '</div>';
   $('.soft-man-con').html(html);
 }
 
 function msReadmePanel() {
-  msSetActive(5);
+  msSetActive(6);
   var html = '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">插件说明</div></div><div class="ms-panel-body"><ul class="ms-tip-list">' +
     '<li>本插件第一版只做手动切换，不做自动故障切换。</li>' +
-    '<li>绑定时先输入对方机器公网 IP、SSH 端口、SSH 用户和对方公钥，测试连接后保存主备关系。</li>' +
+    '<li>绑定时先输入对方机器 IP、SSH 端口、SSH 用户和对方公钥，测试连接后保存主备关系。</li>' +
     '<li>云监控地址在“云监控”页签单独配置，默认留空；留空时不上传主备状态和切换日志。</li>' +
     '<li>插件周期轮询云监控期望状态，领取 offline 或 online 阶段任务。</li>' +
     '<li>切换状态和日志通过 API 上报云监控，日志最终写入 <code>/www/server/jh-monitor/logs/ha_switch/</code>。</li>' +
@@ -433,7 +465,7 @@ function msClearMonitor() {
 
 function msTestPeerSsh() {
   var data = msReadConfigForm();
-  if (!data.peer_public_ip) return layer.msg('请先填写对方公网IP', {icon: 2});
+  if (!data.peer_public_ip) return layer.msg('请先填写对方IP', {icon: 2});
   if (!data.peer_public_key) return layer.msg('请先粘贴对方公钥', {icon: 2});
   msPost('test_peer_ssh', data, function(result) {
     if (result) msState = $.extend(true, msState, result);
@@ -457,13 +489,70 @@ function msOpenSwitchConfirm() {
 function msSaveConfig() {
   var data = msReadConfigForm();
   if (!data.peer_public_ip || !data.peer_public_key) {
-    return layer.msg('请填写对方公网IP和对方公钥', {icon: 2});
+    return layer.msg('请填写对方IP和对方公钥', {icon: 2});
   }
   msPost('save_binding', data, function(result) {
     if (result) msState = $.extend(true, msState, result);
     layer.msg(msState.bind_test_status === 'success' ? '主备关系已绑定' : '已保存，建议先测试SSH连接', {icon: msState.bind_test_status === 'success' ? 1 : 0});
     msConfigPanel();
   });
+}
+
+function msLoadLocalKey() {
+  msPost('get_key_info', {}, function(data) {
+    msKeyInfo = $.extend(msKeyInfo, data || {});
+    $('textarea[name="local_public_key"]').val(msKeyInfo.public_key || '');
+    $('textarea[name="local_private_key"]').val(msKeyInfo.private_key || '');
+    $('#msKeyActionBtn').text(msKeyInfo.has_private || msKeyInfo.has_public ? '重新生成密钥' : '生成密钥');
+    $('#msKeyPathTip').text(msKeyInfo.public_key ? ('公钥路径: ' + (msKeyInfo.public_key_path || '/root/.ssh/id_rsa.pub')) : '未检测到密钥');
+  });
+  return false;
+}
+
+function msGenerateLocalKey() {
+  var force = msKeyInfo.has_private || msKeyInfo.has_public;
+  var doGenerate = function() {
+    msPost('generate_keypair', {force: force ? 1 : 0}, function(data) {
+      if (data) {
+        msKeyInfo = $.extend(msKeyInfo, data);
+        $('textarea[name="local_public_key"]').val(msKeyInfo.public_key || '');
+        $('textarea[name="local_private_key"]').val(msKeyInfo.private_key || '');
+        $('#msKeyActionBtn').text('重新生成密钥');
+        $('#msKeyPathTip').text('公钥路径: ' + (msKeyInfo.public_key_path || '/root/.ssh/id_rsa.pub'));
+      }
+      layer.msg('密钥已生成', {icon: 1});
+    });
+  };
+  if (force) {
+    layer.confirm('重新生成会覆盖 /root/.ssh/id_rsa 和 id_rsa.pub，可能影响已有 SSH 互信，是否继续？', {icon: 3, title: '确认重新生成'}, function(index) {
+      layer.close(index);
+      doGenerate();
+    });
+    return false;
+  }
+  doGenerate();
+  return false;
+}
+
+function msCopyLocalPublicKey() {
+  msPost('get_local_public_key', {}, function(data) {
+    var key = data && data.public_key ? data.public_key : '';
+    if (!key) {
+      layer.msg('本机公钥为空，请先生成本机公钥', {icon: 2});
+      return;
+    }
+    var $temp = $('<textarea>');
+    $('body').append($temp);
+    $temp.val(key).select();
+    try {
+      document.execCommand('copy');
+      layer.msg('已复制本机公钥', {icon: 1});
+    } catch (e) {
+      layer.msg('复制失败，请手动复制', {icon: 2});
+    }
+    $temp.remove();
+  });
+  return false;
 }
 
 function msBuildPairId(peerIp) {

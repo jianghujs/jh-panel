@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import shlex
 import sys
 import time
 import urllib.request
@@ -23,6 +24,8 @@ STATE_PATH = os.path.join(DATA_DIR, 'state.json')
 QUEUE_PATH = os.path.join(DATA_DIR, 'report_queue.json')
 SEQ_PATH = os.path.join(DATA_DIR, 'seq.json')
 LOCK_PATH = os.path.join(DATA_DIR, 'switch.lock')
+SSH_PRIVATE_KEY_PATH = '/root/.ssh/id_rsa'
+SSH_PUBLIC_KEY_PATH = '/root/.ssh/id_rsa.pub'
 
 
 def _now():
@@ -218,7 +221,7 @@ def save_binding():
         if key in data:
             cfg[key] = str(data.get(key) or '').strip()
     if not cfg.get('peer_public_ip') or not cfg.get('peer_public_key'):
-        return _return(False, '请填写对方公网IP和对方公钥')
+        return _return(False, '请填写对方IP和对方公钥')
     if not cfg.get('peer_host_id'):
         cfg['peer_host_id'] = 'H_PEER_' + hashlib.sha1(cfg.get('peer_public_ip').encode('utf-8')).hexdigest()[:8].upper()
     cfg['options']['remote_ip'] = cfg.get('peer_public_ip')
@@ -228,6 +231,73 @@ def save_binding():
     return _return(True, '绑定已保存', cfg)
 
 
+def get_local_public_key():
+    info = _ssh_key_info()
+    key = info.get('public_key') or ''
+    if not key:
+        return _return(False, '本机公钥为空')
+    return _return(True, 'ok', {'public_key': key, 'path': SSH_PUBLIC_KEY_PATH})
+
+
+def _ssh_key_info():
+    public_key = ''
+    private_key = ''
+    private_exists = os.path.exists(SSH_PRIVATE_KEY_PATH)
+    public_exists = os.path.exists(SSH_PUBLIC_KEY_PATH)
+    if private_exists:
+        private_key = mw.readFile(SSH_PRIVATE_KEY_PATH).strip()
+    if public_exists:
+        public_key = mw.readFile(SSH_PUBLIC_KEY_PATH).strip()
+    return {
+        'public_key': public_key,
+        'private_key': private_key,
+        'has_private': private_exists,
+        'has_public': public_exists,
+        'private_key_path': SSH_PRIVATE_KEY_PATH,
+        'public_key_path': SSH_PUBLIC_KEY_PATH
+    }
+
+
+def get_key_info():
+    return _return(True, 'ok', _ssh_key_info())
+
+
+def generate_keypair():
+    data = _args()
+    force = str(data.get('force', '0')).lower() in ('1', 'true', 'yes', 'on')
+    if (os.path.exists(SSH_PRIVATE_KEY_PATH) or os.path.exists(SSH_PUBLIC_KEY_PATH)) and not force:
+        return _return(False, '本机 SSH 密钥已存在，如需覆盖请确认重新生成')
+    ssh_dir = os.path.dirname(SSH_PRIVATE_KEY_PATH)
+    if not os.path.exists(ssh_dir):
+        os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+    if force:
+        for path in (SSH_PRIVATE_KEY_PATH, SSH_PUBLIC_KEY_PATH):
+            if os.path.exists(path):
+                os.remove(path)
+    cmd = 'ssh-keygen -t rsa -b 4096 -N "" -C {0} -f {1}'.format(
+        shlex.quote('ha_manager@' + os.uname().nodename),
+        shlex.quote(SSH_PRIVATE_KEY_PATH)
+    )
+    out, err, code = mw.execShell(cmd, timeout=20)
+    if code != 0:
+        return _return(False, '生成本机 SSH 密钥失败: ' + (err or out))
+    try:
+        os.chmod(SSH_PRIVATE_KEY_PATH, 0o600)
+        os.chmod(SSH_PUBLIC_KEY_PATH, 0o644)
+    except Exception:
+        pass
+    info = _ssh_key_info()
+    if not info.get('public_key'):
+        return _return(False, '密钥已生成但公钥读取失败')
+    return _return(True, '生成成功', info)
+
+
+def init_keypair():
+    if os.path.exists(SSH_PRIVATE_KEY_PATH) and os.path.exists(SSH_PUBLIC_KEY_PATH):
+        return _return(True, '密钥已存在', _ssh_key_info())
+    return generate_keypair()
+
+
 def test_peer_ssh():
     data = _args()
     cfg = _config()
@@ -235,7 +305,7 @@ def test_peer_ssh():
     port = data.get('peer_ssh_port') or cfg.get('peer_ssh_port') or '22'
     user = data.get('peer_ssh_user') or cfg.get('peer_ssh_user') or 'root'
     if not host:
-        return _return(False, '请先填写对方公网IP')
+        return _return(False, '请先填写对方IP')
     cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} 'echo ok'".format(port, user, host)
     out, err, code = mw.execShell(cmd, timeout=8)
     cfg['bind_test_status'] = 'success' if code == 0 and out.strip() == 'ok' else 'failed'

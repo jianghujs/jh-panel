@@ -344,6 +344,9 @@ def init_keypair():
 def test_peer_ssh():
     data = _args()
     cfg = _config()
+    for key in ('peer_public_ip', 'peer_ssh_port', 'peer_ssh_user', 'peer_public_key', 'peer_host_id'):
+        if key in data:
+            cfg[key] = str(data.get(key) or '').strip()
     host = data.get('peer_public_ip') or cfg.get('peer_public_ip')
     port = data.get('peer_ssh_port') or cfg.get('peer_ssh_port') or '22'
     user = data.get('peer_ssh_user') or cfg.get('peer_ssh_user') or 'root'
@@ -354,8 +357,8 @@ def test_peer_ssh():
     cfg['bind_test_status'] = 'success' if code == 0 and out.strip() == 'ok' else 'failed'
     _save_config(cfg)
     if cfg['bind_test_status'] == 'success':
-        return _return(True, 'SSH连接测试通过')
-    return _return(False, 'SSH连接测试失败: ' + (err or out))
+        return _return(True, 'SSH连接测试通过', cfg)
+    return _return(False, 'SSH连接测试失败: ' + (err or out), cfg)
 
 
 def save_monitor():

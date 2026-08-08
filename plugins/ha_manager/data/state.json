@@ -1,0 +1,42 @@
+{
+  "pair_id": "HA_059462BD01D2",
+  "pair_name": "生产面板主备",
+  "host_id": "H_PANEL_FE52864E",
+  "host_name": "debian",
+  "host_ip": "192.168.3.33",
+  "role": "standby",
+  "desired_role": "standby",
+  "online_status": "online",
+  "health_status": "warning",
+  "health_detail": {
+    "mysql": {
+      "status": "normal",
+      "text": "MySQL 检查待接入"
+    },
+    "rsync": {
+      "status": "normal",
+      "text": "rsync/lsyncd 运行中"
+    },
+    "openresty": {
+      "status": "normal",
+      "text": "OpenResty 运行中"
+    },
+    "ssh": {
+      "status": "warning",
+      "text": "SSH绑定未验证"
+    },
+    "cloud": {
+      "status": "warning",
+      "text": "云监控未配置"
+    },
+    "lock": {
+      "status": "normal",
+      "text": "本地切换锁空闲"
+    }
+  },
+  "switch_run_id": "",
+  "switch_status": "idle",
+  "log_path": "",
+  "last_report_at": "",
+  "updated_at": "2026-08-08 15:43:31"
+}

@@ -411,6 +411,7 @@ function msBuildLocalSwitchForm(targetRole) {
       msCheck('restore_site_setting', '恢复网站配置', o.restore_site_setting) +
       msCheck('restore_plugin_setting', '面板插件配置', o.restore_plugin_setting) +
       msCheck('run_xtrabackup_inc_restore', '执行增量恢复', o.run_xtrabackup_inc_restore) +
+      msCheck('promote_mysql', '提升 MySQL 为主', o.promote_mysql !== false) +
       '</div>' +
       '<div class="ms-sync-options ms-sync-group">' +
         '<div class="ms-sync-field"><span>同步目录</span><input class="bt-input-text" type="text" name="sync_file_dirs" value="' + msHtml(o.sync_file_dirs) + '" /></div>' +
@@ -443,7 +444,7 @@ function msSaveLocalSwitchOptions() {
   if (!form.length) return;
   var data = {};
   form.serializeArray().forEach(function(item) { data[item.name] = item.value; });
-  ['run_checksum','allow_checksum_diff','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore'].forEach(function(key) {
+  ['run_checksum','allow_checksum_diff','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore','promote_mysql'].forEach(function(key) {
     data[key] = form.find('[name=' + key + ']').is(':checked');
   });
   msState.options = $.extend(msState.options, data);

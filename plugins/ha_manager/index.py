@@ -886,36 +886,18 @@ def local_switch():
 def _run_executor(phase, cfg):
     script = '/www/server/jh-panel/scripts/os_tool/vm/default/switch__generate_' + phase + '.sh'
     if not os.path.exists(script):
-        _append_switch_log(cfg.get('switch_run_id'), phase, 'warning', '原始脚本不存在，已记录模拟执行')
-        return
-    if phase == 'offline':
-        steps = [
-            '开启 xtrabackup、xtrabackup-inc、mysqldump 备份计划',
-            '关闭网站/插件配置备份、lsyncd 同步、证书续签计划',
-            '开启网站/插件配置恢复计划',
-            '关闭主从同步异常提醒和 Rsync 状态异常提醒',
-            '关闭 rsyncd/lsyncd 任务并清理 rsync 进程',
-            '关闭 OpenResty',
-            '写入备用角色状态快照'
-        ]
-    else:
-        opts = cfg.get('options') or {}
-        steps = [
-            '按参数确认本机IP {0}、对端IP {1}、SSH端口 {2}'.format(opts.get('local_ip'), opts.get('remote_ip'), opts.get('remote_ssh_port')),
-            '按需执行 xtrabackup 增量恢复' if opts.get('run_xtrabackup_inc_restore') else '跳过 xtrabackup 增量恢复',
-            '按需执行 checksum 校验' if opts.get('run_checksum') else '跳过 checksum 校验',
-            '按需同步文件目录 ' + str(opts.get('sync_file_dirs') or '') if opts.get('sync_files') else '跳过文件同步',
-            '按需恢复网站和插件配置',
-            '提升 MySQL 为主库' if opts.get('promote_mysql', True) else '跳过 MySQL 提升',
-            '关闭备份计划并恢复主机侧同步计划',
-            '启用 rsyncd/lsyncd 任务',
-            '启动 OpenResty',
-            '写入主机角色状态快照'
-        ]
-    for step in steps:
-        _append_switch_log(cfg.get('switch_run_id'), phase, 'running', step)
-        report_switch_event(cfg, phase, 'running', step)
-        time.sleep(0.05)
+        raise RuntimeError('切换脚本不存在: ' + script)
+    args = json.dumps(cfg.get('options') or {}, ensure_ascii=False)
+    cmd = 'bash {0} --plugin-run --args {1}'.format(shlex.quote(script), shlex.quote(args))
+    _append_switch_log(cfg.get('switch_run_id'), phase, 'running', '执行真实切换脚本: ' + script)
+    out, err, code = mw.execShell(cmd, timeout=1800)
+    output = '\n'.join([item for item in (out or '', err or '') if item])
+    for line in output.splitlines():
+        if line.strip():
+            _append_switch_log(cfg.get('switch_run_id'), phase, 'running', line.strip())
+            report_switch_event(cfg, phase, 'running', line.strip())
+    if code != 0:
+        raise RuntimeError(('上线' if phase == 'online' else '下线') + '脚本执行失败 exit_code={0}: {1}'.format(code, output[-2000:]))
 
 
 def report_switch_event(cfg, phase, status, text, origin_host_id=None, seq=None, collect_method='local', switch_run_id=None):

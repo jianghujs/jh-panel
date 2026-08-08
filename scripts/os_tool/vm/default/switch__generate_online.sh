@@ -2,6 +2,24 @@
 OS_TOOL_ROOT="${OS_TOOL_ROOT:-/www/server/jh-panel/scripts/os_tool}"
 source /www/server/jh-panel/scripts/util/msg.sh
 
+if [ "$1" = "--plugin-run" ]; then
+  shift
+  plugin_args="{}"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --args)
+        plugin_args="$2"
+        shift 2
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+  python3 /www/server/jh-panel/plugins/ha_manager/switch_runner.py --phase online --args "$plugin_args"
+  exit $?
+fi
+
 # 安装pygments
 if ! command -v pygmentize &> /dev/null; then
     echo "pygmentize未安装，正在尝试自动安装..."

@@ -132,11 +132,18 @@ def _host_id():
 
 
 def _panel_title():
-    title = ''
+    try:
+        title = mw.getConfig('title')
+        if title:
+            return str(title).strip()
+    except Exception:
+        pass
     title_path = '/www/server/jh-panel/data/title.pl'
     if os.path.exists(title_path):
         title = mw.readFile(title_path).strip()
-    return title or '江湖面板'
+        if title:
+            return title
+    return '江湖面板'
 
 
 def _default_monitor_url():
@@ -615,7 +622,8 @@ def collect_peer_state_raw(cfg):
         return {'status': False, 'msg': 'SSH未绑定或未验证'}
     remote_path = REMOTE_STATE_PATH
     marker = '__HA_MANAGER_PANEL_TITLE__'
-    remote_cmd = "cat {0}; printf '\\n{1}\\n'; cat /www/server/jh-panel/data/title.pl 2>/dev/null || true".format(remote_path, marker)
+    title_cmd = "cd /www/server/jh-panel && python3 -c 'import sys; sys.path.append(\"/www/server/jh-panel/class/core\"); import mw; print(mw.getConfig(\"title\"))' 2>/dev/null || cat /www/server/jh-panel/data/title.pl 2>/dev/null || true"
+    remote_cmd = "cat {0}; printf '\\n{1}\\n'; {2}".format(remote_path, marker, title_cmd)
     cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} {3}".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), shlex.quote(remote_cmd))
     out, err, code = mw.execShell(cmd, timeout=8)
     if code != 0:

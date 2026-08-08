@@ -240,14 +240,14 @@ HA_CHECK_DEFS = [
     {'group': '计划任务', 'name': 'xtrabackup-inc 全量备份', 'type': 'crontab', 'target': '[勿删]xtrabackup-inc全量备份', 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': 'xtrabackup-inc 增量备份', 'type': 'crontab', 'target': '[勿删]xtrabackup-inc增量备份', 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': '备份网站配置', 'type': 'crontab', 'target': '备份网站配置[backupAll]', 'master': 'enabled', 'standby': 'disabled'},
-    {'group': '计划任务', 'name': '备份插件配置', 'type': 'crontab', 'target': '备份插件配置[backupAll]', 'master': 'enabled', 'standby': 'disabled'},
+    {'group': '计划任务', 'name': '备份插件配置', 'type': 'crontab', 'target': ['备份插件配置[所有]', '备份插件配置[backupAll]'], 'master': 'enabled', 'standby': 'disabled'},
     {'group': '计划任务', 'name': 'lsyncd 实时同步', 'type': 'crontab', 'target': '[勿删]lsyncd实时任务定时同步', 'master': 'enabled', 'standby': 'disabled'},
     {'group': '计划任务', 'name': '证书续签任务', 'type': 'crontab', 'target': "[勿删]续签Let's Encrypt证书", 'master': 'enabled', 'standby': 'disabled'},
     {'group': '计划任务', 'name': '恢复网站配置', 'type': 'crontab', 'target': '恢复网站配置[所有]', 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': '恢复插件配置', 'type': 'crontab', 'target': '恢复插件配置[所有]', 'master': 'disabled', 'standby': 'enabled'},
     {'group': 'SSH 同步', 'name': 'authorized_keys 同步公钥', 'type': 'authorized_key', 'master': 'disabled', 'standby': 'enabled'},
-    {'group': 'rsync', 'name': 'rsyncd 任务', 'type': 'process', 'target': 'lsyncd', 'master': 'running', 'standby': 'stopped'},
-    {'group': 'rsync', 'name': '残留 rsync 进程', 'type': 'process', 'target': 'rsync', 'master': 'stopped', 'standby': 'stopped'},
+    {'group': 'rsync', 'name': 'rsyncd 任务', 'type': 'rsyncd_tasks', 'master': 'enabled', 'standby': 'disabled'},
+    {'group': 'rsync', 'name': 'lsyncd 服务', 'type': 'lsyncd_service', 'master': 'running', 'standby': 'stopped'},
     {'group': 'Web 服务', 'name': 'OpenResty', 'type': 'process', 'target': 'openresty', 'master': 'running', 'standby': 'stopped'},
     {'group': '监控提醒', 'name': '主从同步异常提醒', 'type': 'notify', 'target': 'mysql_slave_status_notice', 'master': 'enabled', 'standby': 'disabled'},
     {'group': '监控提醒', 'name': 'Rsync 状态异常提醒', 'type': 'notify', 'target': 'rsync_status_notice', 'master': 'enabled', 'standby': 'disabled'}
@@ -279,7 +279,12 @@ def _actual_text(value):
 
 
 def _check_crontab(name):
-    info = mw.M('crontab').where('name=?', (name,)).field('id,name,status').find()
+    names = name if isinstance(name, list) else [name]
+    info = None
+    for item in names:
+        info = mw.M('crontab').where('name=?', (item,)).field('id,name,status').find()
+        if info:
+            break
     if not info:
         return 'missing'
     return 'enabled' if int(info.get('status') or 0) == 1 else 'disabled'
@@ -288,6 +293,31 @@ def _check_crontab(name):
 def _check_process(name):
     out = mw.execShell("ps -ef | grep -E '{0}' | grep -v grep | head -1".format(name))[0].strip()
     return 'running' if out else 'stopped'
+
+
+def _rsyncd_tasks():
+    data = _read_json('/www/server/rsyncd/config.json', {})
+    return ((data.get('send') or {}).get('list') or [])
+
+
+def _check_rsyncd_tasks(expected):
+    tasks = _rsyncd_tasks()
+    total = len(tasks)
+    enabled_count = len([item for item in tasks if item.get('status', 'enabled') == 'enabled'])
+    if total == 0:
+        return 'skip', '无同步任务'
+    if expected == 'enabled':
+        return ('enabled' if enabled_count > 0 else 'disabled'), '同步任务 {0} 个，已启用 {1} 个'.format(total, enabled_count)
+    return ('disabled' if enabled_count == 0 else 'enabled'), '同步任务 {0} 个，已启用 {1} 个'.format(total, enabled_count)
+
+
+def _check_lsyncd_service(expected):
+    tasks = _rsyncd_tasks()
+    realtime_tasks = [item for item in tasks if item.get('realtime') == 'true']
+    if len(realtime_tasks) == 0:
+        return 'skip', '无实时同步任务'
+    service_status = _check_process('lsyncd')
+    return service_status, '实时任务 {0} 个，lsyncd {1}'.format(len(realtime_tasks), _actual_text(service_status))
 
 
 def _check_notify(name):
@@ -310,12 +340,19 @@ def _script_health_checks(cfg):
     checks = []
     for item in HA_CHECK_DEFS:
         expected = item.get(role)
+        actual_text = ''
         if item.get('type') == 'crontab':
             actual = _check_crontab(item.get('target'))
             ok = actual == expected or (expected == 'disabled' and actual == 'missing')
         elif item.get('type') == 'process':
             actual = _check_process(item.get('target'))
             ok = actual == expected
+        elif item.get('type') == 'rsyncd_tasks':
+            actual, actual_text = _check_rsyncd_tasks(expected)
+            ok = actual == expected or actual == 'skip'
+        elif item.get('type') == 'lsyncd_service':
+            actual, actual_text = _check_lsyncd_service(expected)
+            ok = actual == expected or actual == 'skip'
         elif item.get('type') == 'notify':
             actual = _check_notify(item.get('target'))
             ok = actual == expected
@@ -330,7 +367,7 @@ def _script_health_checks(cfg):
             'group': item.get('group'),
             'name': item.get('name'),
             'expected': _expected_text(expected),
-            'actual': _actual_text(actual),
+            'actual': actual_text or _actual_text(actual),
             'status': 'pass' if ok else 'fail'
         })
     return checks

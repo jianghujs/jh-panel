@@ -188,25 +188,137 @@ def _save_config(cfg):
     return cfg
 
 
+HA_CHECK_DEFS = [
+    {'group': '计划任务', 'name': '备份数据库', 'type': 'crontab', 'target': '备份数据库[backupAll]', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': '计划任务', 'name': 'xtrabackup', 'type': 'crontab', 'target': '[勿删]xtrabackup-cron', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': '计划任务', 'name': 'xtrabackup-inc 全量备份', 'type': 'crontab', 'target': '[勿删]xtrabackup-inc全量备份', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': '计划任务', 'name': 'xtrabackup-inc 增量备份', 'type': 'crontab', 'target': '[勿删]xtrabackup-inc增量备份', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': '计划任务', 'name': '备份网站配置', 'type': 'crontab', 'target': '备份网站配置[backupAll]', 'master': 'enabled', 'standby': 'disabled'},
+    {'group': '计划任务', 'name': '备份插件配置', 'type': 'crontab', 'target': '备份插件配置[backupAll]', 'master': 'enabled', 'standby': 'disabled'},
+    {'group': '计划任务', 'name': 'lsyncd 实时同步', 'type': 'crontab', 'target': '[勿删]lsyncd实时任务定时同步', 'master': 'enabled', 'standby': 'disabled'},
+    {'group': '计划任务', 'name': '证书续签任务', 'type': 'crontab', 'target': "[勿删]续签Let's Encrypt证书", 'master': 'enabled', 'standby': 'disabled'},
+    {'group': '计划任务', 'name': '恢复网站配置', 'type': 'crontab', 'target': '恢复网站配置[所有]', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': '计划任务', 'name': '恢复插件配置', 'type': 'crontab', 'target': '恢复插件配置[所有]', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': 'SSH 同步', 'name': 'authorized_keys 同步公钥', 'type': 'authorized_key', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': 'rsync', 'name': 'rsyncd 任务', 'type': 'process', 'target': 'lsyncd', 'master': 'running', 'standby': 'stopped'},
+    {'group': 'rsync', 'name': '残留 rsync 进程', 'type': 'process', 'target': 'rsync', 'master': 'stopped', 'standby': 'stopped'},
+    {'group': 'Web 服务', 'name': 'OpenResty', 'type': 'process', 'target': 'openresty', 'master': 'running', 'standby': 'stopped'},
+    {'group': '监控提醒', 'name': '主从同步异常提醒', 'type': 'notify', 'target': 'mysql_slave_status_notice', 'master': 'enabled', 'standby': 'disabled'},
+    {'group': '监控提醒', 'name': 'Rsync 状态异常提醒', 'type': 'notify', 'target': 'rsync_status_notice', 'master': 'enabled', 'standby': 'disabled'}
+]
+
+
+def _expected_text(value):
+    return {
+        'enabled': '应启用',
+        'disabled': '应停用',
+        'running': '应运行',
+        'stopped': '应停止',
+        'authorized': '应授权',
+        'unauthorized': '应未授权'
+    }.get(value, value)
+
+
+def _actual_text(value):
+    return {
+        'enabled': '已启用',
+        'disabled': '已停用',
+        'missing': '不存在',
+        'running': '运行中',
+        'stopped': '已停止',
+        'authorized': '已授权',
+        'unauthorized': '未授权',
+        'unknown': '未知'
+    }.get(value, value)
+
+
+def _check_crontab(name):
+    info = mw.M('crontab').where('name=?', (name,)).field('id,name,status').find()
+    if not info:
+        return 'missing'
+    return 'enabled' if int(info.get('status') or 0) == 1 else 'disabled'
+
+
+def _check_process(name):
+    out = mw.execShell("ps -ef | grep -E '{0}' | grep -v grep | head -1".format(name))[0].strip()
+    return 'running' if out else 'stopped'
+
+
+def _check_notify(name):
+    data = mw.getControlNotifyConfig()
+    return 'enabled' if int(data.get(name) or 0) == 1 else 'disabled'
+
+
+def _check_authorized_key():
+    pub_path = '/root/.ssh/standby_sync.pub'
+    auth_path = '/root/.ssh/authorized_keys'
+    if not os.path.exists(pub_path) or not os.path.exists(auth_path):
+        return 'unauthorized'
+    pub = mw.readFile(pub_path).strip()
+    auth = mw.readFile(auth_path)
+    return 'authorized' if pub and pub in auth else 'unauthorized'
+
+
+def _script_health_checks(cfg):
+    role = cfg.get('role') if cfg.get('role') in ('master', 'standby') else 'standby'
+    checks = []
+    for item in HA_CHECK_DEFS:
+        expected = item.get(role)
+        if item.get('type') == 'crontab':
+            actual = _check_crontab(item.get('target'))
+            ok = actual == expected or (expected == 'disabled' and actual == 'missing')
+        elif item.get('type') == 'process':
+            actual = _check_process(item.get('target'))
+            ok = actual == expected
+        elif item.get('type') == 'notify':
+            actual = _check_notify(item.get('target'))
+            ok = actual == expected
+        elif item.get('type') == 'authorized_key':
+            actual = _check_authorized_key()
+            expected = 'authorized' if expected == 'enabled' else 'unauthorized'
+            ok = actual == expected
+        else:
+            actual = 'unknown'
+            ok = False
+        checks.append({
+            'group': item.get('group'),
+            'name': item.get('name'),
+            'expected': _expected_text(expected),
+            'actual': _actual_text(actual),
+            'status': 'pass' if ok else 'fail'
+        })
+    return checks
+
+
 def _health_snapshot(cfg):
+    checks = _script_health_checks(cfg)
     mysql = {'status': 'normal', 'text': 'MySQL 检查待接入'}
     if os.path.exists('/www/server/mysql') or os.path.exists('/www/server/mariadb'):
         mysql = {'status': 'normal', 'text': '数据库目录存在'}
-    openresty_running = mw.execShell("ps -ef | grep openresty | grep -v grep | head -1")[0].strip() != ''
-    rsync_running = mw.execShell("ps -ef | grep -E 'rsync|lsyncd' | grep -v grep | head -1")[0].strip() != ''
+    openresty_failed = any([item.get('name') == 'OpenResty' and item.get('status') == 'fail' for item in checks])
+    rsync_failed = any([item.get('group') == 'rsync' and item.get('status') == 'fail' for item in checks])
     return {
         'mysql': mysql,
-        'rsync': {'status': 'normal' if rsync_running or cfg.get('role') == 'standby' else 'warning', 'text': 'rsync/lsyncd ' + ('运行中' if rsync_running else '未运行')},
-        'openresty': {'status': 'normal' if openresty_running or cfg.get('role') == 'standby' else 'warning', 'text': 'OpenResty ' + ('运行中' if openresty_running else '未运行')},
+        'rsync': {'status': 'warning' if rsync_failed else 'normal', 'text': 'rsync/lsyncd 状态' + ('不符合当前角色' if rsync_failed else '正常')},
+        'openresty': {'status': 'warning' if openresty_failed else 'normal', 'text': 'OpenResty ' + ('不符合当前角色' if openresty_failed else '正常')},
         'ssh': {'status': 'normal' if cfg.get('bind_test_status') == 'success' else 'warning', 'text': 'SSH绑定' + ('已验证' if cfg.get('bind_test_status') == 'success' else '未验证')},
         'cloud': {'status': 'normal' if cfg.get('monitor_url') else 'warning', 'text': '云监控' + ('已配置' if cfg.get('monitor_url') else '未配置')},
-        'lock': {'status': 'warning' if os.path.exists(LOCK_PATH) else 'normal', 'text': '本地切换锁' + ('存在' if os.path.exists(LOCK_PATH) else '空闲')}
+        'lock': {'status': 'warning' if os.path.exists(LOCK_PATH) else 'normal', 'text': '本地切换锁' + ('存在' if os.path.exists(LOCK_PATH) else '空闲')},
+        'script_checks': checks
     }
 
 
 def _state(cfg=None):
     cfg = cfg or _config()
     state = _read_json(STATE_PATH, {})
+    health_detail = _health_snapshot(cfg)
+    health_warning = any([
+        isinstance(v, dict) and v.get('status') == 'warning'
+        for v in health_detail.values()
+    ]) or any([
+        item.get('status') == 'fail'
+        for item in health_detail.get('script_checks', [])
+    ])
     state.update({
         'pair_id': cfg.get('pair_id'),
         'pair_name': cfg.get('pair_name'),
@@ -216,8 +328,8 @@ def _state(cfg=None):
         'role': cfg.get('role'),
         'desired_role': cfg.get('desired_role'),
         'online_status': 'online',
-        'health_status': 'warning' if any([v.get('status') == 'warning' for v in _health_snapshot(cfg).values()]) else 'normal',
-        'health_detail': _health_snapshot(cfg),
+        'health_status': 'warning' if health_warning else 'normal',
+        'health_detail': health_detail,
         'switch_run_id': cfg.get('switch_run_id'),
         'switch_status': cfg.get('switch_status'),
         'log_path': cfg.get('log_path'),

@@ -106,21 +106,22 @@ function msStatusText(status) {
 }
 
 var msCheckTemplate = [
-  {group: '计划任务', name: '备份数据库', master: '已启用', standby: '已启用'},
-  {group: '计划任务', name: 'xtrabackup', master: '已启用', standby: '已启用'},
-  {group: '计划任务', name: 'xtrabackup-inc 全量备份', master: '已启用', standby: '已启用'},
-  {group: '计划任务', name: '恢复网站配置', master: '已关闭', standby: '已启用'},
-  {group: '计划任务', name: '恢复插件配置', master: '已关闭', standby: '已启用'},
-  {group: '计划任务', name: 'lsyncd 实时同步', master: '运行中', standby: '已停止'},
-  {group: '计划任务', name: '证书续签任务', master: '已启用', standby: '已关闭'},
-  {group: '监控提醒', name: '主从同步异常提醒', master: '已关闭', standby: '已启用'},
-  {group: '监控提醒', name: 'Rsync 状态异常提醒', master: '已关闭', standby: '已启用'},
-  {group: 'SSH 同步', name: 'authorized_keys 同步公钥', master: '对端公钥已授权', standby: '对端公钥已授权'},
-  {group: 'SSH 同步', name: '对端 SSH 连接', master: '连接正常', standby: '连接正常'},
-  {group: 'rsync', name: 'rsyncd 任务', master: '运行中', standby: '已停止'},
-  {group: 'rsync', name: '残留 rsync 进程', master: '无残留', standby: '无残留'},
-  {group: 'Web 服务', name: 'OpenResty', master: '运行中', standby: '已停止'},
-  {group: '数据库', name: 'MySQL 主从状态', master: '无主从配置（作为主）', standby: '作为从库（复制链路正常）'}
+  {group: '计划任务', name: '备份数据库', master: '应停用', standby: '应启用'},
+  {group: '计划任务', name: 'xtrabackup', master: '应停用', standby: '应启用'},
+  {group: '计划任务', name: 'xtrabackup-inc 全量备份', master: '应停用', standby: '应启用'},
+  {group: '计划任务', name: 'xtrabackup-inc 增量备份', master: '应停用', standby: '应启用'},
+  {group: '计划任务', name: '备份网站配置', master: '应启用', standby: '应停用'},
+  {group: '计划任务', name: '备份插件配置', master: '应启用', standby: '应停用'},
+  {group: '计划任务', name: 'lsyncd 实时同步', master: '应启用', standby: '应停用'},
+  {group: '计划任务', name: '证书续签任务', master: '应启用', standby: '应停用'},
+  {group: '计划任务', name: '恢复网站配置', master: '应停用', standby: '应启用'},
+  {group: '计划任务', name: '恢复插件配置', master: '应停用', standby: '应启用'},
+  {group: 'SSH 同步', name: 'authorized_keys 同步公钥', master: '应未授权', standby: '应授权'},
+  {group: 'rsync', name: 'rsyncd 任务', master: '应运行', standby: '应停止'},
+  {group: 'rsync', name: '残留 rsync 进程', master: '应停止', standby: '应停止'},
+  {group: 'Web 服务', name: 'OpenResty', master: '应运行', standby: '应停止'},
+  {group: '监控提醒', name: '主从同步异常提醒', master: '应启用', standby: '应停用'},
+  {group: '监控提醒', name: 'Rsync 状态异常提醒', master: '应启用', standby: '应停用'}
 ];
 
 function msCheckStatusIcon(status) {
@@ -154,8 +155,11 @@ function msHealthHosts() {
 }
 
 function msBuildHostChecks(host) {
+  if (host.health && $.isArray(host.health.script_checks)) {
+    return host.health.script_checks;
+  }
   var isMaster = host.role === 'master';
-  var result = {};
+  var result = [];
   msCheckTemplate.forEach(function(item) {
     var expected = isMaster ? item.master : item.standby;
     var actual = expected;
@@ -176,7 +180,7 @@ function msBuildHostChecks(host) {
       actual = host.health.rsync.text;
       status = 'fail';
     }
-    result[item.name] = {expected: expected, actual: actual, status: status};
+    result.push({group: item.group, name: item.name, expected: expected, actual: actual, status: status});
   });
   return result;
 }
@@ -185,19 +189,18 @@ function msCheckHostCard(host) {
   var checks = msBuildHostChecks(host);
   var rows = '';
   var currentGroup = '';
-  msCheckTemplate.forEach(function(item) {
+  checks.forEach(function(item) {
     if (item.group !== currentGroup) {
       currentGroup = item.group;
       rows += '<tr class="ms-check-group-row"><td colspan="2">' + msHtml(item.group) + '</td></tr>';
     }
-    var check = checks[item.name];
-    var matched = check.status === 'pass';
+    var matched = item.status === 'pass';
     var actualCls = matched ? 'ms-check-actual-pass' : 'ms-check-actual-fail';
     if (host.unbound) actualCls = '';
-    var title = '当前状态: ' + check.actual + '\n期望状态: ' + check.expected;
+    var title = '当前状态: ' + item.actual + '\n期望状态: ' + item.expected;
     rows += '<tr>' +
       '<td class="ms-check-name">' + msHtml(item.name) + '</td>' +
-      '<td class="ms-check-actual ' + actualCls + '" title="' + msHtml(title) + '">' + msCheckStatusIcon(matched ? 'pass' : check.status) + msHtml(check.actual) + '</td>' +
+      '<td class="ms-check-actual ' + actualCls + '" title="' + msHtml(title) + '">' + msCheckStatusIcon(matched ? 'pass' : item.status) + msHtml(item.actual) + '</td>' +
     '</tr>';
   });
   var nameCls = host.online === false || host.unbound ? 'ms-host-name ms-host-name-offline' : 'ms-host-name';

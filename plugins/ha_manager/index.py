@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import shlex
+import shutil
 import sys
 import time
 import urllib.request
@@ -15,8 +16,9 @@ import mw
 
 PLUGIN_NAME = 'ha_manager'
 PLUGIN_DIR = os.path.join(mw.getPluginDir(), PLUGIN_NAME)
-DATA_DIR = os.path.join(PLUGIN_DIR, 'data')
-LOG_DIR = os.path.join(PLUGIN_DIR, 'logs')
+RUNTIME_DIR = '/www/server/ha_manager'
+DATA_DIR = os.path.join(RUNTIME_DIR, 'data')
+LOG_DIR = os.path.join(RUNTIME_DIR, 'logs')
 SWITCH_LOG_DIR = os.path.join(LOG_DIR, 'switch')
 PEER_LOG_DIR = os.path.join(LOG_DIR, 'peer')
 CONFIG_PATH = os.path.join(DATA_DIR, 'config.json')
@@ -26,6 +28,10 @@ SEQ_PATH = os.path.join(DATA_DIR, 'seq.json')
 LOCK_PATH = os.path.join(DATA_DIR, 'switch.lock')
 SSH_PRIVATE_KEY_PATH = '/root/.ssh/id_rsa'
 SSH_PUBLIC_KEY_PATH = '/root/.ssh/id_rsa.pub'
+LEGACY_DATA_DIR = os.path.join(PLUGIN_DIR, 'data')
+LEGACY_LOG_DIR = os.path.join(PLUGIN_DIR, 'logs')
+REMOTE_STATE_PATH = '/www/server/ha_manager/data/state.json'
+REMOTE_SWITCH_LOG_DIR = '/www/server/ha_manager/logs/switch'
 
 
 def _now():
@@ -33,9 +39,45 @@ def _now():
 
 
 def _ensure_dirs():
-    for path in (DATA_DIR, LOG_DIR, SWITCH_LOG_DIR, PEER_LOG_DIR):
+    for path in (RUNTIME_DIR, DATA_DIR, LOG_DIR, SWITCH_LOG_DIR, PEER_LOG_DIR):
         if not os.path.exists(path):
             os.makedirs(path, mode=0o700, exist_ok=True)
+    _migrate_runtime_data()
+
+
+def _copy_if_missing(src, dst):
+    if os.path.exists(dst) or not os.path.exists(src):
+        return
+    parent = os.path.dirname(dst)
+    if not os.path.exists(parent):
+        os.makedirs(parent, mode=0o700, exist_ok=True)
+    shutil.copy2(src, dst)
+
+
+def _copy_tree_if_missing(src_dir, dst_dir):
+    if not os.path.exists(src_dir):
+        return
+    for root, dirs, files in os.walk(src_dir):
+        rel_root = os.path.relpath(root, src_dir)
+        target_root = dst_dir if rel_root == '.' else os.path.join(dst_dir, rel_root)
+        for dirname in dirs:
+            target_dir = os.path.join(target_root, dirname)
+            if not os.path.exists(target_dir):
+                os.makedirs(target_dir, mode=0o700, exist_ok=True)
+        for filename in files:
+            _copy_if_missing(os.path.join(root, filename), os.path.join(target_root, filename))
+
+
+def _migrate_runtime_data():
+    legacy_files = ('config.json', 'state.json', 'report_queue.json', 'seq.json')
+    for filename in legacy_files:
+        _copy_if_missing(os.path.join(LEGACY_DATA_DIR, filename), os.path.join(DATA_DIR, filename))
+    if os.path.exists(os.path.join(LEGACY_LOG_DIR, 'switch')):
+        for filename in os.listdir(os.path.join(LEGACY_LOG_DIR, 'switch')):
+            _copy_if_missing(os.path.join(LEGACY_LOG_DIR, 'switch', filename), os.path.join(SWITCH_LOG_DIR, filename))
+    _copy_tree_if_missing(os.path.join(LEGACY_LOG_DIR, 'peer'), PEER_LOG_DIR)
+    legacy_host_file = '/www/server/jh-panel/data/ha_manager_host_id.pl'
+    _copy_if_missing(legacy_host_file, os.path.join(RUNTIME_DIR, 'host_id.pl'))
 
 
 def _read_json(path, default):
@@ -78,7 +120,8 @@ def _return(status, msg, data=None):
 
 
 def _host_id():
-    host_file = '/www/server/jh-panel/data/ha_manager_host_id.pl'
+    _ensure_dirs()
+    host_file = os.path.join(RUNTIME_DIR, 'host_id.pl')
     current = ''
     if os.path.exists(host_file):
         current = mw.readFile(host_file).strip()
@@ -428,7 +471,7 @@ def report_state():
 def collect_peer_state_raw(cfg):
     if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': 'SSH未绑定或未验证'}
-    remote_path = os.path.join(PLUGIN_DIR, 'data/state.json')
+    remote_path = REMOTE_STATE_PATH
     cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} 'cat {3}'".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), remote_path)
     out, err, code = mw.execShell(cmd, timeout=8)
     if code != 0:
@@ -444,7 +487,7 @@ def collect_peer_logs(cfg, peer_state):
     peer_host_id = peer_state.get('host_id') or cfg.get('peer_host_id')
     if not switch_run_id or not peer_host_id or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': '缺少对端日志采集条件'}
-    remote_path = os.path.join(PLUGIN_DIR, 'logs/switch', switch_run_id + '.log')
+    remote_path = os.path.join(REMOTE_SWITCH_LOG_DIR, switch_run_id + '.log')
     cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} 'cat {3}'".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), remote_path)
     out, err, code = mw.execShell(cmd, timeout=8)
     if code != 0:

@@ -105,7 +105,10 @@ def _args():
         return {}
     raw = ' '.join(sys.argv[2:])
     try:
-        return json.loads(raw)
+        data = json.loads(raw)
+        if isinstance(data, str):
+            data = json.loads(data)
+        return data if isinstance(data, dict) else {}
     except Exception:
         result = {}
         for item in sys.argv[2:]:
@@ -113,6 +116,21 @@ def _args():
                 key, value = item.split(':', 1)
                 result[key.strip('{}')] = value.strip('{}')
         return result
+
+
+def _dict_value(value):
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return {}
+        try:
+            data = json.loads(text)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
 
 
 def _return(status, msg, data=None):
@@ -201,7 +219,7 @@ def _config():
     cfg = _default_config()
     saved = _read_json(CONFIG_PATH, {})
     cfg.update(saved)
-    cfg['options'].update(saved.get('options') or {})
+    cfg['options'].update(_dict_value(saved.get('options')))
     cfg['host_name'] = _panel_title()
     if not cfg.get('monitor_disabled') and not cfg.get('monitor_url'):
         cfg['monitor_url'] = _default_monitor_url()
@@ -723,8 +741,7 @@ def _remote_phase_options(cfg, phase):
 def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机'):
     cfg['switch_run_id'] = switch_run_id
     cfg['switch_status'] = phase + '_running'
-    if options:
-        cfg['options'].update(options)
+    cfg['options'].update(_dict_value(options))
     _save_config(cfg)
     _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + ('上线' if phase == 'online' else '下线') + '脚本，目标角色：' + ('主' if role == 'master' else '备'))
     _run_executor(phase, cfg)
@@ -780,7 +797,7 @@ def switch_phase():
         return _return(False, '已有切换任务正在执行')
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
-        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, data.get('options') or {}, '本机')
+        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, _dict_value(data.get('options')), '本机')
         return _return(True, '阶段执行完成', cfg)
     except Exception as e:
         _append_switch_log(cfg.get('switch_run_id') or data.get('switch_run_id') or 'failed', phase or 'switch', 'failed', str(e))
@@ -801,15 +818,16 @@ def local_switch():
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
         cfg['switch_run_id'] = switch_run_id
         cfg['switch_status'] = 'running'
-        cfg['options'].update(data.get('options') or {})
+        switch_options = _dict_value(data.get('options'))
+        cfg['options'].update(switch_options)
         _save_config(cfg)
         if target_role == 'master':
             _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标备用机（对端）执行下线脚本，再在目标主机（本机）执行上线脚本')
             _run_remote_switch_phase(cfg, 'offline', 'standby', switch_run_id, _remote_phase_options(cfg, 'offline'))
-            cfg = _run_local_switch_phase(cfg, 'online', 'master', switch_run_id, data.get('options') or {}, '本机')
+            cfg = _run_local_switch_phase(cfg, 'online', 'master', switch_run_id, switch_options, '本机')
         else:
             _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标备用机（本机）执行下线脚本，再在目标主机（对端）执行上线脚本')
-            cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, data.get('options') or {}, '本机')
+            cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, switch_options, '本机')
             _run_remote_switch_phase(cfg, 'online', 'master', switch_run_id, _remote_phase_options(cfg, 'online'))
         cfg['desired_role'] = target_role
         cfg['switch_status'] = 'switch_done'

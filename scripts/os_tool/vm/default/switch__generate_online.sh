@@ -16,7 +16,8 @@ if [ "$1" = "--plugin-run" ]; then
         ;;
     esac
   done
-  python3 /www/server/jh-panel/plugins/ha_manager/switch_runner.py --phase online --args "$plugin_args"
+  plugin_phase="${HA_MANAGER_SWITCH_PHASE:-online}"
+  python3 /www/server/jh-panel/plugins/ha_manager/switch_runner.py --phase "$plugin_phase" --args "$plugin_args"
   exit $?
 fi
 

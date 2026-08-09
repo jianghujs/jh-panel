@@ -28,6 +28,13 @@ def _run_bash(cmd, step):
     _run('bash -lc ' + _quote(cmd), step)
 
 
+def _run_node_script(script_name, step):
+    script_path = os.path.join(OS_TOOL_DIR, script_name)
+    if not os.path.exists(script_path):
+        raise RuntimeError('Node脚本不存在: ' + script_path)
+    _run('HA_MANAGER_AUTO_CONFIRM=1 node {0}'.format(_quote(script_path)), step)
+
+
 def _json_arg(raw):
     if not raw:
         return {}
@@ -69,6 +76,13 @@ def _quote(value):
     return "'" + str(value).replace("'", "'\\''") + "'"
 
 
+def _bool_opt(opts, key, default=False):
+    value = opts.get(key, default)
+    if isinstance(value, str):
+        return value.lower() in ('1', 'true', 'yes', 'y', 'on')
+    return bool(value)
+
+
 def run_offline(args):
     _open_cron('备份数据库[backupAll]')
     _open_cron('[勿删]xtrabackup-cron')
@@ -90,21 +104,21 @@ def run_offline(args):
     _run('python3 {0} stop'.format(OPENRESTY_INDEX), '关闭 OpenResty')
 
 
-def run_online(args):
+def run_prepare_online(args):
     opts = _json_arg(args.args)
-    if opts.get('run_xtrabackup_inc_restore'):
+    print('|- 预上线选项 sync_files={0}, run_checksum={1}'.format(str(_bool_opt(opts, 'sync_files')).lower(), str(_bool_opt(opts, 'run_checksum')).lower()))
+    if _bool_opt(opts, 'run_xtrabackup_inc_restore'):
         _run('python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | python3 -c "import sys,json,subprocess; d=json.load(sys.stdin); script=d.get(\'data\') or \"\"; subprocess.check_call(script, shell=True) if script else None"', '执行 xtrabackup 增量恢复')
-    if opts.get('run_checksum'):
-        checksum_cmd = 'cd {0} && source /www/server/jh-panel/scripts/os_tool/tools.sh && download_and_run_node monitor__export_mysql_checksum_compare.js'.format(OS_TOOL_DIR)
+    if _bool_opt(opts, 'run_checksum'):
         if DRY_RUN:
-            _run_bash(checksum_cmd, '检查主备服务器 checksum')
+            _run_node_script('monitor__export_mysql_checksum_compare.js', '检查主备服务器 checksum')
         else:
-            proc = subprocess.run('bash -lc ' + _quote(checksum_cmd), cwd=PANEL_DIR, shell=True, text=True)
-            if proc.returncode != 0 and not opts.get('allow_checksum_diff'):
+            proc = subprocess.run(['node', os.path.join(OS_TOOL_DIR, 'monitor__export_mysql_checksum_compare.js')], cwd=OS_TOOL_DIR, text=True)
+            if proc.returncode != 0 and not _bool_opt(opts, 'allow_checksum_diff'):
                 raise RuntimeError('checksum 检查失败，未允许忽略差异')
             if proc.returncode != 0:
                 print('|- checksum 存在差异，已按参数允许忽略')
-    if opts.get('sync_files'):
+    if _bool_opt(opts, 'sync_files'):
         remote_ip = opts.get('remote_ip') or ''
         remote_port = opts.get('remote_ssh_port') or '22'
         dirs = [item.strip() for item in str(opts.get('sync_file_dirs') or '/www/wwwroot,/www/wwwstorage').split(',') if item.strip()]
@@ -116,12 +130,18 @@ def run_online(args):
             cmd.append('root@{0}:{1}/'.format(remote_ip, sync_dir.rstrip('/')))
             cmd.append(sync_dir.rstrip('/') + '/')
             _run(' '.join([_quote(x) for x in cmd]), '同步文件 ' + sync_dir)
-    if opts.get('restore_site_setting'):
+    else:
+        print('|- 跳过同步文件')
+    if _bool_opt(opts, 'restore_site_setting'):
         restore_site_setting(opts)
-    if opts.get('restore_plugin_setting'):
+    if _bool_opt(opts, 'restore_plugin_setting'):
         restore_plugin_setting(opts)
-    if opts.get('promote_mysql', True):
-        _run_bash('cd {0} && source /www/server/jh-panel/scripts/os_tool/tools.sh && download_and_run_node switch__mysql_master.js'.format(OS_TOOL_DIR), '将当前数据库提升为主')
+
+
+def run_online(args):
+    opts = _json_arg(args.args)
+    if _bool_opt(opts, 'promote_mysql', True):
+        _run_node_script('switch__mysql_master.js', '将当前数据库提升为主')
     _close_cron('备份数据库[backupAll]')
     _close_cron('[勿删]xtrabackup-cron')
     _close_cron('[勿删]xtrabackup-inc全量备份')
@@ -190,11 +210,13 @@ def restore_plugin_setting(opts):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--phase', choices=['offline', 'online'], required=True)
+    parser.add_argument('--phase', choices=['offline', 'prepare_online', 'online'], required=True)
     parser.add_argument('--args', default='{}')
     args = parser.parse_args()
     if args.phase == 'offline':
         run_offline(args)
+    elif args.phase == 'prepare_online':
+        run_prepare_online(args)
     else:
         run_online(args)
     print('|- 插件切换阶段执行完成')

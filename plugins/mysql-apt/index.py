@@ -2570,6 +2570,12 @@ def getSlaveList(version=''):
 
     db = pMysqlDb()
     dlist = db.query('show slave status')
+    if isinstance(dlist, Exception):
+        return mw.returnJson(False, '获取从库状态失败: ' + str(dlist), {'data': []})
+    if isinstance(dlist, tuple):
+        dlist = list(dlist)
+    if not isinstance(dlist, list):
+        return mw.returnJson(False, '获取从库状态失败: 返回数据格式异常', {'data': []})
     ret = []
     for x in range(0, len(dlist)):
         tmp = {}

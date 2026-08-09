@@ -10,6 +10,10 @@ const rl = readline.createInterface({
 });
 
 async function prompt(question, defaultValue) {
+  if (process.env.HA_MANAGER_AUTO_CONFIRM === '1') {
+    console.log(`${question} y`);
+    return 'y';
+  }
   return new Promise((resolve) => {
       rl.question(question, (answer) => {
           resolve(answer || defaultValue);
@@ -109,28 +113,42 @@ async function startSwitch() {
     // 检查从库状态
     console.log("|- 正在检查从库状态 ...");
     let slaveStatusResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_list {page:1,page_size:5}'))
-    if (!slaveStatusResult) {
-      throw new Error('获取从库状态失败❌')
-    }
-    let slaveStatus = slaveStatusResult.data[0]
-    const { Slave_IO_Running, Slave_SQL_Running, Seconds_Behind_Master } = slaveStatus;
-
-    if (Slave_IO_Running !== 'Yes' || Slave_SQL_Running !== 'Yes') {
-      console.log("检查异常，从库未运行或同步异常❌");
+    if (!slaveStatusResult || slaveStatusResult.status === false) {
+      console.log(`获取从库状态失败：${slaveStatusResult && slaveStatusResult.msg ? slaveStatusResult.msg : '未知错误'}❌`);
       let ignore_error_choise = await prompt("继续提升当前库为主库吗？(默认n）[y/n]:", 'n');
       if (ignore_error_choise.toLowerCase() !== 'y') {
-        console.log("操作已取消")
-        process.exit(1);
+        throw new Error('获取从库状态失败，操作已取消❌')
       }
       MASTER_OPT_FLAG = false;
-    } else {
-      Logger.success("|- 从库状态正常✅");
-      // 检查数据同步延迟
-      console.log("|- 正在检查数据同步延迟...");
-      if (Seconds_Behind_Master !== 0) {
-        throw new Error(`数据尚未完全同步，从库延迟了 ${Seconds_Behind_Master} 秒❌`);
-      } 
-      Logger.success("|- 数据无延迟✅");
+    } else if (!slaveStatusResult.data || !slaveStatusResult.data.length) {
+      console.log("未检测到从库状态，可能当前库已经不是从库或复制未配置❌");
+      let ignore_error_choise = await prompt("继续提升当前库为主库吗？(默认n）[y/n]:", 'n');
+      if (ignore_error_choise.toLowerCase() !== 'y') {
+        throw new Error('未检测到从库状态，操作已取消❌')
+      }
+      MASTER_OPT_FLAG = false;
+    }
+
+    if (MASTER_OPT_FLAG) {
+      let slaveStatus = slaveStatusResult.data[0]
+      const { Slave_IO_Running, Slave_SQL_Running, Seconds_Behind_Master } = slaveStatus;
+
+      if (Slave_IO_Running !== 'Yes' || Slave_SQL_Running !== 'Yes') {
+        console.log("检查异常，从库未运行或同步异常❌");
+        let ignore_error_choise = await prompt("继续提升当前库为主库吗？(默认n）[y/n]:", 'n');
+        if (ignore_error_choise.toLowerCase() !== 'y') {
+          throw new Error('从库未运行或同步异常，操作已取消❌')
+        }
+        MASTER_OPT_FLAG = false;
+      } else {
+        Logger.success("|- 从库状态正常✅");
+        // 检查数据同步延迟
+        console.log("|- 正在检查数据同步延迟...");
+        if (Seconds_Behind_Master !== 0) {
+          throw new Error(`数据尚未完全同步，从库延迟了 ${Seconds_Behind_Master} 秒❌`);
+        } 
+        Logger.success("|- 数据无延迟✅");
+      }
     }
 
     switch(MASTER_OPT_FLAG) {
@@ -146,6 +164,7 @@ async function startSwitch() {
 
   } catch (error) {
     console.error(error.message);
+    process.exit(1);
   } 
 }
 
@@ -160,10 +179,12 @@ popd > /dev/null
     exec(`${MASTER_SSH_COMMAND} "${cmd}"`, (error, stdout, stderr) => {
       if (error) {
         console.error(`执行出错: ${error}`);
+        resolve('');
         return;
       }
       if (stderr) {
         console.error(`脚本错误: ${stderr}`);
+        resolve('');
         return;
       }
       resolve(stdout)
@@ -180,10 +201,12 @@ popd > /dev/null
     `, (error, stdout, stderr) => {
       if (error) {
         console.error(`执行出错: ${error}`);
+        resolve('');
         return;
       }
       if (stderr) {
         console.error(`脚本错误: ${stderr}`);
+        resolve('');
         return;
       }
       resolve(stdout)
@@ -238,5 +261,3 @@ popd > /dev/null
   await startSwitch();
   rl.close();
 })();
-
-

@@ -43,16 +43,19 @@ var msState = {
 };
 
 var msKeyInfo = {public_key: '', has_private: false, has_public: false, public_key_path: '/root/.ssh/id_rsa.pub'};
+var msSwitchLogTimer = null;
+var msSwitchLogLayerIndex = null;
 
-function msPost(method, args, callback) {
-  var loadT = layer.msg('正在处理...', {icon: 16, time: 0});
+function msPost(method, args, callback, options) {
+  options = options || {};
+  var loadT = options.quiet ? null : layer.msg('正在处理...', {icon: 16, time: 0});
   $.post('/plugins/run', {name: 'ha_manager', func: method, args: JSON.stringify(args || {})}, function(res) {
-    layer.close(loadT);
+    if (loadT) layer.close(loadT);
     if (typeof res === 'string') {
       try { res = JSON.parse(res); } catch (e) { res = {status: false, msg: res}; }
     }
     if (!res || !res.status) {
-      layer.msg((res && res.msg) || '插件接口请求失败', {icon: 2});
+      if (!options.quiet) layer.msg((res && res.msg) || '插件接口请求失败', {icon: 2});
       if (callback) callback(null, res || {});
       return;
     }
@@ -62,7 +65,7 @@ function msPost(method, args, callback) {
     }
     if (data && typeof data === 'object' && data.hasOwnProperty('status') && data.hasOwnProperty('msg')) {
       if (!data.status) {
-        layer.msg(data.msg || '插件接口请求失败', {icon: 2});
+        if (!options.quiet) layer.msg(data.msg || '插件接口请求失败', {icon: 2});
         if (callback) callback(null, data);
         return;
       }
@@ -70,8 +73,8 @@ function msPost(method, args, callback) {
     }
     if (callback) callback(data, res);
   }, 'json').fail(function() {
-    layer.close(loadT);
-    layer.msg('插件接口连接失败', {icon: 2});
+    if (loadT) layer.close(loadT);
+    if (!options.quiet) layer.msg('插件接口连接失败', {icon: 2});
     if (callback) callback(null, {status: false});
   });
 }
@@ -372,9 +375,8 @@ function msOpenLocalSwitchDialog() {
         layer.msg('请先确认对端可接管业务', {icon: 2});
         return;
       }
-      msRunLocalSwitch(targetRole);
       layer.close(index);
-      msLogPanel();
+      msPrepareRunLocalSwitch(targetRole);
     }
   });
 }
@@ -388,8 +390,9 @@ function msBuildLocalSwitchForm(targetRole) {
     '<label class="ms-switch-host"><input type="radio" name="switch_host" value="peer"><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
   '</div>';
   if (targetRole === 'standby') {
-    return '<div class="pd15"><div class="c6 mb10">确认后会先在本机执行下线脚本切为备用机，成功后再在对端执行上线脚本切为主机。</div>' +
+    return '<div class="pd15"><div class="c6 mb10">确认后会先在对端执行预上线，再在本机执行下线脚本切为备用机，最后在对端执行正式上线切为主机。</div>' +
       hostSelect +
+      msBuildSwitchOptionsForm(msState.options) +
       '<div class="ms-panel"><div class="ms-panel-body"><ul class="ms-tip-list">' +
       '<li>开启数据库备份、xtrabackup、xtrabackup-inc 全量/增量备份。</li>' +
       '<li>关闭网站配置备份、插件配置备份、lsyncd 实时同步、证书续签任务。</li>' +
@@ -399,10 +402,15 @@ function msBuildLocalSwitchForm(targetRole) {
       '<div class="mtb10"><label><input type="checkbox" id="msOfflineConfirm" checked> 已确认对端可接管业务</label></div>' +
       '</div>';
   }
-  var o = msState.options;
-  return '<div class="pd15"><div class="c6 mb10">确认后会先在对端执行下线脚本切为备用机，成功后再在本机执行上线脚本切为主机。</div>' +
+  return '<div class="pd15"><div class="c6 mb10">确认后会先在本机执行预上线，再在对端执行下线脚本切为备用机，最后在本机执行正式上线切为主机。</div>' +
     hostSelect +
-    '<form class="bt-form ms-form" id="msLocalSwitchForm">' +
+    msBuildSwitchOptionsForm(msState.options) +
+    '</div>';
+}
+
+function msBuildSwitchOptionsForm(o) {
+  o = o || {};
+  return '<form class="bt-form ms-form" id="msLocalSwitchForm">' +
     '<div class="ms-switch-options"><div class="ms-switch-options-title">切换选项</div>' +
       '<div class="ms-option-grid">' +
       '<label class="ms-option-check"><input type="checkbox" name="sync_files" onchange="msToggleSyncOptions()" ' + (o.sync_files ? 'checked' : '') + '><span>同步文件</span></label>' +
@@ -418,7 +426,7 @@ function msBuildLocalSwitchForm(targetRole) {
         '<div class="ms-sync-field"><span>忽略目录</span><input class="bt-input-text" type="text" name="sync_ignore_dirs" value="' + msHtml(o.sync_ignore_dirs) + '" /></div>' +
       '</div>' +
     '</div>' +
-    '</form></div>';
+    '</form>';
 }
 
 function msToggleSyncOptions() {
@@ -426,17 +434,110 @@ function msToggleSyncOptions() {
   $('.ms-sync-options').toggle(checked);
 }
 
-function msRunLocalSwitch(targetRole) {
-  var options = {};
-  if (targetRole === 'master') {
-    msSaveLocalSwitchOptions();
-    options = msState.options;
+function msCreateSwitchRunId() {
+  var now = new Date();
+  var pad = function(num) { return num < 10 ? '0' + num : String(num); };
+  return 'LOCAL_' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+}
+
+function msStopSwitchLogPolling() {
+  if (msSwitchLogTimer) {
+    clearInterval(msSwitchLogTimer);
+    msSwitchLogTimer = null;
   }
-  msPost('local_switch', {target_role: targetRole, options: options}, function(data) {
-    if (data) msState = $.extend(true, msState, data);
-    layer.msg('切换执行完成', {icon: 1});
-    msLogPanel();
+}
+
+function msUpdateSwitchLogWindow(logText, stateText, stateClass) {
+  $('#msSwitchLiveLog').text(logText || '正在准备切换任务...');
+  $('#msSwitchLiveState').removeClass('ms-live-state-running ms-live-state-success ms-live-state-failed').addClass(stateClass || 'ms-live-state-running').text(stateText || '执行中');
+  var box = document.getElementById('msSwitchLiveLog');
+  if (box) box.scrollTop = box.scrollHeight;
+}
+
+function msRefreshSwitchLogWindow(switchRunId, callback) {
+  msPost('read_log', {switch_run_id: switchRunId}, function(data) {
+    if (data) {
+      msState.log = data.log || '';
+      msState.switch_status = data.switch_status || msState.switch_status;
+      msUpdateSwitchLogWindow(msState.log, '执行中', 'ms-live-state-running');
+      if ($('#msLogBox').length) $('#msLogBox').text(msState.log || '暂无切换日志');
+    }
+    if (callback) callback(data);
+  }, {quiet: true});
+}
+
+function msShowSwitchLogWindow(title, switchRunId) {
+  msStopSwitchLogPolling();
+  var html = '<div class="ms-live-log-wrap">' +
+    '<div class="ms-live-log-head"><span id="msSwitchLiveState" class="ms-live-state ms-live-state-running">执行中</span><span class="ms-live-run-id">' + msHtml(switchRunId) + '</span></div>' +
+    '<pre id="msSwitchLiveLog" class="ms-live-log-box">正在准备切换任务...</pre>' +
+    '<div class="ms-live-log-tip">执行期间请勿重复发起切换；窗口关闭后仍可在“切换日志”页签查看。</div>' +
+    '</div>';
+  msSwitchLogLayerIndex = layer.open({
+    title: title,
+    type: 1,
+    closeBtn: 2,
+    shade: 0.3,
+    shadeClose: false,
+    area: '760px',
+    offset: '20%',
+    content: html,
+    end: function() {
+      msStopSwitchLogPolling();
+      msSwitchLogLayerIndex = null;
+    }
   });
+  msRefreshSwitchLogWindow(switchRunId);
+  msSwitchLogTimer = setInterval(function() {
+    msRefreshSwitchLogWindow(switchRunId);
+  }, 1000);
+}
+
+function msFinishSwitchLogWindow(success, msg, switchRunId) {
+  msStopSwitchLogPolling();
+  msRefreshSwitchLogWindow(switchRunId, function() {
+    var text = msg || (success ? '切换执行完成' : '切换执行失败');
+    msUpdateSwitchLogWindow(msState.log, text, success ? 'ms-live-state-success' : 'ms-live-state-failed');
+    layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
+  });
+}
+
+function msPrepareRunLocalSwitch(targetRole) {
+  msPost('switch_lock_status', {}, function(lock) {
+    if (!lock || !lock.locked) {
+      msRunLocalSwitch(targetRole);
+      return;
+    }
+    var pidText = lock.pid ? ('PID: ' + lock.pid) : '未记录 PID';
+    var processText = lock.alive ? '检测到已有切换任务仍在执行。' : '检测到上次切换锁未清理，进程已不存在。';
+    layer.confirm(processText + '<br>' + pidText + '<br>是否强制结束并重新执行本次切换？', {icon: 3, title: '已有切换任务正在执行', btn: ['强制结束并执行', '取消']}, function(confirmIndex) {
+      layer.close(confirmIndex);
+      msPost('force_stop_switch', {}, function(result, res) {
+        if (!result) {
+          layer.msg((res && res.msg) || '强制结束失败', {icon: 2, time: 0, shade: 0.3, shadeClose: true});
+          return;
+        }
+        layer.msg('已结束旧切换任务，准备重新执行', {icon: 1, time: 1200});
+        msRunLocalSwitch(targetRole);
+      });
+    });
+  });
+}
+
+function msRunLocalSwitch(targetRole) {
+  msSaveLocalSwitchOptions();
+  var options = $.extend(true, {}, msState.options);
+  var switchRunId = msCreateSwitchRunId();
+  msState.switch_run_id = switchRunId;
+  msState.switch_status = 'running';
+  msState.log = '';
+  msShowSwitchLogWindow(targetRole === 'master' ? '正在切换为主...' : '正在切换为备...', switchRunId);
+  msPost('local_switch', {target_role: targetRole, switch_run_id: switchRunId, options: options}, function(data, res) {
+    var success = !!data;
+    if (data) msState = $.extend(true, msState, data);
+    msFinishSwitchLogWindow(success, success ? '切换执行完成' : ((res && res.msg) || '切换执行失败'), switchRunId);
+    msLogPanel();
+  }, {quiet: true});
 }
 
 function msSaveLocalSwitchOptions() {
@@ -447,7 +548,7 @@ function msSaveLocalSwitchOptions() {
   ['run_checksum','allow_checksum_diff','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore','promote_mysql'].forEach(function(key) {
     data[key] = form.find('[name=' + key + ']').is(':checked');
   });
-  msState.options = $.extend(msState.options, data);
+  msState.options = $.extend(true, {}, msState.options, data);
 }
 
 function msTestMonitor() {

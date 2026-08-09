@@ -87,6 +87,15 @@
 .ms-option-check{display:flex;align-items:center;height:26px;margin:0;font-weight:normal;color:#555;line-height:26px;}
 .ms-option-check input{margin:0 8px 0 0;flex:0 0 auto;}
 .ms-log-box{height:320px;background:#1f2329;color:#d7dde8;border-radius:4px;padding:12px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;white-space:pre-wrap;}
+.ms-live-log-wrap{padding:14px;background:#fff;}
+.ms-live-log-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#777;font-size:12px;}
+.ms-live-state{display:inline-block;border-radius:3px;padding:3px 8px;border:1px solid transparent;font-size:12px;line-height:16px;}
+.ms-live-state-running{color:#9a6200;background:#fff7e6;border-color:#f1d399;}
+.ms-live-state-success{color:#2e7d32;background:#f0fff0;border-color:#bfe4bf;}
+.ms-live-state-failed{color:#b02a25;background:#fff1f0;border-color:#f0c6c4;}
+.ms-live-run-id{font-family:Menlo,Consolas,monospace;color:#999;}
+.ms-live-log-box{margin:0;height:300px;text-align:left;background:#000;color:#fff;white-space:pre-wrap;border:0;border-radius:3px;padding:10px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;}
+.ms-live-log-tip{margin-top:8px;color:#888;font-size:12px;line-height:20px;}
 .ms-tip-list{color:#666;line-height:28px;margin:0;padding-left:18px;}
 .ms-actions .btn{margin-left:6px;}
 @media(max-width:900px){.ms-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.ms-health-grid,.ms-check-grid{grid-template-columns:1fr;}}
@@ -112,7 +121,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js', function(){
+$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=2026080902', function(){
   msLoadState(function(){
     msOverview();
   });

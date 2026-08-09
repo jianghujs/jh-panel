@@ -6,11 +6,14 @@ import json
 import os
 import shlex
 import shutil
+import signal
+import subprocess
 import sys
 import time
 import urllib.request
 
-sys.path.append(os.getcwd() + '/class/core')
+PANEL_DIR = '/www/server/jh-panel'
+sys.path.append(os.path.join(PANEL_DIR, 'class/core'))
 import mw
 
 
@@ -114,7 +117,16 @@ def _args():
         for item in sys.argv[2:]:
             if ':' in item:
                 key, value = item.split(':', 1)
-                result[key.strip('{}')] = value.strip('{}')
+                key = key.strip('{}')
+                value = value.strip('{}')
+                if key.startswith('options:'):
+                    options = result.setdefault('options', {})
+                    option_key = key.split(':', 1)[1]
+                    if value in ('true', 'false'):
+                        value = value == 'true'
+                    options[option_key] = value
+                else:
+                    result[key] = value
         return result
 
 
@@ -201,9 +213,9 @@ def _default_config():
             'local_ip': mw.getHostAddr(),
             'remote_ip': '',
             'remote_ssh_port': '22',
-            'run_checksum': True,
+            'run_checksum': False,
             'allow_checksum_diff': False,
-            'sync_files': True,
+            'sync_files': False,
             'sync_file_dirs': '/www/wwwroot,/www/wwwstorage',
             'sync_ignore_dirs': 'node_modules,logs,run',
             'restore_site_setting': False,
@@ -435,6 +447,7 @@ def _switch_log_path(switch_run_id):
 
 
 def _append_switch_log(switch_run_id, phase, status, text):
+    switch_run_id = switch_run_id or 'latest'
     path = _switch_log_path(switch_run_id)
     seq = _seq()
     line = '[{0}] [{1}] [{2}] [{3}] {4}'.format(_now(), seq, phase, status, text)
@@ -741,9 +754,9 @@ def poll_monitor():
     return _return(bool(res.get('status')), res.get('msg') or '轮询完成', cfg)
 
 
-def read_latest_log_text():
+def read_latest_log_text(switch_run_id=None):
     cfg = _config()
-    path = _switch_log_path(cfg.get('switch_run_id') or 'latest')
+    path = _switch_log_path(switch_run_id or cfg.get('switch_run_id') or 'latest')
     if not os.path.exists(path):
         return ''
     with open(path, 'r', encoding='utf-8', errors='replace') as fp:
@@ -751,7 +764,114 @@ def read_latest_log_text():
 
 
 def read_log():
-    return _return(True, 'ok', {'log': read_latest_log_text(), 'log_path': _config().get('log_path')})
+    data = _args()
+    cfg = _config()
+    switch_run_id = data.get('switch_run_id') or cfg.get('switch_run_id')
+    return _return(True, 'ok', {'log': read_latest_log_text(switch_run_id), 'log_path': cfg.get('log_path'), 'switch_run_id': switch_run_id, 'switch_status': cfg.get('switch_status')})
+
+
+def _read_lock_pid():
+    if not os.path.exists(LOCK_PATH):
+        return 0
+    try:
+        return int((mw.readFile(LOCK_PATH) or '').strip())
+    except Exception:
+        return 0
+
+
+def _pid_alive(pid):
+    if not pid:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _pid_cmdline(pid):
+    try:
+        with open('/proc/{0}/cmdline'.format(pid), 'rb') as fp:
+            return fp.read().replace(b'\x00', b' ').decode('utf-8', errors='replace').strip()
+    except Exception:
+        return ''
+
+
+def _is_ha_switch_process(pid):
+    cmdline = _pid_cmdline(pid)
+    return 'plugins/ha_manager/index.py' in cmdline and (' local_switch' in cmdline or ' switch_phase' in cmdline)
+
+
+def _process_children(pid):
+    children = []
+    for name in os.listdir('/proc'):
+        if not name.isdigit():
+            continue
+        child_pid = int(name)
+        try:
+            with open('/proc/{0}/stat'.format(child_pid), 'r') as fp:
+                parts = fp.read().split()
+            if len(parts) > 3 and int(parts[3]) == pid:
+                children.append(child_pid)
+        except Exception:
+            continue
+    result = []
+    for child_pid in children:
+        result.extend(_process_children(child_pid))
+        result.append(child_pid)
+    return result
+
+
+def _terminate_pid_tree(pid):
+    targets = _process_children(pid) + [pid]
+    for target in targets:
+        try:
+            if target != pid:
+                os.killpg(os.getpgid(target), signal.SIGTERM)
+            os.kill(target, signal.SIGTERM)
+        except Exception:
+            pass
+    time.sleep(2)
+    for target in targets:
+        if _pid_alive(target):
+            try:
+                if target != pid:
+                    os.killpg(os.getpgid(target), signal.SIGKILL)
+                os.kill(target, signal.SIGKILL)
+            except Exception:
+                pass
+
+
+def _switch_lock_status_data():
+    pid = _read_lock_pid()
+    alive = _pid_alive(pid)
+    return {'locked': os.path.exists(LOCK_PATH), 'pid': pid, 'alive': alive, 'cmdline': _pid_cmdline(pid) if alive else '', 'can_force_stop': alive and _is_ha_switch_process(pid)}
+
+
+def switch_lock_status():
+    return _return(True, 'ok', _switch_lock_status_data())
+
+
+def force_stop_switch():
+    cfg = _config()
+    pid = _read_lock_pid()
+    if not os.path.exists(LOCK_PATH):
+        return _return(True, '当前没有正在执行的切换任务', _switch_lock_status_data())
+    if not pid or not _pid_alive(pid):
+        _unlock()
+        cfg['switch_status'] = 'failed'
+        _save_config(cfg)
+        _append_switch_log(cfg.get('switch_run_id') or 'latest', 'switch', 'failed', '清理陈旧切换锁，原进程已不存在')
+        return _return(True, '已清理陈旧切换锁', _switch_lock_status_data())
+    if not _is_ha_switch_process(pid):
+        return _return(False, '锁定进程不是 ha_manager 切换任务，已拒绝强制结束: ' + _pid_cmdline(pid))
+    _append_switch_log(cfg.get('switch_run_id') or 'latest', 'switch', 'failed', '用户确认强制结束正在执行的切换任务，PID: ' + str(pid))
+    _terminate_pid_tree(pid)
+    _unlock()
+    cfg['switch_status'] = 'failed'
+    _save_config(cfg)
+    _append_switch_log(cfg.get('switch_run_id') or 'latest', 'switch', 'failed', '已强制结束切换任务并清理锁，PID: ' + str(pid))
+    return _return(True, '已强制结束切换任务', _switch_lock_status_data())
 
 
 def _lock():
@@ -768,11 +888,21 @@ def _unlock():
 
 def _remote_phase_options(cfg, phase):
     options = dict(cfg.get('options') or {})
-    if phase == 'online':
+    if phase in ('prepare_online', 'online'):
         options['local_ip'] = cfg.get('peer_public_ip')
         options['remote_ip'] = cfg.get('host_ip')
         options['remote_ssh_port'] = options.get('local_ssh_port') or '22'
     return options
+
+
+def _phase_text(phase):
+    if phase == 'prepare_online':
+        return '预上线'
+    if phase == 'online':
+        return '正式上线'
+    if phase == 'offline':
+        return '下线'
+    return phase
 
 
 def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机'):
@@ -780,15 +910,16 @@ def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label
     cfg['switch_status'] = phase + '_running'
     cfg['options'].update(_dict_value(options))
     _save_config(cfg)
-    _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + ('上线' if phase == 'online' else '下线') + '脚本，目标角色：' + ('主' if role == 'master' else '备'))
+    _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + _phase_text(phase) + '脚本，目标角色：' + ('主' if role == 'master' else '备'))
     _run_executor(phase, cfg)
-    cfg['role'] = role
-    cfg['desired_role'] = role
+    if phase != 'prepare_online':
+        cfg['role'] = role
+        cfg['desired_role'] = role
     cfg['switch_status'] = phase + '_done'
     _save_config(cfg)
-    _append_switch_log(switch_run_id, phase, 'success', label + ('上线' if phase == 'online' else '下线') + '脚本执行完成')
+    _append_switch_log(switch_run_id, phase, 'success', label + _phase_text(phase) + '脚本执行完成')
     _state(cfg)
-    report_switch_event(cfg, phase, 'success', label + ('上线' if phase == 'online' else '下线') + '脚本执行完成')
+    report_switch_event(cfg, phase, 'success', label + _phase_text(phase) + '脚本执行完成')
     return cfg
 
 
@@ -804,20 +935,33 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
     }
     args = shlex.quote(json.dumps(payload, ensure_ascii=False))
     remote_cmd = 'cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {0}'.format(args)
-    cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} {3}".format(
-        cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), shlex.quote(remote_cmd)
-    )
-    _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + ('上线' if phase == 'online' else '下线') + '脚本')
-    out, err, code = mw.execShell(cmd, timeout=300)
+    cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', '-p', str(cfg.get('peer_ssh_port')), cfg.get('peer_ssh_user') + '@' + cfg.get('peer_public_ip'), remote_cmd]
+    _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + _phase_text(phase) + '脚本')
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, preexec_fn=os.setsid)
+    output_lines = []
+    start_time = time.time()
+    for line in iter(proc.stdout.readline, ''):
+        if time.time() - start_time > 1800:
+            proc.kill()
+            raise RuntimeError('对端' + _phase_text(phase) + '脚本执行超时')
+        line = line.strip()
+        if not line:
+            continue
+        output_lines.append(line)
+        output_lines = output_lines[-300:]
+        if not line.startswith('{'):
+            _append_switch_log(switch_run_id, phase, 'running', '对端: ' + line)
+    code = proc.wait()
+    out = '\n'.join(output_lines)
     if code != 0:
-        raise RuntimeError('对端' + ('上线' if phase == 'online' else '下线') + '脚本执行失败: ' + (err or out))
+        raise RuntimeError('对端' + _phase_text(phase) + '脚本执行失败: ' + out[-2000:])
     try:
         result = json.loads(out.strip().split('\n')[-1])
     except Exception:
         raise RuntimeError('对端切换返回格式错误: ' + out[-1000:])
     if not result.get('status'):
         raise RuntimeError(result.get('msg') or '对端切换失败')
-    _append_switch_log(switch_run_id, phase, 'success', '对端' + ('上线' if phase == 'online' else '下线') + '脚本执行完成')
+    _append_switch_log(switch_run_id, phase, 'success', '对端' + _phase_text(phase) + '脚本执行完成')
     return result.get('data') or {}
 
 
@@ -825,8 +969,8 @@ def switch_phase():
     data = _args()
     cfg = _config()
     phase = data.get('phase')
-    role = data.get('role') or ('master' if phase == 'online' else 'standby')
-    if phase not in ('offline', 'online'):
+    role = data.get('role') or ('master' if phase in ('prepare_online', 'online') else 'standby')
+    if phase not in ('offline', 'prepare_online', 'online'):
         return _return(False, '切换阶段无效')
     if role not in ('master', 'standby'):
         return _return(False, '目标角色无效')
@@ -855,15 +999,26 @@ def local_switch():
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
         cfg['switch_run_id'] = switch_run_id
         cfg['switch_status'] = 'running'
-        switch_options = _dict_value(data.get('options'))
+        request_options = _dict_value(data.get('options'))
+        switch_options = dict(_default_config().get('options') or {})
+        switch_options.update(_dict_value(cfg.get('options')))
+        switch_options.update(request_options)
+        for key in ('run_checksum', 'allow_checksum_diff', 'sync_files', 'restore_site_setting', 'restore_plugin_setting', 'run_xtrabackup_inc_restore'):
+            if key not in request_options:
+                switch_options[key] = False
+        if 'promote_mysql' not in request_options:
+            switch_options['promote_mysql'] = True
         cfg['options'].update(switch_options)
         _save_config(cfg)
+        _append_switch_log(switch_run_id, 'switch', 'running', '本次预上线选项：sync_files={0}, run_checksum={1}, promote_mysql={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('promote_mysql')).lower()))
         if target_role == 'master':
-            _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标备用机（对端）执行下线脚本，再在目标主机（本机）执行上线脚本')
+            _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标主机（本机）执行预上线，再在目标备用机（对端）执行下线，最后在目标主机（本机）执行正式上线')
+            cfg = _run_local_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, switch_options, '本机')
             _run_remote_switch_phase(cfg, 'offline', 'standby', switch_run_id, _remote_phase_options(cfg, 'offline'))
             cfg = _run_local_switch_phase(cfg, 'online', 'master', switch_run_id, switch_options, '本机')
         else:
-            _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标备用机（本机）执行下线脚本，再在目标主机（对端）执行上线脚本')
+            _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标主机（对端）执行预上线，再在目标备用机（本机）执行下线，最后在目标主机（对端）执行正式上线')
+            _run_remote_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, _remote_phase_options(cfg, 'prepare_online'))
             cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, switch_options, '本机')
             _run_remote_switch_phase(cfg, 'online', 'master', switch_run_id, _remote_phase_options(cfg, 'online'))
         cfg['desired_role'] = target_role
@@ -884,20 +1039,34 @@ def local_switch():
 
 
 def _run_executor(phase, cfg):
-    script = '/www/server/jh-panel/scripts/os_tool/vm/default/switch__generate_' + phase + '.sh'
+    script_phase = 'online' if phase == 'prepare_online' else phase
+    script = '/www/server/jh-panel/scripts/os_tool/vm/default/switch__generate_' + script_phase + '.sh'
     if not os.path.exists(script):
         raise RuntimeError('切换脚本不存在: ' + script)
     args = json.dumps(cfg.get('options') or {}, ensure_ascii=False)
-    cmd = 'bash {0} --plugin-run --args {1}'.format(shlex.quote(script), shlex.quote(args))
-    _append_switch_log(cfg.get('switch_run_id'), phase, 'running', '执行真实切换脚本: ' + script)
-    out, err, code = mw.execShell(cmd, timeout=1800)
-    output = '\n'.join([item for item in (out or '', err or '') if item])
-    for line in output.splitlines():
+    cmd = ['bash', script, '--plugin-run', '--args', args]
+    env = os.environ.copy()
+    if phase == 'prepare_online':
+        env['HA_MANAGER_SWITCH_PHASE'] = 'prepare_online'
+    _append_switch_log(cfg.get('switch_run_id'), phase, 'running', '执行真实切换脚本: ' + script + '，阶段：' + _phase_text(phase))
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, preexec_fn=os.setsid, env=env)
+    output_lines = []
+    start_time = time.time()
+    for line in iter(proc.stdout.readline, ''):
+        if time.time() - start_time > 1800:
+            proc.kill()
+            raise RuntimeError(_phase_text(phase) + '脚本执行超时')
         if line.strip():
+            output_lines.append(line.strip())
+            output_lines = output_lines[-200:]
             _append_switch_log(cfg.get('switch_run_id'), phase, 'running', line.strip())
+            print(line.strip())
+            sys.stdout.flush()
             report_switch_event(cfg, phase, 'running', line.strip())
+    code = proc.wait()
     if code != 0:
-        raise RuntimeError(('上线' if phase == 'online' else '下线') + '脚本执行失败 exit_code={0}: {1}'.format(code, output[-2000:]))
+        output = '\n'.join(output_lines)
+        raise RuntimeError(_phase_text(phase) + '脚本执行失败 exit_code={0}: {1}'.format(code, output[-2000:]))
 
 
 def report_switch_event(cfg, phase, status, text, origin_host_id=None, seq=None, collect_method='local', switch_run_id=None):

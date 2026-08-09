@@ -20,6 +20,8 @@ var msState = {
   last_report_at: '',
   switch_run_id: '',
   switch_status: 'idle',
+  health_status: 'warning',
+  health_text: '主备未绑定',
   log_path: '',
   health: {
     mysql: {status: 'unknown', text: '等待自检'},
@@ -225,15 +227,16 @@ function msOverview() {
   msSetActive(0);
   var monitorConfigured = !!msState.monitor_url;
   var bindConfigured = msState.bind_test_status === 'success';
-  var switchStatusText = msState.switch_status === 'waiting_online' ? '等待上线' : msState.switch_status === 'offline_done' ? '下线完成' : msState.switch_status === 'online_done' ? '上线完成' : '无执行中任务';
-  var switchStatus = msState.switch_status === 'waiting_online' ? 'warning' : 'normal';
+  var stateInfo = msState.state || {};
+  var pluginStatus = msState.health_status || stateInfo.health_status || (bindConfigured ? 'normal' : 'warning');
+  var pluginStatusText = msState.health_text || stateInfo.health_text || (pluginStatus === 'danger' ? '自检异常' : (bindConfigured ? '自检正常' : '主备未绑定'));
   var isSwitching = msState.switch_status === 'waiting_online';
   var roleTitle = '当前角色: ' + msState.role + '\n期望角色: ' + msState.desired_role;
   var switchingTip = '正在切换中\n' + roleTitle;
   var loading = '<span class="ms-loading-state" title="' + msHtml(switchingTip) + '"><span class="ms-loading-icon"></span>切换中</span>';
   var roleCell = '<span title="' + msHtml(roleTitle) + '">' + msRoleMark(msState.role) + '</span>' + (isSwitching ? ' ' + loading : '');
   var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msPollMonitor()">轮询云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
-    '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(switchStatus, switchStatusText) + '</div><div class="ms-panel-body">' +
+    '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(pluginStatus, pluginStatusText) + '</div><div class="ms-panel-body">' +
       '<table class="table table-hover ms-overview-table"><tbody>' +
         '<tr><th>本机角色</th><td>' + roleCell + '</td><td class="ms-overview-actions" rowspan="4"><button class="btn btn-default btn-sm" onclick="msHealthPanel()">查看自检</button><button class="btn btn-default btn-sm" onclick="msLogPanel()">查看日志</button></td></tr>' +
         '<tr><th>主备关系</th><td>' + msHtml(msState.pair_name) + ' <span class="c7">' + msHtml(msState.pair_id) + '</span></td></tr>' +

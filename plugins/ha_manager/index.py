@@ -402,17 +402,24 @@ def _health_snapshot(cfg):
     }
 
 
+def _plugin_health_status(cfg, health_detail):
+    bound = cfg.get('bind_test_status') == 'success'
+    if not bound:
+        return 'warning', '主备未绑定'
+    script_failed = any([
+        item.get('status') == 'fail'
+        for item in health_detail.get('script_checks', [])
+    ])
+    if script_failed:
+        return 'danger', '自检异常'
+    return 'normal', '自检正常'
+
+
 def _state(cfg=None):
     cfg = cfg or _config()
     state = _read_json(STATE_PATH, {})
     health_detail = _health_snapshot(cfg)
-    health_warning = any([
-        isinstance(v, dict) and v.get('status') == 'warning'
-        for v in health_detail.values()
-    ]) or any([
-        item.get('status') == 'fail'
-        for item in health_detail.get('script_checks', [])
-    ])
+    health_status, health_text = _plugin_health_status(cfg, health_detail)
     state.update({
         'pair_id': cfg.get('pair_id'),
         'pair_name': cfg.get('pair_name'),
@@ -422,7 +429,8 @@ def _state(cfg=None):
         'role': cfg.get('role'),
         'desired_role': cfg.get('desired_role'),
         'online_status': 'online',
-        'health_status': 'warning' if health_warning else 'normal',
+        'health_status': health_status,
+        'health_text': health_text,
         'health_detail': health_detail,
         'switch_run_id': cfg.get('switch_run_id'),
         'switch_status': cfg.get('switch_status'),
@@ -461,6 +469,8 @@ def get_state():
     data = cfg.copy()
     data['health'] = _health_snapshot(cfg)
     data['state'] = _state(cfg)
+    data['health_status'] = data['state'].get('health_status')
+    data['health_text'] = data['state'].get('health_text')
     data['peer_state'] = peer_state.get('data') if peer_state.get('status') else None
     data['peer_collect_status'] = 'success' if peer_state.get('status') else 'failed'
     data['peer_collect_msg'] = peer_state.get('msg', '')

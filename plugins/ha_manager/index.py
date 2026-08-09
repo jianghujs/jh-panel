@@ -253,7 +253,6 @@ HA_CHECK_DEFS = [
     {'group': '计划任务', 'name': 'xtrabackup-inc 增量备份', 'type': 'crontab', 'target': '[勿删]xtrabackup-inc增量备份', 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': '备份网站配置', 'type': 'crontab', 'target': '备份网站配置[backupAll]', 'master': 'enabled', 'standby': 'disabled'},
     {'group': '计划任务', 'name': '备份插件配置', 'type': 'crontab', 'target': ['备份插件配置[所有]', '备份插件配置[backupAll]'], 'master': 'enabled', 'standby': 'disabled'},
-    {'group': '计划任务', 'name': 'lsyncd 实时同步', 'type': 'crontab', 'target': '[勿删]lsyncd实时任务定时同步', 'master': 'enabled', 'standby': 'disabled'},
     {'group': '计划任务', 'name': '证书续签任务', 'type': 'crontab', 'target': "[勿删]续签Let's Encrypt证书", 'master': 'enabled', 'standby': 'disabled'},
     {'group': '计划任务', 'name': '恢复网站配置', 'type': 'crontab', 'target': '恢复网站配置[所有]', 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': '恢复插件配置', 'type': 'crontab', 'target': '恢复插件配置[所有]', 'master': 'disabled', 'standby': 'enabled'},

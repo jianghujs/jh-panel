@@ -119,7 +119,6 @@ var msCheckTemplate = [
   {group: '计划任务', name: 'xtrabackup-inc 增量备份', master: '应停用', standby: '应启用'},
   {group: '计划任务', name: '备份网站配置', master: '应启用', standby: '应停用'},
   {group: '计划任务', name: '备份插件配置', master: '应启用', standby: '应停用'},
-  {group: '计划任务', name: 'lsyncd 实时同步', master: '应启用', standby: '应停用'},
   {group: '计划任务', name: '证书续签任务', master: '应启用', standby: '应停用'},
   {group: '计划任务', name: '恢复网站配置', master: '应停用', standby: '应启用'},
   {group: '计划任务', name: '恢复插件配置', master: '应停用', standby: '应启用'},

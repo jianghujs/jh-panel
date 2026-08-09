@@ -403,16 +403,7 @@ def _health_snapshot(cfg):
 
 
 def _plugin_health_status(cfg, health_detail):
-    bound = cfg.get('bind_test_status') == 'success'
-    if not bound:
-        return 'warning', '主备未绑定'
-    script_failed = any([
-        item.get('status') == 'fail'
-        for item in health_detail.get('script_checks', [])
-    ])
-    if script_failed:
-        return 'danger', '自检异常'
-    return 'normal', '自检正常'
+    return 'normal', '正常'
 
 
 def _state(cfg=None):

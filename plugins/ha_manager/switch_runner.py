@@ -12,6 +12,8 @@ RSYNCD_INDEX = os.path.join(PANEL_DIR, 'plugins/rsyncd/index.py')
 OPENRESTY_INDEX = os.path.join(PANEL_DIR, 'plugins/openresty/index.py')
 DRY_RUN = os.environ.get('HA_MANAGER_SWITCH_DRY_RUN') == '1'
 OS_TOOL_DIR = '/www/server/jh-panel/scripts/os_tool/vm/default'
+STANDBY_SYNC_PUBLIC_KEY = '/root/.ssh/standby_sync.pub'
+AUTHORIZED_KEYS = '/root/.ssh/authorized_keys'
 
 
 def _run(cmd, step):
@@ -83,7 +85,46 @@ def _bool_opt(opts, key, default=False):
     return bool(value)
 
 
+def _standby_sync_public_key():
+    if not os.path.exists(STANDBY_SYNC_PUBLIC_KEY):
+        return ''
+    with open(STANDBY_SYNC_PUBLIC_KEY, 'r', encoding='utf-8') as fp:
+        return fp.read().strip()
+
+
+def _set_authorized_key(enabled):
+    pub_key = _standby_sync_public_key()
+    if not pub_key:
+        print('|- standby_sync 同步公钥不存在，跳过 authorized_keys 切换')
+        return
+    action = '加入' if enabled else '移除'
+    print('|- {0} standby_sync 同步公钥到 authorized_keys'.format(action))
+    if DRY_RUN:
+        print('|- dry-run: {0} {1}'.format(action, AUTHORIZED_KEYS))
+        return
+    ssh_dir = os.path.dirname(AUTHORIZED_KEYS)
+    os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(ssh_dir, 0o700)
+    except Exception:
+        pass
+    if os.path.exists(AUTHORIZED_KEYS):
+        with open(AUTHORIZED_KEYS, 'r', encoding='utf-8') as fp:
+            lines = fp.read().splitlines()
+    else:
+        lines = []
+    if enabled:
+        if pub_key not in lines:
+            lines.append(pub_key)
+    else:
+        lines = [line for line in lines if line.strip() != pub_key]
+    with open(AUTHORIZED_KEYS, 'w', encoding='utf-8') as fp:
+        fp.write('\n'.join(lines).strip() + ('\n' if lines else ''))
+    os.chmod(AUTHORIZED_KEYS, 0o600)
+
+
 def run_offline(args):
+    _set_authorized_key(True)
     _open_cron('备份数据库[backupAll]')
     _open_cron('[勿删]xtrabackup-cron')
     _open_cron('[勿删]xtrabackup-inc全量备份')
@@ -142,6 +183,7 @@ def run_online(args):
     opts = _json_arg(args.args)
     if _bool_opt(opts, 'promote_mysql', True):
         _run_node_script('switch__mysql_master.js', '将当前数据库提升为主')
+    _set_authorized_key(False)
     _close_cron('备份数据库[backupAll]')
     _close_cron('[勿删]xtrabackup-cron')
     _close_cron('[勿删]xtrabackup-inc全量备份')

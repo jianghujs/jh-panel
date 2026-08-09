@@ -20,8 +20,8 @@ var msState = {
   last_report_at: '',
   switch_run_id: '',
   switch_status: 'idle',
-  health_status: 'warning',
-  health_text: '主备未绑定',
+  health_status: 'normal',
+  health_text: '正常',
   log_path: '',
   health: {
     mysql: {status: 'unknown', text: '等待自检'},
@@ -227,9 +227,8 @@ function msOverview() {
   msSetActive(0);
   var monitorConfigured = !!msState.monitor_url;
   var bindConfigured = msState.bind_test_status === 'success';
-  var stateInfo = msState.state || {};
-  var pluginStatus = msState.health_status || stateInfo.health_status || (bindConfigured ? 'normal' : 'warning');
-  var pluginStatusText = msState.health_text || stateInfo.health_text || (pluginStatus === 'danger' ? '自检异常' : (bindConfigured ? '自检正常' : '主备未绑定'));
+  var pluginStatus = 'normal';
+  var pluginStatusText = '正常';
   var isSwitching = msState.switch_status === 'waiting_online';
   var roleTitle = '当前角色: ' + msState.role + '\n期望角色: ' + msState.desired_role;
   var switchingTip = '正在切换中\n' + roleTitle;

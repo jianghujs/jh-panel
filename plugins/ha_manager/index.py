@@ -267,7 +267,7 @@ HA_CHECK_DEFS = [
     {'group': 'SSH 同步', 'name': 'authorized_keys 同步公钥', 'type': 'authorized_key', 'master': 'disabled', 'standby': 'enabled'},
     {'group': 'rsync', 'name': 'rsyncd 任务', 'type': 'rsyncd_tasks', 'master': 'enabled', 'standby': 'disabled'},
     {'group': 'rsync', 'name': 'lsyncd 服务', 'type': 'lsyncd_service', 'master': 'running', 'standby': 'stopped'},
-    {'group': 'Web 服务', 'name': 'OpenResty', 'type': 'process', 'target': 'openresty', 'master': 'running', 'standby': 'stopped'},
+    {'group': 'Web 服务', 'name': 'OpenResty', 'type': 'openresty_service', 'master': 'running', 'standby': 'stopped'},
     {'group': '监控提醒', 'name': '主从同步异常提醒', 'type': 'notify', 'target': 'mysql_slave_status_notice', 'master': 'enabled', 'standby': 'disabled'},
     {'group': '监控提醒', 'name': 'Rsync 状态异常提醒', 'type': 'notify', 'target': 'rsync_status_notice', 'master': 'enabled', 'standby': 'disabled'}
 ]
@@ -312,6 +312,32 @@ def _check_crontab(name):
 def _check_process(name):
     out = mw.execShell("ps -ef | grep -E '{0}' | grep -v grep | head -1".format(name))[0].strip()
     return 'running' if out else 'stopped'
+
+
+def _systemctl_is_active(name):
+    out, err, code = mw.execShell('systemctl is-active {0}'.format(shlex.quote(name)))
+    return code == 0 and out.strip() == 'active'
+
+
+def _check_openresty_service(expected):
+    openresty_active = _systemctl_is_active('openresty')
+    nginx_active = _systemctl_is_active('nginx')
+    if expected == 'running':
+        if openresty_active and not nginx_active:
+            return 'running', 'OpenResty 运行中'
+        if openresty_active and nginx_active:
+            return 'running_with_nginx', 'OpenResty 和系统 nginx 同时运行'
+        if nginx_active:
+            return 'nginx_running', '系统 nginx 运行中，OpenResty 未运行'
+        return 'stopped', 'OpenResty 未运行'
+    if openresty_active or nginx_active:
+        active = []
+        if openresty_active:
+            active.append('OpenResty')
+        if nginx_active:
+            active.append('系统 nginx')
+        return 'running', 'Web 服务运行中: ' + '、'.join(active)
+    return 'stopped', 'Web 服务已停止'
 
 
 def _rsyncd_tasks():
@@ -365,6 +391,9 @@ def _script_health_checks(cfg):
             ok = actual == expected or (expected == 'disabled' and actual == 'missing')
         elif item.get('type') == 'process':
             actual = _check_process(item.get('target'))
+            ok = actual == expected
+        elif item.get('type') == 'openresty_service':
+            actual, actual_text = _check_openresty_service(expected)
             ok = actual == expected
         elif item.get('type') == 'rsyncd_tasks':
             actual, actual_text = _check_rsyncd_tasks(expected)
@@ -479,6 +508,11 @@ def get_state():
     data['peer_collect_msg'] = peer_state.get('msg', '')
     data['log'] = read_latest_log_text()
     return _return(True, 'ok', data)
+
+
+def get_local_state():
+    cfg = _config()
+    return _return(True, 'ok', _state(cfg))
 
 
 def save_binding():
@@ -697,29 +731,49 @@ def report_state():
     return _return(bool(res.get('status')), res.get('msg') or '上报完成', {'hosts': hosts})
 
 
+def _ssh_peer_exec(cfg, remote_cmd, timeout=15):
+    cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} {3}".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), shlex.quote(remote_cmd))
+    return mw.execShell(cmd, timeout=timeout)
+
+
+def _parse_peer_state_output(out):
+    result = json.loads(out.strip().split('\n')[-1])
+    if isinstance(result, dict) and result.get('status') is True:
+        state = result.get('data') or {}
+    else:
+        state = result
+    if not isinstance(state, dict) or not state.get('host_id'):
+        return None
+    state['collect_method'] = 'ssh_plugin'
+    return state
+
+
 def collect_peer_state_raw(cfg):
     if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': 'SSH未绑定或未验证'}
-    remote_path = REMOTE_STATE_PATH
-    marker = '__HA_MANAGER_PANEL_TITLE__'
-    title_cmd = "cd /www/server/jh-panel && python3 -c 'import sys; sys.path.append(\"/www/server/jh-panel/class/core\"); import mw; print(mw.getConfig(\"title\"))' 2>/dev/null || cat /www/server/jh-panel/data/title.pl 2>/dev/null || true"
-    remote_cmd = "cat {0}; printf '\\n{1}\\n'; {2}".format(remote_path, marker, title_cmd)
-    cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} {3}".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), shlex.quote(remote_cmd))
-    out, err, code = mw.execShell(cmd, timeout=8)
-    if code != 0:
-        return {'status': False, 'msg': err or out or 'SSH采集失败'}
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py get_local_state '{}'"
+    out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=15)
+    if code == 0:
+        try:
+            state = _parse_peer_state_output(out)
+            if state:
+                return {'status': True, 'data': state}
+        except Exception:
+            pass
+
+    py_code = 'import sys,json; sys.path.insert(0,"/www/server/jh-panel/plugins/ha_manager"); import index; index._ensure_dirs(); print(json.dumps({"status":True,"msg":"ok","data":index._state(index._config())}, ensure_ascii=False))'
+    fallback_cmd = 'cd /www/server/jh-panel && python3 -c {0}'.format(shlex.quote(py_code))
+    out2, err2, code2 = _ssh_peer_exec(cfg, fallback_cmd, timeout=15)
+    if code2 != 0:
+        return {'status': False, 'msg': err2 or out2 or err or out or 'SSH采集失败'}
     try:
-        state_text = out
-        panel_title = ''
-        if marker in out:
-            state_text, panel_title = out.split(marker, 1)
-            panel_title = panel_title.strip()
-        state = json.loads(state_text.strip())
-        if panel_title:
-            state['host_name'] = panel_title
+        state = _parse_peer_state_output(out2)
+        if not state:
+            return {'status': False, 'msg': '对端状态格式错误'}
+        state['collect_method'] = 'ssh_plugin_compat'
         return {'status': True, 'data': state}
-    except Exception:
-        return {'status': False, 'msg': '对端状态格式错误'}
+    except Exception as e:
+        return {'status': False, 'msg': '对端状态格式错误: ' + str(e)}
 
 
 def collect_peer_logs(cfg, peer_state):
@@ -1098,6 +1152,8 @@ if __name__ == '__main__':
         print(status())
     elif func == 'get_state':
         print(get_state())
+    elif func == 'get_local_state':
+        print(get_local_state())
     elif func == 'save_binding':
         print(save_binding())
     elif func == 'get_local_public_key':

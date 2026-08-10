@@ -30,6 +30,14 @@ def _run_bash(cmd, step):
     _run('bash -lc ' + _quote(cmd), step)
 
 
+def _run_optional(cmd, step):
+    print('|- ' + step)
+    if DRY_RUN:
+        print('|- dry-run: ' + cmd)
+        return
+    subprocess.run(cmd, cwd=PANEL_DIR, shell=True, text=True)
+
+
 def _run_node_script(script_name, step):
     script_path = os.path.join(OS_TOOL_DIR, script_name)
     if not os.path.exists(script_path):
@@ -123,6 +131,39 @@ def _set_authorized_key(enabled):
     os.chmod(AUTHORIZED_KEYS, 0o600)
 
 
+def _systemctl_exists(service):
+    proc = subprocess.run('systemctl list-unit-files {0}.service --no-legend | grep -q "^{0}.service"'.format(service), shell=True)
+    return proc.returncode == 0
+
+
+def _service_active(service):
+    proc = subprocess.run('systemctl is-active --quiet {0}'.format(service), shell=True)
+    return proc.returncode == 0
+
+
+def _ensure_openresty_master():
+    if _systemctl_exists('nginx'):
+        _run_optional('systemctl stop nginx', '停止系统 nginx 服务，避免占用 Web 端口')
+        _run_optional('systemctl disable nginx', '禁用系统 nginx 自启动')
+    _run('systemctl enable openresty', '启用 OpenResty 自启动')
+    _run('python3 {0} start'.format(OPENRESTY_INDEX), '启动 OpenResty')
+    if not DRY_RUN and not _service_active('openresty'):
+        _run('systemctl start openresty', '兜底启动 OpenResty 服务')
+    if not DRY_RUN and not _service_active('openresty'):
+        raise RuntimeError('启动 OpenResty 后服务仍未运行')
+
+
+def _ensure_openresty_standby():
+    _run('python3 {0} stop'.format(OPENRESTY_INDEX), '停止 OpenResty')
+    _run_optional('systemctl stop openresty', '兜底停止 OpenResty 服务')
+    _run_optional('systemctl disable openresty', '禁用 OpenResty 自启动')
+    if _systemctl_exists('nginx'):
+        _run_optional('systemctl stop nginx', '停止系统 nginx 服务')
+        _run_optional('systemctl disable nginx', '禁用系统 nginx 自启动')
+    if not DRY_RUN and (_service_active('openresty') or _service_active('nginx')):
+        raise RuntimeError('切为备用机后 Web 服务仍在运行')
+
+
 def run_offline(args):
     _set_authorized_key(True)
     _open_cron('备份数据库[backupAll]')
@@ -142,7 +183,7 @@ def run_offline(args):
     _set_rsyncd_tasks('disabled')
     _run('systemctl stop lsyncd', '停止 lsyncd 服务')
     _run("ps aux | grep '/bin/[r]sync' | awk '{print $2}' | xargs -r kill -9", '清理 rsync 进程')
-    _run('python3 {0} stop'.format(OPENRESTY_INDEX), '关闭 OpenResty')
+    _ensure_openresty_standby()
 
 
 def run_prepare_online(args):
@@ -198,7 +239,7 @@ def run_online(args):
     _run('python3 {0} setNotifyValue \'{{"ssl_cert":14}}\''.format(SWITCH_PY), '开启 SSL证书到期预提醒')
     _set_rsyncd_tasks('enabled')
     _run('systemctl restart lsyncd', '启动 lsyncd 服务')
-    _run('python3 {0} start'.format(OPENRESTY_INDEX), '启动 OpenResty')
+    _ensure_openresty_master()
     _run('python3 {0} openEmailNotify'.format(SWITCH_PY), '开启邮件通知')
     _run('python3 {0} openMysqlSlaveNotify'.format(SWITCH_PY), '开启主从同步异常提醒')
     _run('python3 {0} openRsyncStatusNotify'.format(SWITCH_PY), '开启Rsync状态异常提醒')

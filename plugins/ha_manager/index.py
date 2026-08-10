@@ -1,5 +1,11 @@
 # coding:utf-8
 
+import sys
+
+if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'status':
+    print('start')
+    sys.exit(0)
+
 import hashlib
 import hmac
 import json
@@ -8,7 +14,6 @@ import shlex
 import shutil
 import signal
 import subprocess
-import sys
 import time
 import urllib.request
 
@@ -452,6 +457,10 @@ def _append_switch_log(switch_run_id, phase, status, text):
     with open(path, 'a', encoding='utf-8') as fp:
         fp.write(line + '\n')
     return {'seq': seq, 'line': line, 'path': path}
+
+
+def status():
+    return 'start'
 
 
 def get_state():
@@ -1079,15 +1088,42 @@ def report_switch_event(cfg, phase, status, text, origin_host_id=None, seq=None,
     return _post_monitor(cfg, 'ha_report_switch_event', payload, signed=True)
 
 
-def main():
-    _ensure_dirs()
-    func = sys.argv[1] if len(sys.argv) > 1 else 'get_state'
-    if func not in globals():
-        print(_return(False, '方法不存在: ' + func))
-        return
-    result = globals()[func]()
-    print(result)
-
-
 if __name__ == '__main__':
-    main()
+    _ensure_dirs()
+    func = sys.argv[1] if len(sys.argv) > 1 else ''
+    if func == 'status':
+        print(status())
+    elif func == 'get_state':
+        print(get_state())
+    elif func == 'save_binding':
+        print(save_binding())
+    elif func == 'get_local_public_key':
+        print(get_local_public_key())
+    elif func == 'get_key_info':
+        print(get_key_info())
+    elif func == 'generate_keypair':
+        print(generate_keypair())
+    elif func == 'init_keypair':
+        print(init_keypair())
+    elif func == 'test_peer_ssh':
+        print(test_peer_ssh())
+    elif func == 'save_monitor':
+        print(save_monitor())
+    elif func == 'clear_monitor':
+        print(clear_monitor())
+    elif func == 'report_state':
+        print(report_state())
+    elif func == 'poll_monitor':
+        print(poll_monitor())
+    elif func == 'read_log':
+        print(read_log())
+    elif func == 'switch_lock_status':
+        print(switch_lock_status())
+    elif func == 'force_stop_switch':
+        print(force_stop_switch())
+    elif func == 'switch_phase':
+        print(switch_phase())
+    elif func == 'local_switch':
+        print(local_switch())
+    else:
+        print('error')

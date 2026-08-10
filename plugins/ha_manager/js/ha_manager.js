@@ -448,6 +448,14 @@ function msStopSwitchLogPolling() {
   }
 }
 
+function msCloseSwitchLogWindow() {
+  if (msSwitchLogLayerIndex !== null) {
+    var index = msSwitchLogLayerIndex;
+    msSwitchLogLayerIndex = null;
+    layer.close(index);
+  }
+}
+
 function msUpdateSwitchLogWindow(logText, stateText, stateClass) {
   $('#msSwitchLiveLog').text(logText || '正在准备切换任务...');
   $('#msSwitchLiveState').removeClass('ms-live-state-running ms-live-state-success ms-live-state-failed').addClass(stateClass || 'ms-live-state-running').text(stateText || '执行中');
@@ -499,6 +507,7 @@ function msFinishSwitchLogWindow(success, msg, switchRunId) {
   msRefreshSwitchLogWindow(switchRunId, function() {
     var text = msg || (success ? '切换执行完成' : '切换执行失败');
     msUpdateSwitchLogWindow(msState.log, text, success ? 'ms-live-state-success' : 'ms-live-state-failed');
+    msCloseSwitchLogWindow();
     layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
   });
 }

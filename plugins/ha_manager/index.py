@@ -25,6 +25,7 @@ import mw
 PLUGIN_NAME = 'ha_manager'
 PLUGIN_DIR = os.path.join(mw.getPluginDir(), PLUGIN_NAME)
 RUNTIME_DIR = '/www/server/ha_manager'
+VERSION_PATH = os.path.join(RUNTIME_DIR, 'version.pl')
 DATA_DIR = os.path.join(RUNTIME_DIR, 'data')
 LOG_DIR = os.path.join(RUNTIME_DIR, 'logs')
 SWITCH_LOG_DIR = os.path.join(LOG_DIR, 'switch')
@@ -50,6 +51,8 @@ def _ensure_dirs():
     for path in (RUNTIME_DIR, DATA_DIR, LOG_DIR, SWITCH_LOG_DIR, PEER_LOG_DIR):
         if not os.path.exists(path):
             os.makedirs(path, mode=0o700, exist_ok=True)
+    if not os.path.exists(VERSION_PATH) or not mw.readFile(VERSION_PATH).strip():
+        mw.writeFile(VERSION_PATH, '1.0')
     _migrate_runtime_data()
 
 

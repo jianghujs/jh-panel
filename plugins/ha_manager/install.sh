@@ -2,6 +2,9 @@
 
 action=$1
 version=$2
+if [ -z "$version" ]; then
+  version="1.0"
+fi
 
 case "$action" in
   install|update)

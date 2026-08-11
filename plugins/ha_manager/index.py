@@ -974,13 +974,17 @@ def _phase_text(phase):
     return phase
 
 
-def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机'):
+def _is_checksum_confirm_error(error):
+    return 'CHECKSUM_DIFF_CONFIRM_REQUIRED' in str(error)
+
+
+def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机', echo_output=False):
     cfg['switch_run_id'] = switch_run_id
     cfg['switch_status'] = phase + '_running'
     cfg['options'].update(_dict_value(options))
     _save_config(cfg)
     _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + _phase_text(phase) + '脚本，目标角色：' + ('主' if role == 'master' else '备'))
-    _run_executor(phase, cfg)
+    _run_executor(phase, cfg, echo_output)
     if phase != 'prepare_online':
         cfg['role'] = role
         cfg['desired_role'] = role
@@ -1047,12 +1051,14 @@ def switch_phase():
         return _return(False, '已有切换任务正在执行')
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
-        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, _dict_value(data.get('options')), '本机')
+        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, _dict_value(data.get('options')), '本机', True)
         return _return(True, '阶段执行完成', cfg)
     except Exception as e:
         _append_switch_log(cfg.get('switch_run_id') or data.get('switch_run_id') or 'failed', phase or 'switch', 'failed', str(e))
         cfg['switch_status'] = 'failed'
         _save_config(cfg)
+        if _is_checksum_confirm_error(e):
+            return _return(False, 'CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
         return _return(False, '阶段执行失败: ' + str(e))
     finally:
         _unlock()
@@ -1106,12 +1112,14 @@ def local_switch():
         cfg['switch_status'] = 'failed'
         _save_config(cfg)
         report_switch_event(cfg, 'switch', 'failed', str(e))
+        if _is_checksum_confirm_error(e):
+            return _return(False, 'CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
         return _return(False, '切换失败: ' + str(e))
     finally:
         _unlock()
 
 
-def _run_executor(phase, cfg):
+def _run_executor(phase, cfg, echo_output=False):
     script_phase = 'online' if phase == 'prepare_online' else phase
     script = '/www/server/jh-panel/scripts/os_tool/vm/default/switch__generate_' + script_phase + '.sh'
     if not os.path.exists(script):
@@ -1133,8 +1141,9 @@ def _run_executor(phase, cfg):
             output_lines.append(line.strip())
             output_lines = output_lines[-200:]
             _append_switch_log(cfg.get('switch_run_id'), phase, 'running', line.strip())
-            print(line.strip())
-            sys.stdout.flush()
+            if echo_output:
+                print(line.strip())
+                sys.stdout.flush()
             report_switch_event(cfg, phase, 'running', line.strip())
     code = proc.wait()
     if code != 0:

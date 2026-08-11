@@ -586,7 +586,8 @@ function msDoRunLocalSwitch(targetRole, options) {
   msPost('local_switch', {target_role: targetRole, switch_run_id: switchRunId, options: options}, function(data, res) {
     var success = !!data;
     if (data) msState = $.extend(true, msState, data);
-    if (!success && res && res.msg && res.msg.indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1) {
+    var responseMsg = (res && res.msg) || '';
+    if (!success && (responseMsg.indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1 || (msState.log || '').indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1)) {
       msStopSwitchLogPolling();
       msUpdateSwitchLogWindow(msState.log, '等待确认 checksum 差异', 'ms-live-state-failed');
       msConfirmChecksumDiff(function() {

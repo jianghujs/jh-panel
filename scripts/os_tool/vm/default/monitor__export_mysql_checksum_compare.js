@@ -308,4 +308,7 @@ async function getBoundMysqlInfo() {
   Logger.info(checksumDiff.length > 0? `\x1b[31m存在以下差异：\n${checksumDiff.join("\n")}\x1b[0m`: '\x1b[32m未检测到差异\x1b[0m', true)
   Logger.info("=====================================================================", true)
   rl.close();
+  if (checksumDiff.length > 0) {
+    process.exit(2);
+  }
 })();

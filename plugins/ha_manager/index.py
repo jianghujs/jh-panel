@@ -36,6 +36,7 @@ STATE_PATH = os.path.join(DATA_DIR, 'state.json')
 QUEUE_PATH = os.path.join(DATA_DIR, 'report_queue.json')
 SEQ_PATH = os.path.join(DATA_DIR, 'seq.json')
 LOCK_PATH = os.path.join(DATA_DIR, 'switch.lock')
+DRY_RUN = os.environ.get('HA_MANAGER_SWITCH_DRY_RUN') == '1'
 SSH_PRIVATE_KEY_PATH = '/root/.ssh/id_rsa'
 SSH_PUBLIC_KEY_PATH = '/root/.ssh/id_rsa.pub'
 LEGACY_DATA_DIR = os.path.join(PLUGIN_DIR, 'data')

@@ -55,6 +55,93 @@ def _checksum_env(opts):
     return env
 
 
+def _installed_mysql_plugin():
+    for name in ('mysql-apt', 'mysql-yum', 'mysql', 'mariadb'):
+        if os.path.exists('/www/server/' + name):
+            return name
+    return 'mysql-apt'
+
+
+def _plugin_json(plugin, func):
+    proc = subprocess.run(['python3', '/www/server/jh-panel/plugins/{0}/index.py'.format(plugin), func, '{}'], cwd=PANEL_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError('读取数据库插件配置失败: {0} {1}'.format(plugin, func))
+    return json.loads(proc.stdout.strip() or '{}')
+
+
+def _plugin_text(plugin, func):
+    proc = subprocess.run(['python3', '/www/server/jh-panel/plugins/{0}/index.py'.format(plugin), func, '{}'], cwd=PANEL_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError('读取数据库插件配置失败: {0} {1}'.format(plugin, func))
+    return proc.stdout.strip()
+
+
+def _mysql_info():
+    plugin = _installed_mysql_plugin()
+    data = _plugin_json(plugin, 'get_db_list_page')
+    port = _plugin_text(plugin, 'my_port')
+    mysql_bin = '/www/server/{0}/bin/usr/bin/mysql'.format(plugin)
+    if not os.path.exists(mysql_bin):
+        mysql_bin = 'mysql'
+    return {'plugin': plugin, 'port': port or '3306', 'password': ((data.get('info') or {}).get('root_pwd') or ''), 'mysql_bin': mysql_bin}
+
+
+def _mysql_query(mysql_info, host, sql):
+    cmd = [mysql_info.get('mysql_bin') or 'mysql', '-h', str(host), '-P', str(mysql_info.get('port') or '3306'), '-uroot', '-N', '-B', '-e', sql]
+    if mysql_info.get('password'):
+        cmd.insert(4, '-p' + str(mysql_info.get('password')))
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1800)
+    if proc.returncode != 0:
+        raise RuntimeError('连接数据库失败 {0}:{1}: {2}'.format(host, mysql_info.get('port'), (proc.stderr or proc.stdout).strip()[-500:]))
+    return proc.stdout
+
+
+def _mysql_checksum(mysql_info, host):
+    ignore = set(['mysql', 'performance_schema', 'sys', 'information_schema', 'test'])
+    databases = [line.strip() for line in _mysql_query(mysql_info, host, 'SHOW DATABASES').splitlines() if line.strip()]
+    checksums = {}
+    print('|- 开始计算{0}...'.format(host))
+    for database in databases:
+        if database in ignore:
+            continue
+        tables_sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='{0}' AND TABLE_TYPE='BASE TABLE'".format(database.replace("'", "''"))
+        tables = [line.strip() for line in _mysql_query(mysql_info, host, tables_sql).splitlines() if line.strip()]
+        for table in tables:
+            checksum_sql = 'CHECKSUM TABLE `{0}`.`{1}`'.format(database.replace('`', '``'), table.replace('`', '``'))
+            output = _mysql_query(mysql_info, host, checksum_sql).strip().splitlines()
+            value = ''
+            if output:
+                parts = output[-1].split('\t')
+                value = parts[-1] if parts else ''
+            checksums[database + '.' + table] = value
+    return checksums
+
+
+def _run_mysql_checksum_compare(opts):
+    local_ip = str(opts.get('local_ip') or '127.0.0.1')
+    remote_ip = str(opts.get('remote_ip') or '')
+    if not remote_ip:
+        raise RuntimeError('目标数据库IP地址为空，请检查 ha_manager 绑定的对端 IP')
+    mysql_info = _mysql_info()
+    print('|- 使用数据库插件配置：{0}，端口：{1}'.format(mysql_info.get('plugin'), mysql_info.get('port')))
+    local_checksum = _mysql_checksum(mysql_info, local_ip)
+    remote_checksum = _mysql_checksum(mysql_info, remote_ip)
+    all_keys = sorted(set(list(local_checksum.keys()) + list(remote_checksum.keys())))
+    diff = [key for key in all_keys if local_checksum.get(key) != remote_checksum.get(key)]
+    with open('/tmp/compare_checksum_diff', 'w', encoding='utf-8') as fp:
+        fp.write('checksum_diff=' + ','.join(diff))
+    print('===========================Checksum对比完毕==========================')
+    if diff:
+        print('存在以下差异：')
+        for key in diff:
+            print(key)
+        print('=====================================================================')
+        return 2
+    print('未检测到差异')
+    print('=====================================================================')
+    return 0
+
+
 def _json_arg(raw):
     if not raw:
         return {}
@@ -203,15 +290,14 @@ def run_prepare_online(args):
         _run('python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | python3 -c "import sys,json,subprocess; d=json.load(sys.stdin); script=d.get(\'data\') or \"\"; subprocess.check_call(script, shell=True) if script else None"', '执行 xtrabackup 增量恢复')
     if _bool_opt(opts, 'run_checksum'):
         if DRY_RUN:
-            _run_node_script('monitor__export_mysql_checksum_compare.js', '检查主备服务器 checksum')
+            print('|- 检查主备服务器 checksum')
+            print('|- dry-run: 使用数据库插件配置检查 {0} 和 {1} 的 checksum'.format(opts.get('local_ip') or '127.0.0.1', opts.get('remote_ip') or ''))
         else:
-            proc = subprocess.run(['node', os.path.join(OS_TOOL_DIR, 'monitor__export_mysql_checksum_compare.js')], cwd=OS_TOOL_DIR, text=True, env=_checksum_env(opts), timeout=1800)
-            if proc.returncode == 2 and not _bool_opt(opts, 'checksum_confirmed'):
+            checksum_code = _run_mysql_checksum_compare(opts)
+            if checksum_code == 2 and not _bool_opt(opts, 'checksum_confirmed'):
                 raise RuntimeError('CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
-            if proc.returncode == 2:
+            if checksum_code == 2:
                 print('|- checksum 存在差异，已确认忽略并继续')
-            elif proc.returncode != 0:
-                raise RuntimeError('checksum 检查执行失败 exit_code={0}'.format(proc.returncode))
     if _bool_opt(opts, 'sync_files'):
         remote_ip = opts.get('remote_ip') or ''
         remote_port = opts.get('remote_ssh_port') or '22'

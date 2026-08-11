@@ -366,13 +366,13 @@ function msOpenLocalSwitchDialog() {
     shadeClose: false,
     btn: ['确认执行', '取消'],
     content: msBuildLocalSwitchForm(),
-    success: function() {
-      msToggleSyncOptions();
+    success: function(layero) {
+      msToggleSyncOptions(layero);
     },
-    yes: function(index) {
-      var targetRole = msSelectedMasterTargetRole();
+    yes: function(index, layero) {
+      var targetRole = msSelectedMasterTargetRole(layero);
       if (!targetRole) return;
-      var switchOptions = msReadLocalSwitchOptions();
+      var switchOptions = msReadLocalSwitchOptions(layero);
       if (targetRole === msState.role) {
         layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
         return;
@@ -408,8 +408,9 @@ function msSwitchRiskTip() {
   return '<div class="ms-switch-risk-tip"><span>提示：</span>为减少服务中断时间，请确保程序（JianghuJS、Docker）和配置正确后执行上线操作。</div>';
 }
 
-function msSelectedMasterTargetRole() {
-  var masterHost = $('[name=switch_master_host]:checked').val();
+function msSelectedMasterTargetRole(scope) {
+  var root = scope && scope.length ? scope : $(document);
+  var masterHost = root.find('[name=switch_master_host]:checked').val();
   if (!masterHost) {
     layer.msg('请选择切换后的主机', {icon: 2});
     return '';
@@ -452,21 +453,24 @@ function msBuildSwitchOptionsForm(o) {
     '</form>';
 }
 
-function msReadLocalSwitchOptions() {
-  var form = $('#msLocalSwitchForm');
+function msReadLocalSwitchOptions(scope) {
+  var root = scope && scope.length ? scope : $(document);
+  var form = root.find('#msLocalSwitchForm').last();
   var data = $.extend(true, {}, msState.options);
   if (!form.length) return data;
   form.serializeArray().forEach(function(item) { data[item.name] = item.value; });
   ['run_checksum','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore','promote_mysql'].forEach(function(key) {
-    data[key] = form.find('[name=' + key + ']').is(':checked');
+    data[key] = form.find('input[type="checkbox"][name="' + key + '"]').prop('checked') === true;
   });
   msState.options = $.extend(true, {}, msState.options, data);
   return data;
 }
 
-function msToggleSyncOptions() {
-  var checked = $('#msLocalSwitchForm [name=sync_files]').is(':checked');
-  $('.ms-sync-options').toggle(checked);
+function msToggleSyncOptions(scope) {
+  var root = scope && scope.length ? scope : $(document);
+  var form = root.find('#msLocalSwitchForm').last();
+  var checked = form.find('input[type="checkbox"][name="sync_files"]').prop('checked') === true;
+  root.find('.ms-sync-options').toggle(checked);
 }
 
 function msCreateSwitchRunId() {

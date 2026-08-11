@@ -239,6 +239,7 @@ def _config():
     saved = _read_json(CONFIG_PATH, {})
     cfg.update(saved)
     cfg['options'].update(_dict_value(saved.get('options')))
+    cfg['options'].pop('allow_checksum_diff', None)
     cfg['host_name'] = _panel_title()
     if not cfg.get('monitor_disabled') and not cfg.get('monitor_url'):
         cfg['monitor_url'] = _default_monitor_url()
@@ -1065,6 +1066,7 @@ def local_switch():
         cfg['switch_run_id'] = switch_run_id
         cfg['switch_status'] = 'running'
         request_options = _dict_value(data.get('options'))
+        _append_switch_log(switch_run_id, 'switch', 'running', '收到切换选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
         switch_options = dict(_default_config().get('options') or {})
         saved_options = _dict_value(cfg.get('options'))
         for key in ('local_ip', 'remote_ip', 'remote_ssh_port', 'sync_file_dirs', 'sync_ignore_dirs'):

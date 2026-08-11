@@ -165,6 +165,7 @@ def _ensure_openresty_standby():
 
 
 def run_offline(args):
+    _run('python3 {0} closeMysqlSlaveNotify'.format(SWITCH_PY), '优先关闭主从同步异常提醒')
     _set_authorized_key(True)
     _open_cron('备份数据库[backupAll]')
     _open_cron('[勿删]xtrabackup-cron')
@@ -178,7 +179,6 @@ def run_offline(args):
     _open_cron('恢复网站配置[所有]')
     _open_cron('恢复插件配置[所有]')
     _run('python3 {0} setNotifyValue \'{{"ssl_cert":-1}}\''.format(SWITCH_PY), '关闭 SSL证书到期预提醒')
-    _run('python3 {0} closeMysqlSlaveNotify'.format(SWITCH_PY), '关闭主从同步异常提醒')
     _run('python3 {0} closeRsyncStatusNotify'.format(SWITCH_PY), '关闭Rsync状态异常提醒')
     _set_rsyncd_tasks('disabled')
     _run('systemctl stop lsyncd', '停止 lsyncd 服务')

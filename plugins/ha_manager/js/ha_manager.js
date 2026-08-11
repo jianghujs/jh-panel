@@ -507,11 +507,17 @@ function msBuildSwitchHostSelect() {
   var localName = msState.host_name || msState.host_id || '本机';
   var peerState = msState.peer_state || {};
   var peerName = peerState.host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
-  var defaultMaster = msSwitchWizard.targetRole ? (msSwitchWizard.targetRole === 'master' ? 'local' : 'peer') : (msState.role === 'master' ? 'local' : 'peer');
+  var localRole = msState.role || 'standby';
+  var peerRole = peerState.role || (localRole === 'master' ? 'standby' : 'master');
+  var defaultMaster = msSwitchWizard.targetRole ? (msSwitchWizard.targetRole === 'master' ? 'local' : 'peer') : (msState.role === 'master' ? 'peer' : 'local');
   return '<div class="ms-switch-hosts">' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="local" ' + (defaultMaster === 'local' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">设为主机 / 当前角色: ' + msHtml(msState.role) + ' / IP: ' + msHtml(msState.options.local_ip) + '</div></label>' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="peer" ' + (defaultMaster === 'peer' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">设为主机 / SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="local" ' + (defaultMaster === 'local' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">当前角色: ' + msRoleBadge(localRole) + ' <span class="ml10">IP: ' + msHtml(msState.options.local_ip) + '</span></div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="peer" ' + (defaultMaster === 'peer' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">当前角色: ' + msRoleBadge(peerRole) + ' <span class="ml10">IP: ' + msHtml(msState.peer_public_ip) + '</span></div></label>' +
   '</div>';
+}
+
+function msRoleBadge(role) {
+  return role === 'master' ? '<span class="ms-role-mark ms-role-master">主</span>' : '<span class="ms-role-mark ms-role-standby">备</span>';
 }
 
 function msBuildSwitchOptionsForm(o) {

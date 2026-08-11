@@ -33,13 +33,13 @@ var msState = {
     remote_ip: '',
     remote_ssh_port: '22',
     run_checksum: true,
-    allow_checksum_diff: false,
     sync_files: true,
     sync_file_dirs: '/www/wwwroot,/www/wwwstorage',
     sync_ignore_dirs: 'node_modules,logs,run',
     restore_site_setting: false,
     restore_plugin_setting: false,
-    run_xtrabackup_inc_restore: false
+    run_xtrabackup_inc_restore: false,
+    promote_mysql: true
   },
   log: ''
 };
@@ -372,6 +372,7 @@ function msOpenLocalSwitchDialog() {
     yes: function(index) {
       var targetRole = msSelectedMasterTargetRole();
       if (!targetRole) return;
+      var switchOptions = msReadLocalSwitchOptions();
       if (targetRole === msState.role) {
         layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
         return;
@@ -379,12 +380,12 @@ function msOpenLocalSwitchDialog() {
       if (targetRole === 'standby') {
         msConfirmPeerTakeover(function() {
           layer.close(index);
-          msPrepareRunLocalSwitch(targetRole);
+          msPrepareRunLocalSwitch(targetRole, switchOptions);
         });
         return;
       }
       layer.close(index);
-      msPrepareRunLocalSwitch(targetRole);
+      msPrepareRunLocalSwitch(targetRole, switchOptions);
     }
   });
 }
@@ -438,7 +439,6 @@ function msBuildSwitchOptionsForm(o) {
       '<div class="ms-option-grid">' +
       '<label class="ms-option-check"><input type="checkbox" name="sync_files" onchange="msToggleSyncOptions()" ' + (o.sync_files ? 'checked' : '') + '><span>同步文件</span></label>' +
       msCheck('run_checksum', '检查 checksum', o.run_checksum) +
-      msCheck('allow_checksum_diff', '允许忽略 checksum 差异', o.allow_checksum_diff) +
       msCheck('restore_site_setting', '恢复网站配置', o.restore_site_setting) +
       msCheck('restore_plugin_setting', '面板插件配置', o.restore_plugin_setting) +
       msCheck('run_xtrabackup_inc_restore', '执行增量恢复', o.run_xtrabackup_inc_restore) +
@@ -450,6 +450,18 @@ function msBuildSwitchOptionsForm(o) {
       '</div>' +
     '</div>' +
     '</form>';
+}
+
+function msReadLocalSwitchOptions() {
+  var form = $('#msLocalSwitchForm');
+  var data = $.extend(true, {}, msState.options);
+  if (!form.length) return data;
+  form.serializeArray().forEach(function(item) { data[item.name] = item.value; });
+  ['run_checksum','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore','promote_mysql'].forEach(function(key) {
+    data[key] = form.find('[name=' + key + ']').is(':checked');
+  });
+  msState.options = $.extend(true, {}, msState.options, data);
+  return data;
 }
 
 function msToggleSyncOptions() {
@@ -534,10 +546,10 @@ function msFinishSwitchLogWindow(success, msg, switchRunId) {
   });
 }
 
-function msPrepareRunLocalSwitch(targetRole) {
+function msPrepareRunLocalSwitch(targetRole, options) {
   msPost('switch_lock_status', {}, function(lock) {
     if (!lock || !lock.locked) {
-      msRunLocalSwitch(targetRole);
+      msRunLocalSwitch(targetRole, options);
       return;
     }
     var pidText = lock.pid ? ('PID: ' + lock.pid) : '未记录 PID';
@@ -550,15 +562,18 @@ function msPrepareRunLocalSwitch(targetRole) {
           return;
         }
         layer.msg('已结束旧切换任务，准备重新执行', {icon: 1, time: 1200});
-        msRunLocalSwitch(targetRole);
+        msRunLocalSwitch(targetRole, options);
       });
     });
   });
 }
 
-function msRunLocalSwitch(targetRole) {
-  msSaveLocalSwitchOptions();
-  var options = $.extend(true, {}, msState.options);
+function msRunLocalSwitch(targetRole, options) {
+  options = $.extend(true, {}, options || msState.options);
+  msDoRunLocalSwitch(targetRole, options);
+}
+
+function msDoRunLocalSwitch(targetRole, options) {
   var switchRunId = msCreateSwitchRunId();
   msState.switch_run_id = switchRunId;
   msState.switch_status = 'running';
@@ -567,20 +582,30 @@ function msRunLocalSwitch(targetRole) {
   msPost('local_switch', {target_role: targetRole, switch_run_id: switchRunId, options: options}, function(data, res) {
     var success = !!data;
     if (data) msState = $.extend(true, msState, data);
+    if (!success && res && res.msg && res.msg.indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1) {
+      msStopSwitchLogPolling();
+      msUpdateSwitchLogWindow(msState.log, '等待确认 checksum 差异', 'ms-live-state-failed');
+      msConfirmChecksumDiff(function() {
+        msCloseSwitchLogWindow();
+        var retryOptions = $.extend(true, {}, options, {checksum_confirmed: true});
+        msDoRunLocalSwitch(targetRole, retryOptions);
+      });
+      return;
+    }
     msFinishSwitchLogWindow(success, success ? '切换执行完成' : ((res && res.msg) || '切换执行失败'), switchRunId);
     msLogPanel();
   }, {quiet: true});
 }
 
-function msSaveLocalSwitchOptions() {
-  var form = $('#msLocalSwitchForm');
-  if (!form.length) return;
-  var data = {};
-  form.serializeArray().forEach(function(item) { data[item.name] = item.value; });
-  ['run_checksum','allow_checksum_diff','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore','promote_mysql'].forEach(function(key) {
-    data[key] = form.find('[name=' + key + ']').is(':checked');
+function msConfirmChecksumDiff(callback) {
+  layer.confirm('checksum 检查发现差异，是否确认忽略差异并继续本次切换？', {
+    icon: 3,
+    title: '确认 checksum 差异',
+    btn: ['忽略差异并继续', '取消']
+  }, function(index) {
+    layer.close(index);
+    if (callback) callback();
   });
-  msState.options = $.extend(true, {}, msState.options, data);
 }
 
 function msTestMonitor() {

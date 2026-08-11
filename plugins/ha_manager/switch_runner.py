@@ -196,10 +196,10 @@ def run_prepare_online(args):
             _run_node_script('monitor__export_mysql_checksum_compare.js', '检查主备服务器 checksum')
         else:
             proc = subprocess.run(['node', os.path.join(OS_TOOL_DIR, 'monitor__export_mysql_checksum_compare.js')], cwd=OS_TOOL_DIR, text=True)
-            if proc.returncode != 0 and not _bool_opt(opts, 'allow_checksum_diff'):
-                raise RuntimeError('checksum 检查失败，未允许忽略差异')
+            if proc.returncode != 0 and not _bool_opt(opts, 'checksum_confirmed'):
+                raise RuntimeError('CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
             if proc.returncode != 0:
-                print('|- checksum 存在差异，已按参数允许忽略')
+                print('|- checksum 存在差异，已确认忽略并继续')
     if _bool_opt(opts, 'sync_files'):
         remote_ip = opts.get('remote_ip') or ''
         remote_port = opts.get('remote_ssh_port') or '22'

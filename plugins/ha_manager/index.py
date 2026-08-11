@@ -222,7 +222,6 @@ def _default_config():
             'remote_ip': '',
             'remote_ssh_port': '22',
             'run_checksum': False,
-            'allow_checksum_diff': False,
             'sync_files': False,
             'sync_file_dirs': '/www/wwwroot,/www/wwwstorage',
             'sync_ignore_dirs': 'node_modules,logs,run',
@@ -1067,9 +1066,12 @@ def local_switch():
         cfg['switch_status'] = 'running'
         request_options = _dict_value(data.get('options'))
         switch_options = dict(_default_config().get('options') or {})
-        switch_options.update(_dict_value(cfg.get('options')))
+        saved_options = _dict_value(cfg.get('options'))
+        for key in ('local_ip', 'remote_ip', 'remote_ssh_port', 'sync_file_dirs', 'sync_ignore_dirs'):
+            if key in saved_options:
+                switch_options[key] = saved_options.get(key)
         switch_options.update(request_options)
-        for key in ('run_checksum', 'allow_checksum_diff', 'sync_files', 'restore_site_setting', 'restore_plugin_setting', 'run_xtrabackup_inc_restore'):
+        for key in ('run_checksum', 'sync_files', 'restore_site_setting', 'restore_plugin_setting', 'run_xtrabackup_inc_restore', 'checksum_confirmed'):
             if key not in request_options:
                 switch_options[key] = False
         if 'promote_mysql' not in request_options:

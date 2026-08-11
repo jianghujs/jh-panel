@@ -13,17 +13,17 @@ const rl = readline.createInterface({
 });
 
 const connectionA = {
-  host: '127.0.0.1',
-  port: '33067',
-  user: 'root',
-  password: ''
+  host: process.env.LOCAL_IP || '127.0.0.1',
+  port: process.env.LOCAL_MYSQL_PORT || process.env.MYSQL_PORT || '33067',
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || ''
 };
 
 const connectionB = {
   host: process.env.REMOTE_IP || '',
-  port: '33067',
-  user: 'root',
-  password: ''
+  port: process.env.REMOTE_MYSQL_PORT || process.env.MYSQL_PORT || '33067',
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || ''
 };
 
 // 不检查的库
@@ -99,10 +99,12 @@ popd > /dev/null
     `, (error, stdout, stderr) => {
       if (error) {
         console.error(`执行出错: ${error}`);
+        resolve('');
         return;
       }
       if (stderr) {
         console.error(`脚本错误: ${stderr}`);
+        resolve(stdout || '');
         return;
       }
       resolve(stdout)
@@ -212,18 +214,48 @@ async function checkConnection(connection) {
   });
 }   
 
+async function getBoundMysqlInfo() {
+  const plugins = ['mysql-apt', 'mysql-yum', 'mysql', 'mariadb'];
+  for (const plugin of plugins) {
+    const pluginDir = `/www/server/${plugin}`;
+    if (!fs.existsSync(pluginDir)) {
+      continue;
+    }
+    try {
+      let mysqlInfoRaw = await execSync(`python3 /www/server/jh-panel/plugins/${plugin}/index.py get_db_list_page`);
+      let mysqlInfo = JSON.parse(mysqlInfoRaw || '{}');
+      let port = (await execSync(`python3 /www/server/jh-panel/plugins/${plugin}/index.py my_port`)).trim();
+      return {
+        plugin,
+        password: mysqlInfo.info && mysqlInfo.info.root_pwd ? mysqlInfo.info.root_pwd : '',
+        port
+      };
+    } catch (error) {
+      continue;
+    }
+  }
+  return {plugin: '', password: '', port: ''};
+}
+
 (async () => {
   try {
-    let mysql_info = await execSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_db_list_page') 
-    let password =  JSON.parse(mysql_info).info.root_pwd
-    connectionA.password = password
-    connectionB.password = password
-
+    let mysqlInfo = await getBoundMysqlInfo();
+    connectionA.password = connectionA.password || mysqlInfo.password;
+    connectionB.password = connectionB.password || mysqlInfo.password;
+    connectionA.port = process.env.LOCAL_MYSQL_PORT || process.env.MYSQL_PORT || mysqlInfo.port || connectionA.port;
+    connectionB.port = process.env.REMOTE_MYSQL_PORT || process.env.MYSQL_PORT || mysqlInfo.port || connectionB.port;
+    if (mysqlInfo.plugin) {
+      console.log(`|- 使用数据库插件配置：${mysqlInfo.plugin}，端口：${connectionA.port}`);
+    }
   } catch (error) {
     console.error('获取数据库信息失败')
   }
 
   if (!connectionB.host) {
+    if (process.env.HA_MANAGER_AUTO_CONFIRM === '1') {
+      console.error("|- 目标数据库IP地址不能为空，请检查 ha_manager 绑定的对端 IP");
+      process.exit(1);
+    }
     // 本地数据库信息
     connectionA.host = await prompt(`请输入当前数据库IP地址（默认为：${connectionA.host}）：`, connectionA.host);
     connectionA.port = await prompt(`请输入当前数据库端口（默认为：${connectionA.port}）：`, connectionA.port);

@@ -45,6 +45,16 @@ def _run_node_script(script_name, step):
     _run('HA_MANAGER_AUTO_CONFIRM=1 node {0}'.format(_quote(script_path)), step)
 
 
+def _checksum_env(opts):
+    env = os.environ.copy()
+    env['HA_MANAGER_AUTO_CONFIRM'] = '1'
+    env['LOCAL_IP'] = str(opts.get('local_ip') or '127.0.0.1')
+    env['REMOTE_IP'] = str(opts.get('remote_ip') or '')
+    if opts.get('mysql_port'):
+        env['MYSQL_PORT'] = str(opts.get('mysql_port'))
+    return env
+
+
 def _json_arg(raw):
     if not raw:
         return {}
@@ -195,7 +205,7 @@ def run_prepare_online(args):
         if DRY_RUN:
             _run_node_script('monitor__export_mysql_checksum_compare.js', '检查主备服务器 checksum')
         else:
-            proc = subprocess.run(['node', os.path.join(OS_TOOL_DIR, 'monitor__export_mysql_checksum_compare.js')], cwd=OS_TOOL_DIR, text=True)
+            proc = subprocess.run(['node', os.path.join(OS_TOOL_DIR, 'monitor__export_mysql_checksum_compare.js')], cwd=OS_TOOL_DIR, text=True, env=_checksum_env(opts), timeout=1800)
             if proc.returncode != 0 and not _bool_opt(opts, 'checksum_confirmed'):
                 raise RuntimeError('CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
             if proc.returncode != 0:

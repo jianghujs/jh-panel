@@ -627,7 +627,7 @@ function msShowSwitchLogWindow(title, switchRunId) {
   }, 1000);
 }
 
-function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
+function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen, keepLogWindow) {
   msStopSwitchLogPolling();
   msRefreshSwitchLogWindow(switchRunId, function() {
     var text = msg || (success ? '切换执行完成' : '切换执行失败');
@@ -635,7 +635,7 @@ function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
       text = '预备上线完成，checksum 有差异';
     }
     msUpdateSwitchLogWindow(msState.log, text, success ? 'ms-live-state-success' : 'ms-live-state-failed');
-    msCloseSwitchLogWindow();
+    if (!keepLogWindow) msCloseSwitchLogWindow();
     if (keepOpen) {
       msSwitchWizard.prepared = success;
       msSwitchWizard.prepareRunId = switchRunId;
@@ -643,7 +643,7 @@ function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
       msSwitchWizard.step = 3;
       msRenderSwitchWizard();
     }
-    layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
+    if (!keepLogWindow) layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
   });
 }
 
@@ -809,9 +809,56 @@ function msDoRunLocalSwitch(targetRole, options, action) {
     }
     var successMsg = action === 'prepare' ? '预备上线完成' : '正式上线完成';
     var failMsg = action === 'prepare' ? '预备上线失败' : '正式上线失败';
-    msFinishSwitchLogWindow(success, success ? successMsg : ((res && res.msg) || failMsg), switchRunId, action === 'prepare');
-    if (action !== 'prepare') msLogPanel();
+    msFinishSwitchLogWindow(success, success ? successMsg : ((res && res.msg) || failMsg), switchRunId, action === 'prepare', action !== 'prepare' && success);
+    if (action !== 'prepare' && success) msPromptAutoHealthAfterSwitch();
   }, {quiet: true});
+}
+
+function msPromptAutoHealthAfterSwitch() {
+  var jumpedToHealth = false;
+  var healthRefreshTimer = null;
+  var scheduleHealthRefreshOnly = function() {
+    healthRefreshTimer = setTimeout(function() {
+      if (!jumpedToHealth) msRefreshHealthDataAfterSwitch();
+    }, 3000);
+  };
+  var jumpToHealth = function() {
+    jumpedToHealth = true;
+    if (healthRefreshTimer) clearTimeout(healthRefreshTimer);
+    msCloseSwitchLogWindow();
+    msAutoRefreshHealthAfterSwitch();
+  };
+  if (typeof openTimoutLayer === 'function') {
+    openTimoutLayer('切换完毕，即将自动跳转自检页面', jumpToHealth, {confirmBtn: '立即跳转', cancelBtn: '取消', timeout: 3});
+    scheduleHealthRefreshOnly();
+    return;
+  }
+  var timer = setTimeout(jumpToHealth, 3000);
+  scheduleHealthRefreshOnly();
+  layer.confirm('切换完毕，即将自动跳转自检页面', {
+    icon: 1,
+    title: '提示',
+    btn: ['立即跳转', '取消']
+  }, function(index) {
+    clearTimeout(timer);
+    layer.close(index);
+    jumpToHealth();
+  }, function() {
+    clearTimeout(timer);
+  });
+}
+
+function msRefreshHealthDataAfterSwitch() {
+  msLoadState(function() {
+    layer.msg('切换完成，已自动刷新自检数据', {icon: 1});
+  });
+}
+
+function msAutoRefreshHealthAfterSwitch() {
+  msLoadState(function() {
+    msHealthPanel();
+    layer.msg('切换完成，已自动自检', {icon: 1});
+  });
 }
 
 function msConfirmChecksumDiff(callback) {

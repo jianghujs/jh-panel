@@ -364,7 +364,7 @@ function msOpenLocalSwitchDialog() {
     title: '切换主备',
     closeBtn: 1,
     shadeClose: false,
-    btn: ['确认执行', '取消'],
+    btn: ['预备上线', '正式上线', '取消'],
     content: msBuildLocalSwitchForm(),
     success: function(layero) {
       msToggleSyncOptions(layero);
@@ -377,16 +377,56 @@ function msOpenLocalSwitchDialog() {
         layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
         return;
       }
+      msConfirmPrepareOnline(targetRole, function() {
+        layer.close(index);
+        msPrepareRunLocalSwitch(targetRole, switchOptions, 'prepare');
+      });
+    },
+    btn2: function(index, layero) {
+      var targetRole = msSelectedMasterTargetRole(layero);
+      if (!targetRole) return false;
+      var switchOptions = msReadLocalSwitchOptions(layero);
+      if (targetRole === msState.role) {
+        layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
+        return false;
+      }
       if (targetRole === 'standby') {
         msConfirmPeerTakeover(function() {
           layer.close(index);
-          msPrepareRunLocalSwitch(targetRole, switchOptions);
+          msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
         });
-        return;
+        return false;
       }
-      layer.close(index);
-      msPrepareRunLocalSwitch(targetRole, switchOptions);
+      msConfirmFinalizeSwitch(targetRole, function() {
+        layer.close(index);
+        msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
+      });
+      return false;
     }
+  });
+}
+
+function msConfirmPrepareOnline(targetRole, callback) {
+  var targetText = targetRole === 'master' ? '本机' : '对端';
+  layer.confirm('确认在目标主机（' + targetText + '）执行预备上线？<br>将按预上线选项执行同步文件、checksum 检查、增量恢复等操作。', {
+    icon: 3,
+    title: '确认预备上线',
+    btn: ['确认执行', '取消']
+  }, function(confirmIndex) {
+    layer.close(confirmIndex);
+    if (callback) callback();
+  });
+}
+
+function msConfirmFinalizeSwitch(targetRole, callback) {
+  var targetText = targetRole === 'master' ? '本机' : '对端';
+  layer.confirm('确认执行正式上线并切换主备？<br>将跳过预上线流程，只执行目标备用机下线和目标主机（' + targetText + '）正式上线。', {
+    icon: 3,
+    title: '确认正式上线',
+    btn: ['确认执行', '取消']
+  }, function(confirmIndex) {
+    layer.close(confirmIndex);
+    if (callback) callback();
   });
 }
 
@@ -436,14 +476,13 @@ function msBuildLocalSwitchForm() {
 function msBuildSwitchOptionsForm(o) {
   o = o || {};
   return '<form class="bt-form ms-form" id="msLocalSwitchForm">' +
-    '<div class="ms-switch-options"><div class="ms-switch-options-title">切换选项</div>' +
+    '<div class="ms-switch-options"><div class="ms-switch-options-title">预上线选项</div>' +
       '<div class="ms-option-grid">' +
       '<label class="ms-option-check"><input type="checkbox" name="sync_files" onchange="msToggleSyncOptions()" ' + (o.sync_files ? 'checked' : '') + '><span>同步文件</span></label>' +
       msCheck('run_checksum', '检查 checksum', o.run_checksum) +
       msCheck('restore_site_setting', '恢复网站配置', o.restore_site_setting) +
       msCheck('restore_plugin_setting', '面板插件配置', o.restore_plugin_setting) +
       msCheck('run_xtrabackup_inc_restore', '执行增量恢复', o.run_xtrabackup_inc_restore) +
-      msCheck('promote_mysql', '提升 MySQL 为主', o.promote_mysql !== false) +
       '</div>' +
       '<div class="ms-sync-options ms-sync-group">' +
         '<div class="ms-sync-field"><span>同步目录</span><input class="bt-input-text" type="text" name="sync_file_dirs" value="' + msHtml(o.sync_file_dirs) + '" /></div>' +
@@ -459,9 +498,10 @@ function msReadLocalSwitchOptions(scope) {
   var data = $.extend(true, {}, msState.options);
   if (!form.length) return data;
   form.serializeArray().forEach(function(item) { data[item.name] = item.value; });
-  ['run_checksum','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore','promote_mysql'].forEach(function(key) {
+  ['run_checksum','sync_files','restore_site_setting','restore_plugin_setting','run_xtrabackup_inc_restore'].forEach(function(key) {
     data[key] = form.find('input[type="checkbox"][name="' + key + '"]').prop('checked') === true;
   });
+  data.promote_mysql = true;
   msState.options = $.extend(true, {}, msState.options, data);
   return data;
 }
@@ -540,25 +580,26 @@ function msShowSwitchLogWindow(title, switchRunId) {
   }, 1000);
 }
 
-function msFinishSwitchLogWindow(success, msg, switchRunId) {
+function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
   msStopSwitchLogPolling();
   msRefreshSwitchLogWindow(switchRunId, function() {
     var text = msg || (success ? '切换执行完成' : '切换执行失败');
     msUpdateSwitchLogWindow(msState.log, text, success ? 'ms-live-state-success' : 'ms-live-state-failed');
-    msCloseSwitchLogWindow();
+    if (!keepOpen) msCloseSwitchLogWindow();
     layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
   });
 }
 
-function msPrepareRunLocalSwitch(targetRole, options) {
+function msPrepareRunLocalSwitch(targetRole, options, action) {
+  action = action || 'finalize';
   msPost('switch_lock_status', {}, function(lock) {
     if (!lock || !lock.locked) {
-      msRunLocalSwitch(targetRole, options);
+      msRunLocalSwitch(targetRole, options, action);
       return;
     }
     var pidText = lock.pid ? ('PID: ' + lock.pid) : '未记录 PID';
     var processText = lock.alive ? '检测到已有切换任务仍在执行。' : '检测到上次切换锁未清理，进程已不存在。';
-    layer.confirm(processText + '<br>' + pidText + '<br>是否强制结束并重新执行本次切换？', {icon: 3, title: '已有切换任务正在执行', btn: ['强制结束并执行', '取消']}, function(confirmIndex) {
+    layer.confirm(processText + '<br>' + pidText + '<br>是否强制结束并重新执行本次操作？', {icon: 3, title: '已有切换任务正在执行', btn: ['强制结束并执行', '取消']}, function(confirmIndex) {
       layer.close(confirmIndex);
       msPost('force_stop_switch', {}, function(result, res) {
         if (!result) {
@@ -566,24 +607,28 @@ function msPrepareRunLocalSwitch(targetRole, options) {
           return;
         }
         layer.msg('已结束旧切换任务，准备重新执行', {icon: 1, time: 1200});
-        msRunLocalSwitch(targetRole, options);
+        msRunLocalSwitch(targetRole, options, action);
       });
     });
   });
 }
 
-function msRunLocalSwitch(targetRole, options) {
+function msRunLocalSwitch(targetRole, options, action) {
   options = $.extend(true, {}, options || msState.options);
-  msDoRunLocalSwitch(targetRole, options);
+  options.promote_mysql = true;
+  msDoRunLocalSwitch(targetRole, options, action || 'finalize');
 }
 
-function msDoRunLocalSwitch(targetRole, options) {
+function msDoRunLocalSwitch(targetRole, options, action) {
+  action = action || 'finalize';
   var switchRunId = msCreateSwitchRunId();
   msState.switch_run_id = switchRunId;
   msState.switch_status = 'running';
   msState.log = '';
-  msShowSwitchLogWindow(targetRole === 'master' ? '正在切换为主...' : '正在切换为备...', switchRunId);
-  msPost('local_switch', {target_role: targetRole, switch_run_id: switchRunId, options: options}, function(data, res) {
+  var title = action === 'prepare' ? '正在执行预备上线...' : (targetRole === 'master' ? '正在正式上线为主...' : '正在正式上线为备...');
+  var method = action === 'prepare' ? 'prepare_switch' : 'finalize_switch';
+  msShowSwitchLogWindow(title, switchRunId);
+  msPost(method, {target_role: targetRole, switch_run_id: switchRunId, options: options}, function(data, res) {
     var success = !!data;
     if (data) msState = $.extend(true, msState, data);
     var responseMsg = (res && res.msg) || '';
@@ -593,11 +638,13 @@ function msDoRunLocalSwitch(targetRole, options) {
       msConfirmChecksumDiff(function() {
         msCloseSwitchLogWindow();
         var retryOptions = $.extend(true, {}, options, {checksum_confirmed: true});
-        msDoRunLocalSwitch(targetRole, retryOptions);
+        msDoRunLocalSwitch(targetRole, retryOptions, action);
       });
       return;
     }
-    msFinishSwitchLogWindow(success, success ? '切换执行完成' : ((res && res.msg) || '切换执行失败'), switchRunId);
+    var successMsg = action === 'prepare' ? '预备上线完成' : '正式上线完成';
+    var failMsg = action === 'prepare' ? '预备上线失败' : '正式上线失败';
+    msFinishSwitchLogWindow(success, success ? successMsg : ((res && res.msg) || failMsg), switchRunId, action === 'prepare');
     msLogPanel();
   }, {quiet: true});
 }

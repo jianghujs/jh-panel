@@ -868,7 +868,7 @@ def _pid_cmdline(pid):
 
 def _is_ha_switch_process(pid):
     cmdline = _pid_cmdline(pid)
-    return 'plugins/ha_manager/index.py' in cmdline and (' local_switch' in cmdline or ' switch_phase' in cmdline)
+    return 'plugins/ha_manager/index.py' in cmdline and (' local_switch' in cmdline or ' switch_phase' in cmdline or ' prepare_switch' in cmdline or ' finalize_switch' in cmdline)
 
 
 def _process_children(pid):
@@ -978,6 +978,21 @@ def _is_checksum_confirm_error(error):
     return 'CHECKSUM_DIFF_CONFIRM_REQUIRED' in str(error)
 
 
+def _switch_options_from_request(cfg, request_options):
+    request_options = _dict_value(request_options)
+    switch_options = dict(_default_config().get('options') or {})
+    saved_options = _dict_value(cfg.get('options'))
+    for key in ('local_ip', 'remote_ip', 'remote_ssh_port', 'sync_file_dirs', 'sync_ignore_dirs'):
+        if key in saved_options:
+            switch_options[key] = saved_options.get(key)
+    switch_options.update(request_options)
+    for key in ('run_checksum', 'sync_files', 'restore_site_setting', 'restore_plugin_setting', 'run_xtrabackup_inc_restore', 'checksum_confirmed'):
+        if key not in request_options:
+            switch_options[key] = False
+    switch_options['promote_mysql'] = True
+    return switch_options
+
+
 def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机', echo_output=False):
     cfg['switch_run_id'] = switch_run_id
     cfg['switch_status'] = phase + '_running'
@@ -1007,7 +1022,8 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
         'orchestrated': True
     }
     args = shlex.quote(json.dumps(payload, ensure_ascii=False))
-    remote_cmd = 'cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {0}'.format(args)
+    env_prefix = 'HA_MANAGER_SWITCH_DRY_RUN=1 ' if DRY_RUN else ''
+    remote_cmd = 'cd /www/server/jh-panel && {0}python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {1}'.format(env_prefix, args)
     cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', '-p', str(cfg.get('peer_ssh_port')), cfg.get('peer_ssh_user') + '@' + cfg.get('peer_public_ip'), remote_cmd]
     _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + _phase_text(phase) + '脚本')
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, preexec_fn=os.setsid)
@@ -1076,17 +1092,7 @@ def local_switch():
         cfg['switch_status'] = 'running'
         request_options = _dict_value(data.get('options'))
         _append_switch_log(switch_run_id, 'switch', 'running', '收到切换选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
-        switch_options = dict(_default_config().get('options') or {})
-        saved_options = _dict_value(cfg.get('options'))
-        for key in ('local_ip', 'remote_ip', 'remote_ssh_port', 'sync_file_dirs', 'sync_ignore_dirs'):
-            if key in saved_options:
-                switch_options[key] = saved_options.get(key)
-        switch_options.update(request_options)
-        for key in ('run_checksum', 'sync_files', 'restore_site_setting', 'restore_plugin_setting', 'run_xtrabackup_inc_restore', 'checksum_confirmed'):
-            if key not in request_options:
-                switch_options[key] = False
-        if 'promote_mysql' not in request_options:
-            switch_options['promote_mysql'] = True
+        switch_options = _switch_options_from_request(cfg, request_options)
         cfg['options'].update(switch_options)
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'running', '本次预上线选项：sync_files={0}, run_checksum={1}, promote_mysql={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('promote_mysql')).lower()))
@@ -1115,6 +1121,82 @@ def local_switch():
         if _is_checksum_confirm_error(e):
             return _return(False, 'CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
         return _return(False, '切换失败: ' + str(e))
+    finally:
+        _unlock()
+
+
+def prepare_switch():
+    data = _args()
+    cfg = _config()
+    target_role = data.get('target_role') or ('standby' if cfg.get('role') == 'master' else 'master')
+    if not _lock():
+        return _return(False, '已有切换任务正在执行')
+    try:
+        switch_run_id = data.get('switch_run_id') or 'PREPARE_' + time.strftime('%Y%m%d%H%M%S')
+        cfg['switch_run_id'] = switch_run_id
+        cfg['switch_status'] = 'running'
+        request_options = _dict_value(data.get('options'))
+        _append_switch_log(switch_run_id, 'switch', 'running', '收到预上线选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
+        switch_options = _switch_options_from_request(cfg, request_options)
+        cfg['options'].update(switch_options)
+        _save_config(cfg)
+        _append_switch_log(switch_run_id, 'switch', 'start', '预备上线开始：在切换后的目标主机执行预上线')
+        _append_switch_log(switch_run_id, 'switch', 'running', '本次预上线选项：sync_files={0}, run_checksum={1}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower()))
+        if target_role == 'master':
+            cfg = _run_local_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, switch_options, '本机')
+        else:
+            _run_remote_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, _remote_phase_options(cfg, 'prepare_online'))
+        cfg['switch_status'] = 'prepare_switch_done'
+        _save_config(cfg)
+        _append_switch_log(switch_run_id, 'switch', 'success', '预备上线完成')
+        return _return(True, '预备上线完成', cfg)
+    except Exception as e:
+        _append_switch_log(cfg.get('switch_run_id') or 'failed', 'switch', 'failed', str(e))
+        cfg['switch_status'] = 'failed'
+        _save_config(cfg)
+        report_switch_event(cfg, 'switch', 'failed', str(e))
+        if _is_checksum_confirm_error(e):
+            return _return(False, 'CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
+        return _return(False, '预备上线失败: ' + str(e))
+    finally:
+        _unlock()
+
+
+def finalize_switch():
+    data = _args()
+    cfg = _config()
+    target_role = data.get('target_role') or ('standby' if cfg.get('role') == 'master' else 'master')
+    if not _lock():
+        return _return(False, '已有切换任务正在执行')
+    try:
+        switch_run_id = data.get('switch_run_id') or 'FINAL_' + time.strftime('%Y%m%d%H%M%S')
+        cfg['switch_run_id'] = switch_run_id
+        cfg['switch_status'] = 'running'
+        request_options = _dict_value(data.get('options'))
+        switch_options = _switch_options_from_request(cfg, request_options)
+        cfg['options'].update(switch_options)
+        _save_config(cfg)
+        _append_switch_log(switch_run_id, 'switch', 'running', '收到正式上线选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
+        _append_switch_log(switch_run_id, 'switch', 'start', '正式上线开始：不执行预上线，只执行目标备用机下线和目标主机正式上线')
+        if target_role == 'master':
+            _run_remote_switch_phase(cfg, 'offline', 'standby', switch_run_id, _remote_phase_options(cfg, 'offline'))
+            cfg = _run_local_switch_phase(cfg, 'online', 'master', switch_run_id, switch_options, '本机')
+        else:
+            cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, switch_options, '本机')
+            _run_remote_switch_phase(cfg, 'online', 'master', switch_run_id, _remote_phase_options(cfg, 'online'))
+        cfg['desired_role'] = target_role
+        cfg['switch_status'] = 'switch_done'
+        _save_config(cfg)
+        _append_switch_log(switch_run_id, 'switch', 'success', '正式上线完成，切换主备完成')
+        _state(cfg)
+        report_switch_event(cfg, 'switch', 'success', '正式上线完成，切换主备完成')
+        return _return(True, '正式上线完成', cfg)
+    except Exception as e:
+        _append_switch_log(cfg.get('switch_run_id') or 'failed', 'switch', 'failed', str(e))
+        cfg['switch_status'] = 'failed'
+        _save_config(cfg)
+        report_switch_event(cfg, 'switch', 'failed', str(e))
+        return _return(False, '正式上线失败: ' + str(e))
     finally:
         _unlock()
 
@@ -1198,6 +1280,10 @@ if __name__ == '__main__':
         print(force_stop_switch())
     elif func == 'switch_phase':
         print(switch_phase())
+    elif func == 'prepare_switch':
+        print(prepare_switch())
+    elif func == 'finalize_switch':
+        print(finalize_switch())
     elif func == 'local_switch':
         print(local_switch())
     else:

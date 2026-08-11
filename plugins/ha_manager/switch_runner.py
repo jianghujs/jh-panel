@@ -87,9 +87,10 @@ def _mysql_info():
 
 
 def _mysql_query(mysql_info, host, sql):
-    cmd = [mysql_info.get('mysql_bin') or 'mysql', '-h', str(host), '-P', str(mysql_info.get('port') or '3306'), '-uroot', '-N', '-B', '-e', sql]
+    cmd = [mysql_info.get('mysql_bin') or 'mysql', '-h', str(host), '-P', str(mysql_info.get('port') or '3306'), '-uroot']
     if mysql_info.get('password'):
-        cmd.insert(4, '-p' + str(mysql_info.get('password')))
+        cmd.append('-p' + str(mysql_info.get('password')))
+    cmd.extend(['-N', '-B', '-e', sql])
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=1800)
     if proc.returncode != 0:
         raise RuntimeError('连接数据库失败 {0}:{1}: {2}'.format(host, mysql_info.get('port'), (proc.stderr or proc.stdout).strip()[-500:]))

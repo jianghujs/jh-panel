@@ -71,6 +71,8 @@
 .ms-form .line .tname{width:130px;}
 .ms-form .bt-input-text{height:30px;}
 .ms-switch-hosts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.ms-switch-risk-tip{border:1px solid #f0c6c4;background:#fff7f6;color:#555;border-radius:4px;padding:8px 10px;margin:0 0 12px 0;line-height:22px;font-size:12px;}
+.ms-switch-risk-tip span{color:#d9534f;font-weight:600;}
 .ms-switch-host{display:block;border:1px solid #e6e9ef;border-radius:4px;background:#fff;padding:10px 12px;font-weight:normal;cursor:pointer;}
 .ms-switch-host input{margin-right:6px;}
 .ms-switch-host-name{font-weight:600;color:#333;}
@@ -121,7 +123,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=2026080903', function(){
+$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=2026081101', function(){
   msLoadState(function(){
     msOverview();
   });

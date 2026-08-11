@@ -358,22 +358,29 @@ function msReadMonitorForm() {
 }
 
 function msOpenLocalSwitchDialog() {
-  var targetRole = msState.role === 'master' ? 'standby' : 'master';
-  var title = targetRole === 'master' ? '切换为主' : '切换为备';
   layer.open({
     type: 1,
-    area: ['750px', targetRole === 'master' ? '560px' : '460px'],
-    title: title,
+    area: ['750px', '500px'],
+    title: '切换主备',
     closeBtn: 1,
     shadeClose: false,
     btn: ['确认执行', '取消'],
-    content: msBuildLocalSwitchForm(targetRole),
+    content: msBuildLocalSwitchForm(),
     success: function() {
       msToggleSyncOptions();
     },
     yes: function(index) {
-      if (targetRole === 'standby' && !$('#msOfflineConfirm').is(':checked')) {
-        layer.msg('请先确认对端可接管业务', {icon: 2});
+      var targetRole = msSelectedMasterTargetRole();
+      if (!targetRole) return;
+      if (targetRole === msState.role) {
+        layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
+        return;
+      }
+      if (targetRole === 'standby') {
+        msConfirmPeerTakeover(function() {
+          layer.close(index);
+          msPrepareRunLocalSwitch(targetRole);
+        });
         return;
       }
       layer.close(index);
@@ -382,28 +389,43 @@ function msOpenLocalSwitchDialog() {
   });
 }
 
-function msBuildLocalSwitchForm(targetRole) {
+function msConfirmPeerTakeover(callback) {
+  var peerState = msState.peer_state || {};
+  var peerName = peerState.host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
+  var content = msSwitchRiskTip() + '<div>确认对端 ' + msHtml(peerName) + ' 已经可以接管业务？<br>确认后会继续执行本机下线并切为备用机。</div>';
+  layer.confirm(content, {
+    icon: 3,
+    title: '确认对端可接管业务',
+    btn: ['确认可接管', '取消']
+  }, function(confirmIndex) {
+    layer.close(confirmIndex);
+    if (callback) callback();
+  });
+}
+
+function msSwitchRiskTip() {
+  return '<div class="ms-switch-risk-tip"><span>提示：</span>为减少服务中断时间，请确保程序（JianghuJS、Docker）和配置正确后执行上线操作。</div>';
+}
+
+function msSelectedMasterTargetRole() {
+  var masterHost = $('[name=switch_master_host]:checked').val();
+  if (!masterHost) {
+    layer.msg('请选择切换后的主机', {icon: 2});
+    return '';
+  }
+  return masterHost === 'local' ? 'master' : 'standby';
+}
+
+function msBuildLocalSwitchForm() {
   var localName = msState.host_name || msState.host_id || '本机';
   var peerState = msState.peer_state || {};
   var peerName = peerState.host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
+  var defaultMaster = msState.role === 'master' ? 'local' : 'peer';
   var hostSelect = '<div class="ms-switch-hosts">' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="local" checked><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">当前: ' + msHtml(msState.role) + ' / IP: ' + msHtml(msState.options.local_ip) + '</div></label>' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_host" value="peer"><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="local" ' + (defaultMaster === 'local' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">设为主机 / 当前角色: ' + msHtml(msState.role) + ' / IP: ' + msHtml(msState.options.local_ip) + '</div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="peer" ' + (defaultMaster === 'peer' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">设为主机 / SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
   '</div>';
-  if (targetRole === 'standby') {
-    return '<div class="pd15"><div class="c6 mb10">确认后会先在对端执行预上线，再在本机执行下线脚本切为备用机，最后在对端执行正式上线切为主机。</div>' +
-      hostSelect +
-      msBuildSwitchOptionsForm(msState.options) +
-      '<div class="ms-panel"><div class="ms-panel-body"><ul class="ms-tip-list">' +
-      '<li>开启数据库备份、xtrabackup、xtrabackup-inc 全量/增量备份。</li>' +
-      '<li>关闭网站配置备份、插件配置备份、lsyncd 实时同步、证书续签任务。</li>' +
-      '<li>关闭 rsyncd、清理 rsync 进程、关闭 OpenResty。</li>' +
-      '<li>关闭主从同步异常提醒和 Rsync 状态异常提醒。</li>' +
-      '</ul></div></div>' +
-      '<div class="mtb10"><label><input type="checkbox" id="msOfflineConfirm" checked> 已确认对端可接管业务</label></div>' +
-      '</div>';
-  }
-  return '<div class="pd15"><div class="c6 mb10">确认后会先在本机执行预上线，再在对端执行下线脚本切为备用机，最后在本机执行正式上线切为主机。</div>' +
+  return '<div class="pd15"><div class="c6 mb10">选择切换完成后作为主机的机器。插件会按选择自动编排两台机器的上线、下线流程。</div>' +
     hostSelect +
     msBuildSwitchOptionsForm(msState.options) +
     '</div>';

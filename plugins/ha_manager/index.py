@@ -15,6 +15,7 @@ import shutil
 import signal
 import subprocess
 import time
+import urllib.parse
 import urllib.request
 
 PANEL_DIR = '/www/server/jh-panel'
@@ -115,6 +116,8 @@ def _args():
     if len(sys.argv) < 3:
         return {}
     raw = ' '.join(sys.argv[2:])
+    if '%' in raw:
+        raw = urllib.parse.unquote(raw)
     try:
         data = json.loads(raw)
         if isinstance(data, str):

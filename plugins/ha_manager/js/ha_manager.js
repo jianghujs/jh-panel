@@ -51,7 +51,7 @@ var msSwitchLogLayerIndex = null;
 function msPost(method, args, callback, options) {
   options = options || {};
   var loadT = options.quiet ? null : layer.msg('正在处理...', {icon: 16, time: 0});
-  $.post('/plugins/run', {name: 'ha_manager', func: method, args: JSON.stringify(args || {})}, function(res) {
+  $.post('/plugins/run', {name: 'ha_manager', func: method, args: encodeURIComponent(JSON.stringify(args || {}))}, function(res) {
     if (loadT) layer.close(loadT);
     if (typeof res === 'string') {
       try { res = JSON.parse(res); } catch (e) { res = {status: false, msg: res}; }

@@ -588,8 +588,73 @@ function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
       text = '预备上线完成，checksum 有差异';
     }
     msUpdateSwitchLogWindow(msState.log, text, success ? 'ms-live-state-success' : 'ms-live-state-failed');
-    if (!keepOpen) msCloseSwitchLogWindow();
+    msCloseSwitchLogWindow();
+    if (keepOpen) msShowPrepareResultReport(success, text, switchRunId, msState.log || '');
     layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
+  });
+}
+
+function msPrepareResultStatusMeta(status) {
+  if (status === 'ok') return {text: '完成', cls: 'normal'};
+  if (status === 'warning') return {text: '异常', cls: 'warning'};
+  if (status === 'failed') return {text: '失败', cls: 'danger'};
+  return {text: '未执行', cls: 'info'};
+}
+
+function msParsePrepareResults(logText, success) {
+  var names = {
+    xtrabackup: '增量恢复',
+    checksum: 'checksum 检查',
+    sync: 'rsync 同步',
+    site_setting: '恢复网站配置',
+    plugin_setting: '面板插件配置'
+  };
+  var order = ['xtrabackup', 'checksum', 'sync', 'site_setting', 'plugin_setting'];
+  var resultMap = {};
+  order.forEach(function(key) { resultMap[key] = {key: key, name: names[key], status: 'skipped', detail: '未执行'}; });
+  (logText || '').split('\n').forEach(function(line) {
+    var idx = line.indexOf('PREPARE_RESULT ');
+    if (idx === -1) return;
+    var payload = line.substring(idx + 'PREPARE_RESULT '.length).trim();
+    var parts = payload.split(' ');
+    var key = parts.shift();
+    var status = parts.shift();
+    if (!resultMap[key]) return;
+    var detail = parts.join(' ') || resultMap[key].detail;
+    if (key === 'sync' && resultMap[key].status !== 'warning') {
+      resultMap[key] = {key: key, name: names[key], status: status, detail: detail};
+    } else if (key !== 'sync' || status === 'warning') {
+      resultMap[key] = {key: key, name: names[key], status: status, detail: detail};
+    }
+  });
+  if (!success) {
+    resultMap.prepare = {key: 'prepare', name: '预备上线', status: 'failed', detail: '执行失败，请查看切换日志'};
+    return [resultMap.prepare].concat(order.map(function(key) { return resultMap[key]; }));
+  }
+  return order.map(function(key) { return resultMap[key]; });
+}
+
+function msShowPrepareResultReport(success, title, switchRunId, logText) {
+  var rows = msParsePrepareResults(logText, success).map(function(item) {
+    var meta = msPrepareResultStatusMeta(item.status);
+    return '<tr><td>' + msHtml(item.name) + '</td><td>' + msPill(meta.cls, meta.text) + '</td><td>' + msHtml(item.detail) + '</td></tr>';
+  }).join('');
+  var html = '<div class="pd15"><div class="ms-sub mb10">Run ID: ' + msHtml(switchRunId) + '</div>' +
+    '<table class="table table-hover ms-overview-table"><thead><tr><th>流程</th><th style="width:90px">结果</th><th>说明</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="mt10"><a class="btlink" href="javascript:;" id="msPrepareResultLogLink">查看完整切换日志</a></div></div>';
+  var reportIndex = layer.open({
+    type: 1,
+    title: title || '预备上线结果',
+    area: '760px',
+    closeBtn: 2,
+    shadeClose: true,
+    content: html,
+    success: function(layero) {
+      layero.find('#msPrepareResultLogLink').on('click', function() {
+        layer.close(reportIndex);
+        msLogPanel();
+      });
+    }
   });
 }
 

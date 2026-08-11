@@ -42,13 +42,16 @@ def _run_sync(cmd, step):
     print('|- ' + step)
     if DRY_RUN:
         print('|- dry-run: ' + cmd)
+        print('|- PREPARE_RESULT sync ok ' + step + ' dry-run')
         return
     proc = subprocess.run(cmd, cwd=PANEL_DIR, shell=True, text=True)
     if proc.returncode == 23:
         print('|- 同步文件存在部分失败，已记录为预备上线警告 exit_code=23')
+        print('|- PREPARE_RESULT sync warning ' + step + ' 部分文件未同步 exit_code=23')
         return
     if proc.returncode != 0:
         raise RuntimeError('{0} 失败 exit_code={1}'.format(step, proc.returncode))
+    print('|- PREPARE_RESULT sync ok ' + step + ' 完成')
 
 
 def _run_node_script(script_name, step):
@@ -150,9 +153,11 @@ def _run_mysql_checksum_compare(opts):
         for key in diff:
             print(key)
         print('=====================================================================')
+        print('|- PREPARE_RESULT checksum warning checksum 检查 存在差异：' + ','.join(diff))
         return 2
     print('未检测到差异')
     print('=====================================================================')
+    print('|- PREPARE_RESULT checksum ok checksum 检查 未检测到差异')
     return 0
 
 
@@ -302,14 +307,20 @@ def run_prepare_online(args):
     print('|- 预上线选项 sync_files={0}, run_checksum={1}'.format(str(_bool_opt(opts, 'sync_files')).lower(), str(_bool_opt(opts, 'run_checksum')).lower()))
     if _bool_opt(opts, 'run_xtrabackup_inc_restore'):
         _run('python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | python3 -c "import sys,json,subprocess; d=json.load(sys.stdin); script=d.get(\'data\') or \"\"; subprocess.check_call(script, shell=True) if script else None"', '执行 xtrabackup 增量恢复')
+        print('|- PREPARE_RESULT xtrabackup ok 执行增量恢复 完成')
+    else:
+        print('|- PREPARE_RESULT xtrabackup skipped 执行增量恢复 未执行')
     if _bool_opt(opts, 'run_checksum'):
         if DRY_RUN:
             print('|- 检查主备服务器 checksum')
             print('|- dry-run: 使用数据库插件配置检查 {0} 和 {1} 的 checksum'.format(opts.get('local_ip') or '127.0.0.1', opts.get('remote_ip') or ''))
+            print('|- PREPARE_RESULT checksum ok checksum 检查 dry-run')
         else:
             checksum_code = _run_mysql_checksum_compare(opts)
             if checksum_code == 2:
                 print('|- checksum 存在差异，请在预备上线结果中确认差异项')
+    else:
+        print('|- PREPARE_RESULT checksum skipped checksum 检查 未执行')
     if _bool_opt(opts, 'sync_files'):
         remote_ip = opts.get('remote_ip') or ''
         remote_port = opts.get('remote_ssh_port') or '22'
@@ -327,10 +338,17 @@ def run_prepare_online(args):
             _run_sync(' '.join([_quote(x) for x in cmd]), '同步文件 ' + sync_dir)
     else:
         print('|- 跳过同步文件')
+        print('|- PREPARE_RESULT sync skipped 同步文件 未执行')
     if _bool_opt(opts, 'restore_site_setting'):
         restore_site_setting(opts)
+        print('|- PREPARE_RESULT site_setting ok 恢复网站配置 完成')
+    else:
+        print('|- PREPARE_RESULT site_setting skipped 恢复网站配置 未执行')
     if _bool_opt(opts, 'restore_plugin_setting'):
         restore_plugin_setting(opts)
+        print('|- PREPARE_RESULT plugin_setting ok 面板插件配置 完成')
+    else:
+        print('|- PREPARE_RESULT plugin_setting skipped 面板插件配置 未执行')
 
 
 def run_online(args):

@@ -47,6 +47,7 @@ var msState = {
 var msKeyInfo = {public_key: '', has_private: false, has_public: false, public_key_path: '/root/.ssh/id_rsa.pub'};
 var msSwitchLogTimer = null;
 var msSwitchLogLayerIndex = null;
+var msSwitchDialogIndex = null;
 
 function msPost(method, args, callback, options) {
   options = options || {};
@@ -358,7 +359,7 @@ function msReadMonitorForm() {
 }
 
 function msOpenLocalSwitchDialog() {
-  layer.open({
+  msSwitchDialogIndex = layer.open({
     type: 1,
     area: ['750px', '500px'],
     title: '切换主备',
@@ -378,7 +379,6 @@ function msOpenLocalSwitchDialog() {
         return;
       }
       msConfirmPrepareOnline(targetRole, function() {
-        layer.close(index);
         msPrepareRunLocalSwitch(targetRole, switchOptions, 'prepare');
       });
     },
@@ -402,6 +402,9 @@ function msOpenLocalSwitchDialog() {
         msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
       });
       return false;
+    },
+    end: function() {
+      msSwitchDialogIndex = null;
     }
   });
 }
@@ -596,7 +599,7 @@ function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
 
 function msPrepareResultStatusMeta(status) {
   if (status === 'ok') return {text: '完成', cls: 'normal'};
-  if (status === 'warning') return {text: '异常', cls: 'warning'};
+  if (status === 'warning') return {text: '提醒', cls: 'warning'};
   if (status === 'failed') return {text: '失败', cls: 'danger'};
   return {text: '未执行', cls: 'info'};
 }
@@ -641,7 +644,13 @@ function msParsePrepareResults(logText, success) {
 }
 
 function msShowPrepareResultReport(success, title, switchRunId, logText) {
-  var rows = msParsePrepareResults(logText, success).map(function(item) {
+  var resultItems = msParsePrepareResults(logText, success).filter(function(item) {
+    return item.status !== 'skipped';
+  });
+  if (!resultItems.length) {
+    resultItems = [{key: 'prepare', name: '预备上线', status: success ? 'ok' : 'failed', detail: success ? '执行完成' : '执行失败，请查看切换日志'}];
+  }
+  var rows = resultItems.map(function(item) {
     var meta = msPrepareResultStatusMeta(item.status);
     var detailHtml = msHtml(item.detail).replace(/&lt;br&gt;/g, '<br>');
     return '<tr><td>' + msHtml(item.name) + '</td><td>' + msPill(meta.cls, meta.text) + '</td><td>' + detailHtml + '</td></tr>';
@@ -651,11 +660,20 @@ function msShowPrepareResultReport(success, title, switchRunId, logText) {
     '<div class="mt10"><a class="btlink" href="javascript:;" id="msPrepareResultLogLink">查看完整切换日志</a></div></div>';
   var reportIndex = layer.open({
     type: 1,
-    title: title || '预备上线结果',
+    title: '预备上线完成',
     area: '760px',
     closeBtn: 2,
     shadeClose: true,
+    btn: success ? ['正式切换', '关闭'] : ['关闭'],
     content: html,
+    yes: function(index) {
+      if (!success) {
+        layer.close(index);
+        return;
+      }
+      layer.close(index);
+      msStartFinalizeFromCurrentSwitchDialog();
+    },
     success: function(layero) {
       layero.find('#msPrepareResultLogLink').on('click', function() {
         layer.close(reportIndex);
@@ -663,6 +681,29 @@ function msShowPrepareResultReport(success, title, switchRunId, logText) {
       });
     }
   });
+}
+
+function msStartFinalizeFromCurrentSwitchDialog() {
+  var scope = msSwitchDialogIndex ? $('#layui-layer' + msSwitchDialogIndex) : $(document);
+  var targetRole = msSelectedMasterTargetRole(scope);
+  if (!targetRole) return;
+  var switchOptions = msReadLocalSwitchOptions(scope);
+  if (targetRole === msState.role) {
+    layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
+    return;
+  }
+  var runFinalize = function() {
+    if (msSwitchDialogIndex) {
+      layer.close(msSwitchDialogIndex);
+      msSwitchDialogIndex = null;
+    }
+    msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
+  };
+  if (targetRole === 'standby') {
+    msConfirmPeerTakeover(runFinalize);
+    return;
+  }
+  msConfirmFinalizeSwitch(targetRole, runFinalize);
 }
 
 function msPrepareRunLocalSwitch(targetRole, options, action) {
@@ -720,7 +761,7 @@ function msDoRunLocalSwitch(targetRole, options, action) {
     var successMsg = action === 'prepare' ? '预备上线完成' : '正式上线完成';
     var failMsg = action === 'prepare' ? '预备上线失败' : '正式上线失败';
     msFinishSwitchLogWindow(success, success ? successMsg : ((res && res.msg) || failMsg), switchRunId, action === 'prepare');
-    msLogPanel();
+    if (action !== 'prepare') msLogPanel();
   }, {quiet: true});
 }
 

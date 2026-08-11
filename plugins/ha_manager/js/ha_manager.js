@@ -610,6 +610,7 @@ function msParsePrepareResults(logText, success) {
     plugin_setting: '面板插件配置'
   };
   var order = ['xtrabackup', 'checksum', 'sync', 'site_setting', 'plugin_setting'];
+  var rank = {failed: 3, warning: 2, ok: 1, skipped: 0};
   var resultMap = {};
   order.forEach(function(key) { resultMap[key] = {key: key, name: names[key], status: 'skipped', detail: '未执行'}; });
   (logText || '').split('\n').forEach(function(line) {
@@ -621,9 +622,14 @@ function msParsePrepareResults(logText, success) {
     var status = parts.shift();
     if (!resultMap[key]) return;
     var detail = parts.join(' ') || resultMap[key].detail;
-    if (key === 'sync' && resultMap[key].status !== 'warning') {
-      resultMap[key] = {key: key, name: names[key], status: status, detail: detail};
-    } else if (key !== 'sync' || status === 'warning') {
+    if (key === 'sync') {
+      var current = resultMap[key];
+      var details = current.detail && current.detail !== '未执行' ? current.detail.split('<br>') : [];
+      details.push(detail);
+      resultMap[key] = {key: key, name: names[key], status: (rank[status] > rank[current.status] ? status : current.status), detail: details.join('<br>')};
+      return;
+    }
+    if ((rank[status] || 0) >= (rank[resultMap[key].status] || 0)) {
       resultMap[key] = {key: key, name: names[key], status: status, detail: detail};
     }
   });
@@ -637,7 +643,8 @@ function msParsePrepareResults(logText, success) {
 function msShowPrepareResultReport(success, title, switchRunId, logText) {
   var rows = msParsePrepareResults(logText, success).map(function(item) {
     var meta = msPrepareResultStatusMeta(item.status);
-    return '<tr><td>' + msHtml(item.name) + '</td><td>' + msPill(meta.cls, meta.text) + '</td><td>' + msHtml(item.detail) + '</td></tr>';
+    var detailHtml = msHtml(item.detail).replace(/&lt;br&gt;/g, '<br>');
+    return '<tr><td>' + msHtml(item.name) + '</td><td>' + msPill(meta.cls, meta.text) + '</td><td>' + detailHtml + '</td></tr>';
   }).join('');
   var html = '<div class="pd15"><div class="ms-sub mb10">Run ID: ' + msHtml(switchRunId) + '</div>' +
     '<table class="table table-hover ms-overview-table"><thead><tr><th>流程</th><th style="width:90px">结果</th><th>说明</th></tr></thead><tbody>' + rows + '</tbody></table>' +

@@ -44,13 +44,21 @@ def _run_sync(cmd, step):
         print('|- dry-run: ' + cmd)
         print('|- PREPARE_RESULT sync ok ' + step + ' dry-run')
         return
-    proc = subprocess.run(cmd, cwd=PANEL_DIR, shell=True, text=True)
+    proc = subprocess.run(cmd, cwd=PANEL_DIR, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    output = proc.stdout or ''
+    if output.strip():
+        print(output.strip())
     if proc.returncode == 23:
         print('|- 同步文件存在部分失败，已记录为预备上线警告 exit_code=23')
-        print('|- PREPARE_RESULT sync warning ' + step + ' 部分文件未同步 exit_code=23')
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        error_lines = [line for line in lines if 'rsync:' in line or 'error:' in line.lower() or 'failed:' in line.lower()]
+        detail = '；'.join(error_lines[-3:] or lines[-3:] or ['部分文件未同步'])
+        print('|- PREPARE_RESULT sync warning ' + step + ' 部分文件未同步 exit_code=23；' + detail[:800])
         return
     if proc.returncode != 0:
-        raise RuntimeError('{0} 失败 exit_code={1}'.format(step, proc.returncode))
+        lines = [line.strip() for line in output.splitlines() if line.strip()]
+        detail = '；'.join(lines[-3:])
+        raise RuntimeError('{0} 失败 exit_code={1}: {2}'.format(step, proc.returncode, detail[:800]))
     print('|- PREPARE_RESULT sync ok ' + step + ' 完成')
 
 

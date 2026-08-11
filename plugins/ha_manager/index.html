@@ -88,6 +88,17 @@
 .ms-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;}
 .ms-option-check{display:flex;align-items:center;height:26px;margin:0;font-weight:normal;color:#555;line-height:26px;}
 .ms-option-check input{margin:0 8px 0 0;flex:0 0 auto;}
+.ms-switch-wizard{padding:14px;background:#fff;}
+.ms-wizard-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px;}
+.ms-wizard-step{border:1px solid #e6e9ef;border-radius:4px;background:#fafbfc;padding:9px 10px;color:#777;}
+.ms-wizard-step.active{border-color:#8dbde8;background:#eef7ff;color:#245580;}
+.ms-wizard-step.done{border-color:#bfe4bf;background:#f6fff6;color:#2e7d32;}
+.ms-wizard-step-num{display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;background:#dfe4ea;color:#666;font-size:12px;margin-right:6px;}
+.ms-wizard-step.active .ms-wizard-step-num{background:#337ab7;color:#fff;}
+.ms-wizard-step.done .ms-wizard-step-num{background:#5cb85c;color:#fff;}
+.ms-wizard-body{min-height:300px;}
+.ms-wizard-actions{border-top:1px solid #edf0f4;margin-top:12px;padding-top:12px;text-align:right;}
+.ms-wizard-actions .btn{margin-left:6px;}
 .ms-log-box{height:320px;background:#1f2329;color:#d7dde8;border-radius:4px;padding:12px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;white-space:pre-wrap;}
 .ms-live-log-wrap{padding:14px;background:#fff;}
 .ms-live-log-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#777;font-size:12px;}
@@ -123,7 +134,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=2026081114', function(){
+$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=2026081115', function(){
   msLoadState(function(){
     msOverview();
   });

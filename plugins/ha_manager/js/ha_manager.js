@@ -48,6 +48,7 @@ var msKeyInfo = {public_key: '', has_private: false, has_public: false, public_k
 var msSwitchLogTimer = null;
 var msSwitchLogLayerIndex = null;
 var msSwitchDialogIndex = null;
+var msSwitchWizard = {step: 1, targetRole: '', options: null, prepared: false, prepareRunId: '', prepareLog: ''};
 
 function msPost(method, args, callback, options) {
   options = options || {};
@@ -359,49 +360,16 @@ function msReadMonitorForm() {
 }
 
 function msOpenLocalSwitchDialog() {
+  msSwitchWizard = {step: 1, targetRole: '', options: $.extend(true, {}, msState.options), prepared: false, prepareRunId: '', prepareLog: ''};
   msSwitchDialogIndex = layer.open({
     type: 1,
-    area: ['750px', '500px'],
+    area: ['780px', '560px'],
     title: '切换主备',
     closeBtn: 1,
     shadeClose: false,
-    btn: ['预备上线', '正式上线', '取消'],
-    content: msBuildLocalSwitchForm(),
+    content: '<div id="msSwitchWizardBox" class="ms-switch-wizard"></div>',
     success: function(layero) {
-      msToggleSyncOptions(layero);
-    },
-    yes: function(index, layero) {
-      var targetRole = msSelectedMasterTargetRole(layero);
-      if (!targetRole) return;
-      var switchOptions = msReadLocalSwitchOptions(layero);
-      if (targetRole === msState.role) {
-        layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
-        return;
-      }
-      msConfirmPrepareOnline(targetRole, function() {
-        msPrepareRunLocalSwitch(targetRole, switchOptions, 'prepare');
-      });
-    },
-    btn2: function(index, layero) {
-      var targetRole = msSelectedMasterTargetRole(layero);
-      if (!targetRole) return false;
-      var switchOptions = msReadLocalSwitchOptions(layero);
-      if (targetRole === msState.role) {
-        layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
-        return false;
-      }
-      if (targetRole === 'standby') {
-        msConfirmPeerTakeover(function() {
-          layer.close(index);
-          msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
-        });
-        return false;
-      }
-      msConfirmFinalizeSwitch(targetRole, function() {
-        layer.close(index);
-        msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
-      });
-      return false;
+      msRenderSwitchWizard(layero.find('#msSwitchWizardBox'));
     },
     end: function() {
       msSwitchDialogIndex = null;
@@ -423,13 +391,80 @@ function msConfirmPrepareOnline(targetRole, callback) {
 
 function msConfirmFinalizeSwitch(targetRole, callback) {
   var targetText = targetRole === 'master' ? '本机' : '对端';
-  layer.confirm('确认执行正式上线并切换主备？<br>将跳过预上线流程，只执行目标备用机下线和目标主机（' + targetText + '）正式上线。', {
+  layer.confirm('确认执行正式上线并切换主备？<br>将执行目标备用机下线和目标主机（' + targetText + '）正式上线脚本流程', {
     icon: 3,
     title: '确认正式上线',
     btn: ['确认执行', '取消']
   }, function(confirmIndex) {
     layer.close(confirmIndex);
     if (callback) callback();
+  });
+}
+
+function msSwitchWizardRoot() {
+  return msSwitchDialogIndex ? $('#layui-layer' + msSwitchDialogIndex).find('#msSwitchWizardBox') : $('#msSwitchWizardBox');
+}
+
+function msBuildWizardSteps() {
+  var items = [
+    {num: 1, text: '选择主机'},
+    {num: 2, text: '预备上线'},
+    {num: 3, text: '正式上线'}
+  ];
+  return '<div class="ms-wizard-steps">' + items.map(function(item) {
+    var cls = item.num === msSwitchWizard.step ? 'active' : item.num < msSwitchWizard.step ? 'done' : '';
+    return '<div class="ms-wizard-step ' + cls + '"><span class="ms-wizard-step-num">' + item.num + '</span>' + item.text + '</div>';
+  }).join('') + '</div>';
+}
+
+function msRenderSwitchWizard(root) {
+  root = root && root.length ? root : msSwitchWizardRoot();
+  if (!root.length) return;
+  var body = '';
+  var actions = '';
+  if (msSwitchWizard.step === 1) {
+    body = '<div class="c6 mb10">选择切换完成后作为主机的机器。</div>' + msBuildSwitchHostSelect();
+    actions = '<button type="button" class="btn btn-success btn-sm" onclick="msWizardGoOptions()">下一步</button>';
+  } else if (msSwitchWizard.step === 2) {
+    body = '<div class="c6 mb10">选择预上线要执行的检查和同步动作。</div>' + msBuildSwitchOptionsForm(msSwitchWizard.options || msState.options);
+    actions = '<button type="button" class="btn btn-default btn-sm" onclick="msWizardBackHost()">上一步</button><button type="button" class="btn btn-success btn-sm" onclick="msWizardRunPrepare()">开始预上线</button>';
+  } else {
+    body = msBuildPrepareResultContent(msSwitchWizard.prepareRunId, msSwitchWizard.prepareLog, msSwitchWizard.prepared);
+    actions = '<button type="button" class="btn btn-default btn-sm" onclick="msWizardBackOptions()">返回预上线选项</button>' + (msSwitchWizard.prepared ? '<button type="button" class="btn btn-success btn-sm" onclick="msStartFinalizeFromCurrentSwitchDialog()">正式切换</button>' : '');
+  }
+  root.html(msBuildWizardSteps() + '<div class="ms-wizard-body">' + body + '</div><div class="ms-wizard-actions">' + actions + '</div>');
+  msToggleSyncOptions(root);
+}
+
+function msWizardGoOptions() {
+  var root = msSwitchWizardRoot();
+  var targetRole = msSelectedMasterTargetRole(root);
+  if (!targetRole) return;
+  if (targetRole === msState.role) {
+    layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
+    return;
+  }
+  msSwitchWizard.targetRole = targetRole;
+  msSwitchWizard.step = 2;
+  msRenderSwitchWizard(root);
+}
+
+function msWizardBackHost() {
+  msSwitchWizard.step = 1;
+  msRenderSwitchWizard();
+}
+
+function msWizardBackOptions() {
+  msSwitchWizard.step = 2;
+  msRenderSwitchWizard();
+}
+
+function msWizardRunPrepare() {
+  var root = msSwitchWizardRoot();
+  var options = msReadLocalSwitchOptions(root);
+  msSwitchWizard.options = options;
+  msConfirmPrepareOnline(msSwitchWizard.targetRole, function() {
+    msPrepareRunLocalSwitch(msSwitchWizard.targetRole, options, 'prepare');
   });
 }
 
@@ -462,18 +497,21 @@ function msSelectedMasterTargetRole(scope) {
 }
 
 function msBuildLocalSwitchForm() {
+  return '<div class="pd15"><div class="c6 mb10">选择切换完成后作为主机的机器。插件会按选择自动编排两台机器的上线、下线流程。</div>' +
+    msBuildSwitchHostSelect() +
+    msBuildSwitchOptionsForm(msState.options) +
+    '</div>';
+}
+
+function msBuildSwitchHostSelect() {
   var localName = msState.host_name || msState.host_id || '本机';
   var peerState = msState.peer_state || {};
   var peerName = peerState.host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
-  var defaultMaster = msState.role === 'master' ? 'local' : 'peer';
-  var hostSelect = '<div class="ms-switch-hosts">' +
+  var defaultMaster = msSwitchWizard.targetRole ? (msSwitchWizard.targetRole === 'master' ? 'local' : 'peer') : (msState.role === 'master' ? 'local' : 'peer');
+  return '<div class="ms-switch-hosts">' +
     '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="local" ' + (defaultMaster === 'local' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">设为主机 / 当前角色: ' + msHtml(msState.role) + ' / IP: ' + msHtml(msState.options.local_ip) + '</div></label>' +
     '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="peer" ' + (defaultMaster === 'peer' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">设为主机 / SSH: ' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</div></label>' +
   '</div>';
-  return '<div class="pd15"><div class="c6 mb10">选择切换完成后作为主机的机器。插件会按选择自动编排两台机器的上线、下线流程。</div>' +
-    hostSelect +
-    msBuildSwitchOptionsForm(msState.options) +
-    '</div>';
 }
 
 function msBuildSwitchOptionsForm(o) {
@@ -592,7 +630,13 @@ function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
     }
     msUpdateSwitchLogWindow(msState.log, text, success ? 'ms-live-state-success' : 'ms-live-state-failed');
     msCloseSwitchLogWindow();
-    if (keepOpen) msShowPrepareResultReport(success, text, switchRunId, msState.log || '');
+    if (keepOpen) {
+      msSwitchWizard.prepared = success;
+      msSwitchWizard.prepareRunId = switchRunId;
+      msSwitchWizard.prepareLog = msState.log || '';
+      msSwitchWizard.step = 3;
+      msRenderSwitchWizard();
+    }
     layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
   });
 }
@@ -643,7 +687,7 @@ function msParsePrepareResults(logText, success) {
   return order.map(function(key) { return resultMap[key]; });
 }
 
-function msShowPrepareResultReport(success, title, switchRunId, logText) {
+function msBuildPrepareResultContent(switchRunId, logText, success) {
   var resultItems = msParsePrepareResults(logText, success).filter(function(item) {
     return item.status !== 'skipped';
   });
@@ -655,9 +699,13 @@ function msShowPrepareResultReport(success, title, switchRunId, logText) {
     var detailHtml = msHtml(item.detail).replace(/&lt;br&gt;/g, '<br>');
     return '<tr><td>' + msHtml(item.name) + '</td><td>' + msPill(meta.cls, meta.text) + '</td><td>' + detailHtml + '</td></tr>';
   }).join('');
-  var html = '<div class="pd15"><div class="ms-sub mb10">Run ID: ' + msHtml(switchRunId) + '</div>' +
+  return '<div><div class="ms-sub mb10">Run ID: ' + msHtml(switchRunId || '') + '</div>' +
     '<table class="table table-hover ms-overview-table"><thead><tr><th>流程</th><th style="width:90px">结果</th><th>说明</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="mt10"><a class="btlink" href="javascript:;" id="msPrepareResultLogLink">查看完整切换日志</a></div></div>';
+    '<div class="mt10"><a class="btlink" href="javascript:;" onclick="msLogPanel()">查看完整切换日志</a></div></div>';
+}
+
+function msShowPrepareResultReport(success, title, switchRunId, logText) {
+  var html = '<div class="pd15">' + msBuildPrepareResultContent(switchRunId, logText, success) + '</div>';
   var reportIndex = layer.open({
     type: 1,
     title: '预备上线完成',
@@ -674,20 +722,15 @@ function msShowPrepareResultReport(success, title, switchRunId, logText) {
       layer.close(index);
       msStartFinalizeFromCurrentSwitchDialog();
     },
-    success: function(layero) {
-      layero.find('#msPrepareResultLogLink').on('click', function() {
-        layer.close(reportIndex);
-        msLogPanel();
-      });
-    }
+    success: function() {}
   });
 }
 
 function msStartFinalizeFromCurrentSwitchDialog() {
   var scope = msSwitchDialogIndex ? $('#layui-layer' + msSwitchDialogIndex) : $(document);
-  var targetRole = msSelectedMasterTargetRole(scope);
+  var targetRole = msSwitchWizard.targetRole || msSelectedMasterTargetRole(scope);
   if (!targetRole) return;
-  var switchOptions = msReadLocalSwitchOptions(scope);
+  var switchOptions = msSwitchWizard.options || msReadLocalSwitchOptions(scope);
   if (targetRole === msState.role) {
     layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
     return;

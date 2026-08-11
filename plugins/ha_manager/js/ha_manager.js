@@ -35,7 +35,7 @@ var msState = {
     run_checksum: true,
     sync_files: true,
     sync_file_dirs: '/www/wwwroot,/www/wwwstorage',
-    sync_ignore_dirs: 'node_modules,logs,run',
+    sync_ignore_dirs: '.git,node_modules,logs,run',
     restore_site_setting: false,
     restore_plugin_setting: false,
     run_xtrabackup_inc_restore: false,

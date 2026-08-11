@@ -38,6 +38,19 @@ def _run_optional(cmd, step):
     subprocess.run(cmd, cwd=PANEL_DIR, shell=True, text=True)
 
 
+def _run_sync(cmd, step):
+    print('|- ' + step)
+    if DRY_RUN:
+        print('|- dry-run: ' + cmd)
+        return
+    proc = subprocess.run(cmd, cwd=PANEL_DIR, shell=True, text=True)
+    if proc.returncode == 23:
+        print('|- 同步文件存在部分失败，已记录为预备上线警告 exit_code=23')
+        return
+    if proc.returncode != 0:
+        raise RuntimeError('{0} 失败 exit_code={1}'.format(step, proc.returncode))
+
+
 def _run_node_script(script_name, step):
     script_path = os.path.join(OS_TOOL_DIR, script_name)
     if not os.path.exists(script_path):
@@ -301,14 +314,17 @@ def run_prepare_online(args):
         remote_ip = opts.get('remote_ip') or ''
         remote_port = opts.get('remote_ssh_port') or '22'
         dirs = [item.strip() for item in str(opts.get('sync_file_dirs') or '/www/wwwroot,/www/wwwstorage').split(',') if item.strip()]
-        ignores = [item.strip() for item in str(opts.get('sync_ignore_dirs') or 'node_modules,logs,run').split(',') if item.strip()]
+        ignores = [item.strip() for item in str(opts.get('sync_ignore_dirs') or '.git,node_modules,logs,run').split(',') if item.strip()]
+        for git_ignore in ('.git', '.git/', '*/.git/'):
+            if git_ignore not in ignores:
+                ignores.append(git_ignore)
         for sync_dir in dirs:
             cmd = ['rsync', '-avzP', '--delete', '-e', 'ssh -p ' + str(remote_port)]
             for ignore in ignores:
                 cmd.append('--exclude=' + ignore)
             cmd.append('root@{0}:{1}/'.format(remote_ip, sync_dir.rstrip('/')))
             cmd.append(sync_dir.rstrip('/') + '/')
-            _run(' '.join([_quote(x) for x in cmd]), '同步文件 ' + sync_dir)
+            _run_sync(' '.join([_quote(x) for x in cmd]), '同步文件 ' + sync_dir)
     else:
         print('|- 跳过同步文件')
     if _bool_opt(opts, 'restore_site_setting'):

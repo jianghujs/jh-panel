@@ -228,7 +228,7 @@ def _default_config():
             'run_checksum': False,
             'sync_files': False,
             'sync_file_dirs': '/www/wwwroot,/www/wwwstorage',
-            'sync_ignore_dirs': 'node_modules,logs,run',
+            'sync_ignore_dirs': '.git,node_modules,logs,run',
             'restore_site_setting': False,
             'restore_plugin_setting': False,
             'run_xtrabackup_inc_restore': False,

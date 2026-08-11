@@ -584,6 +584,9 @@ function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen) {
   msStopSwitchLogPolling();
   msRefreshSwitchLogWindow(switchRunId, function() {
     var text = msg || (success ? '切换执行完成' : '切换执行失败');
+    if (keepOpen && success && (msState.log || '').indexOf('checksum 存在差异') !== -1) {
+      text = '预备上线完成，checksum 有差异';
+    }
     msUpdateSwitchLogWindow(msState.log, text, success ? 'ms-live-state-success' : 'ms-live-state-failed');
     if (!keepOpen) msCloseSwitchLogWindow();
     layer.msg(text, {icon: success ? 1 : 2, time: success ? 2000 : 0, shade: success ? 0 : 0.3, shadeClose: !success});
@@ -632,7 +635,7 @@ function msDoRunLocalSwitch(targetRole, options, action) {
     var success = !!data;
     if (data) msState = $.extend(true, msState, data);
     var responseMsg = (res && res.msg) || '';
-    if (!success && (responseMsg.indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1 || (msState.log || '').indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1)) {
+    if (action !== 'prepare' && !success && (responseMsg.indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1 || (msState.log || '').indexOf('CHECKSUM_DIFF_CONFIRM_REQUIRED') !== -1)) {
       msStopSwitchLogPolling();
       msUpdateSwitchLogWindow(msState.log, '等待确认 checksum 差异', 'ms-live-state-failed');
       msConfirmChecksumDiff(function() {

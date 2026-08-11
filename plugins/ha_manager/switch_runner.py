@@ -295,10 +295,8 @@ def run_prepare_online(args):
             print('|- dry-run: 使用数据库插件配置检查 {0} 和 {1} 的 checksum'.format(opts.get('local_ip') or '127.0.0.1', opts.get('remote_ip') or ''))
         else:
             checksum_code = _run_mysql_checksum_compare(opts)
-            if checksum_code == 2 and not _bool_opt(opts, 'checksum_confirmed'):
-                raise RuntimeError('CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
             if checksum_code == 2:
-                print('|- checksum 存在差异，已确认忽略并继续')
+                print('|- checksum 存在差异，请在预备上线结果中确认差异项')
     if _bool_opt(opts, 'sync_files'):
         remote_ip = opts.get('remote_ip') or ''
         remote_port = opts.get('remote_ssh_port') or '22'

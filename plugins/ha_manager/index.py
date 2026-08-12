@@ -834,6 +834,13 @@ def report_state():
     elif cfg.get('peer_host_id'):
         hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'site_scope': 'remote', 'health_detail': {'summary': peer_state.get('msg')}})
     payload = {'pair_id': cfg.get('pair_id'), 'hosts': hosts}
+    actual_master_id = ''
+    for host in hosts:
+        if host.get('role') == 'master':
+            actual_master_id = host.get('host_id') or ''
+            break
+    if cfg.get('switch_status') == 'switch_done' and actual_master_id:
+        payload['desired_master_host_id'] = actual_master_id
     res = _post_monitor(cfg, 'ha_report_state', payload, signed=True)
     if not res.get('status') and res.get('msg') == '签名错误':
         register = _return_data(_register_monitor(cfg))

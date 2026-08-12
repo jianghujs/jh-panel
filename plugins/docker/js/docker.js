@@ -94,10 +94,10 @@ function logsCon(id) {
     });
 }
 
-function deleteCon(Hostname) {
+function deleteCon(ContainerId, Hostname) {
     // 删除容器
     safeMessage('删除容器 ', '删除容器 [' + Hostname + '], 确定?', function() {
-        dPost('docker_remove_con', '', { Hostname: Hostname }, function(rdata) {
+        dPost('docker_remove_con', '', { ContainerId: ContainerId, Hostname: Hostname }, function(rdata) {
             var rdata = $.parseJSON(rdata.data);
             showMsg(rdata.msg, function() {
                 if (rdata.status) {
@@ -230,8 +230,7 @@ function dockerConListRender() {
             var op = '';
             op += '<a href="javascript:;" onclick="execCon(\'' + rlist[i]['Config']['Hostname'] + '\')" class="btlink">终端</a> | ';
             op += '<a href="javascript:;" onclick="logsCon(\'' + rlist[i]['Id'] + '\')" class="btlink">日志</a> | ';
-            op += '<a href="javascript:;" onclick="deleteCon(\'' + rlist[i]['Config']['Hostname'] + '\')" class="btlink">删除</a>';
-            debugger
+            op += '<a href="javascript:;" onclick="deleteCon(\'' + rlist[i]['Id'] + '\',\'' + rlist[i]['Config']['Hostname'] + '\')" class="btlink">删除</a>';
             list += '<tr>';
             list += '<td style="max-width: 110px;overflow-wrap: break-word;">' + rlist[i]['Name'].substring(1) + '</td>';
             list += '<td style="max-width: 200px;overflow-wrap: break-word;">' + rlist[i]['Config']['Image'] + '</td>';
@@ -1706,7 +1705,6 @@ function projectScriptExcute(opt, ids) {
 $(document).on('messageBoxLayerClose', function(e){
     projectListRender();
 });
-
 
 
 

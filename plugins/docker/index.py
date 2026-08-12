@@ -13,7 +13,18 @@ import dictdatabase as DDB
 sys.path.append(os.getcwd() + "/class/core")
 import mw
 
-import docker
+try:
+    import docker
+    DockerApiError = docker.errors.APIError
+    DockerNotFound = docker.errors.NotFound
+except ModuleNotFoundError:
+    class DockerApiError(Exception):
+        pass
+
+    class DockerNotFound(Exception):
+        pass
+
+    docker = None
 
 
 app_debug = False
@@ -22,6 +33,9 @@ if mw.isAppleSystem():
 
 
 def getDClient():
+    if docker is None:
+        raise RuntimeError('未安装Docker Python SDK')
+
     try:
         client = docker.from_env()
     except Exception as e:
@@ -77,12 +91,35 @@ def getArgs():
     return tmp
 
 
-def checkArgs(self, data, ck=[]):
+def checkArgs(data, ck=[]):
     for i in range(len(ck)):
-        print(data[i])
         if not ck[i] in data:
             return (False, mw.returnJson(False, '参数:(' + ck[i] + ')没有!'))
     return (True, mw.returnJson(True, 'ok'))
+
+
+def runDockerCmd(cmd, timeout=30):
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout
+        )
+    except subprocess.TimeoutExpired:
+        return (False, 'Docker命令执行超时，请稍后检查容器状态')
+    except FileNotFoundError:
+        return (False, '未找到docker命令，请检查Docker是否已安装')
+    except Exception as e:
+        return (False, str(e))
+
+    stdout = (result.stdout or '').strip()
+    stderr = (result.stderr or '').strip()
+    output = stderr or stdout
+    if result.returncode != 0 or stderr:
+        return (False, output or 'Docker命令执行失败')
+    return (True, output)
 
 
 # https://github.com/mkrd/DictDataBase
@@ -255,25 +292,36 @@ def conListData():
 
 def dockerRemoveCon():
     args = getArgs()
-    data = checkArgs(args, ['Hostname'])
-    if not data[0]:
-        return data[1]
+    container_id = args.get('ContainerId') or args.get('Id') or args.get('Hostname')
+    if not container_id:
+        return mw.returnJson(False, '参数:(ContainerId)没有!')
 
-    Hostname = args['Hostname']
-
-    c = getDClient()
     try:
-        conFind = c.containers.get(Hostname)
-        try:
-            path_list = conFind.attrs['GraphDriver'][
-                'Data']['LowerDir'].split(':')
-            for i in path_list:
-                mw.execShell('chattr -R -i %s' % i)
-        except:
-            pass
-        conFind.remove(force=True)
+        if docker is not None:
+            try:
+                c = getDClient()
+                conFind = c.containers.get(container_id)
+                try:
+                    path_list = conFind.attrs['GraphDriver'][
+                        'Data']['LowerDir'].split(':')
+                    for i in path_list:
+                        subprocess.run(['chattr', '-R', '-i', i], stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, text=True, timeout=10)
+                except:
+                    pass
+                container_id = conFind.id
+            except Exception:
+                pass
+
+        ok, msg = runDockerCmd(['docker', 'rm', '-f', container_id], timeout=30)
+        if not ok:
+            return mw.returnJson(False, '删除失败!' + msg)
         return mw.returnJson(True, '成功删除!')
-    except docker.errors.APIError as ex:
+    except DockerNotFound:
+        return mw.returnJson(False, 'The specified container does not exist!')
+    except DockerApiError as ex:
+        return mw.returnJson(False, '删除失败!' + str(ex))
+    except Exception as ex:
         return mw.returnJson(False, '删除失败!' + str(ex))
 
 

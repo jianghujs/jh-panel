@@ -240,7 +240,7 @@ function msOverview() {
   var switchingTip = '正在切换中\n' + roleTitle;
   var loading = '<span class="ms-loading-state" title="' + msHtml(switchingTip) + '"><span class="ms-loading-icon"></span>切换中</span>';
   var roleCell = '<span title="' + msHtml(roleTitle) + '">' + msRoleMark(msState.role) + '</span>' + (isSwitching ? ' ' + loading : '');
-  var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msPollMonitor()">轮询云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
+  var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msReportState()">立即上报</button><button class="btn btn-default btn-sm" onclick="msPollMonitor()">轮询云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
     '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(pluginStatus, pluginStatusText) + '</div><div class="ms-panel-body">' +
       '<table class="table table-hover ms-overview-table"><tbody>' +
         '<tr><th>本机角色</th><td>' + roleCell + '</td><td class="ms-overview-actions" rowspan="4"><button class="btn btn-default btn-sm" onclick="msHealthPanel()">查看自检</button><button class="btn btn-default btn-sm" onclick="msLogPanel()">查看日志</button></td></tr>' +
@@ -352,6 +352,20 @@ function msPollMonitor() {
     if (data) msState = $.extend(true, msState, data);
     layer.msg('云监控轮询完成', {icon: 1});
     msOverview();
+  });
+}
+
+function msReportState() {
+  if (!msState.monitor_url) {
+    layer.msg('云监控地址为空，当前不会上传状态', {icon: 0});
+    return;
+  }
+  msPost('report_state', {}, function(data) {
+    if (!data) return;
+    layer.msg('状态已上报云监控', {icon: 1});
+    msLoadState(function() {
+      msOverview();
+    });
   });
 }
 

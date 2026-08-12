@@ -185,6 +185,16 @@ def _return(status, msg, data=None):
     return mw.returnJson(status, msg, data)
 
 
+def _return_data(result):
+    if isinstance(result, dict):
+        return result
+    try:
+        data = json.loads(result or '{}')
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
 def _host_id():
     _ensure_dirs()
     host_file = os.path.join(RUNTIME_DIR, 'host_id.pl')
@@ -762,6 +772,11 @@ def report_state():
         hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'health_detail': {'summary': peer_state.get('msg')}})
     payload = {'pair_id': cfg.get('pair_id'), 'hosts': hosts}
     res = _post_monitor(cfg, 'ha_report_state', payload, signed=True)
+    if not res.get('status') and res.get('msg') == '签名错误':
+        register = _return_data(_register_monitor(cfg))
+        if register.get('status'):
+            cfg = _config()
+            res = _post_monitor(cfg, 'ha_report_state', payload, signed=True)
     if res.get('status'):
         cfg['last_report_at'] = _now()
         _save_config(cfg)

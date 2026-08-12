@@ -19,6 +19,7 @@ import time
 import threading
 import psutil
 import traceback
+import re
 
 if sys.version_info[0] == 2:
     reload(sys)
@@ -26,8 +27,10 @@ if sys.version_info[0] == 2:
 
 
 sys.path.append(os.getcwd() + "/class/core")
+sys.path.append(os.getcwd() + "/class/plugin")
 import mw
 import db
+from plugin_task import pluginScheduledTaskService
 
 # print sys.path
 
@@ -45,7 +48,6 @@ oldEdate = None
 
 logPath = os.getcwd() + '/tmp/panelExec.log'
 isTask = os.getcwd() + '/tmp/panelTask.pl'
-
 if not os.path.exists(os.getcwd() + "/tmp"):
     os.system('mkdir -p ' + os.getcwd() + "/tmp")
 
@@ -751,6 +753,11 @@ if __name__ == "__main__":
     dcs = threading.Thread(target=debounceCommandsService)
     dcs = setDaemon(dcs)
     dcs.start()
+
+    # Plugin Scheduled Tasks
+    psts = threading.Thread(target=pluginScheduledTaskService)
+    psts = setDaemon(psts)
+    psts.start()
 
 
 

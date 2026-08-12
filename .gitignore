@@ -131,6 +131,7 @@ data/net_env_cn.pl
 data/debounce_commands_pool.json
 data/system_task_alert_state.json
 data/ha_manager_title_state.json
+data/plugin_scheduled_tasks_state.json
 
 ssl/input.pl
 

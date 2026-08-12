@@ -13,5 +13,23 @@
   "date": "2026-08-05",
   "home": "https://cn.jianghujs.org/",
   "type": "soft",
-  "pid": "4"
+  "pid": "4",
+  "tasks": [
+    {
+      "func": "poll_monitor",
+      "title": "轮询云监控期望状态",
+      "args": {},
+      "interval": 10,
+      "timeout": 10,
+      "enabled": true
+    },
+    {
+      "func": "report_state",
+      "title": "上报主备状态",
+      "args": {},
+      "interval": 30,
+      "timeout": 20,
+      "enabled": true
+    }
+  ]
 }

@@ -725,6 +725,8 @@ def _register_monitor(cfg):
 
 def report_state():
     cfg = _config()
+    if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+        return _return(True, '云监控地址为空，不上传状态', {'hosts': []})
     local_state = _state(cfg)
     peer_state = collect_peer_state_raw(cfg)
     hosts = [{
@@ -841,6 +843,8 @@ def collect_peer_logs(cfg, peer_state):
 
 def poll_monitor():
     cfg = _config()
+    if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+        return _return(True, '云监控地址为空，不轮询期望状态', cfg)
     payload = {'pair_id': cfg.get('pair_id'), 'host_id': cfg.get('host_id')}
     res = _post_monitor(cfg, 'ha_pull_desired_state', payload, signed=True)
     if res.get('status') and isinstance(res.get('data'), dict):

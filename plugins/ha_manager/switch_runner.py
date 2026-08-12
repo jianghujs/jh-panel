@@ -66,12 +66,18 @@ def _run_node_script(script_name, step):
     script_path = os.path.join(OS_TOOL_DIR, script_name)
     if not os.path.exists(script_path):
         raise RuntimeError('Node脚本不存在: ' + script_path)
-    node_bin = os.environ.get('NODE_BIN') or '/usr/bin/node'
-    if not os.path.exists(node_bin):
-        node_bin = '/usr/local/bin/node'
-    if not os.path.exists(node_bin):
-        raise RuntimeError('Node命令不存在，请检查系统是否安装 node')
-    _run('HA_MANAGER_AUTO_CONFIRM=1 {0} {1}'.format(_quote(node_bin), _quote(script_path)), step)
+    node_bin = os.environ.get('NODE_BIN')
+    if node_bin:
+        _run('HA_MANAGER_AUTO_CONFIRM=1 {0} {1}'.format(_quote(node_bin), _quote(script_path)), step)
+        return
+    if os.path.exists('/www/server/nodejs/fnm'):
+        _run('export PATH="/www/server/nodejs/fnm:$PATH" && eval "$(fnm env --use-on-cd --shell bash)" && HA_MANAGER_AUTO_CONFIRM=1 node {0}'.format(_quote(script_path)), step)
+        return
+    for candidate in ('/usr/bin/node', '/usr/local/bin/node'):
+        if os.path.exists(candidate):
+            _run('HA_MANAGER_AUTO_CONFIRM=1 {0} {1}'.format(_quote(candidate), _quote(script_path)), step)
+            return
+    raise RuntimeError('Node命令不存在，请检查系统是否安装 node 或 /www/server/nodejs/fnm')
 
 
 def _checksum_env(opts):

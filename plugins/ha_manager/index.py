@@ -203,7 +203,7 @@ def _host_id():
     if os.path.exists(host_file):
         current = mw.readFile(host_file).strip()
     if not current:
-        current = 'H_PANEL_' + hashlib.sha1((mw.getHostAddr() + str(time.time())).encode('utf-8')).hexdigest()[:8].upper()
+        current = _host_id_by_ip(mw.getHostAddr())
         mw.writeFile(host_file, current)
     return current
 
@@ -223,6 +223,18 @@ def _set_host_id(cfg, host_id):
         mw.writeFile('/www/server/jh-panel/data/ha_manager_host_id.pl', host_id)
     except Exception:
         pass
+    return cfg
+
+
+def _sync_host_id_file(cfg):
+    host_id = str(cfg.get('host_id') or '').strip()
+    if not host_id:
+        host_id = _host_id_by_ip(cfg.get('host_ip') or mw.getHostAddr())
+        cfg['host_id'] = host_id
+    host_file = os.path.join(RUNTIME_DIR, 'host_id.pl')
+    current = mw.readFile(host_file).strip() if os.path.exists(host_file) else ''
+    if current != host_id:
+        mw.writeFile(host_file, host_id)
     return cfg
 
 
@@ -372,6 +384,7 @@ def _config():
     if not cfg.get('pair_id'):
         source = cfg.get('host_id', '') + '_' + cfg.get('peer_public_ip', '')
         cfg['pair_id'] = 'HA_' + hashlib.sha1(source.encode('utf-8')).hexdigest()[:12].upper()
+    cfg = _sync_host_id_file(cfg)
     return cfg
 
 

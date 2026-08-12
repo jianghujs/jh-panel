@@ -208,6 +208,35 @@ def _host_id():
     return current
 
 
+def _host_id_by_ip(ip):
+    ip = str(ip or '').strip() or mw.getHostAddr()
+    return 'H_PANEL_' + hashlib.sha1(ip.encode('utf-8')).hexdigest()[:8].upper()
+
+
+def _set_host_id(cfg, host_id):
+    host_id = str(host_id or '').strip()
+    if not host_id:
+        return cfg
+    cfg['host_id'] = host_id
+    mw.writeFile(os.path.join(RUNTIME_DIR, 'host_id.pl'), host_id)
+    try:
+        mw.writeFile('/www/server/jh-panel/data/ha_manager_host_id.pl', host_id)
+    except Exception:
+        pass
+    return cfg
+
+
+def _repair_duplicate_host_id(cfg, peer):
+    peer_id = str((peer or {}).get('host_id') or '').strip()
+    peer_ip = str((peer or {}).get('host_ip') or cfg.get('peer_public_ip') or '').strip()
+    local_id = str(cfg.get('host_id') or '').strip()
+    local_ip = str(cfg.get('host_ip') or '').strip()
+    if peer_id and local_id and peer_id == local_id and peer_ip and local_ip and peer_ip != local_ip:
+        cfg = _set_host_id(cfg, _host_id_by_ip(local_ip))
+        _save_config(cfg)
+    return cfg
+
+
 def _peer_host_id(ip):
     ip = str(ip or '').strip()
     if not ip:
@@ -798,6 +827,11 @@ def report_state():
         return _return(True, '云监控地址为空，不上传状态', {'hosts': []})
     local_state = _state(cfg)
     peer_state = collect_peer_state_raw(cfg)
+    if peer_state.get('status'):
+        repaired_cfg = _repair_duplicate_host_id(cfg, peer_state.get('data') or {})
+        if repaired_cfg.get('host_id') != cfg.get('host_id'):
+            cfg = repaired_cfg
+            local_state = _state(cfg)
     hosts = [{
         'host_id': cfg.get('host_id'),
         'host_name': cfg.get('host_name'),

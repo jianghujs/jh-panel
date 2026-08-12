@@ -132,6 +132,7 @@ data/debounce_commands_pool.json
 data/system_task_alert_state.json
 data/ha_manager_title_state.json
 data/plugin_scheduled_tasks_state.json
+data/ha_manager_host_id.pl
 
 ssl/input.pl
 

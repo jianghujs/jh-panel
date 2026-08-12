@@ -226,6 +226,16 @@ def _report_peer_host_id(cfg, peer):
     return peer_id or cfg.get('peer_host_id') or _peer_host_id(peer_ip)
 
 
+def _active_switch_run_id(cfg):
+    status = str(cfg.get('switch_status') or '').strip()
+    run_id = str(cfg.get('switch_run_id') or '').strip()
+    if not run_id:
+        return ''
+    if status in ('running', 'waiting_online') or status.endswith('_running'):
+        return run_id
+    return ''
+
+
 def _panel_title():
     try:
         title = mw.getConfig('title')
@@ -769,7 +779,8 @@ def report_state():
         'collect_status': 'success',
         'collect_method': 'local',
         'report_host_id': cfg.get('host_id'),
-        'switch_run_id': cfg.get('switch_run_id')
+        'switch_run_id': _active_switch_run_id(cfg),
+        'switch_status': cfg.get('switch_status') if _active_switch_run_id(cfg) else ''
     }]
     if peer_state.get('status'):
         peer = peer_state.get('data') or {}
@@ -785,7 +796,8 @@ def report_state():
             'collect_status': 'success' if peer_log_result.get('status') else 'partial',
             'collect_method': 'ssh_peer',
             'report_host_id': cfg.get('host_id'),
-            'switch_run_id': peer.get('switch_run_id') or ''
+            'switch_run_id': _active_switch_run_id(peer),
+            'switch_status': peer.get('switch_status') if _active_switch_run_id(peer) else ''
         })
     elif cfg.get('peer_host_id'):
         hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'health_detail': {'summary': peer_state.get('msg')}})

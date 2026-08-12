@@ -66,7 +66,12 @@ def _run_node_script(script_name, step):
     script_path = os.path.join(OS_TOOL_DIR, script_name)
     if not os.path.exists(script_path):
         raise RuntimeError('Node脚本不存在: ' + script_path)
-    _run('HA_MANAGER_AUTO_CONFIRM=1 node {0}'.format(_quote(script_path)), step)
+    node_bin = os.environ.get('NODE_BIN') or '/usr/bin/node'
+    if not os.path.exists(node_bin):
+        node_bin = '/usr/local/bin/node'
+    if not os.path.exists(node_bin):
+        raise RuntimeError('Node命令不存在，请检查系统是否安装 node')
+    _run('HA_MANAGER_AUTO_CONFIRM=1 {0} {1}'.format(_quote(node_bin), _quote(script_path)), step)
 
 
 def _checksum_env(opts):

@@ -39,6 +39,40 @@ function softMain(name, title, version) {
     });
 }
 
+function haManagerTitleText(state) {
+    if (!state || !state.installed) return '';
+    var role = state.switch_status === 'running' || state.switch_status === 'waiting_online' ? '切换中' : (state.role === 'master' ? '主' : state.role === 'standby' ? '备' : '未知');
+    return '[' + role + ']';
+}
+
+function applyHaManagerBrowserTitle(state) {
+    var baseTitle = window.haManagerBaseTitle || document.title.replace(/^\[(?:切换中|主|备|未知)\]\s*/, '');
+    if (!window.haManagerBaseTitle) {
+        window.haManagerBaseTitle = baseTitle;
+    }
+    var prefix = haManagerTitleText(state);
+    document.title = prefix ? (prefix + ' ' + window.haManagerBaseTitle) : window.haManagerBaseTitle;
+}
+
+function refreshHaManagerBrowserTitle() {
+    $.post('/plugins/run', {name: 'ha_manager', func: 'title_state'}, function(data) {
+        try {
+            if (typeof data === 'string') data = JSON.parse(data);
+        } catch (e) {}
+        var titleState = data && data.data;
+        try {
+            if (typeof titleState === 'string') titleState = JSON.parse(titleState);
+        } catch (e2) {}
+        if (titleState && typeof titleState === 'object' && titleState.hasOwnProperty('status') && titleState.hasOwnProperty('data')) {
+            titleState = titleState.status ? titleState.data : null;
+        }
+        if (data && data.status && titleState) {
+            window.haManagerTitleState = titleState;
+            applyHaManagerBrowserTitle(titleState);
+        }
+    }, 'json');
+}
+
 //取软件列表
 function getSList(isdisplay) {
     if (isdisplay !== true) {

@@ -43,6 +43,7 @@ LEGACY_DATA_DIR = os.path.join(PLUGIN_DIR, 'data')
 LEGACY_LOG_DIR = os.path.join(PLUGIN_DIR, 'logs')
 REMOTE_STATE_PATH = '/www/server/ha_manager/data/state.json'
 REMOTE_SWITCH_LOG_DIR = '/www/server/ha_manager/logs/switch'
+PANEL_TITLE_STATE_PATH = '/www/server/jh-panel/data/ha_manager_title_state.json'
 
 
 def _now():
@@ -111,6 +112,29 @@ def _write_json(path, data):
         os.chmod(path, 0o600)
     except Exception:
         pass
+
+
+def _write_panel_title_state(cfg):
+    data = {
+        'installed': True,
+        'role': cfg.get('role') or 'unknown',
+        'desired_role': cfg.get('desired_role') or cfg.get('role') or 'unknown',
+        'switch_status': cfg.get('switch_status') or 'idle',
+        'host_name': cfg.get('host_name') or _panel_title(),
+        'updated_at': _now()
+    }
+    parent = os.path.dirname(PANEL_TITLE_STATE_PATH)
+    if not os.path.exists(parent):
+        os.makedirs(parent, mode=0o700, exist_ok=True)
+    tmp = PANEL_TITLE_STATE_PATH + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as fp:
+        json.dump(data, fp, ensure_ascii=False, indent=2)
+    os.replace(tmp, PANEL_TITLE_STATE_PATH)
+    try:
+        os.chmod(PANEL_TITLE_STATE_PATH, 0o600)
+    except Exception:
+        pass
+    return data
 
 
 def _args():
@@ -255,6 +279,7 @@ def _config():
 
 def _save_config(cfg):
     _write_json(CONFIG_PATH, cfg)
+    _write_panel_title_state(cfg)
     return cfg
 
 
@@ -471,6 +496,7 @@ def _state(cfg=None):
         'updated_at': _now()
     })
     _write_json(STATE_PATH, state)
+    _write_panel_title_state(cfg)
     return state
 
 
@@ -517,6 +543,11 @@ def get_state():
 def get_local_state():
     cfg = _config()
     return _return(True, 'ok', _state(cfg))
+
+
+def title_state():
+    cfg = _config()
+    return _return(True, 'ok', _write_panel_title_state(cfg))
 
 
 def save_binding():
@@ -1253,6 +1284,8 @@ if __name__ == '__main__':
         print(get_state())
     elif func == 'get_local_state':
         print(get_local_state())
+    elif func == 'title_state':
+        print(title_state())
     elif func == 'save_binding':
         print(save_binding())
     elif func == 'get_local_public_key':

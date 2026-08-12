@@ -89,6 +89,9 @@ function msLoadState(callback) {
       msState = $.extend(true, msState, data);
       if (data.health) msState.health = data.health;
       if (data.log) msState.log = data.log;
+      if (typeof applyHaManagerBrowserTitle === 'function') {
+        applyHaManagerBrowserTitle({installed: true, role: msState.role, desired_role: msState.desired_role, switch_status: msState.switch_status});
+      }
     }
     if (callback) callback();
   });

@@ -750,7 +750,7 @@ def report_state():
             'host_name': peer.get('host_name') or ('对端 ' + cfg.get('peer_public_ip', '')),
             'host_ip': peer.get('host_ip') or cfg.get('peer_public_ip'),
             'role': peer.get('role') or ('standby' if cfg.get('role') == 'master' else 'master'),
-            'online_status': peer.get('online_status') or 'unknown',
+            'online_status': peer.get('online_status') or 'online',
             'health_status': peer.get('health_status') or 'unknown',
             'health_detail': peer.get('health_detail') or ({'summary': peer_log_result.get('msg')} if not peer_log_result.get('status') else {}),
             'collect_status': 'success' if peer_log_result.get('status') else 'partial',

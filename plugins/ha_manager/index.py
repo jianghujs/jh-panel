@@ -207,6 +207,25 @@ def _host_id():
     return current
 
 
+def _peer_host_id(ip):
+    ip = str(ip or '').strip()
+    if not ip:
+        return ''
+    return 'H_PEER_' + hashlib.sha1(ip.encode('utf-8')).hexdigest()[:8].upper()
+
+
+def _report_peer_host_id(cfg, peer):
+    peer_ip = str(peer.get('host_ip') or cfg.get('peer_public_ip') or '').strip()
+    peer_id = str(peer.get('host_id') or '').strip()
+    local_id = str(cfg.get('host_id') or '').strip()
+    local_ip = str(cfg.get('host_ip') or '').strip()
+    if peer_id and peer_id != local_id:
+        return peer_id
+    if peer_id == local_id and peer_ip and peer_ip != local_ip:
+        return cfg.get('peer_host_id') or _peer_host_id(peer_ip)
+    return peer_id or cfg.get('peer_host_id') or _peer_host_id(peer_ip)
+
+
 def _panel_title():
     try:
         title = mw.getConfig('title')
@@ -569,7 +588,7 @@ def save_binding():
     if not cfg.get('peer_public_ip') or not cfg.get('peer_public_key'):
         return _return(False, '请填写对方IP和对方公钥')
     if not cfg.get('peer_host_id'):
-        cfg['peer_host_id'] = 'H_PEER_' + hashlib.sha1(cfg.get('peer_public_ip').encode('utf-8')).hexdigest()[:8].upper()
+        cfg['peer_host_id'] = _peer_host_id(cfg.get('peer_public_ip'))
     cfg['options']['remote_ip'] = cfg.get('peer_public_ip')
     cfg['options']['remote_ssh_port'] = cfg.get('peer_ssh_port')
     _save_config(cfg)
@@ -756,7 +775,7 @@ def report_state():
         peer = peer_state.get('data') or {}
         peer_log_result = collect_peer_logs(cfg, peer)
         hosts.append({
-            'host_id': peer.get('host_id') or cfg.get('peer_host_id'),
+            'host_id': _report_peer_host_id(cfg, peer),
             'host_name': peer.get('host_name') or ('对端 ' + cfg.get('peer_public_ip', '')),
             'host_ip': peer.get('host_ip') or cfg.get('peer_public_ip'),
             'role': peer.get('role') or ('standby' if cfg.get('role') == 'master' else 'master'),
@@ -830,7 +849,7 @@ def collect_peer_state_raw(cfg):
 
 def collect_peer_logs(cfg, peer_state):
     switch_run_id = peer_state.get('switch_run_id') or cfg.get('switch_run_id')
-    peer_host_id = peer_state.get('host_id') or cfg.get('peer_host_id')
+    peer_host_id = _report_peer_host_id(cfg, peer_state)
     if not switch_run_id or not peer_host_id or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': '缺少对端日志采集条件'}
     remote_path = os.path.join(REMOTE_SWITCH_LOG_DIR, switch_run_id + '.log')

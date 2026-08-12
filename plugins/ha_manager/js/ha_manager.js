@@ -49,6 +49,7 @@ var msSwitchLogTimer = null;
 var msSwitchLogLayerIndex = null;
 var msSwitchDialogIndex = null;
 var msSwitchWizard = {step: 1, targetRole: '', options: null, prepared: false, prepareRunId: '', prepareLog: ''};
+var msSwitchLogHeartbeat = 0;
 
 function msPost(method, args, callback, options) {
   options = options || {};
@@ -585,8 +586,14 @@ function msCloseSwitchLogWindow() {
 }
 
 function msUpdateSwitchLogWindow(logText, stateText, stateClass) {
-  $('#msSwitchLiveLog').text(logText || '正在准备切换任务...');
-  $('#msSwitchLiveState').removeClass('ms-live-state-running ms-live-state-success ms-live-state-failed').addClass(stateClass || 'ms-live-state-running').text(stateText || '执行中');
+  var liveStateClass = stateClass || 'ms-live-state-running';
+  var displayText = logText || '正在准备切换任务...';
+  if (liveStateClass === 'ms-live-state-running') {
+    msSwitchLogHeartbeat = (msSwitchLogHeartbeat + 1) % 4;
+    displayText += '\n\n|- 正在执行中，等待新的日志输出' + new Array(msSwitchLogHeartbeat + 1).join('.');
+  }
+  $('#msSwitchLiveLog').text(displayText);
+  $('#msSwitchLiveState').removeClass('ms-live-state-running ms-live-state-success ms-live-state-failed').addClass(liveStateClass).text(stateText || '执行中');
   var box = document.getElementById('msSwitchLiveLog');
   if (box) box.scrollTop = box.scrollHeight;
 }
@@ -605,6 +612,7 @@ function msRefreshSwitchLogWindow(switchRunId, callback) {
 
 function msShowSwitchLogWindow(title, switchRunId) {
   msStopSwitchLogPolling();
+  msSwitchLogHeartbeat = 0;
   var html = '<div class="ms-live-log-wrap">' +
     '<div class="ms-live-log-head"><span id="msSwitchLiveState" class="ms-live-state ms-live-state-running">执行中</span><span class="ms-live-run-id">' + msHtml(switchRunId) + '</span></div>' +
     '<pre id="msSwitchLiveLog" class="ms-live-log-box">正在准备切换任务...</pre>' +
@@ -627,7 +635,7 @@ function msShowSwitchLogWindow(title, switchRunId) {
   msRefreshSwitchLogWindow(switchRunId);
   msSwitchLogTimer = setInterval(function() {
     msRefreshSwitchLogWindow(switchRunId);
-  }, 1000);
+  }, 500);
 }
 
 function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen, keepLogWindow) {

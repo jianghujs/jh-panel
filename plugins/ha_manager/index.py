@@ -1055,7 +1055,7 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
     }
     args = shlex.quote(json.dumps(payload, ensure_ascii=False))
     env_prefix = 'HA_MANAGER_SWITCH_DRY_RUN=1 ' if DRY_RUN else ''
-    remote_cmd = 'cd /www/server/jh-panel && {0}python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {1}'.format(env_prefix, args)
+    remote_cmd = 'cd /www/server/jh-panel && {0}PYTHONUNBUFFERED=1 python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {1}'.format(env_prefix, args)
     cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', '-p', str(cfg.get('peer_ssh_port')), cfg.get('peer_ssh_user') + '@' + cfg.get('peer_public_ip'), remote_cmd]
     _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + _phase_text(phase) + '脚本')
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, preexec_fn=os.setsid)
@@ -1240,7 +1240,11 @@ def _run_executor(phase, cfg, echo_output=False):
         raise RuntimeError('切换脚本不存在: ' + script)
     args = json.dumps(cfg.get('options') or {}, ensure_ascii=False)
     cmd = ['bash', script, '--plugin-run', '--args', args]
+    if shutil.which('stdbuf'):
+        cmd = ['stdbuf', '-oL', '-eL'] + cmd
     env = os.environ.copy()
+    env['PYTHONUNBUFFERED'] = '1'
+    env['NODE_DISABLE_COLORS'] = '1'
     if phase == 'prepare_online':
         env['HA_MANAGER_SWITCH_PHASE'] = 'prepare_online'
     _append_switch_log(cfg.get('switch_run_id'), phase, 'running', '执行真实切换脚本: ' + script + '，阶段：' + _phase_text(phase))

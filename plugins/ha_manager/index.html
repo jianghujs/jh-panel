@@ -102,12 +102,13 @@
 .ms-log-box{height:320px;background:#1f2329;color:#d7dde8;border-radius:4px;padding:12px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;white-space:pre-wrap;}
 .ms-live-log-wrap{padding:14px;background:#fff;}
 .ms-live-log-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;color:#777;font-size:12px;}
-.ms-live-state{display:inline-block;border-radius:3px;padding:3px 8px;border:1px solid transparent;font-size:12px;line-height:16px;}
+.ms-live-state{display:inline-flex;align-items:center;gap:6px;border-radius:3px;padding:3px 8px;border:1px solid transparent;font-size:12px;line-height:16px;}
 .ms-live-state-running{color:#9a6200;background:#fff7e6;border-color:#f1d399;}
 .ms-live-state-success{color:#2e7d32;background:#f0fff0;border-color:#bfe4bf;}
 .ms-live-state-failed{color:#b02a25;background:#fff1f0;border-color:#f0c6c4;}
+.ms-live-state-running:before{content:"";display:inline-block;width:11px;height:11px;border:2px solid #f1d399;border-top-color:#f0ad4e;border-radius:50%;animation:msSpin .8s linear infinite;box-sizing:border-box;}
 .ms-live-run-id{font-family:Menlo,Consolas,monospace;color:#999;}
-.ms-live-log-box{margin:0;height:300px;text-align:left;background:#000;color:#fff;white-space:pre-wrap;border:0;border-radius:3px;padding:10px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;}
+.ms-live-log-box{margin:0;height:420px;text-align:left;background:#000;color:#fff;white-space:pre-wrap;border:0;border-radius:3px;padding:10px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;}
 .ms-live-log-tip{margin-top:8px;color:#888;font-size:12px;line-height:20px;}
 .ms-tip-list{color:#666;line-height:28px;margin:0;padding-left:18px;}
 .ms-actions .btn{margin-left:6px;}
@@ -134,7 +135,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=2026081201', function(){
+$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=2026081202', function(){
   msLoadState(function(){
     msOverview();
   });

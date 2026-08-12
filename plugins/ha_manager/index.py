@@ -8,6 +8,7 @@ if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'status':
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import shlex
@@ -234,6 +235,35 @@ def _active_switch_run_id(cfg):
     if status in ('running', 'waiting_online') or status.endswith('_running'):
         return run_id
     return ''
+
+
+def _same_monitor_url(left, right):
+    left = str(left or '').strip().rstrip('/')
+    right = str(right or '').strip().rstrip('/')
+    return bool(left and right and left == right)
+
+
+def _same_private_cidr(left, right):
+    try:
+        left_ip = ipaddress.ip_address(str(left or '').strip())
+        right_ip = ipaddress.ip_address(str(right or '').strip())
+    except Exception:
+        return False
+    if left_ip.version != 4 or right_ip.version != 4:
+        return False
+    if not left_ip.is_private or not right_ip.is_private:
+        return False
+    left_parts = str(left_ip).split('.')
+    right_parts = str(right_ip).split('.')
+    return left_parts[:3] == right_parts[:3]
+
+
+def _peer_site_scope(cfg, peer):
+    if _same_monitor_url(cfg.get('monitor_url'), peer.get('monitor_url')):
+        return 'local'
+    if _same_private_cidr(cfg.get('host_ip'), peer.get('host_ip') or cfg.get('peer_public_ip')):
+        return 'local'
+    return 'remote'
 
 
 def _panel_title():
@@ -779,6 +809,7 @@ def report_state():
         'collect_status': 'success',
         'collect_method': 'local',
         'report_host_id': cfg.get('host_id'),
+        'site_scope': 'local',
         'switch_run_id': _active_switch_run_id(cfg),
         'switch_status': cfg.get('switch_status') if _active_switch_run_id(cfg) else ''
     }]
@@ -796,11 +827,12 @@ def report_state():
             'collect_status': 'success' if peer_log_result.get('status') else 'partial',
             'collect_method': 'ssh_peer',
             'report_host_id': cfg.get('host_id'),
+            'site_scope': _peer_site_scope(cfg, peer),
             'switch_run_id': _active_switch_run_id(peer),
             'switch_status': peer.get('switch_status') if _active_switch_run_id(peer) else ''
         })
     elif cfg.get('peer_host_id'):
-        hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'health_detail': {'summary': peer_state.get('msg')}})
+        hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'site_scope': 'remote', 'health_detail': {'summary': peer_state.get('msg')}})
     payload = {'pair_id': cfg.get('pair_id'), 'hosts': hosts}
     res = _post_monitor(cfg, 'ha_report_state', payload, signed=True)
     if not res.get('status') and res.get('msg') == '签名错误':

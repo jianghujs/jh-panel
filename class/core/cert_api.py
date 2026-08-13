@@ -92,6 +92,11 @@ class cert_api:
             print(val)
             print('---------{} end--------'.format(name))
 
+    def isLetsEncryptIssuer(self, issuer):
+        if not issuer:
+            return False
+        return issuer.find("Let's Encrypt") != -1 or issuer.startswith('R') or issuer.startswith('YR')
+
     # 读配置文件
     def readConfig(self):
         if not os.path.exists(self.__cfg_file):
@@ -1072,7 +1077,7 @@ fi
                 to_cert_init = self.getCertInit(to_pem_file)
                 # 判断证书品牌是否一致
                 try:
-                    if to_cert_init['issuer'] != cert_init['issuer'] and to_cert_init['issuer'].find("Let's Encrypt") == -1 and to_cert_init['issuer'] != 'R3':
+                    if to_cert_init['issuer'] != cert_init['issuer'] and not self.isLetsEncryptIssuer(to_cert_init['issuer']):
                         continue
                 except:
                     continue
@@ -1332,7 +1337,7 @@ fullchain.pem       粘贴到证书输入框
                 if end_time > new_time:
                     continue  # 未到期
                 try:
-                    if not cert_init['issuer'].startswith('R') and cert_init['issuer'].find("Let's Encrypt") == -1:
+                    if not self.isLetsEncryptIssuer(cert_init['issuer']):
                         continue  # 非同品牌证书
                 except:
                     continue
@@ -1632,7 +1637,7 @@ fullchain.pem       粘贴到证书输入框
                                 cert_data = mw.getCertName(csr_path)
                                 if cert_data:
                                     cert_issuer = cert_data.get('issuer', '')
-                                    if cert_issuer.startswith('R'):
+                                    if self.isLetsEncryptIssuer(cert_issuer):
                                         cent_valid = True
                     if not cent_valid:
                         writeLog("|-跳过已更换证书的域名: {}".format(self.__config['orders'][i]['domains']))

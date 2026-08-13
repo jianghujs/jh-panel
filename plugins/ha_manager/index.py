@@ -988,7 +988,47 @@ def poll_monitor():
             cfg['switch_status'] = run.get('status') or cfg.get('switch_status')
             cfg['log_path'] = run.get('log_path') or cfg.get('log_path')
         _save_config(cfg)
+        _start_cloud_switch_phase(cfg, run)
     return _return(bool(res.get('status')), res.get('msg') or '轮询完成', cfg)
+
+
+def _start_cloud_switch_phase(cfg, run):
+    if not isinstance(run, dict) or not run.get('switch_run_id') or not run.get('execute_phase'):
+        return
+    phase = run.get('execute_phase')
+    run_status = str(run.get('status') or '').strip()
+    if run_status not in ('pending_prepare', 'pending_finalize', 'pending_online', 'running', 'waiting_retry'):
+        return
+    running_status = phase + '_running'
+    if cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') == running_status:
+        return
+    payload = {
+        'phase': phase,
+        'role': run.get('execute_role') or ('master' if phase in ('prepare_online', 'online') else 'standby'),
+        'switch_run_id': run.get('switch_run_id'),
+        'options': _dict_value(run.get('options_json') or run.get('options')),
+        'orchestrated': True
+    }
+    cfg['switch_run_id'] = run.get('switch_run_id')
+    cfg['switch_status'] = running_status
+    cfg['log_path'] = run.get('log_path') or cfg.get('log_path')
+    _save_config(cfg)
+    cmd = ['python3', os.path.join(PLUGIN_DIR, 'index.py'), 'switch_phase', json.dumps(payload, ensure_ascii=False)]
+    subprocess.Popen(cmd, cwd=PANEL_DIR, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def ack_switch_phase(cfg, phase, phase_status, step='', last_error=''):
+    if not cfg.get('monitor_url') or not cfg.get('switch_run_id'):
+        return {'status': False, 'msg': '无需确认'}
+    payload = {
+        'pair_id': cfg.get('pair_id'),
+        'switch_run_id': cfg.get('switch_run_id'),
+        'phase': phase,
+        'phase_status': phase_status,
+        'current_step': step,
+        'last_error': last_error
+    }
+    return _post_monitor(cfg, 'ha_ack_switch_phase', payload, signed=True)
 
 
 def read_latest_log_text(switch_run_id=None):
@@ -1236,11 +1276,13 @@ def switch_phase():
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
         cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, _dict_value(data.get('options')), '本机', True)
+        ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         return _return(True, '阶段执行完成', cfg)
     except Exception as e:
         _append_switch_log(cfg.get('switch_run_id') or data.get('switch_run_id') or 'failed', phase or 'switch', 'failed', str(e))
         cfg['switch_status'] = 'failed'
         _save_config(cfg)
+        ack_switch_phase(cfg, phase, 'failed', str(e), str(e))
         if _is_checksum_confirm_error(e):
             return _return(False, 'CHECKSUM_DIFF_CONFIRM_REQUIRED: checksum 检查发现差异，需要确认后继续')
         return _return(False, '阶段执行失败: ' + str(e))

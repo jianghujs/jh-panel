@@ -943,6 +943,36 @@ def report_state():
     return _return(bool(res.get('status')), res.get('msg') or '上报完成', {'hosts': hosts})
 
 
+def _report_state_after_switch_delay(seconds=3):
+    try:
+        time.sleep(seconds)
+        return _return_data(report_state())
+    except Exception as e:
+        return {'status': False, 'msg': str(e)}
+
+
+def _report_peer_state_after_switch(switch_run_id):
+    cfg = _config()
+    if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
+        return {'status': False, 'msg': 'SSH未绑定或未验证'}
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py report_state '{}'"
+    _append_switch_log(switch_run_id, 'switch', 'running', '切换完成后触发对端状态上报，执行方式：SSH 远程触发')
+    out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=30)
+    if code != 0:
+        msg = err or out or '对端状态上报失败'
+        _append_switch_log(switch_run_id, 'switch', 'running', '对端状态上报失败: ' + msg[-500:])
+        return {'status': False, 'msg': msg}
+    _append_switch_log(switch_run_id, 'switch', 'running', '对端状态上报完成')
+    return {'status': True, 'msg': '对端状态上报完成'}
+
+
+def _report_both_state_after_switch_delay(switch_run_id, seconds=3):
+    _append_switch_log(switch_run_id, 'switch', 'running', '切换完成后等待 {0}s 执行双端状态上报'.format(seconds))
+    local_result = _report_state_after_switch_delay(seconds)
+    _append_switch_log(switch_run_id, 'switch', 'running', '本机状态上报' + ('完成' if local_result.get('status') else '失败: ' + str(local_result.get('msg') or '未知错误')[:500]))
+    return _report_peer_state_after_switch(switch_run_id)
+
+
 def _ssh_peer_exec(cfg, remote_cmd, timeout=15):
     cmd = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -p {0} {1}@{2} {3}".format(cfg.get('peer_ssh_port'), cfg.get('peer_ssh_user'), cfg.get('peer_public_ip'), shlex.quote(remote_cmd))
     return mw.execShell(cmd, timeout=timeout)
@@ -1410,6 +1440,10 @@ def switch_phase():
         _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
         cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)
         ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
+        if phase == 'online':
+            _report_both_state_after_switch_delay(switch_run_id, 3)
+        else:
+            _report_state_after_switch_delay(3)
         _set_cloud_task_claim(claim_key, {'status': 'done', 'switch_run_id': switch_run_id, 'phase': phase, 'update_time': _now()})
         return _return(True, '阶段执行完成', cfg)
     except Exception as e:

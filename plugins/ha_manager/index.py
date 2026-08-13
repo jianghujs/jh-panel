@@ -1439,11 +1439,11 @@ def switch_phase():
         source_label = '云监控轮询领取' if data.get('orchestrated') else '手工触发'
         _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
         cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)
-        ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         if phase == 'online':
             _report_both_state_after_switch_delay(switch_run_id, 3)
         else:
             _report_state_after_switch_delay(3)
+        ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         _set_cloud_task_claim(claim_key, {'status': 'done', 'switch_run_id': switch_run_id, 'phase': phase, 'update_time': _now()})
         return _return(True, '阶段执行完成', cfg)
     except Exception as e:

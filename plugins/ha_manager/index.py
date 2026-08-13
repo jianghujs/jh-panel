@@ -1002,11 +1002,15 @@ def _start_cloud_switch_phase(cfg, run):
     running_status = phase + '_running'
     if cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') == running_status:
         return
+    options = _dict_value(run.get('options_json') or run.get('options'))
+    for key in ('local_ip', 'remote_ip', 'remote_ssh_port'):
+        if key in options and not str(options.get(key) or '').strip():
+            options.pop(key, None)
     payload = {
         'phase': phase,
         'role': run.get('execute_role') or ('master' if phase in ('prepare_online', 'online') else 'standby'),
         'switch_run_id': run.get('switch_run_id'),
-        'options': _dict_value(run.get('options_json') or run.get('options')),
+        'options': options,
         'orchestrated': True
     }
     cfg['switch_run_id'] = run.get('switch_run_id')

@@ -249,6 +249,24 @@ def _repair_duplicate_host_id(cfg, peer):
     return cfg
 
 
+def _sync_binding_options(cfg):
+    options = cfg.setdefault('options', {})
+    changed = False
+    local_ip = str(options.get('local_ip') or '').strip()
+    if local_ip != str(cfg.get('host_ip') or mw.getHostAddr()).strip():
+        options['local_ip'] = cfg.get('host_ip') or mw.getHostAddr()
+        changed = True
+    remote_ip = str(options.get('remote_ip') or '').strip()
+    if remote_ip != str(cfg.get('peer_public_ip') or '').strip():
+        options['remote_ip'] = cfg.get('peer_public_ip') or ''
+        changed = True
+    remote_ssh_port = str(options.get('remote_ssh_port') or '').strip()
+    if remote_ssh_port != str(cfg.get('peer_ssh_port') or '22').strip():
+        options['remote_ssh_port'] = cfg.get('peer_ssh_port') or '22'
+        changed = True
+    return changed
+
+
 def _peer_host_id(ip):
     ip = str(ip or '').strip()
     if not ip:
@@ -385,6 +403,8 @@ def _config():
         source = cfg.get('host_id', '') + '_' + cfg.get('peer_public_ip', '')
         cfg['pair_id'] = 'HA_' + hashlib.sha1(source.encode('utf-8')).hexdigest()[:12].upper()
     cfg = _sync_host_id_file(cfg)
+    if _sync_binding_options(cfg):
+        _save_config(cfg)
     return cfg
 
 
@@ -997,7 +1017,7 @@ def _start_cloud_switch_phase(cfg, run):
         return
     phase = run.get('execute_phase')
     run_status = str(run.get('status') or '').strip()
-    if run_status not in ('pending_prepare', 'pending_finalize', 'pending_online', 'running', 'waiting_retry'):
+    if run_status not in ('pending_prepare', 'pending_finalize', 'pending_online', 'running'):
         return
     running_status = phase + '_running'
     if cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') == running_status:
@@ -1190,6 +1210,17 @@ def _is_checksum_confirm_error(error):
     return 'CHECKSUM_DIFF_CONFIRM_REQUIRED' in str(error)
 
 
+def _repair_switch_ips(cfg, options):
+    options = _dict_value(options)
+    if not str(options.get('local_ip') or '').strip():
+        options['local_ip'] = cfg.get('host_ip') or mw.getHostAddr()
+    if not str(options.get('remote_ip') or '').strip():
+        options['remote_ip'] = cfg.get('peer_public_ip') or ''
+    if not str(options.get('remote_ssh_port') or '').strip():
+        options['remote_ssh_port'] = cfg.get('peer_ssh_port') or '22'
+    return options
+
+
 def _switch_options_from_request(cfg, request_options):
     request_options = _dict_value(request_options)
     switch_options = dict(_default_config().get('options') or {})
@@ -1202,13 +1233,14 @@ def _switch_options_from_request(cfg, request_options):
         if key not in request_options:
             switch_options[key] = False
     switch_options['promote_mysql'] = True
-    return switch_options
+    return _repair_switch_ips(cfg, switch_options)
 
 
-def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机', echo_output=False):
+def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机', echo_output=False, persist_options=True):
     cfg['switch_run_id'] = switch_run_id
     cfg['switch_status'] = phase + '_running'
-    cfg['options'].update(_dict_value(options))
+    if persist_options:
+        cfg['options'].update(_dict_value(options))
     _save_config(cfg)
     _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + _phase_text(phase) + '脚本，目标角色：' + ('主' if role == 'master' else '备'))
     _run_executor(phase, cfg, echo_output)
@@ -1279,7 +1311,8 @@ def switch_phase():
         return _return(False, '已有切换任务正在执行')
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
-        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, _dict_value(data.get('options')), '本机', True)
+        switch_options = _repair_switch_ips(cfg, data.get('options'))
+        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)
         ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         return _return(True, '阶段执行完成', cfg)
     except Exception as e:

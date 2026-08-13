@@ -1335,7 +1335,7 @@ def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label
     if persist_options:
         cfg['options'].update(_dict_value(options))
     _save_config(cfg)
-    _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + _phase_text(phase) + '脚本，目标角色：' + ('主' if role == 'master' else '备'))
+    _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + _phase_text(phase) + '脚本，目标角色：' + ('主' if role == 'master' else '备') + '，执行方式：本机直接执行')
     _run_executor(phase, cfg, echo_output)
     if phase != 'prepare_online':
         cfg['role'] = role
@@ -1362,7 +1362,7 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
     env_prefix = 'HA_MANAGER_SWITCH_DRY_RUN=1 ' if DRY_RUN else ''
     remote_cmd = 'cd /www/server/jh-panel && {0}PYTHONUNBUFFERED=1 python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {1}'.format(env_prefix, args)
     cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', '-p', str(cfg.get('peer_ssh_port')), cfg.get('peer_ssh_user') + '@' + cfg.get('peer_public_ip'), remote_cmd]
-    _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + _phase_text(phase) + '脚本')
+    _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + _phase_text(phase) + '脚本，执行方式：SSH 远程触发')
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, preexec_fn=os.setsid)
     output_lines = []
     start_time = time.time()
@@ -1406,6 +1406,8 @@ def switch_phase():
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
         switch_options = _repair_switch_ips(cfg, data.get('options'))
+        source_label = '云监控轮询领取' if data.get('orchestrated') else '手工触发'
+        _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
         cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)
         ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         _set_cloud_task_claim(claim_key, {'status': 'done', 'switch_run_id': switch_run_id, 'phase': phase, 'update_time': _now()})
@@ -1479,6 +1481,7 @@ def prepare_switch():
         cfg['switch_run_id'] = switch_run_id
         cfg['switch_status'] = 'running'
         request_options = _dict_value(data.get('options'))
+        _append_switch_log(switch_run_id, 'switch', 'start', '预上线任务已创建，执行方式：' + ('本机直接执行' if target_role == 'master' else 'SSH 远程触发'))
         _append_switch_log(switch_run_id, 'switch', 'running', '收到预上线选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
         switch_options = _switch_options_from_request(cfg, request_options)
         cfg['options'].update(switch_options)
@@ -1516,6 +1519,7 @@ def finalize_switch():
         cfg['switch_run_id'] = switch_run_id
         cfg['switch_status'] = 'running'
         request_options = _dict_value(data.get('options'))
+        _append_switch_log(switch_run_id, 'switch', 'start', '正式上线任务已创建，执行方式：' + ('本机直接执行' if target_role == 'master' else 'SSH 远程触发'))
         switch_options = _switch_options_from_request(cfg, request_options)
         cfg['options'].update(switch_options)
         _save_config(cfg)

@@ -1042,6 +1042,8 @@ def collect_peer_logs(cfg, peer_state):
             for line in new_lines:
                 fp.write(line + '\n')
         for index, line in enumerate(new_lines, start=len(old_lines) + 1):
+            if '[switch]' in line and ('切换完成后触发对端状态上报' in line or '对端状态上报完成' in line or '对端状态上报失败' in line):
+                continue
             report_switch_event(cfg, 'peer_log', 'running', line, origin_host_id=peer_host_id, seq=index, collect_method='ssh_peer', switch_run_id=switch_run_id)
     return {'status': True, 'data': {'path': local_path, 'new_count': len(new_lines)}}
 

@@ -584,45 +584,81 @@ def _check_authorized_key():
     return 'authorized' if pub and pub in auth else 'unauthorized'
 
 
-def _script_health_checks(cfg):
-    role = cfg.get('role') if cfg.get('role') in ('master', 'standby') else 'standby'
+def _run_health_check_item(item, role):
+    expected = item.get(role)
+    actual_text = ''
+    if item.get('type') == 'crontab':
+        actual = _check_crontab(item.get('target'))
+        ok = actual == expected or (expected == 'disabled' and actual == 'missing')
+    elif item.get('type') == 'process':
+        actual = _check_process(item.get('target'))
+        ok = actual == expected
+    elif item.get('type') == 'openresty_service':
+        actual, actual_text = _check_openresty_service(expected)
+        ok = actual == expected
+    elif item.get('type') == 'rsyncd_tasks':
+        actual, actual_text = _check_rsyncd_tasks(expected)
+        ok = actual == expected or actual == 'skip'
+    elif item.get('type') == 'lsyncd_service':
+        actual, actual_text = _check_lsyncd_service(expected)
+        ok = actual == expected or actual == 'skip'
+    elif item.get('type') == 'notify':
+        actual = _check_notify(item.get('target'))
+        ok = actual == expected
+    elif item.get('type') == 'authorized_key':
+        actual = _check_authorized_key()
+        expected = 'authorized' if expected == 'enabled' else 'unauthorized'
+        ok = actual == expected
+    else:
+        actual = 'unknown'
+        ok = False
+    return {
+        'group': item.get('group'),
+        'name': item.get('name'),
+        'expected': _expected_text(expected),
+        'actual': actual_text or _actual_text(actual),
+        'status': 'pass' if ok else 'fail'
+    }
+
+
+def _script_health_checks_for_role(role):
     checks = []
     for item in HA_CHECK_DEFS:
-        expected = item.get(role)
-        actual_text = ''
-        if item.get('type') == 'crontab':
-            actual = _check_crontab(item.get('target'))
-            ok = actual == expected or (expected == 'disabled' and actual == 'missing')
-        elif item.get('type') == 'process':
-            actual = _check_process(item.get('target'))
-            ok = actual == expected
-        elif item.get('type') == 'openresty_service':
-            actual, actual_text = _check_openresty_service(expected)
-            ok = actual == expected
-        elif item.get('type') == 'rsyncd_tasks':
-            actual, actual_text = _check_rsyncd_tasks(expected)
-            ok = actual == expected or actual == 'skip'
-        elif item.get('type') == 'lsyncd_service':
-            actual, actual_text = _check_lsyncd_service(expected)
-            ok = actual == expected or actual == 'skip'
-        elif item.get('type') == 'notify':
-            actual = _check_notify(item.get('target'))
-            ok = actual == expected
-        elif item.get('type') == 'authorized_key':
-            actual = _check_authorized_key()
-            expected = 'authorized' if expected == 'enabled' else 'unauthorized'
-            ok = actual == expected
-        else:
-            actual = 'unknown'
-            ok = False
-        checks.append({
-            'group': item.get('group'),
-            'name': item.get('name'),
-            'expected': _expected_text(expected),
-            'actual': actual_text or _actual_text(actual),
-            'status': 'pass' if ok else 'fail'
-        })
+        checks.append(_run_health_check_item(item, role))
     return checks
+
+
+def _script_health_checks(cfg):
+    role = cfg.get('role') if cfg.get('role') in ('master', 'standby') else 'standby'
+    return _script_health_checks_for_role(role)
+
+
+def _infer_role_from_script_state():
+    scores = {}
+    for role in ('master', 'standby'):
+        checks = _script_health_checks_for_role(role)
+        scores[role] = len([item for item in checks if item.get('status') == 'pass'])
+    if scores.get('master', 0) >= scores.get('standby', 0) + 4:
+        return 'master'
+    if scores.get('standby', 0) >= scores.get('master', 0) + 4:
+        return 'standby'
+    return ''
+
+
+def _switch_status_is_running(status):
+    status = str(status or '')
+    return status in ('running', 'waiting_online') or status.endswith('_running')
+
+
+def _repair_role_from_script_state(cfg):
+    if _switch_status_is_running(cfg.get('switch_status')):
+        return cfg
+    inferred_role = _infer_role_from_script_state()
+    if inferred_role and inferred_role != cfg.get('role'):
+        cfg['role'] = inferred_role
+        cfg['desired_role'] = inferred_role
+        _save_config(cfg)
+    return cfg
 
 
 def _health_snapshot(cfg):
@@ -664,6 +700,7 @@ def _repair_role_from_switch_status(cfg):
 def _state(cfg=None):
     cfg = cfg or _config()
     cfg = _repair_role_from_switch_status(cfg)
+    cfg = _repair_role_from_script_state(cfg)
     state = _read_json(STATE_PATH, {})
     health_detail = _health_snapshot(cfg)
     health_status, health_text = _plugin_health_status(cfg, health_detail)

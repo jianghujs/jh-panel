@@ -399,7 +399,7 @@ function msOpenLocalSwitchDialog() {
   msSwitchDialogIndex = layer.open({
     type: 1,
     area: ['780px', '560px'],
-    title: '切换主备',
+    title: msSwitchDialogTitle(),
     closeBtn: 1,
     shadeClose: false,
     content: '<div id="msSwitchWizardBox" class="ms-switch-wizard"></div>',
@@ -440,6 +440,23 @@ function msSwitchWizardRoot() {
   return msSwitchDialogIndex ? $('#layui-layer' + msSwitchDialogIndex).find('#msSwitchWizardBox') : $('#msSwitchWizardBox');
 }
 
+function msSwitchTargetLabel(targetRole) {
+  var peerState = msState.peer_state || {};
+  if (targetRole === 'master') return msState.host_name || msState.options.local_ip || msState.host_id || '本机';
+  if (targetRole === 'standby') return peerState.host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
+  if (msState.role === 'master') return peerState.host_name || msState.peer_public_ip || msState.peer_host_id || '对端';
+  return msState.host_name || msState.options.local_ip || msState.host_id || '本机';
+}
+
+function msSwitchDialogTitle() {
+  return '切换主备 - 切换到 ' + msSwitchTargetLabel(msSwitchWizard.targetRole);
+}
+
+function msUpdateSwitchDialogTitle() {
+  if (msSwitchDialogIndex === null) return;
+  $('#layui-layer' + msSwitchDialogIndex).find('.layui-layer-title').text(msSwitchDialogTitle());
+}
+
 function msBuildWizardSteps() {
   var items = [
     {num: 1, text: '选择主机'},
@@ -450,6 +467,12 @@ function msBuildWizardSteps() {
     var cls = item.num === msSwitchWizard.step ? 'active' : item.num < msSwitchWizard.step ? 'done' : '';
     return '<div class="ms-wizard-step ' + cls + '"><span class="ms-wizard-step-num">' + item.num + '</span>' + item.text + '</div>';
   }).join('') + '</div>';
+}
+
+function msSwitchTargetChanged(masterHost) {
+  msSwitchWizard.targetRole = masterHost === 'local' ? 'master' : 'standby';
+  msUpdateSwitchDialogTitle();
+  msRenderSwitchWizard();
 }
 
 function msRenderSwitchWizard(root) {
@@ -467,6 +490,7 @@ function msRenderSwitchWizard(root) {
     body = msBuildPrepareResultContent(msSwitchWizard.prepareRunId, msSwitchWizard.prepareLog, msSwitchWizard.prepared);
     actions = '<button type="button" class="btn btn-default btn-sm" onclick="msWizardBackOptions()">返回预上线选项</button>' + (msSwitchWizard.prepared ? '<button type="button" class="btn btn-success btn-sm" onclick="msStartFinalizeFromCurrentSwitchDialog()">正式切换</button>' : '');
   }
+  msUpdateSwitchDialogTitle();
   root.html(msBuildWizardSteps() + '<div class="ms-wizard-body">' + body + '</div><div class="ms-wizard-actions">' + actions + '</div>');
   msToggleSyncOptions(root);
 }
@@ -546,8 +570,8 @@ function msBuildSwitchHostSelect() {
   var peerRole = peerState.role || (localRole === 'master' ? 'standby' : 'master');
   var defaultMaster = msSwitchWizard.targetRole ? (msSwitchWizard.targetRole === 'master' ? 'local' : 'peer') : (msState.role === 'master' ? 'peer' : 'local');
   return '<div class="ms-switch-hosts">' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="local" ' + (defaultMaster === 'local' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">当前角色: ' + msRoleBadge(localRole) + ' <span class="ml10">IP: ' + msHtml(msState.options.local_ip) + '</span></div></label>' +
-    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="peer" ' + (defaultMaster === 'peer' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">当前角色: ' + msRoleBadge(peerRole) + ' <span class="ml10">IP: ' + msHtml(msState.peer_public_ip) + '</span></div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="local" onchange="msSwitchTargetChanged(this.value)" ' + (defaultMaster === 'local' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(localName) + '</span><div class="ms-switch-host-meta">当前角色: ' + msRoleBadge(localRole) + ' <span class="ml10">IP: ' + msHtml(msState.options.local_ip) + '</span></div></label>' +
+    '<label class="ms-switch-host"><input type="radio" name="switch_master_host" value="peer" onchange="msSwitchTargetChanged(this.value)" ' + (defaultMaster === 'peer' ? 'checked' : '') + '><span class="ms-switch-host-name">' + msHtml(peerName) + '</span><div class="ms-switch-host-meta">当前角色: ' + msRoleBadge(peerRole) + ' <span class="ml10">IP: ' + msHtml(msState.peer_public_ip) + '</span></div></label>' +
   '</div>';
 }
 

@@ -205,14 +205,22 @@ def _host_id():
     if os.path.exists(host_file):
         current = mw.readFile(host_file).strip()
     if not current:
-        current = _host_id_by_ip(mw.getHostAddr())
+        current = _new_host_id()
         mw.writeFile(host_file, current)
     return current
 
 
-def _host_id_by_ip(ip):
-    ip = str(ip or '').strip() or mw.getHostAddr()
-    return 'H_PANEL_' + hashlib.sha1(ip.encode('utf-8')).hexdigest()[:8].upper()
+def _new_host_id(prefix='H_PANEL'):
+    timestamp = time.strftime('%Y%m%d%H%M%S', time.localtime())
+    return prefix + '_' + timestamp + '_' + mw.getRandomString(8).upper()
+
+
+def _is_legacy_host_id(host_id):
+    text = str(host_id or '').strip()
+    if not text.startswith('H_PANEL_'):
+        return False
+    suffix = text[len('H_PANEL_'):]
+    return len(suffix) == 8 and all(ch in '0123456789ABCDEFabcdef' for ch in suffix)
 
 
 def _set_host_id(cfg, host_id):
@@ -229,15 +237,24 @@ def _set_host_id(cfg, host_id):
 
 
 def _sync_host_id_file(cfg):
-    host_id = str(cfg.get('host_id') or '').strip()
-    if not host_id:
-        host_id = _host_id_by_ip(cfg.get('host_ip') or mw.getHostAddr())
-        cfg['host_id'] = host_id
+    changed = False
+    current_ip = str(mw.getHostAddr() or cfg.get('host_ip') or '').strip()
     host_file = os.path.join(RUNTIME_DIR, 'host_id.pl')
-    current = mw.readFile(host_file).strip() if os.path.exists(host_file) else ''
-    if current != host_id:
+    file_host_id = mw.readFile(host_file).strip() if os.path.exists(host_file) else ''
+    host_id = str(cfg.get('host_id') or file_host_id or '').strip()
+    if not host_id or _is_legacy_host_id(host_id):
+        host_id = _new_host_id()
+        cfg = _set_host_id(cfg, host_id)
+        changed = True
+    if str(cfg.get('host_ip') or '').strip() != current_ip:
+        cfg['host_ip'] = current_ip
+        changed = True
+    if str(cfg.get('host_id') or '').strip() != host_id:
+        cfg = _set_host_id(cfg, host_id)
+        changed = True
+    if file_host_id != host_id:
         mw.writeFile(host_file, host_id)
-    return cfg
+    return cfg, changed
 
 
 def _repair_duplicate_host_id(cfg, peer):
@@ -245,8 +262,8 @@ def _repair_duplicate_host_id(cfg, peer):
     peer_ip = str((peer or {}).get('host_ip') or cfg.get('peer_public_ip') or '').strip()
     local_id = str(cfg.get('host_id') or '').strip()
     local_ip = str(cfg.get('host_ip') or '').strip()
-    if peer_id and local_id and peer_id == local_id and peer_ip and local_ip and peer_ip != local_ip:
-        cfg = _set_host_id(cfg, _host_id_by_ip(local_ip))
+    if peer_id and local_id and peer_id == local_id:
+        cfg = _set_host_id(cfg, _new_host_id())
         _save_config(cfg)
     return cfg
 
@@ -270,10 +287,7 @@ def _sync_binding_options(cfg):
 
 
 def _peer_host_id(ip):
-    ip = str(ip or '').strip()
-    if not ip:
-        return ''
-    return 'H_PEER_' + hashlib.sha1(ip.encode('utf-8')).hexdigest()[:8].upper()
+    return _new_host_id('H_PEER')
 
 
 def _report_peer_host_id(cfg, peer):
@@ -424,15 +438,16 @@ def _config():
     cfg['host_name'] = _panel_title()
     if not cfg.get('monitor_disabled') and not cfg.get('monitor_url'):
         cfg['monitor_url'] = _default_monitor_url()
-    if not cfg.get('pair_id'):
-        source = cfg.get('host_id', '') + '_' + cfg.get('peer_public_ip', '')
-        cfg['pair_id'] = 'HA_' + hashlib.sha1(source.encode('utf-8')).hexdigest()[:12].upper()
     config_changed = False
     if cfg.get('peer_public_ip') and not cfg.get('peer_host_id'):
         cfg['peer_host_id'] = _peer_host_id(cfg.get('peer_public_ip'))
         config_changed = True
-    cfg = _sync_host_id_file(cfg)
-    if _sync_binding_options(cfg) or config_changed:
+    cfg, identity_changed = _sync_host_id_file(cfg)
+    if not cfg.get('pair_id'):
+        source = cfg.get('host_id', '') + '_' + cfg.get('peer_public_ip', '')
+        cfg['pair_id'] = 'HA_' + hashlib.sha1(source.encode('utf-8')).hexdigest()[:12].upper()
+        config_changed = True
+    if _sync_binding_options(cfg) or config_changed or identity_changed:
         _save_config(cfg)
     return cfg
 
@@ -731,7 +746,7 @@ def regenerate_host_id():
     cfg = _config()
     old_host_id = cfg.get('host_id') or ''
     host_ip = mw.getHostAddr() or cfg.get('host_ip')
-    new_host_id = _host_id_by_ip(host_ip)
+    new_host_id = _new_host_id()
     cfg = _set_host_id(cfg, new_host_id)
     cfg['host_ip'] = host_ip
     cfg.setdefault('options', {})['local_ip'] = host_ip

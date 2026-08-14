@@ -254,7 +254,7 @@ function msOverview() {
 }
 
 function msRegenerateHostId() {
-  layer.confirm('将按当前本机 IP 重新生成 host_id，并立即保存到本机配置。确认继续？', {icon: 3, title: '重新生成 host_id', btn: ['确认生成', '取消']}, function(index) {
+  layer.confirm('将生成新的随机 host_id，并立即保存到本机配置。确认继续？', {icon: 3, title: '重新生成 host_id', btn: ['确认生成', '取消']}, function(index) {
     layer.close(index);
     msPost('regenerate_host_id', {}, function(data) {
       if (data && data.host_id) {

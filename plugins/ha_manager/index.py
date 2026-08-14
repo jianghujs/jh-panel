@@ -1360,17 +1360,28 @@ def _switch_options_from_request(cfg, request_options):
 
 
 def _run_local_switch_phase(cfg, phase, role, switch_run_id, options=None, label='本机', echo_output=False, persist_options=True):
+    original_options = dict(_dict_value(cfg.get('options')))
+    run_options = _dict_value(options)
     cfg['switch_run_id'] = switch_run_id
     cfg['switch_status'] = phase + '_running'
-    if persist_options:
-        cfg['options'].update(_dict_value(options))
+    if not isinstance(cfg.get('options'), dict):
+        cfg['options'] = {}
+    cfg['options'].update(run_options)
     _save_config(cfg)
     _append_switch_log(switch_run_id, phase, 'start', label + '开始执行' + _phase_text(phase) + '脚本，目标角色：' + ('主' if role == 'master' else '备') + '，执行方式：本机直接执行')
-    _run_executor(phase, cfg, echo_output)
+    try:
+        _run_executor(phase, cfg, echo_output)
+    except Exception:
+        if not persist_options:
+            cfg['options'] = original_options
+            _save_config(cfg)
+        raise
     if phase != 'prepare_online':
         cfg['role'] = role
         cfg['desired_role'] = role
     cfg['switch_status'] = phase + '_done'
+    if not persist_options:
+        cfg['options'] = original_options
     _save_config(cfg)
     _append_switch_log(switch_run_id, phase, 'success', label + _phase_text(phase) + '脚本执行完成')
     _state(cfg)
@@ -1435,7 +1446,10 @@ def switch_phase():
     claim_key = _cloud_task_claim_key(data.get('switch_run_id') or '', phase)
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
-        switch_options = _repair_switch_ips(cfg, data.get('options'))
+        request_options = _dict_value(data.get('options'))
+        _append_switch_log(switch_run_id, phase, 'running', '收到云监控切换选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
+        switch_options = _switch_options_from_request(cfg, request_options)
+        _append_switch_log(switch_run_id, phase, 'running', '本次执行选项：sync_files={0}, run_checksum={1}, run_xtrabackup_inc_restore={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('run_xtrabackup_inc_restore')).lower()))
         source_label = '云监控轮询领取' if data.get('orchestrated') else '手工触发'
         _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
         cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)

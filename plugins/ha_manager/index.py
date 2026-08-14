@@ -8,7 +8,6 @@ if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == 'status':
 
 import hashlib
 import hmac
-import ipaddress
 import json
 import os
 import shlex
@@ -335,32 +334,7 @@ def _active_switch_run_id(cfg):
     return ''
 
 
-def _same_monitor_url(left, right):
-    left = str(left or '').strip().rstrip('/')
-    right = str(right or '').strip().rstrip('/')
-    return bool(left and right and left == right)
-
-
-def _same_private_cidr(left, right):
-    try:
-        left_ip = ipaddress.ip_address(str(left or '').strip())
-        right_ip = ipaddress.ip_address(str(right or '').strip())
-    except Exception:
-        return False
-    if left_ip.version != 4 or right_ip.version != 4:
-        return False
-    if not left_ip.is_private or not right_ip.is_private:
-        return False
-    left_parts = str(left_ip).split('.')
-    right_parts = str(right_ip).split('.')
-    return left_parts[:3] == right_parts[:3]
-
-
 def _peer_site_scope(cfg, peer):
-    if _same_monitor_url(cfg.get('monitor_url'), peer.get('monitor_url')):
-        return 'local'
-    if _same_private_cidr(cfg.get('host_ip'), peer.get('host_ip') or cfg.get('peer_public_ip')):
-        return 'local'
     return 'remote'
 
 

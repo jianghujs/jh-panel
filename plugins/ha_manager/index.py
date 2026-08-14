@@ -288,10 +288,10 @@ def _report_peer_host_id(cfg, peer):
     return peer_id or cfg.get('peer_host_id') or _peer_host_id(peer_ip)
 
 
-def _peer_report_host(cfg, peer=None):
+def _peer_report_host(cfg, peer=None, report_time=None):
     peer = peer or {}
     has_peer_state = bool(peer)
-    return {
+    host = {
         'host_id': _report_peer_host_id(cfg, peer),
         'host_name': peer.get('host_name') or ('对端 ' + cfg.get('peer_public_ip', '')),
         'host_ip': peer.get('host_ip') or cfg.get('peer_public_ip'),
@@ -306,6 +306,9 @@ def _peer_report_host(cfg, peer=None):
         'switch_run_id': _active_switch_run_id(peer),
         'switch_status': peer.get('switch_status') if _active_switch_run_id(peer) else ''
     }
+    if report_time:
+        host['last_report_at'] = report_time
+    return host
 
 
 def _active_switch_run_id(cfg):
@@ -629,8 +632,23 @@ def _plugin_health_status(cfg, health_detail):
     return 'normal', '正常'
 
 
+def _repair_role_from_switch_status(cfg):
+    status = str(cfg.get('switch_status') or '')
+    expected_role = ''
+    if status == 'online_done':
+        expected_role = 'master'
+    elif status == 'offline_done':
+        expected_role = 'standby'
+    if expected_role and cfg.get('role') != expected_role:
+        cfg['role'] = expected_role
+        cfg['desired_role'] = expected_role
+        _save_config(cfg)
+    return cfg
+
+
 def _state(cfg=None):
     cfg = cfg or _config()
+    cfg = _repair_role_from_switch_status(cfg)
     state = _read_json(STATE_PATH, {})
     health_detail = _health_snapshot(cfg)
     health_status, health_text = _plugin_health_status(cfg, health_detail)
@@ -913,6 +931,8 @@ def report_state():
     cfg = _config()
     if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
         return _return(True, '云监控地址为空，不上传状态', {'hosts': []})
+    report_time = _now()
+    report_batch_id = 'HRB_' + str(int(time.time())) + '_' + mw.getRandomString(6)
     local_state = _state(cfg)
     peer_state = collect_peer_state_raw(cfg)
     if peer_state.get('status'):
@@ -933,15 +953,19 @@ def report_state():
         'report_host_id': cfg.get('host_id'),
         'site_scope': 'local',
         'switch_run_id': _active_switch_run_id(cfg),
-        'switch_status': cfg.get('switch_status') if _active_switch_run_id(cfg) else ''
+        'switch_status': cfg.get('switch_status') if _active_switch_run_id(cfg) else '',
+        'last_report_at': report_time,
+        'report_batch_id': report_batch_id
     }]
     if peer_state.get('status'):
         peer = peer_state.get('data') or {}
         collect_peer_logs(cfg, peer)
-        hosts.append(_peer_report_host(cfg, peer))
+        peer_host = _peer_report_host(cfg, peer, report_time)
+        peer_host['report_batch_id'] = report_batch_id
+        hosts.append(peer_host)
     elif cfg.get('peer_host_id'):
-        hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'site_scope': 'remote', 'health_detail': {'summary': peer_state.get('msg')}})
-    payload = {'pair_id': cfg.get('pair_id'), 'hosts': hosts}
+        hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'site_scope': 'remote', 'health_detail': {'summary': peer_state.get('msg')}, 'last_report_at': report_time, 'report_batch_id': report_batch_id})
+    payload = {'pair_id': cfg.get('pair_id'), 'hosts': hosts, 'report_batch_id': report_batch_id}
     actual_master_id = ''
     for host in hosts:
         if host.get('role') == 'master':
@@ -999,6 +1023,12 @@ def _parse_peer_state_output(out):
         state = result
     if not isinstance(state, dict) or not state.get('host_id'):
         return None
+    if state.get('switch_status') == 'online_done' and state.get('role') != 'master':
+        state['role'] = 'master'
+        state['desired_role'] = 'master'
+    elif state.get('switch_status') == 'offline_done' and state.get('role') != 'standby':
+        state['role'] = 'standby'
+        state['desired_role'] = 'standby'
     state['collect_method'] = 'ssh_plugin'
     return state
 

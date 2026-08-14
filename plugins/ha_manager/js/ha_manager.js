@@ -243,13 +243,30 @@ function msOverview() {
   var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msReportState()">立即上报到云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
     '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(pluginStatus, pluginStatusText) + '</div><div class="ms-panel-body">' +
       '<table class="table table-hover ms-overview-table"><tbody>' +
-        '<tr><th>本机角色</th><td>' + roleCell + '</td><td class="ms-overview-actions" rowspan="4"><button class="btn btn-default btn-sm" onclick="msHealthPanel()">查看自检</button><button class="btn btn-default btn-sm" onclick="msLogPanel()">查看日志</button></td></tr>' +
+        '<tr><th>本机角色</th><td>' + roleCell + '</td><td class="ms-overview-actions" rowspan="5"><button class="btn btn-default btn-sm" onclick="msHealthPanel()">查看自检</button><button class="btn btn-default btn-sm" onclick="msLogPanel()">查看日志</button></td></tr>' +
         '<tr><th>主备关系</th><td>' + msHtml(msState.pair_name) + ' <span class="c7">' + msHtml(msState.pair_id) + '</span></td></tr>' +
+        '<tr><th>本机标识</th><td><code>' + msHtml(msState.host_id || '--') + '</code> <span class="c7">' + msHtml(msState.host_ip || '') + '</span> <a class="btlink ml10" href="javascript:;" onclick="msRegenerateHostId()">重新生成</a></td></tr>' +
         '<tr><th>对端绑定</th><td>' + (bindConfigured ? msPill('normal', '已绑定') + ' <span class="c7">' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</span>' : msPill('warning', '未验证') + ' <a class="btlink" href="javascript:;" onclick="msConfigPanel()">去绑定</a>') + '</td></tr>' +
         '<tr><th>云监控</th><td>' + (monitorConfigured ? msPill('normal', '已开启') + ' <span class="c7">最近上报: ' + msHtml(msState.last_report_at) + '</span>' : msPill('warning', '未配置') + ' <a class="btlink" href="javascript:;" onclick="msMonitorPanel()">去配置</a>') + '</td></tr>' +
       '</tbody></table>' +
     '</div></div>';
   $('.soft-man-con').html(html);
+}
+
+function msRegenerateHostId() {
+  layer.confirm('将按当前本机 IP 重新生成 host_id，并立即保存到本机配置。确认继续？', {icon: 3, title: '重新生成 host_id', btn: ['确认生成', '取消']}, function(index) {
+    layer.close(index);
+    msPost('regenerate_host_id', {}, function(data) {
+      if (data && data.host_id) {
+        msState.host_id = data.host_id;
+        msState.host_ip = data.host_ip || msState.host_ip;
+      }
+      msLoadState(function() {
+        layer.msg('host_id 已重新生成', {icon: 1});
+        msOverview();
+      });
+    });
+  });
 }
 
 function msHealthBox(label, item) {

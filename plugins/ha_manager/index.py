@@ -727,6 +727,20 @@ def get_local_state():
     return _return(True, 'ok', _state(cfg))
 
 
+def regenerate_host_id():
+    cfg = _config()
+    old_host_id = cfg.get('host_id') or ''
+    host_ip = mw.getHostAddr() or cfg.get('host_ip')
+    new_host_id = _host_id_by_ip(host_ip)
+    cfg = _set_host_id(cfg, new_host_id)
+    cfg['host_ip'] = host_ip
+    cfg.setdefault('options', {})['local_ip'] = host_ip
+    _save_config(cfg)
+    state = _state(cfg)
+    report_result = _return_data(report_state()) if cfg.get('monitor_url') and not cfg.get('monitor_disabled') else {'status': True, 'msg': '未配置云监控，跳过上报'}
+    return _return(True, 'host_id 已重新生成', {'old_host_id': old_host_id, 'host_id': new_host_id, 'host_ip': host_ip, 'state': state, 'report': report_result})
+
+
 def title_state():
     cfg = _config()
     return _return(True, 'ok', _write_panel_title_state(cfg))
@@ -1696,6 +1710,8 @@ if __name__ == '__main__':
         print(get_state())
     elif func == 'get_local_state':
         print(get_local_state())
+    elif func == 'regenerate_host_id':
+        print(regenerate_host_id())
     elif func == 'title_state':
         print(title_state())
     elif func == 'save_binding':

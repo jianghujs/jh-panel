@@ -288,6 +288,26 @@ def _report_peer_host_id(cfg, peer):
     return peer_id or cfg.get('peer_host_id') or _peer_host_id(peer_ip)
 
 
+def _peer_report_host(cfg, peer=None):
+    peer = peer or {}
+    has_peer_state = bool(peer)
+    return {
+        'host_id': _report_peer_host_id(cfg, peer),
+        'host_name': peer.get('host_name') or ('对端 ' + cfg.get('peer_public_ip', '')),
+        'host_ip': peer.get('host_ip') or cfg.get('peer_public_ip'),
+        'role': peer.get('role') or ('standby' if cfg.get('role') == 'master' else 'master'),
+        'online_status': peer.get('online_status') or ('online' if has_peer_state else 'unknown'),
+        'health_status': peer.get('health_status') or 'unknown',
+        'health_detail': peer.get('health_detail') or {},
+        'collect_status': 'success' if has_peer_state else 'unknown',
+        'collect_method': 'ssh_peer' if has_peer_state else '',
+        'report_host_id': cfg.get('host_id') if has_peer_state else '',
+        'site_scope': _peer_site_scope(cfg, peer) if has_peer_state else '',
+        'switch_run_id': _active_switch_run_id(peer),
+        'switch_status': peer.get('switch_status') if _active_switch_run_id(peer) else ''
+    }
+
+
 def _active_switch_run_id(cfg):
     status = str(cfg.get('switch_status') or '').strip()
     run_id = str(cfg.get('switch_run_id') or '').strip()
@@ -404,8 +424,12 @@ def _config():
     if not cfg.get('pair_id'):
         source = cfg.get('host_id', '') + '_' + cfg.get('peer_public_ip', '')
         cfg['pair_id'] = 'HA_' + hashlib.sha1(source.encode('utf-8')).hexdigest()[:12].upper()
+    config_changed = False
+    if cfg.get('peer_public_ip') and not cfg.get('peer_host_id'):
+        cfg['peer_host_id'] = _peer_host_id(cfg.get('peer_public_ip'))
+        config_changed = True
     cfg = _sync_host_id_file(cfg)
-    if _sync_binding_options(cfg):
+    if _sync_binding_options(cfg) or config_changed:
         _save_config(cfg)
     return cfg
 
@@ -865,13 +889,16 @@ def _post_monitor_with_auth_retry(cfg, action, payload):
 
 
 def _register_monitor(cfg):
+    peer_state = collect_peer_state_raw(cfg)
+    peer = peer_state.get('data') if peer_state.get('status') else None
+    desired_master_host_id = cfg.get('host_id') if cfg.get('role') == 'master' else _report_peer_host_id(cfg, peer or {})
     payload = {
         'pair_id': cfg.get('pair_id'),
         'pair_name': cfg.get('pair_name'),
         'api_secret': cfg.get('api_secret'),
-        'desired_master_host_id': cfg.get('host_id') if cfg.get('role') == 'master' else cfg.get('peer_host_id'),
+        'desired_master_host_id': desired_master_host_id,
         'local_host': {'host_id': cfg.get('host_id'), 'host_name': cfg.get('host_name'), 'host_ip': cfg.get('host_ip'), 'role': cfg.get('role'), 'online_status': 'online'},
-        'peer_host': {'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'standby' if cfg.get('role') == 'master' else 'master', 'online_status': 'unknown'}
+        'peer_host': _peer_report_host(cfg, peer)
     }
     res = _post_monitor(cfg, 'ha_register_pair', payload, signed=False)
     if res.get('status') and isinstance(res.get('data'), dict):
@@ -910,22 +937,8 @@ def report_state():
     }]
     if peer_state.get('status'):
         peer = peer_state.get('data') or {}
-        peer_log_result = collect_peer_logs(cfg, peer)
-        hosts.append({
-            'host_id': _report_peer_host_id(cfg, peer),
-            'host_name': peer.get('host_name') or ('对端 ' + cfg.get('peer_public_ip', '')),
-            'host_ip': peer.get('host_ip') or cfg.get('peer_public_ip'),
-            'role': peer.get('role') or ('standby' if cfg.get('role') == 'master' else 'master'),
-            'online_status': peer.get('online_status') or 'online',
-            'health_status': peer.get('health_status') or 'unknown',
-            'health_detail': peer.get('health_detail') or ({'summary': peer_log_result.get('msg')} if not peer_log_result.get('status') else {}),
-            'collect_status': 'success' if peer_log_result.get('status') else 'partial',
-            'collect_method': 'ssh_peer',
-            'report_host_id': cfg.get('host_id'),
-            'site_scope': _peer_site_scope(cfg, peer),
-            'switch_run_id': _active_switch_run_id(peer),
-            'switch_status': peer.get('switch_status') if _active_switch_run_id(peer) else ''
-        })
+        collect_peer_logs(cfg, peer)
+        hosts.append(_peer_report_host(cfg, peer))
     elif cfg.get('peer_host_id'):
         hosts.append({'host_id': cfg.get('peer_host_id'), 'host_name': '对端 ' + cfg.get('peer_public_ip', ''), 'host_ip': cfg.get('peer_public_ip'), 'role': 'unknown', 'online_status': 'unknown', 'health_status': 'unknown', 'collect_status': 'failed', 'collect_method': 'ssh_peer', 'report_host_id': cfg.get('host_id'), 'site_scope': 'remote', 'health_detail': {'summary': peer_state.get('msg')}})
     payload = {'pair_id': cfg.get('pair_id'), 'hosts': hosts}

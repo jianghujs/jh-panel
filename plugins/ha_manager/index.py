@@ -1168,26 +1168,46 @@ def poll_monitor():
 
 def _start_cloud_switch_phase(cfg, run):
     if not isinstance(run, dict) or not run.get('switch_run_id') or not run.get('execute_phase'):
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg='无可执行切换阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id') if isinstance(run, dict) else '', phase=run.get('execute_phase') if isinstance(run, dict) else '', run_status=run.get('status') if isinstance(run, dict) else '')
         return
     phase = run.get('execute_phase')
     run_status = str(run.get('status') or '').strip()
     if run_status not in ('pending_prepare', 'pending_finalize', 'pending_online', 'running'):
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg='任务状态不可领取', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, run_status=run_status)
         return
     claim_key = _cloud_task_claim_key(run.get('switch_run_id'), phase)
+    claims = _read_cloud_task_claims()
+    lock_pid = _read_lock_pid()
+    if lock_pid and _pid_alive(lock_pid) and cfg.get('switch_run_id') == run.get('switch_run_id'):
+        _append_cloud_interaction_log('start_switch_task', 'defer', msg='同一切换任务上一阶段仍在收尾，等待本地锁释放后再领取下一阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, current_switch_status=cfg.get('switch_status'), run_status=run_status)
+        _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} lock_pid={2} current_switch_status={3}'.format(run.get('switch_run_id'), phase, lock_pid, cfg.get('switch_status')))
+        return
+    for key, old_claim in list(claims.items()):
+        if key == claim_key or not isinstance(old_claim, dict):
+            continue
+        if old_claim.get('switch_run_id') != run.get('switch_run_id') or old_claim.get('status') != 'running':
+            continue
+        old_pid = _safe_int(old_claim.get('pid'), 0)
+        if old_pid and _pid_alive(old_pid):
+            _append_cloud_interaction_log('start_switch_task', 'defer', msg='同一切换任务已有其他阶段执行进程，等待结束后再领取下一阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, old_phase=old_claim.get('phase'), old_pid=old_pid, run_status=run_status)
+            _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} old_phase={2} old_pid={3}'.format(run.get('switch_run_id'), phase, old_claim.get('phase'), old_pid))
+            return
     _preempt_old_cloud_switch_tasks(cfg, run.get('switch_run_id'), phase)
     claim = _get_cloud_task_claim(claim_key)
     if claim.get('status') == 'done':
         cfg['switch_run_id'] = run.get('switch_run_id')
         cfg['log_path'] = run.get('log_path') or cfg.get('log_path')
         _save_config(cfg)
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg='本阶段本机已完成，补发确认', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, run_status=run_status)
         ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         return
     if claim.get('status') == 'running' and _pid_alive(_safe_int(claim.get('pid'), 0)):
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg='本阶段已有执行进程', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=_safe_int(claim.get('pid'), 0), run_status=run_status)
         return
     running_status = phase + '_running'
-    lock_pid = _read_lock_pid()
     claim_running_pid = _safe_int(claim.get('pid'), 0)
     if cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') == running_status and (_pid_alive(lock_pid) or _pid_alive(claim_running_pid)):
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg='当前阶段正在执行', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, claim_pid=claim_running_pid, run_status=run_status)
         return
     options = _dict_value(run.get('options_json') or run.get('options'))
     for key in ('local_ip', 'remote_ip', 'remote_ssh_port'):

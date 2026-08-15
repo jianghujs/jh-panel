@@ -1550,7 +1550,16 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
     env_prefix = 'HA_MANAGER_SWITCH_DRY_RUN=1 ' if DRY_RUN else ''
     remote_cmd = 'cd /www/server/jh-panel && {0}PYTHONUNBUFFERED=1 python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {1}'.format(env_prefix, args)
     cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', '-p', str(cfg.get('peer_ssh_port')), cfg.get('peer_ssh_user') + '@' + cfg.get('peer_public_ip'), remote_cmd]
-    _append_switch_log(switch_run_id, phase, 'start', '开始通过 SSH 在对端执行' + _phase_text(phase) + '脚本，执行方式：SSH 远程触发')
+    peer_origin_host_id = cfg.get('peer_host_id') or cfg.get('peer_public_ip') or 'peer'
+    try:
+        peer_state = collect_peer_state_raw(cfg)
+        if peer_state.get('status') and isinstance(peer_state.get('data'), dict):
+            peer_origin_host_id = _report_peer_host_id(cfg, peer_state.get('data') or {})
+    except Exception:
+        pass
+    start_text = '开始通过 SSH 在对端执行' + _phase_text(phase) + '脚本，执行方式：SSH 远程触发'
+    _append_switch_log(switch_run_id, phase, 'start', start_text)
+    report_switch_event(cfg, phase, 'start', start_text, origin_host_id=peer_origin_host_id, collect_method='ssh_peer', switch_run_id=switch_run_id)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, preexec_fn=os.setsid)
     output_lines = []
     start_time = time.time()
@@ -1564,7 +1573,9 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
         output_lines.append(line)
         output_lines = output_lines[-300:]
         if not line.startswith('{'):
-            _append_switch_log(switch_run_id, phase, 'running', '对端: ' + line)
+            log_line = '对端: ' + line
+            _append_switch_log(switch_run_id, phase, 'running', log_line)
+            report_switch_event(cfg, phase, 'running', log_line, origin_host_id=peer_origin_host_id, collect_method='ssh_peer', switch_run_id=switch_run_id)
     code = proc.wait()
     out = '\n'.join(output_lines)
     if code != 0:
@@ -1575,7 +1586,9 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
         raise RuntimeError('对端切换返回格式错误: ' + out[-1000:])
     if not result.get('status'):
         raise RuntimeError(result.get('msg') or '对端切换失败')
-    _append_switch_log(switch_run_id, phase, 'success', '对端' + _phase_text(phase) + '脚本执行完成')
+    success_text = '对端' + _phase_text(phase) + '脚本执行完成'
+    _append_switch_log(switch_run_id, phase, 'success', success_text)
+    report_switch_event(cfg, phase, 'success', success_text, origin_host_id=peer_origin_host_id, collect_method='ssh_peer', switch_run_id=switch_run_id)
     return result.get('data') or {}
 
 

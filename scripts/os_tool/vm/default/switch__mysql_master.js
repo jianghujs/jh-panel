@@ -234,18 +234,24 @@ popd > /dev/null
   // 获取主SSH信息
   try {
     let masterSSHResult = parsePluginJson(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_ssh_list {page:1,page_size:5,tojs:getSlaveSSHPage}'), '获取主库SSH信息')
-    let masterConfig = masterSSHResult.data[0] 
-    MASTER_HOST = masterConfig.ip
-    MASTER_SSH_PORT = masterConfig.port
-    MASTER_ID_RSA = masterConfig.id_rsa
-    MASTER_SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
-    if (MASTER_ID_RSA && MASTER_ID_RSA.indexOf('BEGIN OPENSSH PRIVATE KEY') > -1) {
-      MASTER_SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
-      fs.writeFileSync(MASTER_SSH_PRIVATE_KEY, MASTER_ID_RSA.replace(/\\n/g, '\n'))
-      await execLocalSync(`chmod 600 ${MASTER_SSH_PRIVATE_KEY}`)
+    if (masterSSHResult && masterSSHResult.status && masterSSHResult.data && masterSSHResult.data.length) {
+      let masterConfig = masterSSHResult.data[0]
+      MASTER_HOST = masterConfig.ip
+      MASTER_SSH_PORT = masterConfig.port
+      MASTER_ID_RSA = masterConfig.id_rsa
+      MASTER_SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
+      if (MASTER_ID_RSA && MASTER_ID_RSA.indexOf('BEGIN OPENSSH PRIVATE KEY') > -1) {
+        MASTER_SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
+        fs.writeFileSync(MASTER_SSH_PRIVATE_KEY, MASTER_ID_RSA.replace(/\\n/g, '\n'))
+        await execLocalSync(`chmod 600 ${MASTER_SSH_PRIVATE_KEY}`)
+      }
+    } else {
+      console.log("|- 未获取到主库SSH信息，按无旧主场景处理，仅将当前库提升为主");
+      MASTER_OPT_FLAG = false;
     }
   } catch (error) {
-    throw new Error(`获取主SSH信息失败❌`);
+    console.log(`|- 获取主SSH信息失败，按无旧主场景处理，仅将当前库提升为主: ${error.message}`);
+    MASTER_OPT_FLAG = false;
   }
 
   // // 获取数据库密码
@@ -260,7 +266,9 @@ popd > /dev/null
   // }
   
   // 设置 MASTER_SSH 命令
-  MASTER_SSH_COMMAND = `ssh root@${MASTER_HOST} -p ${MASTER_SSH_PORT} -i ${MASTER_SSH_PRIVATE_KEY} -o StrictHostKeyChecking=no`;
+  if (MASTER_OPT_FLAG) {
+    MASTER_SSH_COMMAND = `ssh root@${MASTER_HOST} -p ${MASTER_SSH_PORT} -i ${MASTER_SSH_PRIVATE_KEY} -o StrictHostKeyChecking=no`;
+  }
   
   // slaveConnection = mysql.createConnection({
   //   host: '127.0.0.1',

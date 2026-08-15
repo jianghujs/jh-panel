@@ -1168,7 +1168,15 @@ def poll_monitor():
 
 def _start_cloud_switch_phase(cfg, run):
     if not isinstance(run, dict) or not run.get('switch_run_id') or not run.get('execute_phase'):
-        _append_cloud_interaction_log('start_switch_task', 'skip', msg='无可执行切换阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id') if isinstance(run, dict) else '', phase=run.get('execute_phase') if isinstance(run, dict) else '', run_status=run.get('status') if isinstance(run, dict) else '')
+        switch_run_id = run.get('switch_run_id') if isinstance(run, dict) else ''
+        phase = run.get('current_phase') if isinstance(run, dict) else ''
+        reason = run.get('dispatch_reason') if isinstance(run, dict) else ''
+        msg = '无可执行切换阶段' + (': ' + reason if reason else '')
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg=msg, pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, phase=run.get('execute_phase') if isinstance(run, dict) else '', current_phase=phase, execute_method=run.get('execute_method') if isinstance(run, dict) else '', execute_target_host_id=run.get('execute_target_host_id') if isinstance(run, dict) else '', run_status=run.get('status') if isinstance(run, dict) else '')
+        if switch_run_id and reason:
+            text = '云监控任务暂未下发给当前插件：任务ID={0}，当前阶段={1}，原因：{2}'.format(switch_run_id, _phase_text(phase), reason)
+            _append_switch_log(switch_run_id, phase or 'switch', 'running', text)
+            report_switch_event(cfg, phase or 'switch', 'running', text, switch_run_id=switch_run_id)
         return
     phase = run.get('execute_phase')
     run_status = str(run.get('status') or '').strip()

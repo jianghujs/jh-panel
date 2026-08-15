@@ -108,6 +108,10 @@ function msHtml(value) {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function msAttr(value) {
+  return msHtml(value).replace(/'/g, '&#39;');
+}
+
 function msPill(status, text) {
   var cls = status === 'normal' ? 'ms-pill-normal' : status === 'warning' ? 'ms-pill-warn' : status === 'danger' ? 'ms-pill-danger' : 'ms-pill-info';
   return '<span class="ms-status-pill ' + cls + '">' + msHtml(text) + '</span>';
@@ -693,6 +697,28 @@ function msShowSwitchLogWindow(title, switchRunId) {
   }, 500);
 }
 
+function msShowSwitchReadOnlyLogWindow(title, switchRunId) {
+  switchRunId = switchRunId || msSwitchWizard.prepareRunId || msState.switch_run_id;
+  if (!switchRunId) return layer.msg('切换任务不存在', {icon: 2});
+  msPost('read_log', {switch_run_id: switchRunId}, function(data) {
+    var logText = data && data.log ? data.log : '暂无切换日志';
+    var html = '<div class="ms-live-log-wrap">' +
+      '<div class="ms-live-log-head"><span class="ms-live-state ms-live-state-success">完整日志</span><span class="ms-live-run-id">' + msHtml(switchRunId) + '</span></div>' +
+      '<pre class="ms-live-log-box">' + msHtml(logText) + '</pre>' +
+      '</div>';
+    layer.open({
+      title: title || '完整切换日志',
+      type: 1,
+      closeBtn: 2,
+      shade: 0.3,
+      shadeClose: true,
+      area: '760px',
+      offset: '20%',
+      content: html
+    });
+  }, {quiet: true});
+}
+
 function msFinishSwitchLogWindow(success, msg, switchRunId, keepOpen, keepLogWindow) {
   msStopSwitchLogPolling();
   msRefreshSwitchLogWindow(switchRunId, function() {
@@ -771,9 +797,10 @@ function msBuildPrepareResultContent(switchRunId, logText, success) {
     var detailHtml = msHtml(item.detail).replace(/&lt;br&gt;/g, '<br>');
     return '<tr><td>' + msHtml(item.name) + '</td><td>' + msPill(meta.cls, meta.text) + '</td><td>' + detailHtml + '</td></tr>';
   }).join('');
+  var logLink = "msShowSwitchReadOnlyLogWindow('完整切换日志', '" + msAttr(switchRunId || '') + "')";
   return '<div><div class="ms-sub mb10">Run ID: ' + msHtml(switchRunId || '') + '</div>' +
     '<table class="table table-hover ms-overview-table"><thead><tr><th>流程</th><th style="width:90px">结果</th><th>说明</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-    '<div class="mt10"><a class="btlink" href="javascript:;" onclick="msLogPanel()">查看完整切换日志</a></div></div>';
+    '<div class="mt10"><a class="btlink" href="javascript:;" onclick="' + logLink + '">查看完整切换日志</a></div></div>';
 }
 
 function msShowPrepareResultReport(success, title, switchRunId, logText) {

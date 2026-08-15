@@ -1397,10 +1397,8 @@ def _unlock():
 
 def _remote_phase_options(cfg, phase):
     options = dict(cfg.get('options') or {})
-    for key in ('local_ip', 'remote_ip'):
+    for key in ('local_ip', 'remote_ip', 'remote_ssh_port'):
         options.pop(key, None)
-    if phase in ('prepare_online', 'online'):
-        options['remote_ssh_port'] = options.get('local_ssh_port') or '22'
     return options
 
 
@@ -1424,8 +1422,7 @@ def _repair_switch_ips(cfg, options):
         options['local_ip'] = cfg.get('host_ip') or mw.getHostAddr()
     if not str(options.get('remote_ip') or '').strip():
         options['remote_ip'] = cfg.get('peer_public_ip') or ''
-    if not str(options.get('remote_ssh_port') or '').strip():
-        options['remote_ssh_port'] = cfg.get('peer_ssh_port') or '22'
+    options['remote_ssh_port'] = cfg.get('peer_ssh_port') or '22'
     return options
 
 

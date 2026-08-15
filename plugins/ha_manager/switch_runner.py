@@ -343,6 +343,7 @@ def run_prepare_online(args):
     if _bool_opt(opts, 'sync_files'):
         remote_ip = opts.get('remote_ip') or ''
         remote_port = opts.get('remote_ssh_port') or '22'
+        print('|- 同步文件使用 SSH 端口: {0}'.format(remote_port))
         dirs = [item.strip() for item in str(opts.get('sync_file_dirs') or '/www/wwwroot,/www/wwwstorage').split(',') if item.strip()]
         ignores = [item.strip() for item in str(opts.get('sync_ignore_dirs') or '.git,node_modules,logs,run').split(',') if item.strip()]
         for git_ignore in ('.git', '.git/', '*/.git/'):

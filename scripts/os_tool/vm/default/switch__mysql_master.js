@@ -34,6 +34,24 @@ const Logger = {
 };
 
 
+function parsePluginJson(raw, step) {
+  const text = String(raw || '').trim();
+  if (!text) {
+    throw new Error(`${step} 返回为空，无法解析插件结果`);
+  }
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const jsonLine = lines.reverse().find(line => line.startsWith('{') || line.startsWith('['));
+  if (!jsonLine) {
+    throw new Error(`${step} 未返回JSON结果: ${text.slice(-800)}`);
+  }
+  try {
+    return JSON.parse(jsonLine);
+  } catch (error) {
+    throw new Error(`${step} JSON解析失败: ${error.message}; 原始输出: ${text.slice(-800)}`);
+  }
+}
+
+
 
 
 let MASTER_HOST = '';
@@ -59,25 +77,25 @@ async function _switchMasterSlave() {
   // 主备服务器加上只读锁
   console.log("|- 正在为主备服务器添加只读锁...");
 
-  let masterSetDbReadOnlyResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
+  let masterSetDbReadOnlyResult = parsePluginJson(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'), '主库加只读锁')
   if(!masterSetDbReadOnlyResult.status) {
     throw new Error("执行主库加锁异常❌");
   }
-  let slaveSetDbReadOnlyResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'))
+  let slaveSetDbReadOnlyResult = parsePluginJson(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_only'), '从库加只读锁')
   if(!slaveSetDbReadOnlyResult.status) {
     throw new Error("执行从库加锁异常❌");
   }
   Logger.success("|- 主备服务器添加只读锁完成✅");
 
 
-  let slaveDeleteSlaveResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave'))
+  let slaveDeleteSlaveResult = parsePluginJson(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave'), '删除从库')
   if (!slaveDeleteSlaveResult.status) {
     throw new Error('删除从库失败❌')
   }
   Logger.success("|- 删除从库完成✅");
   // 设置新主的从库信息
   console.log("|- 正在设置新主的从库信息...");
-  let masterAddSlaveResult = JSON.parse(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status'))
+  let masterAddSlaveResult = parsePluginJson(await execMasterSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status'), '设置新主的从库信息')
   if(!masterAddSlaveResult.status) {
     throw new Error("添加从库失败❌");
   }
@@ -85,7 +103,7 @@ async function _switchMasterSlave() {
 
   // 取消新主的只读锁
   console.log("|- 正在取消新主的只读锁...");
-  let slaveSetDbReadWriteResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_write'))
+  let slaveSetDbReadWriteResult = parsePluginJson(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py set_db_read_write'), '取消新主只读锁')
   if(!slaveSetDbReadWriteResult.status) {
     throw new Error("取消新主的只读锁异常❌");
   }
@@ -98,7 +116,7 @@ async function _switchSlave() {
   
   console.log("|- 开始将当前服务器提升为主...");
   
-  let slaveDeleteSlaveResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave'))
+  let slaveDeleteSlaveResult = parsePluginJson(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave'), '删除从库')
   if (!slaveDeleteSlaveResult.status) {
     throw new Error('删除从库失败❌')
   }
@@ -112,7 +130,7 @@ async function startSwitch() {
 
     // 检查从库状态
     console.log("|- 正在检查从库状态 ...");
-    let slaveStatusResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_list {page:1,page_size:5}'))
+    let slaveStatusResult = parsePluginJson(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_list {page:1,page_size:5}'), '检查从库状态')
     if (!slaveStatusResult || slaveStatusResult.status === false) {
       console.log(`获取从库状态失败：${slaveStatusResult && slaveStatusResult.msg ? slaveStatusResult.msg : '未知错误'}❌`);
       let ignore_error_choise = await prompt("继续提升当前库为主库吗？(默认n）[y/n]:", 'n');
@@ -177,14 +195,12 @@ popd > /dev/null
   cmd = cmd.replace(';', '\n')
   return new Promise((resolve) => {
     exec(`${MASTER_SSH_COMMAND} "${cmd}"`, (error, stdout, stderr) => {
+      if (stderr) {
+        console.error(`脚本警告: ${stderr}`);
+      }
       if (error) {
         console.error(`执行出错: ${error}`);
-        resolve('');
-        return;
-      }
-      if (stderr) {
-        console.error(`脚本错误: ${stderr}`);
-        resolve('');
+        resolve(stdout || '');
         return;
       }
       resolve(stdout)
@@ -199,14 +215,12 @@ pushd /www/server/jh-panel > /dev/null\n
 ${cmd}\n
 popd > /dev/null
     `, (error, stdout, stderr) => {
+      if (stderr) {
+        console.error(`脚本警告: ${stderr}`);
+      }
       if (error) {
         console.error(`执行出错: ${error}`);
-        resolve('');
-        return;
-      }
-      if (stderr) {
-        console.error(`脚本错误: ${stderr}`);
-        resolve('');
+        resolve(stdout || '');
         return;
       }
       resolve(stdout)
@@ -219,7 +233,7 @@ popd > /dev/null
 (async () => {
   // 获取主SSH信息
   try {
-    let masterSSHResult = JSON.parse(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_ssh_list {page:1,page_size:5,tojs:getSlaveSSHPage}'))
+    let masterSSHResult = parsePluginJson(await execLocalSync('python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_ssh_list {page:1,page_size:5,tojs:getSlaveSSHPage}'), '获取主库SSH信息')
     let masterConfig = masterSSHResult.data[0] 
     MASTER_HOST = masterConfig.ip
     MASTER_SSH_PORT = masterConfig.port

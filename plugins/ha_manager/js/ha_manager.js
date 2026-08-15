@@ -479,6 +479,14 @@ function msSwitchTargetChanged(masterHost) {
   msRenderSwitchWizard();
 }
 
+function msCanSkipSwitch(targetRole) {
+  var peerState = msState.peer_state || {};
+  var localRole = msState.role || 'standby';
+  var peerRole = peerState.role || (localRole === 'master' ? 'standby' : 'master');
+  var masterCount = (localRole === 'master' ? 1 : 0) + (peerRole === 'master' ? 1 : 0);
+  return masterCount === 1 && targetRole === localRole;
+}
+
 function msRenderSwitchWizard(root) {
   root = root && root.length ? root : msSwitchWizardRoot();
   if (!root.length) return;
@@ -503,7 +511,7 @@ function msWizardGoOptions() {
   var root = msSwitchWizardRoot();
   var targetRole = msSelectedMasterTargetRole(root);
   if (!targetRole) return;
-  if (targetRole === msState.role) {
+  if (msCanSkipSwitch(targetRole)) {
     layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
     return;
   }
@@ -830,7 +838,7 @@ function msStartFinalizeFromCurrentSwitchDialog() {
   var targetRole = msSwitchWizard.targetRole || msSelectedMasterTargetRole(scope);
   if (!targetRole) return;
   var switchOptions = msSwitchWizard.options || msReadLocalSwitchOptions(scope);
-  if (targetRole === msState.role) {
+  if (msCanSkipSwitch(targetRole)) {
     layer.msg('当前主备关系已符合选择，无需切换', {icon: 0});
     return;
   }

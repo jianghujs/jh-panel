@@ -1197,7 +1197,7 @@ def _start_cloud_switch_phase(cfg, run):
     cmd = ['python3', os.path.join(PLUGIN_DIR, 'index.py'), 'switch_phase', json.dumps(payload, ensure_ascii=False)]
     stdout_fp = open(CLOUD_TASK_LAUNCHER_LOG_PATH, 'a', encoding='utf-8')
     try:
-        stdout_fp.write('[{0}] start {1} pid_launch switch_run_id={2} phase={3}\n'.format(_now(), cfg.get('host_id') or 'unknown', run.get('switch_run_id'), phase))
+        stdout_fp.write('[{0}] start {1} pid_launch switch_run_id={2} phase={3} execute_method={4} execute_target_host_id={5}\n'.format(_now(), cfg.get('host_id') or 'unknown', run.get('switch_run_id'), phase, payload.get('execute_method'), payload.get('execute_target_host_id')))
         stdout_fp.flush()
     except Exception:
         pass
@@ -1397,8 +1397,9 @@ def _unlock():
         os.remove(LOCK_PATH)
 
 
-def _remote_phase_options(cfg, phase):
+def _remote_phase_options(cfg, phase, run_options=None):
     options = dict(cfg.get('options') or {})
+    options.update(_dict_value(run_options))
     for key in ('local_ip', 'remote_ip', 'remote_ssh_port'):
         options.pop(key, None)
     return options
@@ -1538,7 +1539,7 @@ def switch_phase():
         execute_method = data.get('execute_method') or 'local'
         if execute_method == 'ssh_peer':
             _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：SSH 远程触发对端执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
-            _run_remote_switch_phase(cfg, phase, role, switch_run_id, _remote_phase_options(cfg, phase))
+            _run_remote_switch_phase(cfg, phase, role, switch_run_id, _remote_phase_options(cfg, phase, switch_options))
         else:
             _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
             cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)

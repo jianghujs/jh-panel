@@ -1177,10 +1177,27 @@ def _start_cloud_switch_phase(cfg, run):
         return
     claim_key = _cloud_task_claim_key(run.get('switch_run_id'), phase)
     claims = _read_cloud_task_claims()
+    claim = claims.get(claim_key) if isinstance(claims.get(claim_key), dict) else {}
     lock_pid = _read_lock_pid()
+    running_status = phase + '_running'
+    claim_running_pid = _safe_int(claim.get('pid'), 0)
+    if claim.get('status') == 'running' and claim_running_pid and _pid_alive(claim_running_pid):
+        text = '云监控任务已领取，当前阶段正在执行中：任务ID={0}，阶段={1}，PID={2}，等待脚本输出或完成确认'.format(run.get('switch_run_id'), _phase_text(phase), claim_running_pid)
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg='本阶段已有执行进程', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=claim_running_pid, run_status=run_status)
+        _append_cloud_task_launcher_log('skip cloud task switch_run_id={0} phase={1} pid={2} reason=same_phase_already_running'.format(run.get('switch_run_id'), phase, claim_running_pid))
+        _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
+        return
+    if lock_pid and _pid_alive(lock_pid) and cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') in (running_status, 'running'):
+        text = '云监控任务已领取，当前阶段正在执行中：任务ID={0}，阶段={1}，本地锁PID={2}，等待脚本输出或完成确认'.format(run.get('switch_run_id'), _phase_text(phase), lock_pid)
+        _append_cloud_interaction_log('start_switch_task', 'skip', msg='当前阶段正在执行', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, current_switch_status=cfg.get('switch_status'), run_status=run_status)
+        _append_cloud_task_launcher_log('skip cloud task switch_run_id={0} phase={1} lock_pid={2} current_switch_status={3} reason=same_phase_lock_running'.format(run.get('switch_run_id'), phase, lock_pid, cfg.get('switch_status')))
+        _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
+        return
     if lock_pid and _pid_alive(lock_pid) and cfg.get('switch_run_id') == run.get('switch_run_id'):
+        text = '云监控任务暂未领取下一阶段：同一切换任务上一阶段仍在收尾，本地锁PID={0}，当前本机状态={1}，等待下一轮轮询'.format(lock_pid, cfg.get('switch_status') or '--')
         _append_cloud_interaction_log('start_switch_task', 'defer', msg='同一切换任务上一阶段仍在收尾，等待本地锁释放后再领取下一阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, current_switch_status=cfg.get('switch_status'), run_status=run_status)
-        _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} lock_pid={2} current_switch_status={3}'.format(run.get('switch_run_id'), phase, lock_pid, cfg.get('switch_status')))
+        _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} lock_pid={2} current_switch_status={3} reason=same_run_previous_phase_finishing'.format(run.get('switch_run_id'), phase, lock_pid, cfg.get('switch_status')))
+        _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
         return
     for key, old_claim in list(claims.items()):
         if key == claim_key or not isinstance(old_claim, dict):
@@ -1189,8 +1206,10 @@ def _start_cloud_switch_phase(cfg, run):
             continue
         old_pid = _safe_int(old_claim.get('pid'), 0)
         if old_pid and _pid_alive(old_pid):
+            text = '云监控任务暂未领取下一阶段：同一切换任务的 {0} 阶段仍在执行，PID={1}，等待下一轮轮询'.format(_phase_text(old_claim.get('phase')), old_pid)
             _append_cloud_interaction_log('start_switch_task', 'defer', msg='同一切换任务已有其他阶段执行进程，等待结束后再领取下一阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, old_phase=old_claim.get('phase'), old_pid=old_pid, run_status=run_status)
-            _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} old_phase={2} old_pid={3}'.format(run.get('switch_run_id'), phase, old_claim.get('phase'), old_pid))
+            _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} old_phase={2} old_pid={3} reason=other_phase_running'.format(run.get('switch_run_id'), phase, old_claim.get('phase'), old_pid))
+            _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
             return
     _preempt_old_cloud_switch_tasks(cfg, run.get('switch_run_id'), phase)
     claim = _get_cloud_task_claim(claim_key)
@@ -1201,11 +1220,6 @@ def _start_cloud_switch_phase(cfg, run):
         _append_cloud_interaction_log('start_switch_task', 'skip', msg='本阶段本机已完成，补发确认', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, run_status=run_status)
         ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         return
-    if claim.get('status') == 'running' and _pid_alive(_safe_int(claim.get('pid'), 0)):
-        _append_cloud_interaction_log('start_switch_task', 'skip', msg='本阶段已有执行进程', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=_safe_int(claim.get('pid'), 0), run_status=run_status)
-        return
-    running_status = phase + '_running'
-    claim_running_pid = _safe_int(claim.get('pid'), 0)
     if cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') == running_status and (_pid_alive(lock_pid) or _pid_alive(claim_running_pid)):
         _append_cloud_interaction_log('start_switch_task', 'skip', msg='当前阶段正在执行', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, claim_pid=claim_running_pid, run_status=run_status)
         return
@@ -1276,6 +1290,25 @@ def _set_cloud_task_claim(key, item):
         for old_key in sorted(data.keys())[:-100]:
             data.pop(old_key, None)
     _write_cloud_task_claims(data)
+
+
+def _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim=None, interval=30):
+    try:
+        now_ts = int(time.time())
+        claim = dict(claim or {})
+        last_ts = _safe_int(claim.get('last_notice_ts'), 0)
+        if last_ts and now_ts - last_ts < interval:
+            return
+        switch_run_id = run.get('switch_run_id') if isinstance(run, dict) else cfg.get('switch_run_id')
+        _append_switch_log(switch_run_id, phase or 'switch', 'running', text)
+        report_switch_event(cfg, phase or 'switch', 'running', text, switch_run_id=switch_run_id)
+        if claim_key:
+            claim['last_notice_ts'] = now_ts
+            claim['last_notice_text'] = text[:500]
+            claim['update_time'] = _now()
+            _set_cloud_task_claim(claim_key, claim)
+    except Exception:
+        pass
 
 
 def _append_cloud_task_launcher_log(text):

@@ -1614,10 +1614,11 @@ def _switch_options_from_request(cfg, request_options):
         if key in saved_options:
             switch_options[key] = saved_options.get(key)
     switch_options.update(request_options)
-    for key in ('run_checksum', 'sync_files', 'restore_site_setting', 'restore_plugin_setting', 'run_xtrabackup_inc_restore', 'checksum_confirmed'):
+    for key in ('run_checksum', 'sync_files', 'restore_site_setting', 'restore_plugin_setting', 'run_xtrabackup_inc_restore', 'checksum_confirmed', 'promote_mysql'):
         if key not in request_options:
             switch_options[key] = False
-    switch_options['promote_mysql'] = True
+    if 'promote_mysql' not in request_options:
+        switch_options['promote_mysql'] = True
     return _repair_switch_ips(cfg, switch_options)
 
 
@@ -1743,7 +1744,7 @@ def switch_phase():
             report_switch_event(cfg, phase, 'start', claim_text, switch_run_id=switch_run_id)
         _append_switch_log(switch_run_id, phase, 'running', '收到云监控切换选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
         switch_options = _switch_options_from_request(cfg, request_options)
-        _append_switch_log(switch_run_id, phase, 'running', '本次执行选项：sync_files={0}, run_checksum={1}, run_xtrabackup_inc_restore={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('run_xtrabackup_inc_restore')).lower()))
+        _append_switch_log(switch_run_id, phase, 'running', '本次执行选项：sync_files={0}, run_checksum={1}, run_xtrabackup_inc_restore={2}, promote_mysql={3}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('run_xtrabackup_inc_restore')).lower(), str(switch_options.get('promote_mysql')).lower()))
         source_label = '云监控轮询领取' if data.get('orchestrated') else '手工触发'
         execute_method = data.get('execute_method') or 'local'
         result_cfg = _run_switch_phase_with_method(cfg, phase, role, switch_run_id, switch_options, execute_method, source_label, True, False)

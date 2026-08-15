@@ -1397,9 +1397,9 @@ def _unlock():
 
 def _remote_phase_options(cfg, phase):
     options = dict(cfg.get('options') or {})
+    for key in ('local_ip', 'remote_ip'):
+        options.pop(key, None)
     if phase in ('prepare_online', 'online'):
-        options['local_ip'] = cfg.get('peer_public_ip')
-        options['remote_ip'] = cfg.get('host_ip')
         options['remote_ssh_port'] = options.get('local_ssh_port') or '22'
     return options
 

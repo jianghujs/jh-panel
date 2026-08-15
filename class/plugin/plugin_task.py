@@ -29,7 +29,7 @@ def pluginTaskLogPath():
 def pluginTaskLog(message):
     try:
         line = '[{0}] {1}'.format(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), message)
-        mw.writeFileLog(line, pluginTaskLogPath(), limit_size=10 * 1024 * 1024, save_limit=3)
+        mw.writeFileLog(line, pluginTaskLogPath(), limit_size=1 * 1024 * 1024, save_limit=5)
     except Exception:
         print(message)
 

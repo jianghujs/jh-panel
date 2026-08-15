@@ -1186,7 +1186,9 @@ def _start_cloud_switch_phase(cfg, run):
         'role': run.get('execute_role') or ('master' if phase in ('prepare_online', 'online') else 'standby'),
         'switch_run_id': run.get('switch_run_id'),
         'options': options,
-        'orchestrated': True
+        'orchestrated': True,
+        'execute_method': run.get('execute_method') or 'local',
+        'execute_target_host_id': run.get('execute_target_host_id') or ''
     }
     cfg['switch_run_id'] = run.get('switch_run_id')
     cfg['switch_status'] = running_status
@@ -1533,8 +1535,13 @@ def switch_phase():
         switch_options = _switch_options_from_request(cfg, request_options)
         _append_switch_log(switch_run_id, phase, 'running', '本次执行选项：sync_files={0}, run_checksum={1}, run_xtrabackup_inc_restore={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('run_xtrabackup_inc_restore')).lower()))
         source_label = '云监控轮询领取' if data.get('orchestrated') else '手工触发'
-        _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
-        cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)
+        execute_method = data.get('execute_method') or 'local'
+        if execute_method == 'ssh_peer':
+            _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：SSH 远程触发对端执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
+            _run_remote_switch_phase(cfg, phase, role, switch_run_id, _remote_phase_options(cfg, phase))
+        else:
+            _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
+            cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)
         if phase == 'online':
             _report_both_state_after_switch_delay(switch_run_id, 3)
         else:

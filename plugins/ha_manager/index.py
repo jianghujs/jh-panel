@@ -1163,6 +1163,7 @@ def _start_cloud_switch_phase(cfg, run):
     if run_status not in ('pending_prepare', 'pending_finalize', 'pending_online', 'running'):
         return
     claim_key = _cloud_task_claim_key(run.get('switch_run_id'), phase)
+    _preempt_old_cloud_switch_tasks(cfg, run.get('switch_run_id'), phase)
     claim = _get_cloud_task_claim(claim_key)
     if claim.get('status') == 'done':
         cfg['switch_run_id'] = run.get('switch_run_id')
@@ -1249,6 +1250,67 @@ def _append_cloud_task_launcher_log(text):
             fp.write('[{0}] {1}\n'.format(_now(), text))
     except Exception:
         pass
+
+
+def _preempt_old_cloud_switch_tasks(cfg, switch_run_id, phase):
+    switch_run_id = str(switch_run_id or '').strip()
+    phase = str(phase or '').strip()
+    if not switch_run_id:
+        return False
+    current_key = _cloud_task_claim_key(switch_run_id, phase)
+    stopped = False
+    claims = _read_cloud_task_claims()
+    for key, claim in list(claims.items()):
+        if key == current_key or not isinstance(claim, dict):
+            continue
+        if claim.get('status') != 'running':
+            continue
+        pid = _safe_int(claim.get('pid'), 0)
+        if not pid or not _pid_alive(pid):
+            claim['status'] = 'stale'
+            claim['update_time'] = _now()
+            claims[key] = claim
+            continue
+        if not _is_ha_switch_process(pid):
+            continue
+        old_run_id = claim.get('switch_run_id') or cfg.get('switch_run_id') or 'latest'
+        old_phase = claim.get('phase') or 'switch'
+        _append_switch_log(old_run_id, old_phase, 'failed', '收到新云监控切换任务 {0}，停止旧任务并切换到新任务'.format(switch_run_id))
+        _append_cloud_task_launcher_log('preempt old cloud task key={0} pid={1} new_switch_run_id={2} new_phase={3}'.format(key, pid, switch_run_id, phase))
+        _terminate_pid_tree(pid)
+        claim['status'] = 'preempted'
+        claim['preempted_by'] = switch_run_id
+        claim['update_time'] = _now()
+        claims[key] = claim
+        stopped = True
+    _write_cloud_task_claims(claims)
+    return _preempt_switch_lock_for_new_task(cfg, switch_run_id, phase) or stopped
+
+
+def _preempt_switch_lock_for_new_task(cfg, switch_run_id, phase):
+    switch_run_id = str(switch_run_id or '').strip()
+    if not switch_run_id:
+        return False
+    lock_pid = _read_lock_pid()
+    if not lock_pid:
+        return False
+    if not _pid_alive(lock_pid):
+        _unlock()
+        return True
+    if cfg.get('switch_run_id') == switch_run_id:
+        return False
+    if not _is_ha_switch_process(lock_pid):
+        return False
+    old_run_id = cfg.get('switch_run_id') or 'latest'
+    old_status = str(cfg.get('switch_status') or '').strip()
+    old_phase = old_status[:-8] if old_status.endswith('_running') else 'switch'
+    _append_switch_log(old_run_id, old_phase, 'failed', '收到新云监控切换任务 {0}，停止旧任务并清理本地切换锁'.format(switch_run_id))
+    _append_cloud_task_launcher_log('preempt locked switch pid={0} old_switch_run_id={1} new_switch_run_id={2} new_phase={3}'.format(lock_pid, old_run_id, switch_run_id, phase))
+    _terminate_pid_tree(lock_pid)
+    _unlock()
+    cfg['switch_status'] = 'failed'
+    _save_config(cfg)
+    return True
 
 
 def ack_switch_phase(cfg, phase, phase_status, step='', last_error=''):
@@ -1517,6 +1579,17 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
     return result.get('data') or {}
 
 
+def _run_switch_phase_with_method(cfg, phase, role, switch_run_id, switch_options=None, execute_method='local', source_label='', echo_output=False, persist_options=True):
+    switch_options = _dict_value(switch_options)
+    if execute_method == 'ssh_peer':
+        if source_label:
+            _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：SSH 远程触发对端执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
+        return _run_remote_switch_phase(cfg, phase, role, switch_run_id, _remote_phase_options(cfg, phase, switch_options))
+    if source_label:
+        _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
+    return _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', echo_output, persist_options)
+
+
 def switch_phase():
     data = _args()
     cfg = _config()
@@ -1527,7 +1600,11 @@ def switch_phase():
     if role not in ('master', 'standby'):
         return _return(False, '目标角色无效')
     if not _lock():
-        return _return(False, '已有切换任务正在执行')
+        if data.get('orchestrated') and _preempt_switch_lock_for_new_task(cfg, data.get('switch_run_id') or '', phase):
+            if not _lock():
+                return _return(False, '已有切换任务正在执行')
+        else:
+            return _return(False, '已有切换任务正在执行')
     claim_key = _cloud_task_claim_key(data.get('switch_run_id') or '', phase)
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
@@ -1537,12 +1614,9 @@ def switch_phase():
         _append_switch_log(switch_run_id, phase, 'running', '本次执行选项：sync_files={0}, run_checksum={1}, run_xtrabackup_inc_restore={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('run_xtrabackup_inc_restore')).lower()))
         source_label = '云监控轮询领取' if data.get('orchestrated') else '手工触发'
         execute_method = data.get('execute_method') or 'local'
-        if execute_method == 'ssh_peer':
-            _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：SSH 远程触发对端执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
-            _run_remote_switch_phase(cfg, phase, role, switch_run_id, _remote_phase_options(cfg, phase, switch_options))
-        else:
-            _append_switch_log(switch_run_id, phase, 'start', source_label + '，执行方式：本机直接执行' + ('，目标角色：主' if role == 'master' else '，目标角色：备'))
-            cfg = _run_local_switch_phase(cfg, phase, role, switch_run_id, switch_options, '本机', True, False)
+        result_cfg = _run_switch_phase_with_method(cfg, phase, role, switch_run_id, switch_options, execute_method, source_label, True, False)
+        if execute_method != 'ssh_peer':
+            cfg = result_cfg
         if phase == 'online':
             _report_both_state_after_switch_delay(switch_run_id, 3)
         else:
@@ -1581,14 +1655,14 @@ def local_switch():
         _append_switch_log(switch_run_id, 'switch', 'running', '本次预上线选项：sync_files={0}, run_checksum={1}, promote_mysql={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('promote_mysql')).lower()))
         if target_role == 'master':
             _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标主机（本机）执行预上线，再在目标备用机（对端）执行下线，最后在目标主机（本机）执行正式上线')
-            cfg = _run_local_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, switch_options, '本机')
-            _run_remote_switch_phase(cfg, 'offline', 'standby', switch_run_id, _remote_phase_options(cfg, 'offline'))
-            cfg = _run_local_switch_phase(cfg, 'online', 'master', switch_run_id, switch_options, '本机')
+            cfg = _run_switch_phase_with_method(cfg, 'prepare_online', 'master', switch_run_id, switch_options, 'local')
+            _run_switch_phase_with_method(cfg, 'offline', 'standby', switch_run_id, switch_options, 'ssh_peer')
+            cfg = _run_switch_phase_with_method(cfg, 'online', 'master', switch_run_id, switch_options, 'local')
         else:
             _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标主机（对端）执行预上线，再在目标备用机（本机）执行下线，最后在目标主机（对端）执行正式上线')
-            _run_remote_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, _remote_phase_options(cfg, 'prepare_online'))
-            cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, switch_options, '本机')
-            _run_remote_switch_phase(cfg, 'online', 'master', switch_run_id, _remote_phase_options(cfg, 'online'))
+            _run_switch_phase_with_method(cfg, 'prepare_online', 'master', switch_run_id, switch_options, 'ssh_peer')
+            cfg = _run_switch_phase_with_method(cfg, 'offline', 'standby', switch_run_id, switch_options, 'local')
+            _run_switch_phase_with_method(cfg, 'online', 'master', switch_run_id, switch_options, 'ssh_peer')
         cfg['desired_role'] = target_role
         cfg['switch_status'] = 'switch_done'
         _save_config(cfg)
@@ -1627,9 +1701,9 @@ def prepare_switch():
         _append_switch_log(switch_run_id, 'switch', 'start', '预备上线开始：在切换后的目标主机执行预上线')
         _append_switch_log(switch_run_id, 'switch', 'running', '本次预上线选项：sync_files={0}, run_checksum={1}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower()))
         if target_role == 'master':
-            cfg = _run_local_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, switch_options, '本机')
+            cfg = _run_switch_phase_with_method(cfg, 'prepare_online', 'master', switch_run_id, switch_options, 'local')
         else:
-            _run_remote_switch_phase(cfg, 'prepare_online', 'master', switch_run_id, _remote_phase_options(cfg, 'prepare_online'))
+            _run_switch_phase_with_method(cfg, 'prepare_online', 'master', switch_run_id, switch_options, 'ssh_peer')
         cfg['switch_status'] = 'prepare_switch_done'
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'success', '预备上线完成')
@@ -1664,11 +1738,11 @@ def finalize_switch():
         _append_switch_log(switch_run_id, 'switch', 'running', '收到正式上线选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
         _append_switch_log(switch_run_id, 'switch', 'start', '正式上线开始：不执行预上线，只执行目标备用机下线和目标主机正式上线')
         if target_role == 'master':
-            _run_remote_switch_phase(cfg, 'offline', 'standby', switch_run_id, _remote_phase_options(cfg, 'offline'))
-            cfg = _run_local_switch_phase(cfg, 'online', 'master', switch_run_id, switch_options, '本机')
+            _run_switch_phase_with_method(cfg, 'offline', 'standby', switch_run_id, switch_options, 'ssh_peer')
+            cfg = _run_switch_phase_with_method(cfg, 'online', 'master', switch_run_id, switch_options, 'local')
         else:
-            cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, switch_options, '本机')
-            _run_remote_switch_phase(cfg, 'online', 'master', switch_run_id, _remote_phase_options(cfg, 'online'))
+            cfg = _run_switch_phase_with_method(cfg, 'offline', 'standby', switch_run_id, switch_options, 'local')
+            _run_switch_phase_with_method(cfg, 'online', 'master', switch_run_id, switch_options, 'ssh_peer')
         cfg['desired_role'] = target_role
         cfg['switch_status'] = 'switch_done'
         _save_config(cfg)

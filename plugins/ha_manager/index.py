@@ -26,6 +26,7 @@ import mw
 PLUGIN_NAME = 'ha_manager'
 PLUGIN_DIR = os.path.join(PANEL_DIR, 'plugins', PLUGIN_NAME)
 RUNTIME_DIR = '/www/server/ha_manager'
+SERVER_LOG_DIR = '/www/server/logs'
 VERSION_PATH = os.path.join(RUNTIME_DIR, 'version.pl')
 DATA_DIR = os.path.join(RUNTIME_DIR, 'data')
 LOG_DIR = os.path.join(RUNTIME_DIR, 'logs')
@@ -38,6 +39,7 @@ SEQ_PATH = os.path.join(DATA_DIR, 'seq.json')
 LOCK_PATH = os.path.join(DATA_DIR, 'switch.lock')
 CLOUD_TASK_CLAIMS_PATH = os.path.join(DATA_DIR, 'cloud_task_claims.json')
 CLOUD_TASK_LAUNCHER_LOG_PATH = os.path.join(LOG_DIR, 'cloud_task_launcher.log')
+CLOUD_INTERACTION_LOG_PATH = os.path.join(SERVER_LOG_DIR, 'ha_manager_cloud.log')
 DRY_RUN = os.environ.get('HA_MANAGER_SWITCH_DRY_RUN') == '1'
 SSH_PRIVATE_KEY_PATH = '/root/.ssh/id_rsa'
 SSH_PUBLIC_KEY_PATH = '/root/.ssh/id_rsa.pub'
@@ -53,7 +55,7 @@ def _now():
 
 
 def _ensure_dirs():
-    for path in (RUNTIME_DIR, DATA_DIR, LOG_DIR, SWITCH_LOG_DIR, PEER_LOG_DIR):
+    for path in (RUNTIME_DIR, DATA_DIR, LOG_DIR, SWITCH_LOG_DIR, PEER_LOG_DIR, SERVER_LOG_DIR):
         if not os.path.exists(path):
             os.makedirs(path, mode=0o700, exist_ok=True)
     if not os.path.exists(VERSION_PATH) or not mw.readFile(VERSION_PATH).strip():
@@ -917,7 +919,9 @@ def _sign(cfg, payload):
 def _post_monitor(cfg, action, payload, signed=True):
     url = cfg.get('monitor_url', '').rstrip('/') + '/pub/' + action
     if not cfg.get('monitor_url'):
+        _append_cloud_interaction_log(action, 'skip', msg='云监控地址为空', pair_id=payload.get('pair_id') if isinstance(payload, dict) else '', host_id=cfg.get('host_id'))
         return {'status': False, 'msg': '云监控地址为空'}
+    _append_cloud_interaction_log(action, 'request', url=url, signed=signed, pair_id=payload.get('pair_id') if isinstance(payload, dict) else '', host_id=cfg.get('host_id'), switch_run_id=payload.get('switch_run_id') if isinstance(payload, dict) else '', phase=payload.get('phase') if isinstance(payload, dict) else '', payload=payload)
     if signed:
         headers, body = _sign(cfg, payload)
     else:
@@ -927,11 +931,14 @@ def _post_monitor(cfg, action, payload, signed=True):
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             text = resp.read().decode('utf-8', errors='replace')
-            return json.loads(text)
+            result = json.loads(text)
+            _append_cloud_interaction_log(action, 'response', http_status=getattr(resp, 'status', ''), ok=result.get('status'), msg=result.get('msg'), pair_id=payload.get('pair_id') if isinstance(payload, dict) else '', host_id=cfg.get('host_id'), switch_run_id=payload.get('switch_run_id') if isinstance(payload, dict) else '', phase=payload.get('phase') if isinstance(payload, dict) else '', data=result.get('data'))
+            return result
     except Exception as e:
         queue = _read_json(QUEUE_PATH, [])
         queue.append({'action': action, 'payload': payload, 'error': str(e), 'addtime': _now()})
         _write_json(QUEUE_PATH, queue[-200:])
+        _append_cloud_interaction_log(action, 'error', error=str(e), pair_id=payload.get('pair_id') if isinstance(payload, dict) else '', host_id=cfg.get('host_id'), switch_run_id=payload.get('switch_run_id') if isinstance(payload, dict) else '', phase=payload.get('phase') if isinstance(payload, dict) else '')
         return {'status': False, 'msg': str(e)}
 
 
@@ -939,6 +946,7 @@ def _post_monitor_with_auth_retry(cfg, action, payload):
     res = _post_monitor(cfg, action, payload, signed=True)
     if res.get('status') or res.get('msg') != '签名错误':
         return res
+    _append_cloud_interaction_log(action, 'auth_retry', msg='签名错误，尝试重新注册', pair_id=payload.get('pair_id') if isinstance(payload, dict) else '', host_id=cfg.get('host_id'), switch_run_id=payload.get('switch_run_id') if isinstance(payload, dict) else '')
     register = _return_data(_register_monitor(cfg))
     if not register.get('status'):
         return res
@@ -1014,6 +1022,7 @@ def report_state():
     if cfg.get('switch_status') == 'switch_done' and actual_master_id:
         payload['desired_master_host_id'] = actual_master_id
     res = _post_monitor_with_auth_retry(cfg, 'ha_report_state', payload)
+    _append_cloud_interaction_log('report_state', 'done' if res.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), host_count=len(hosts), report_batch_id=report_batch_id, msg=res.get('msg'))
     if res.get('status'):
         cfg['last_report_at'] = _now()
         _save_config(cfg)
@@ -1134,12 +1143,14 @@ def collect_peer_logs(cfg, peer_state):
 def poll_monitor():
     cfg = _config()
     if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+        _append_cloud_interaction_log('poll_monitor', 'skip', msg='云监控地址为空或已禁用', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'))
         return _return(True, '云监控地址为空，不轮询期望状态', cfg)
     payload = {'pair_id': cfg.get('pair_id'), 'host_id': cfg.get('host_id')}
     res = _post_monitor_with_auth_retry(cfg, 'ha_pull_desired_state', payload)
     if res.get('status') and isinstance(res.get('data'), dict):
         run = res['data'].get('switch_run') or {}
         desired = res['data'].get('desired_master_host_id')
+        _append_cloud_interaction_log('poll_monitor', 'pulled', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), desired_master_host_id=desired, switch_run_id=run.get('switch_run_id') or '', phase=run.get('execute_phase') or run.get('current_phase') or '', execute_method=run.get('execute_method') or '', execute_target_host_id=run.get('execute_target_host_id') or '', run_status=run.get('status') or '')
         desired_role = 'master' if desired == cfg.get('host_id') else 'standby'
         cfg['desired_role'] = desired_role
         if run.get('switch_run_id'):
@@ -1195,6 +1206,9 @@ def _start_cloud_switch_phase(cfg, run):
     cfg['switch_status'] = running_status
     cfg['log_path'] = run.get('log_path') or cfg.get('log_path')
     _save_config(cfg)
+    claim_text = '已领取云监控任务：任务ID={0}，阶段={1}，执行方式={2}，目标主机={3}'.format(run.get('switch_run_id'), _phase_text(phase), payload.get('execute_method'), payload.get('execute_target_host_id') or '--')
+    _append_switch_log(run.get('switch_run_id'), phase, 'start', claim_text)
+    _append_cloud_interaction_log('claim_switch_task', 'claimed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, execute_method=payload.get('execute_method'), execute_target_host_id=payload.get('execute_target_host_id') or '', role=payload.get('role'), run_status=run_status)
     cmd = ['python3', os.path.join(PLUGIN_DIR, 'index.py'), 'switch_phase', json.dumps(payload, ensure_ascii=False)]
     stdout_fp = open(CLOUD_TASK_LAUNCHER_LOG_PATH, 'a', encoding='utf-8')
     try:
@@ -1203,6 +1217,7 @@ def _start_cloud_switch_phase(cfg, run):
     except Exception:
         pass
     proc = subprocess.Popen(cmd, cwd=PANEL_DIR, stdout=stdout_fp, stderr=subprocess.STDOUT, start_new_session=True)
+    _append_cloud_interaction_log('start_switch_task', 'started', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=proc.pid, execute_method=payload.get('execute_method'), execute_target_host_id=payload.get('execute_target_host_id') or '')
     try:
         stdout_fp.close()
     except Exception:
@@ -1248,6 +1263,42 @@ def _append_cloud_task_launcher_log(text):
         _ensure_dirs()
         with open(CLOUD_TASK_LAUNCHER_LOG_PATH, 'a', encoding='utf-8') as fp:
             fp.write('[{0}] {1}\n'.format(_now(), text))
+    except Exception:
+        pass
+
+
+def _short_json(data, max_len=1200):
+    try:
+        text = json.dumps(data, ensure_ascii=False, sort_keys=True)
+    except Exception:
+        text = str(data)
+    text = text.replace('\n', ' ')
+    if len(text) > max_len:
+        text = text[:max_len] + '...'
+    return text
+
+
+def _append_cloud_interaction_log(action, status='info', **kwargs):
+    try:
+        _ensure_dirs()
+        if os.path.exists(CLOUD_INTERACTION_LOG_PATH) and os.path.getsize(CLOUD_INTERACTION_LOG_PATH) > 5 * 1024 * 1024:
+            backup_path = CLOUD_INTERACTION_LOG_PATH + '.1'
+            if os.path.exists(backup_path):
+                os.remove(backup_path)
+            os.rename(CLOUD_INTERACTION_LOG_PATH, backup_path)
+        parts = ['[{0}]'.format(_now()), 'action={0}'.format(action), 'status={0}'.format(status)]
+        for key in sorted(kwargs.keys()):
+            if key in ('api_secret', 'signature', 'peer_public_key'):
+                continue
+            value = kwargs.get(key)
+            if isinstance(value, (dict, list)):
+                value = _short_json(value)
+            value = str(value if value is not None else '').replace('\n', ' ')
+            if len(value) > 1200:
+                value = value[:1200] + '...'
+            parts.append('{0}={1}'.format(key, value))
+        with open(CLOUD_INTERACTION_LOG_PATH, 'a', encoding='utf-8') as fp:
+            fp.write(' '.join(parts) + '\n')
     except Exception:
         pass
 
@@ -1315,6 +1366,7 @@ def _preempt_switch_lock_for_new_task(cfg, switch_run_id, phase):
 
 def ack_switch_phase(cfg, phase, phase_status, step='', last_error=''):
     if not cfg.get('monitor_url') or not cfg.get('switch_run_id'):
+        _append_cloud_interaction_log('ack_switch_phase', 'skip', msg='无需确认', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=cfg.get('switch_run_id'), phase=phase, phase_status=phase_status)
         return {'status': False, 'msg': '无需确认'}
     payload = {
         'pair_id': cfg.get('pair_id'),
@@ -1324,7 +1376,9 @@ def ack_switch_phase(cfg, phase, phase_status, step='', last_error=''):
         'current_step': step,
         'last_error': last_error
     }
-    return _post_monitor_with_auth_retry(cfg, 'ha_ack_switch_phase', payload)
+    res = _post_monitor_with_auth_retry(cfg, 'ha_ack_switch_phase', payload)
+    _append_cloud_interaction_log('ack_switch_phase', 'done' if res.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=cfg.get('switch_run_id'), phase=phase, phase_status=phase_status, msg=res.get('msg'))
+    return res
 
 
 def read_latest_log_text(switch_run_id=None):
@@ -1622,6 +1676,10 @@ def switch_phase():
     try:
         switch_run_id = data.get('switch_run_id') or 'LOCAL_' + time.strftime('%Y%m%d%H%M%S')
         request_options = _dict_value(data.get('options'))
+        if data.get('orchestrated'):
+            claim_text = '开始处理已领取的云监控任务：任务ID={0}，阶段={1}，执行方式={2}，目标主机={3}'.format(switch_run_id, _phase_text(phase), data.get('execute_method') or 'local', data.get('execute_target_host_id') or '--')
+            _append_switch_log(switch_run_id, phase, 'start', claim_text)
+            report_switch_event(cfg, phase, 'start', claim_text, switch_run_id=switch_run_id)
         _append_switch_log(switch_run_id, phase, 'running', '收到云监控切换选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
         switch_options = _switch_options_from_request(cfg, request_options)
         _append_switch_log(switch_run_id, phase, 'running', '本次执行选项：sync_files={0}, run_checksum={1}, run_xtrabackup_inc_restore={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('run_xtrabackup_inc_restore')).lower()))
@@ -1812,11 +1870,14 @@ def _run_executor(phase, cfg, echo_output=False):
 def report_switch_event(cfg, phase, status, text, origin_host_id=None, seq=None, collect_method='local', switch_run_id=None):
     switch_run_id = switch_run_id or cfg.get('switch_run_id')
     if not cfg.get('monitor_url') or not switch_run_id or switch_run_id.startswith('LOCAL_'):
+        _append_cloud_interaction_log('report_switch_event', 'skip', msg='无需上报', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, phase=phase, event_status=status)
         return {'status': False, 'msg': '无需上报'}
     seq = seq or _seq()
     origin_host_id = origin_host_id or cfg.get('host_id')
     payload = {'pair_id': cfg.get('pair_id'), 'switch_run_id': switch_run_id, 'event_id': origin_host_id + '-' + str(seq), 'origin_host_id': origin_host_id, 'report_host_id': cfg.get('host_id'), 'collect_method': collect_method, 'seq': seq, 'phase': phase, 'step': text, 'status': status, 'log_text': text}
-    return _post_monitor_with_auth_retry(cfg, 'ha_report_switch_event', payload)
+    res = _post_monitor_with_auth_retry(cfg, 'ha_report_switch_event', payload)
+    _append_cloud_interaction_log('report_switch_event', 'done' if res.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, phase=phase, event_status=status, origin_host_id=origin_host_id, collect_method=collect_method, seq=seq, msg=res.get('msg'), text=text)
+    return res
 
 
 if __name__ == '__main__':

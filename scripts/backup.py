@@ -10,6 +10,7 @@ import datetime
 import re
 import shutil
 import zipfile
+import shlex
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -316,14 +317,14 @@ check_and_install "zstd"
 
         print(exec_type)
         if exec_type == 'mysqldump':
-            filename = backup_path + "/db_" + name + "_" + \
+            filename = backup_path + "/mysql_" + name + "_" + \
                 time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.zst"
             # 执行备份（优化cpu占用）
-            cmd = "nice -n 19 ionice -c2 -n7 " + db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
+            cmd = "nice -n 19 ionice -c2 -n7 " + db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --set-gtid-purged=OFF --default-character-set=utf8 " + \
                 name + " -uroot -p" + mysql_root + " | zstd > " + filename
             mw.execShell(cmd)
         elif exec_type == 'mydumper':
-            filename = backup_path + "/db_" + name + "_" + \
+            filename = backup_path + "/mysql_" + name + "_" + \
                 time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".mydumper.tar.zst"
             random_str = mw.getRandomString(8).lower()
             tmp_path = '/tmp/mydumper/mydumper_' + random_str
@@ -369,6 +370,102 @@ check_and_install "zstd"
         for database in databases:
             self.backupDatabase(database['name'], save, exec_type)
         print('|----备份所有数据库任务完成')
+
+    def _getPgConfig(self):
+        """读取 PostgreSQL 插件的端口和 root 密码"""
+        pg_path = mw.getServerDir() + '/postgresql'
+        pg_db_file = pg_path + '/pgsql.db'
+        if not os.path.exists(pg_db_file):
+            return None
+        config = mw.M('config').dbPos(pg_path, 'pgsql').where('id=?', (1,)).field('pg_root').find()
+        if not config:
+            return None
+        pg_root = config.get('pg_root', '')
+        conf_file = pg_path + '/data/postgresql.conf'
+        port = '5432'
+        if os.path.exists(conf_file):
+            content = mw.readFile(conf_file)
+            m = re.search(r'^\s*port\s*=\s*(\d+)', content, re.MULTILINE)
+            if m:
+                port = m.group(1).strip()
+        return {'path': pg_path, 'port': port, 'pg_root': pg_root}
+
+    def backupPgDatabase(self, name, save):
+        """PostgreSQL 单库逻辑备份，输出到 /www/backup/database"""
+        pg_cfg = self._getPgConfig()
+        startTime = time.time()
+
+        if not pg_cfg:
+            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+            log = "PostgreSQL 未安装或未配置，跳过数据库[" + name + "]备份!"
+            print("★[" + endDate + "] " + log)
+            print("----------------------------------------------------------------------------")
+            return
+
+        pg_path = pg_cfg['path']
+        port = pg_cfg['port']
+
+        find_name = mw.M('databases').dbPos(pg_path, 'pgsql').where('name=?', (name,)).getField('name')
+        if not find_name:
+            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+            log = "数据库[" + name + "]不存在!"
+            print("★[" + endDate + "] " + log)
+            print("----------------------------------------------------------------------------")
+            return
+
+        backup_path = mw.getRootDir() + '/backup/database'
+        if not os.path.exists(backup_path):
+            mw.execShell("mkdir -p " + backup_path)
+
+        filename = backup_path + "/postgres_" + name + "_" + \
+            time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.gz"
+
+        pg_dump_bin = shlex.quote(pg_path + '/bin/pg_dump')
+        backup_cmd = 'set -o pipefail; su - postgres -c "{} -c {} -p {}" | gzip > {}'.format(
+            pg_dump_bin, shlex.quote(name), shlex.quote(str(port)), shlex.quote(filename))
+        cmd = 'bash -lc ' + shlex.quote(backup_cmd)
+
+        if mw.isAppleSystem():
+            backup_cmd = 'set -o pipefail; {} -c {} -p {} | gzip > {}'.format(
+                pg_dump_bin, shlex.quote(name), shlex.quote(str(port)), shlex.quote(filename))
+            cmd = 'bash -lc ' + shlex.quote(backup_cmd)
+
+        mw.execShell(cmd)
+
+        if not os.path.exists(filename) or os.path.getsize(filename) == 0:
+            if os.path.exists(filename):
+                os.remove(filename)
+            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+            log = "数据库[" + name + "]备份失败!"
+            print("★[" + endDate + "] " + log)
+            print("----------------------------------------------------------------------------")
+            return
+
+        endDate = time.strftime('%Y/%m/%d %X', time.localtime())
+        outTime = time.time() - startTime
+        pid = mw.M('databases').dbPos(pg_path, 'pgsql').where(
+            'name=?', (name,)).getField('id')
+
+        mw.M('backup').add('type,name,pid,filename,addtime,size', (1, os.path.basename(
+            filename), pid, filename, endDate, os.path.getsize(filename)))
+
+        log = "数据库[" + name + "]备份成功,用时[" + str(round(outTime, 2)) + "]秒"
+        mw.writeLog('计划任务', log)
+        print("★[" + endDate + "] " + log)
+        print("|---文件名:" + filename)
+        self.cleanBackupByHistory('1', pid, save)
+
+    def backupPgDatabaseAll(self, save):
+        pg_cfg = self._getPgConfig()
+        if not pg_cfg:
+            print('|----PostgreSQL 未安装或未配置，跳过全部备份')
+            return
+        pg_path = pg_cfg['path']
+        databases = mw.M('databases').dbPos(
+            pg_path, 'pgsql').field('name').select()
+        for database in databases:
+            self.backupPgDatabase(database['name'], save)
+        print('|----备份所有 PostgreSQL 数据库任务完成')
 
     def backupSiteAll(self, save):
         sites = mw.M('sites').field('name').select()
@@ -516,6 +613,12 @@ if __name__ == "__main__":
             execType = sys.argv[4]
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupDatabaseAll(save, execType)
+            backup.backupPgDatabaseAll(save)
         else:
             backup.backupDatabase(name, save, execType)
         clean_tool.cleanPath("/www/backup/database", save, "*")
+    elif type == 'pg_database':
+        if sys.argv[2].find('backupAll') >= 0:
+            backup.backupPgDatabaseAll(save)
+        else:
+            backup.backupPgDatabase(name, save)

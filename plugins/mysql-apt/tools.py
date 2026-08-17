@@ -5,6 +5,7 @@ import io
 import os
 import time
 import json
+import re
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
@@ -17,6 +18,66 @@ import index as rsyncdApi
 app_debug = False
 if mw.isAppleSystem():
     app_debug = True
+
+
+UUID_GTID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}:")
+
+
+def stripGtidPurged(sql_file):
+  if not os.path.exists(sql_file):
+    print('SQL文件不存在: ' + sql_file)
+    return 1
+
+  with open(sql_file, 'r', encoding='utf-8', errors='ignore') as f:
+    lines = f.readlines()
+
+  new_lines = []
+  skip_until_semicolon = False
+  skip_gtid_comment_block = False
+  removed = 0
+
+  for line in lines:
+    stripped = line.strip()
+
+    if skip_until_semicolon:
+      removed += 1
+      if stripped.endswith(';') or stripped.endswith("';"):
+        skip_until_semicolon = False
+      continue
+
+    if '@@GLOBAL.GTID_PURGED' in line:
+      removed += 1
+      if not (stripped.endswith(';') or stripped.endswith("';")):
+        skip_until_semicolon = True
+      continue
+
+    if stripped == '-- GTID state at the end of the backup':
+      removed += 1
+      skip_gtid_comment_block = True
+      continue
+
+    if skip_gtid_comment_block:
+      removed += 1
+      if UUID_GTID_RE.match(stripped):
+        if stripped.endswith(';') or stripped.endswith("';"):
+          skip_gtid_comment_block = False
+        else:
+          skip_until_semicolon = True
+          skip_gtid_comment_block = False
+        continue
+      if stripped == '--' or stripped == '':
+        continue
+      skip_gtid_comment_block = False
+
+    new_lines.append(line)
+
+  if removed > 0:
+    with open(sql_file, 'w', encoding='utf-8') as f:
+      f.writelines(new_lines)
+    print('已清理GTID_PURGED语句: ' + str(removed) + '行')
+  else:
+    print('未发现GTID_PURGED语句')
+  return 0
 
 
 def addAutoSaveSlaveStatusToMasterShell():
@@ -90,3 +151,8 @@ if __name__ == "__main__":
 
     if type == 'addAutoSaveSlaveStatusToMasterShell':
       addAutoSaveSlaveStatusToMasterShell()
+    elif type == 'stripGtidPurged':
+      if len(sys.argv) < 3:
+        print('用法: python3 plugins/mysql-apt/tools.py stripGtidPurged <sql_file>')
+        sys.exit(1)
+      sys.exit(stripGtidPurged(sys.argv[2]))

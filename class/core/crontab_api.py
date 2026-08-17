@@ -21,6 +21,7 @@ import mw
 import re
 import json
 import pwd
+import shlex
 
 from flask import request
 
@@ -429,6 +430,61 @@ class crontab_api:
             return mw.returnJson(False, '任务日志清空失败!')
 
     # 取数据列表
+    def getDatabaseDataList(self):
+        db_list = {'data': []}
+
+        # 获取 MySQL 数据库列表，保留旧任务默认行为。
+        mysql_path = ''
+        if os.path.exists(mw.getServerDir() + '/mysql-apt'):
+            mysql_path = mw.getServerDir() + '/mysql-apt'
+        elif os.path.exists(mw.getServerDir() + '/mysql'):
+            mysql_path = mw.getServerDir() + '/mysql'
+
+        if mysql_path and os.path.exists(mysql_path + '/mysql.db'):
+            mysql_data = mw.M('databases').dbPos(mysql_path, 'mysql').field('name,ps').select()
+            for item in mysql_data:
+                ps = item.get('ps') or item['name']
+                db_list['data'].append({
+                    'name': 'mysql:' + item['name'],
+                    'raw_name': item['name'],
+                    'db_type': 'mysql',
+                    'ps': ps,
+                    'title': '[MySQL] ' + item['name'] + '[' + ps + ']'
+                })
+
+        pg_path = mw.getServerDir() + '/postgresql'
+        if os.path.exists(pg_path + '/pgsql.db'):
+            pg_data = mw.M('databases').dbPos(pg_path, 'pgsql').field('name,ps').select()
+            for item in pg_data:
+                ps = item.get('ps') or item['name']
+                db_list['data'].append({
+                    'name': 'postgresql:' + item['name'],
+                    'raw_name': item['name'],
+                    'db_type': 'postgresql',
+                    'ps': ps,
+                    'title': '[PostgreSQL] ' + item['name'] + '[' + ps + ']'
+                })
+
+        return db_list
+
+    def parseDatabaseSname(self, sname):
+        if sname == 'ALL':
+            return 'mysql', sname
+        if sname.startswith('postgresql:'):
+            return 'postgresql', sname.split(':', 1)[1]
+        if sname.startswith('mysql:'):
+            return 'mysql', sname.split(':', 1)[1]
+        return 'mysql', sname
+
+    def getDatabaseBackupShell(self, head, param, save):
+        db_type, db_name = self.parseDatabaseSname(param['sname'])
+        if db_type == 'postgresql':
+            script_dir = mw.getServerDir() + "/jh-panel/scripts"
+            return head + "python3 " + shlex.quote(script_dir + "/backup.py") + " pg_database " + shlex.quote(db_name) + " " + shlex.quote(str(save))
+
+        script_dir = mw.getServerDir() + "/jh-panel/scripts"
+        return head + "python3 " + shlex.quote(script_dir + "/backup.py") + " database " + shlex.quote(db_name) + " " + shlex.quote(str(save)) + " " + shlex.quote(param.get('dumpType', ''))
+
     def getDataListApi(self):
         
         stype = request.form.get('type', '')
@@ -453,24 +509,8 @@ class crontab_api:
             data['data'] = mw.getBackupPluginList()
 
         if stype == 'databases':
-            db_list = {}
+            db_list = self.getDatabaseDataList()
             db_list['orderOpt'] = bak_data
-
-            # 获取的mysql目录
-            path = ''
-            if os.path.exists(mw.getServerDir() + '/mysql-apt'):
-                path = '/www/server/mysql-apt'
-            elif os.path.exists(mw.getServerDir() + '/mysql'):
-                path = '/www/server/mysql'
-            else:
-                print('未检测到安装的mysql插件')
-            
-            if not os.path.exists(path + '/mysql.db'):
-                db_list['data'] = []
-            else:
-                db_list['data'] = mw.M('databases').dbPos(
-                    path, 'mysql').field('name,ps').select()
-                
             return mw.getJson(db_list)
 
         data['orderOpt'] = bak_data
@@ -584,6 +624,8 @@ fi
                 "saveMaxDay": param.get('saveMaxDay', '')
             })
 
+            database_shell = self.getDatabaseBackupShell(head, param, save)
+
             wheres = {
                 'path': head + "python3 " + script_dir + "/backup.py path " + param['sname'] + " '" + str(save) + "'",
                 'site':   head + "python3 " + script_dir + "/backup.py site " + param['sname'] + " '" + str(save) + "'",
@@ -591,13 +633,15 @@ fi
                 'pluginSetting':   head + "python3 " + script_dir + "/backup.py pluginSetting " + param['sname'] + " '" + str(save) + "'",
                 'restoreSiteSetting':   head + "python3 " + script_dir + "/restore.py restoreSiteSetting " + param['sname'],
                 'restorePluginSetting':   head + "python3 " + script_dir + "/restore.py restorePluginSetting " + param['sname'],
-                'database': head + "python3 " + script_dir + "/backup.py database " + param['sname'] + " '" + str(save) + "'" + " " + param.get('dumpType', ''),
+                'database': database_shell,
                 'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                 'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
             }
             if param['backup_to'] != 'localhost':
                 cfile = mw.getPluginDir() + "/" + \
                     param['backup_to'] + "/index.py"
+                db_type, db_name = self.parseDatabaseSname(param['sname'])
+                remote_database_shell = head + "python3 " + cfile + " database " + db_name + " '" + str(save) + "'"
                 wheres = {
                     'path': head + "python3 " + cfile + " path " + param['sname'] + " '" + str(save) + "'",
                     'site':   head + "python3 " + cfile + " site " + param['sname'] + " '" + str(save) + "'",
@@ -605,7 +649,7 @@ fi
                     'pluginSetting':   head + "python3 " + cfile + " pluginSetting " + param['sname'] + " '" + str(save) + "'",
                     'restoreSiteSetting':   head + "python3 " + script_dir + "/restore.py restoreSiteSetting " + param['sname'],
                     'restorePluginSetting':   head + "python3 " + script_dir + "/restore.py restorePluginSetting " + param['sname'],
-                    'database': head + "python3 " + cfile + " database " + param['sname'] + " '" + str(save) + "'",
+                    'database': remote_database_shell,
                     'logs':   head + "python3 " + script_dir + "/logs_backup.py " + param['sname'] + log + " '" + str(save) + "'",
                     'rememory': head + "/bin/bash " + script_dir + '/rememory.sh'
                 }

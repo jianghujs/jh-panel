@@ -992,11 +992,9 @@ def getDbBackupListFunc(dbname=''):
     r = []
     if os.path.exists(bkDir):
       blist = os.listdir(bkDir)
-      bname = 'db_' + dbname
-      blen = len(bname)
+      bnames = ['mysql_' + dbname + '_', 'db_' + dbname + '_']
       for x in blist:
-          fbstr = x[0:blen]
-          if fbstr == bname:
+          if any(x.startswith(bname) for bname in bnames):
               r.append(x)
       r.sort(key=lambda fn: os.path.getmtime(bkDir + "/" + fn), reverse=True)
     return r
@@ -1140,6 +1138,7 @@ def getImportDbBackupScript():
             file_path_sql = mw.getRootDir() + '/backup/database/' + file
         # 用 mysql 导入
         sock = getSocketFile()
+        cmd += 'python3 /www/server/jh-panel/plugins/mysql-apt/tools.py stripGtidPurged ' + file_path_sql + '\n'
         cmd += (getServerDir() + '/bin/usr/bin/mysql -S ' + sock + ' -uroot -p' + pwd +
                 ' ' + name + ' < ' + file_path_sql + '\n')
         cmd += 'rm ' + file_path_sql
@@ -1163,6 +1162,9 @@ def importDbBackup():
     if not os.path.exists(file_path_sql):
         cmd = 'cd ' + mw.getRootDir() + '/backup/database && gzip -d ' + file
         mw.execShell(cmd)
+
+    if os.path.exists(file_path_sql):
+        mw.execShell('python3 /www/server/jh-panel/plugins/mysql-apt/tools.py stripGtidPurged ' + file_path_sql)
 
     pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
     sock = getSocketFile()
@@ -1329,10 +1331,10 @@ def getDbListPage():
     for x in range(0, len(clist)):
         dbname = clist[x]['name']
         
-        # 判断backup_list是否存在以"db_" + dbname开头的文件
+        # 兼容旧 db_ 前缀，新备份使用 mysql_ 前缀。
         clist[x]['is_backup'] = False
         for backup in backup_list:
-            if backup.startswith('db_' + dbname):
+            if backup.startswith('mysql_' + dbname + '_') or backup.startswith('db_' + dbname + '_'):
                 clist[x]['is_backup'] = True
                 break        
 

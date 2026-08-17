@@ -569,9 +569,13 @@ function downloadBackup(file){
 }
 
 function importBackup(file,name){
-    myPost('import_db_backup',{file:file,name:name}, function(data){
-        // console.log(data);
-        layer.msg('执行成功!');
+    myPost('get_import_db_backup_script',{file:file,name:name}, function(data){
+        var rdata = $.parseJSON(data.data);
+        openEditCodeAndExcute({
+            title: '执行恢复',
+            name: '执行postgresql插件操作[恢复]',
+            content: rdata.data
+        });
     });
 }
 
@@ -587,7 +591,7 @@ function setBackup(db_name,obj){
                     <td><span> ' + rdata.data[i]['size'] + '</span></td>\
                     <td><span> ' + rdata.data[i]['time'] + '</span></td>\
                     <td style="text-align: right;">\
-                        <a class="btlink" onclick="importBackup(\'' + rdata.data[i]['name'] + '\',\'' +db_name+ '\')">导入</a> | \
+                        <a class="btlink" onclick="importBackup(\'' + rdata.data[i]['name'] + '\',\'' +db_name+ '\')">恢复</a> | \
                         <a class="btlink" onclick="downloadBackup(\'' + rdata.data[i]['file'] + '\')">下载</a> | \
                         <a class="btlink" onclick="delBackup(\'' + rdata.data[i]['name'] + '\',\'' +db_name+ '\')">删除</a>\
                     </td>\

@@ -9,6 +9,36 @@ function isURL(str_url){
 }
 
 var num = 0;
+
+function getBackupItemLabel(item){
+	return item.title || (item.name + '[' + item.ps + ']');
+}
+
+function getBackupItemDisplayName(item){
+	return item.raw_name || item.name;
+}
+
+function getDatabaseTypeFromValue(value){
+	if(value && value.indexOf('postgresql:') === 0) return 'postgresql';
+	return 'mysql';
+}
+
+function toggleDumpTypeByDatabaseValue(value){
+	if(getDatabaseTypeFromValue(value) === 'postgresql'){
+		$('.dump-type').hide();
+		$('#dType').attr('val', '').html('');
+	} else {
+		$('.dump-type').show();
+		if(!$('#dType').attr('val')) $('#dType').attr('val', 'mysqldump').html('mysqldump');
+	}
+}
+
+function escapeHtml(str){
+	return String(str || '').replace(/[&<>"']/g, function(match){
+		return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[match];
+	});
+}
+
 //查看任务日志
 function getLogs(id){
 	layer.msg('正在获取,请稍候...',{icon:16,time:0,shade: [0.3, '#000']});
@@ -284,6 +314,7 @@ function planAdd(){
 
   if (sType == 'database') {
     dumpType = $("#dType").attr('val');
+    if(getDatabaseTypeFromValue(sName) === 'postgresql') dumpType = '';
     $("#set-Config input[name='dumpType']").val(dumpType);
     sBody = sbody = dumpType;
   }
@@ -504,13 +535,15 @@ function toBackup(type){
 		if(rdata.data.length == 0){
 			layer.msg(lan.public.list_empty,{icon:2})
 			return
-		}
-		for(var i=0;i<rdata.data.length;i++){
-			if(i==0){
-				$(".planname input[name='name']").val(sMsg+'['+rdata.data[i].name+']');
 			}
-			sOpt += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+rdata.data[i].name+'">'+rdata.data[i].name+'['+rdata.data[i].ps+']</a></li>';			
-		}
+			for(var i=0;i<rdata.data.length;i++){
+				var itemLabel = getBackupItemLabel(rdata.data[i]);
+				var displayName = getBackupItemDisplayName(rdata.data[i]);
+				if(i==0){
+					$(".planname input[name='name']").val(sMsg+'['+displayName+']');
+				}
+				sOpt += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+escapeHtml(rdata.data[i].name)+'" raw-name="'+escapeHtml(displayName)+'" db-type="'+escapeHtml(rdata.data[i].db_type || '')+'">'+escapeHtml(itemLabel)+'</a></li>';
+			}
 		
 		var orderOpt = '';
 		for (var i=0;i<rdata.orderOpt.length;i++){
@@ -519,27 +552,28 @@ function toBackup(type){
 
     var isRestore = (sType == 'restoreSiteSetting' || sType == 'restorePluginSetting');
     var extOpt = '';
-    if (sType == 'databases') {
-      // 增加一个备份方式（mysqldump、mydumper）的选项
-      extOpt = '\
-      <div class="textname pull-left mr20">备份方式</div>\
-      <div class="dropdown pull-left mr20">\
-        <button class="btn btn-default dropdown-toggle" type="button" id="dumptype" data-toggle="dropdown" style="width:auto">\
+	    if (sType == 'databases') {
+	      // 增加一个备份方式（mysqldump、mydumper）的选项
+	      extOpt = '\
+	      <div class="dump-type">\
+	      <div class="textname pull-left mr20">备份方式</div>\
+	      <div class="dropdown pull-left mr20">\
+	        <button class="btn btn-default dropdown-toggle" type="button" id="dumptype" data-toggle="dropdown" style="width:auto">\
           <b id="dType" val="mysqldump">mysqldump</b> <span class="caret"></span>\
         </button>\
         <ul class="dropdown-menu" role="menu" aria-labelledby="dumptype">\
-          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mysqldump">mysqldump</a></li>\
-          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mydumper">mydumper</a></li>\
-        </ul>\
-      </div>';
-    }
+	          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mysqldump">mysqldump</a></li>\
+	          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mydumper">mydumper</a></li>\
+	        </ul>\
+	      </div></div>';
+	    }
 		
 
 		var sBody = '<div>\
 				<div class="clearfix ptb10">\
 					<div class="dropdown pull-left mr20">\
 					  <button class="btn btn-default dropdown-toggle" type="button" id="backdata" data-toggle="dropdown" style="width:auto">\
-						<b id="sName" val="'+rdata.data[0].name+'">'+rdata.data[0].name+'['+rdata.data[0].ps+']</b> <span class="caret"></span>\
+							<b id="sName" val="'+escapeHtml(rdata.data[0].name)+'">'+escapeHtml(getBackupItemLabel(rdata.data[0]))+'</b> <span class="caret"></span>\
 					  </button>\
 					  <ul class="dropdown-menu" role="menu" aria-labelledby="backdata">\
 					  	<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+ (isRestore ? 'restoreAll' : 'backupAll') +'">所有</a></li>\
@@ -570,14 +604,16 @@ function toBackup(type){
 					</div>\
 				</div>') +'\
 			</div>';
-		$("#implement").html(sBody);
-		getselectname();
-		$(".dropdown ul li a").click(function(){
-			var sName = $("#sName").attr("val");
-			if(!sName) return;
-			var displayName = (sName == 'restoreAll' || sName == 'backupAll') ? '所有' : sName;
-			$(".planname input[name='name']").val(sMsg+'['+displayName+']');
-		});
+			$("#implement").html(sBody);
+			getselectname();
+			if (sType == 'databases') toggleDumpTypeByDatabaseValue(rdata.data[0].name);
+			$("[aria-labelledby='backdata'] a").click(function(){
+				var sName = $("#sName").attr("val");
+				if(!sName) return;
+				var displayName = (sName == 'restoreAll' || sName == 'backupAll') ? '所有' : ($(this).attr('raw-name') || sName);
+				$(".planname input[name='name']").val(sMsg+'['+displayName+']');
+				if (sType == 'databases') toggleDumpTypeByDatabaseValue(sName);
+			});
 	},'json');
 }
 
@@ -642,10 +678,15 @@ function editTaskInfo(id){
 						obj.backupsArray = rdata.orderOpt;
 						obj.backupsArray.unshift({title:'服务器磁盘',name:'localhost'});
 						for(var i = 0; i <obj['sNameArray'].length; i++){
-							if(obj.from['sname'] == obj['sNameArray'][i]['name']){
-								sNameName  = obj['sNameArray'][i]['ps'];
+							var item = obj['sNameArray'][i];
+							var itemLabel = getBackupItemLabel(item);
+							var itemDisplayName = getBackupItemDisplayName(item);
+							var isCurrentName = obj.from['sname'] == item['name'] || (obj.from.stype == 'database' && obj.from['sname'] == item.raw_name);
+							if(isCurrentName){
+								sNameName  = itemLabel;
+								obj.from.sname = item['name'];
 							}
-							sNameDom += '<li><a role="menuitem"  href="javascript:;" value="'+ obj['sNameArray'][i]['name'] +'">'+ obj['sNameArray'][i]['ps'] +'</a></li>';
+							sNameDom += '<li><a role="menuitem"  href="javascript:;" value="'+ escapeHtml(item['name']) +'" raw-name="'+ escapeHtml(itemDisplayName) +'" db-type="'+ escapeHtml(item.db_type || '') +'">'+ escapeHtml(itemLabel) +'</a></li>';
 						}
 						for(var i = 0; i <obj['backupsArray'].length; i++){
 							if(obj.from['backup_to'] == obj['backupsArray'][i]['name'])  {
@@ -783,9 +824,9 @@ function editTaskInfo(id){
 					$('.site_list').show();
 				}
 
-        if(obj.from.stype == 'database') {
-          $('.dump-type').show();
-        }
+	        if(obj.from.stype == 'database') {
+	          toggleDumpTypeByDatabaseValue(obj.from.sname);
+	        }
 
 				if(obj.from.stype == 'restoreSiteSetting' || obj.from.stype == 'restorePluginSetting'){
 					// 恢复任务：保留 站点/插件 下拉；隐藏 '备份到' 与 '保留规则'
@@ -927,15 +968,20 @@ function editTaskInfo(id){
 					obj.from.backup_to = $(this).attr('value');
 				});
 
-				$('[aria-labelledby="sName"] a').unbind().click(function () {
-					$('.sName_btn').find('b').attr('val',$(this).attr('value')).html($(this).text());
-					obj.from.sname = $(this).attr('value');
-					// 任务名前缀[对象]部分同步
-					var _name = obj.from.name || '';
-					var _m = _name.match(/^(.*?)\[.*\]$/);
-					if (_m) {
-						var _label = obj.from.sname == 'ALL' ? '所有' : obj.from.sname;
-						obj.from.name = _m[1] + '[' + _label + ']';
+					$('[aria-labelledby="sName"] a').unbind().click(function () {
+						$('.sName_btn').find('b').attr('val',$(this).attr('value')).html($(this).text());
+						obj.from.sname = $(this).attr('value');
+						if(obj.from.stype == 'database') {
+							toggleDumpTypeByDatabaseValue(obj.from.sname);
+							if(getDatabaseTypeFromValue(obj.from.sname) === 'postgresql') obj.from.dumpType = '';
+							else if(!obj.from.dumpType) obj.from.dumpType = 'mysqldump';
+						}
+						// 任务名前缀[对象]部分同步
+						var _name = obj.from.name || '';
+						var _m = _name.match(/^(.*?)\[.*\]$/);
+						if (_m) {
+							var _label = obj.from.sname == 'ALL' ? '所有' : ($(this).attr('raw-name') || obj.from.sname);
+							obj.from.name = _m[1] + '[' + _label + ']';
 						$('.sName_create').val(obj.from.name);
 					}
 				});

@@ -50,13 +50,13 @@ class backupTools:
         if not os.path.exists(backup_path):
             mw.execShell("mkdir -p " + backup_path)
 
-        filename = backup_path + "/db_" + name + "_" + \
+        filename = backup_path + "/mysql_" + name + "_" + \
             time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.gz"
 
         mysql_root = mw.M('config').dbPos(db_path, db_name).where(
             "id=?", (1,)).getField('mysql_root')
 
-        cmd = db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --default-character-set=utf8 " + \
+        cmd = db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --set-gtid-purged=OFF --default-character-set=utf8 " + \
             name + " -uroot -p" + mysql_root + " | gzip > " + filename
         mw.execShell(cmd)
 

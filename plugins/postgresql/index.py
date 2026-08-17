@@ -7,6 +7,7 @@ import time
 import subprocess
 import re
 import json
+import shlex
 
 
 # reload(sys)
@@ -76,6 +77,13 @@ def getBackupDir():
 
     bk_path_upload = bk_path + "/upload"
     return bk_path_upload
+
+
+def getDatabaseBackupDir():
+    bk_path = mw.getRootDir() + '/backup/database'
+    if not os.path.isdir(bk_path):
+        mw.execShell('mkdir -p ' + bk_path)
+    return bk_path
 
 
 def checkArgs(data, ck=[]):
@@ -674,16 +682,15 @@ def setUserPwd(version=''):
 
 
 def getDbBackupListFunc(dbname=''):
-    bkDir = mw.getRootDir() + '/backup/database'
+    bkDir = getDatabaseBackupDir()
     blist = os.listdir(bkDir)
     r = []
 
-    bname = 'db_' + dbname
-    blen = len(bname)
+    bname = 'postgres_' + dbname + '_'
     for x in blist:
-        fbstr = x[0:blen]
-        if fbstr == bname:
+        if x.startswith(bname):
             r.append(x)
+    r.sort(key=lambda fn: os.path.getmtime(bkDir + '/' + fn), reverse=True)
     return r
 
 
@@ -1019,17 +1026,14 @@ def pgBack():
     if not data[0]:
         return data[1]
 
-    bk_path_upload = getBackupDir()
     database = args['name']
-    port = getPgPort()
+    save = '{"saveAllDay":"3","saveOther":"1","saveMaxDay":"30"}'
+    script_file = mw.getServerDir() + '/jh-panel/scripts/backup.py'
+    cmd = 'cd ' + shlex.quote(mw.getRunDir()) + ' && python3 ' + shlex.quote(script_file) + ' pg_database ' + shlex.quote(database) + ' ' + shlex.quote(save)
+    result = mw.execShell(cmd)
 
-    cmd = '''su - postgres -c "/www/server/pgsql/bin/pg_dump -c {} -p {} "| gzip > {}/{}_{}.gz '''.format(
-        database, port, bk_path_upload, database, time.strftime("%Y%m%d_%H%M%S"))
-
-    if mw.isAppleSystem():
-        cmd = '''{}/bin/pg_dump -c {} -p {} | gzip > {}/{}_{}.gz '''.format(
-            getServerDir(), database, port, bk_path_upload, database, time.strftime("%Y%m%d_%H%M%S"))
-    mw.execShell(cmd)
+    if result[2] != 0 or result[0].find('备份失败') >= 0 or result[0].find('不存在') >= 0:
+        return mw.returnJson(False, result[0] or result[1] or '备份失败!')
 
     return mw.returnJson(True, '备份成功!')
 
@@ -1043,11 +1047,11 @@ def pgBackList():
 
     database = args['name']
 
-    bk_path_upload = getBackupDir()
+    bk_path_upload = getDatabaseBackupDir()
     file_list = os.listdir(bk_path_upload)
     data = []
     for i in file_list:
-        if i.split("_")[0].startswith(database):
+        if i.startswith('postgres_' + database + '_'):
             file_path = os.path.join(bk_path_upload, i)
             file_info = os.stat(file_path)
             create_time = file_info.st_ctime
@@ -1061,30 +1065,43 @@ def pgBackList():
     return mw.returnJson(True, 'ok', data)
 
 
+def getImportDbBackupCommand(file, name):
+    bk_path_upload = getDatabaseBackupDir()
+    file_path = os.path.join(bk_path_upload, file)
+    if not os.path.exists(file_path):
+        return None
+
+    port = getPgPort()
+    cmd = '''gunzip -c {} | su - postgres -c "{}/bin/psql -d {} -p {}"'''.format(
+        shlex.quote(file_path), shlex.quote(getServerDir()), shlex.quote(name), shlex.quote(str(port)))
+
+    if mw.isAppleSystem():
+        cmd = '''gunzip -c {} | {}/bin/psql -d {} -p {}'''.format(
+            shlex.quote(file_path), shlex.quote(getServerDir()), shlex.quote(name), shlex.quote(str(port)))
+    return cmd
+
+
+def getImportDbBackupScript():
+    args = getArgs()
+    data = checkArgs(args, ['file', 'name'])
+    if not data[0]:
+        return data[1]
+
+    cmd = getImportDbBackupCommand(args['file'], args['name'])
+    if cmd is None:
+        return mw.returnJson(False, '备份文件不存在')
+    return mw.returnJson(True, 'ok', cmd)
+
+
 def importDbBackup():
     args = getArgs()
     data = checkArgs(args, ['file', 'name'])
     if not data[0]:
         return data[1]
 
-    file = args['file']
-    name = args['name']
-
-    bk_path_upload = getBackupDir()
-
-    file_path = os.path.join(bk_path_upload, name)
-    if not os.path.exists(file_path):
+    cmd = getImportDbBackupCommand(args['file'], args['name'])
+    if cmd is None:
         return mw.returnJson(False, '备份文件不存在')
-
-    port = getPgPort()
-    cmd = '''gunzip -c {}|su - postgres -c " /www/server/pgsql/bin/psql  -d {}  -p {} " '''.format(
-        file, name, port)
-
-    if mw.isAppleSystem():
-        cmd = '''gunzip -c {} | {}/bin/psql  -d {}  -p {}'''.format(
-            name, getServerDir(), port)
-
-    # print(cmd)
 
     mw.execShell(cmd)
     return mw.returnJson(True, '恢复数据库成功')
@@ -1096,7 +1113,7 @@ def deleteDbBackup():
     if not data[0]:
         return data[1]
 
-    bk_path_upload = getBackupDir()
+    bk_path_upload = getDatabaseBackupDir()
     os.remove(bk_path_upload + '/' + args['filename'])
     return mw.returnJson(True, 'ok')
 
@@ -1608,6 +1625,8 @@ if __name__ == "__main__":
         print(pgBack())
     elif func == 'pg_back_list':
         print(pgBackList())
+    elif func == 'get_import_db_backup_script':
+        print(getImportDbBackupScript())
     elif func == 'import_db_backup':
         print(importDbBackup())
     elif func == 'delete_db_backup':

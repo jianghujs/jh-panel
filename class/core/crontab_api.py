@@ -468,8 +468,10 @@ class crontab_api:
         return db_list
 
     def parseDatabaseSname(self, sname):
-        if sname == 'ALL':
-            return 'mysql', sname
+        if sname in ['ALL', 'backupAll']:
+            return 'legacy', 'backupAll'
+        if sname == 'all:backupAll':
+            return 'all', 'backupAll'
         if sname.startswith('postgresql:'):
             return 'postgresql', sname.split(':', 1)[1]
         if sname.startswith('mysql:'):
@@ -478,12 +480,19 @@ class crontab_api:
 
     def getDatabaseBackupShell(self, head, param, save):
         db_type, db_name = self.parseDatabaseSname(param['sname'])
-        if db_type == 'postgresql':
-            script_dir = mw.getServerDir() + "/jh-panel/scripts"
-            return head + "python3 " + shlex.quote(script_dir + "/backup.py") + " pg_database " + shlex.quote(db_name) + " " + shlex.quote(str(save))
-
         script_dir = mw.getServerDir() + "/jh-panel/scripts"
-        return head + "python3 " + shlex.quote(script_dir + "/backup.py") + " database " + shlex.quote(db_name) + " " + shlex.quote(str(save)) + " " + shlex.quote(param.get('dumpType', ''))
+        backup_py = shlex.quote(script_dir + "/backup.py")
+        save_arg = shlex.quote(str(save))
+        dump_type = shlex.quote(param.get('dumpType', ''))
+
+        if db_type == 'legacy':
+            return head + "python3 " + backup_py + " database backupAll " + save_arg + " " + dump_type
+        if db_type == 'all':
+            return head + "set -e\npython3 " + backup_py + " mysql_database backupAll " + save_arg + " " + dump_type + "\npython3 " + backup_py + " pg_database backupAll " + save_arg
+        if db_type == 'postgresql':
+            return head + "python3 " + backup_py + " pg_database " + shlex.quote(db_name) + " " + save_arg
+
+        return head + "python3 " + backup_py + " mysql_database " + shlex.quote(db_name) + " " + save_arg + " " + dump_type
 
     def getDataListApi(self):
         

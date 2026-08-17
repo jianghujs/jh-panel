@@ -19,18 +19,95 @@ function getBackupItemDisplayName(item){
 }
 
 function getDatabaseTypeFromValue(value){
-	if(value && value.indexOf('postgresql:') === 0) return 'postgresql';
-	return 'mysql';
+    if(value && value.indexOf('postgresql:') === 0) return 'postgresql';
+    return 'mysql';
+}
+
+function getDatabaseTypesFromValue(value){
+    if(value === 'all:backupAll' || value === 'backupAll' || value === 'ALL') return ['mysql','postgresql'];
+    if(value && value.indexOf('postgresql:') === 0) return ['postgresql'];
+    return ['mysql'];
+}
+
+function databaseValueIncludesMysql(value){
+    return getDatabaseTypesFromValue(value).indexOf('mysql') >= 0;
+}
+
+function getDatabaseTypeLabel(type){
+    return type === 'postgresql' ? 'PostgreSQL' : 'MySQL';
+}
+
+function getDatabaseAllValue(types){
+    types = types || [];
+    if(types.length == 1 && types[0] === 'postgresql') return 'postgresql:backupAll';
+    if(types.length == 1 && types[0] === 'mysql') return 'mysql:backupAll';
+    return 'all:backupAll';
+}
+
+function getDatabaseAllLabel(types){
+    types = types || [];
+    if(types.length == 1) return getDatabaseTypeLabel(types[0]) + '所有';
+    return '全部数据库';
+}
+
+function getAvailableDatabaseTypes(data){
+    var types = [];
+    for(var i = 0; i < data.length; i++){
+        var dbType = data[i].db_type || getDatabaseTypeFromValue(data[i].name);
+        if(types.indexOf(dbType) < 0) types.push(dbType);
+    }
+    return types;
+}
+
+function getSelectedDatabaseTypes($scope){
+    var types = [];
+    $scope.find('.database-type-filter:checked').each(function(){
+        types.push($(this).val());
+    });
+    return types;
+}
+
+function filterDatabaseItems(data, types){
+    var list = [];
+    for(var i = 0; i < data.length; i++){
+        var dbType = data[i].db_type || getDatabaseTypeFromValue(data[i].name);
+        if(types.indexOf(dbType) >= 0) list.push(data[i]);
+    }
+    return list;
+}
+
+function buildDatabaseTypeFilter(types, selectedTypes){
+    if(!types || types.length == 0) return '';
+    var html = '<div class="database-type-filter-row">';
+    html += '<span class="database-type-filter-title">类型</span>';  
+    for(var i = 0; i < types.length; i++){
+        var checked = selectedTypes.indexOf(types[i]) >= 0 ? ' checked="checked"' : '';
+        html += '<label class="database-type-chip database-type-chip-'+ escapeHtml(types[i]) +'"><input type="checkbox" class="database-type-filter" value="'+ escapeHtml(types[i]) +'"'+ checked +'><span><i></i>'+ getDatabaseTypeLabel(types[i]) +'</span></label>';
+    }
+    html += '</div>';
+    return html;
+}
+
+function buildDatabaseDropdownOptions(items, allValue, allLabel){
+    var html = '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+ escapeHtml(allValue) +'" raw-name="'+ escapeHtml(allLabel) +'" db-type="all">'+ escapeHtml(allLabel) +'</a></li>';
+    for(var i = 0; i < items.length; i++){
+        var itemLabel = getBackupItemLabel(items[i]);
+        var displayName = getBackupItemDisplayName(items[i]);
+        html += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+ escapeHtml(items[i].name) +'" raw-name="'+ escapeHtml(displayName) +'" db-type="'+ escapeHtml(items[i].db_type || '') +'">'+ escapeHtml(itemLabel) +'</a></li>';
+    }
+    return html;
 }
 
 function toggleDumpTypeByDatabaseValue(value){
-	if(getDatabaseTypeFromValue(value) === 'postgresql'){
-		$('.dump-type').hide();
-		$('#dType').attr('val', '').html('');
-	} else {
-		$('.dump-type').show();
-		if(!$('#dType').attr('val')) $('#dType').attr('val', 'mysqldump').html('mysqldump');
-	}
+    if(!databaseValueIncludesMysql(value)){
+        $('.dump-type').hide();
+        $('#dType').attr('val', '').html('');
+        $('.dump-type b').attr('val', '').html('');
+    } else {
+        $('.dump-type').show();
+        if(!$('#dType').attr('val')) $('#dType').attr('val', 'mysqldump').html('mysqldump');
+        if(!$('.dump-type b').attr('val')) $('.dump-type b').attr('val', 'mysqldump').html('mysqldump');
+    }
 }
 
 function escapeHtml(str){
@@ -312,12 +389,16 @@ function planAdd(){
 		$("#set-Config input[name='where1']").val(where1);
 	}
 
-  if (sType == 'database') {
-    dumpType = $("#dType").attr('val');
-    if(getDatabaseTypeFromValue(sName) === 'postgresql') dumpType = '';
-    $("#set-Config input[name='dumpType']").val(dumpType);
-    sBody = sbody = dumpType;
-  }
+	  if (sType == 'database') {
+	    if($('.database-type-filter').length > 0 && getSelectedDatabaseTypes($('#implement')).length == 0){
+	      layer.msg('请选择数据库类型!',{icon:2});
+	      return;
+	    }
+	    dumpType = $("#dType").attr('val');
+	    if(!databaseValueIncludesMysql(sName)) dumpType = '';
+	    $("#set-Config input[name='dumpType']").val(dumpType);
+	    sBody = sbody = dumpType;
+	  }
 
 	// 备份所有-切分成多个定时任务
 	// if(sName == 'backupAll'){
@@ -495,125 +576,92 @@ function initDropdownMenu(){
 function toBackup(type){
 	var sMsg = "";
 	switch(type){
-		case 'sites':
-			sMsg = '备份网站资源';
-			sType = "sites";
-			break;
-    case 'siteSetting':
-      sMsg = '备份网站配置';
-      sType = "siteSetting";
-      break;
-    case 'pluginSetting':
-      sMsg = '备份插件配置';
-      sType = "pluginSetting";
-      break;
-    case 'restoreSiteSetting':
-      sMsg = '恢复网站配置';
-      sType = "restoreSiteSetting";
-      break;
-    case 'restorePluginSetting':
-      sMsg = '恢复插件配置';
-      sType = "restorePluginSetting";
-      break;
-		case 'databases':
-			sMsg = '备份数据库';
-			sType = "databases";
-			break;
-		case 'logs':
-			sMsg = '切割日志';
-			sType = "sites";
-			break;
-		case 'virtualbox':
-			sMsg = '备份virtualbox';
-			sType = "virtualbox";
-			break;
+		case 'sites': sMsg = '备份网站资源'; sType = "sites"; break;
+		case 'siteSetting': sMsg = '备份网站配置'; sType = "siteSetting"; break;
+		case 'pluginSetting': sMsg = '备份插件配置'; sType = "pluginSetting"; break;
+		case 'restoreSiteSetting': sMsg = '恢复网站配置'; sType = "restoreSiteSetting"; break;
+		case 'restorePluginSetting': sMsg = '恢复插件配置'; sType = "restorePluginSetting"; break;
+		case 'databases': sMsg = '备份数据库'; sType = "databases"; break;
+		case 'logs': sMsg = '切割日志'; sType = "sites"; break;
+		case 'virtualbox': sMsg = '备份virtualbox'; sType = "virtualbox"; break;
 	}
-	var data='type='+sType
-	$.post('/crontab/get_data_list',data,function(rdata){
+	$.post('/crontab/get_data_list','type='+sType,function(rdata){
 		$(".planname input[name='name']").attr('readonly','true').css({"background-color":"#f6f6f6","color":"#666"});
-    var sOpt = "";
 		if(rdata.data.length == 0){
-			layer.msg(lan.public.list_empty,{icon:2})
-			return
-			}
+			layer.msg(lan.public.list_empty,{icon:2});
+			return;
+		}
+
+		var isRestore = (sType == 'restoreSiteSetting' || sType == 'restorePluginSetting');
+		var databaseTypeFilterHtml = '';
+		var defaultValue = rdata.data[0].name;
+		var defaultLabel = getBackupItemLabel(rdata.data[0]);
+		var sOpt = '';
+
+		if(sType == 'databases'){
+			var databaseTypes = getAvailableDatabaseTypes(rdata.data);
+			var selectedDatabaseTypes = databaseTypes.slice(0);
+			databaseTypeFilterHtml = buildDatabaseTypeFilter(databaseTypes, selectedDatabaseTypes);
+			defaultValue = getDatabaseAllValue(selectedDatabaseTypes);
+			defaultLabel = getDatabaseAllLabel(selectedDatabaseTypes);
+			sOpt = buildDatabaseDropdownOptions(filterDatabaseItems(rdata.data, selectedDatabaseTypes), defaultValue, defaultLabel);
+			$(".planname input[name='name']").val(sMsg+'['+defaultLabel+']');
+		}else{
+			sOpt = '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+ (isRestore ? 'restoreAll' : 'backupAll') +'" raw-name="所有">所有</a></li>';
 			for(var i=0;i<rdata.data.length;i++){
 				var itemLabel = getBackupItemLabel(rdata.data[i]);
 				var displayName = getBackupItemDisplayName(rdata.data[i]);
-				if(i==0){
-					$(".planname input[name='name']").val(sMsg+'['+displayName+']');
-				}
+				if(i==0) $(".planname input[name='name']").val(sMsg+'['+displayName+']');
 				sOpt += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+escapeHtml(rdata.data[i].name)+'" raw-name="'+escapeHtml(displayName)+'" db-type="'+escapeHtml(rdata.data[i].db_type || '')+'">'+escapeHtml(itemLabel)+'</a></li>';
 			}
-		
-		var orderOpt = '';
-		for (var i=0;i<rdata.orderOpt.length;i++){
-			orderOpt += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+rdata.orderOpt[i].name+'">'+rdata.orderOpt[i].title+'</a></li>'
 		}
 
-    var isRestore = (sType == 'restoreSiteSetting' || sType == 'restorePluginSetting');
-    var extOpt = '';
-	    if (sType == 'databases') {
-	      // 增加一个备份方式（mysqldump、mydumper）的选项
-	      extOpt = '\
-	      <div class="dump-type">\
-	      <div class="textname pull-left mr20">备份方式</div>\
-	      <div class="dropdown pull-left mr20">\
-	        <button class="btn btn-default dropdown-toggle" type="button" id="dumptype" data-toggle="dropdown" style="width:auto">\
-          <b id="dType" val="mysqldump">mysqldump</b> <span class="caret"></span>\
-        </button>\
-        <ul class="dropdown-menu" role="menu" aria-labelledby="dumptype">\
-	          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mysqldump">mysqldump</a></li>\
-	          <li><a role="menuitem" tabindex="-1" href="javascript:;" value="mydumper">mydumper</a></li>\
-	        </ul>\
-	      </div></div>';
-	    }
-		
+		var orderOpt = '';
+		for (var i=0;i<rdata.orderOpt.length;i++){
+			orderOpt += '<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+rdata.orderOpt[i].name+'">'+rdata.orderOpt[i].title+'</a></li>';
+		}
 
-		var sBody = '<div>\
-				<div class="clearfix ptb10">\
-					<div class="dropdown pull-left mr20">\
-					  <button class="btn btn-default dropdown-toggle" type="button" id="backdata" data-toggle="dropdown" style="width:auto">\
-							<b id="sName" val="'+escapeHtml(rdata.data[0].name)+'">'+escapeHtml(getBackupItemLabel(rdata.data[0]))+'</b> <span class="caret"></span>\
-					  </button>\
-					  <ul class="dropdown-menu" role="menu" aria-labelledby="backdata">\
-					  	<li><a role="menuitem" tabindex="-1" href="javascript:;" value="'+ (isRestore ? 'restoreAll' : 'backupAll') +'">所有</a></li>\
-					  	'+sOpt+'\
-					  </ul>\
-					</div>\
-          '+ extOpt +'\
-					'+ (isRestore ? '' : '<div class="textname pull-left mr20">备份到</div>\
-					<div class="dropdown planBackupTo pull-left mr20">\
-					  <button class="btn btn-default dropdown-toggle" type="button" id="excode" data-toggle="dropdown" style="width:auto;">\
-						<b val="localhost">服务器磁盘</b> <span class="caret"></span>\
-					  </button>\
-					  <ul class="dropdown-menu" role="menu" aria-labelledby="excode">\
-						<li><a role="menuitem" tabindex="-1" href="javascript:;" value="localhost">服务器磁盘</a></li>\
-						'+ orderOpt +'\
-					  </ul>\
-					</div>') +'\
-				</div>\
-				'+ (isRestore ? '' : '<div class="clearfix ptb10">\
-					<div class="typename controls c4 pull-left f14 text-right mr20">保留规则</div>\
-					<div class="plan_hms pull-left mr20 bt-input-text">\
-						<span><input type="number" name="saveAllDay" id="saveAllDay" value="3" maxlength="4" max="100" min="1"></span>\
-						<span class="name" style="width: 160px;">天内全部保留，其余只保留</span>\
-						<span><input type="number" name="saveOther" id="saveOther" value="1" maxlength="4" max="100" min="1"></span>\
-						<span class="name" style="width: 90px;">份，最长保留</span>\
-						<span><input type="number" name="saveMaxDay" id="saveMaxDay" value="30" maxlength="4" max="100" min="1"></span>\
-						<span class="name">天</span>\
-					</div>\
-				</div>') +'\
-			</div>';
-			$("#implement").html(sBody);
-			getselectname();
-			if (sType == 'databases') toggleDumpTypeByDatabaseValue(rdata.data[0].name);
-			$("[aria-labelledby='backdata'] a").click(function(){
-				var sName = $("#sName").attr("val");
+		var extOpt = '';
+		if (sType == 'databases') {
+			extOpt = '<div class="dump-type"><div class="textname pull-left mr20">备份方式</div><div class="dropdown pull-left mr20"><button class="btn btn-default dropdown-toggle" type="button" id="dumptype" data-toggle="dropdown" style="width:auto"><b id="dType" val="mysqldump">mysqldump</b> <span class="caret"></span></button><ul class="dropdown-menu" role="menu" aria-labelledby="dumptype"><li><a role="menuitem" tabindex="-1" href="javascript:;" value="mysqldump">mysqldump</a></li><li><a role="menuitem" tabindex="-1" href="javascript:;" value="mydumper">mydumper</a></li></ul></div></div>';
+		}
+
+		var sBody = '<div class="database-backup-panel"><div class="clearfix ptb10 database-backup-main-row">'+ databaseTypeFilterHtml +'<div class="dropdown pull-left mr20 database-target-dropdown"><button class="btn btn-default dropdown-toggle" type="button" id="backdata" data-toggle="dropdown" style="width:auto"><b id="sName" val="'+escapeHtml(defaultValue)+'">'+escapeHtml(defaultLabel)+'</b> <span class="caret"></span></button><ul class="dropdown-menu" role="menu" aria-labelledby="backdata">'+sOpt+'</ul></div>'+ extOpt +(isRestore ? '' : '<div class="textname pull-left mr20">备份到</div><div class="dropdown planBackupTo pull-left mr20"><button class="btn btn-default dropdown-toggle" type="button" id="excode" data-toggle="dropdown" style="width:auto;"><b val="localhost">服务器磁盘</b> <span class="caret"></span></button><ul class="dropdown-menu" role="menu" aria-labelledby="excode"><li><a role="menuitem" tabindex="-1" href="javascript:;" value="localhost">服务器磁盘</a></li>'+ orderOpt +'</ul></div>') +'</div>'+(isRestore ? '' : '<div class="clearfix ptb10"><div class="typename controls c4 pull-left f14 text-right mr20">保留规则</div><div class="plan_hms pull-left mr20 bt-input-text"><span><input type="number" name="saveAllDay" id="saveAllDay" value="3" maxlength="4" max="100" min="1"></span><span class="name" style="width: 160px;">天内全部保留，其余只保留</span><span><input type="number" name="saveOther" id="saveOther" value="1" maxlength="4" max="100" min="1"></span><span class="name" style="width: 90px;">份，最长保留</span><span><input type="number" name="saveMaxDay" id="saveMaxDay" value="30" maxlength="4" max="100" min="1"></span><span class="name">天</span></div></div>') +'</div>';
+		$("#implement").html(sBody);
+		getselectname();
+
+		function bindBackupDropdown(){
+			$("[aria-labelledby='backdata'] a").unbind().click(function(){
+				var sName = $(this).attr('value');
+				$("#sName").attr('val', sName).html($(this).text());
 				if(!sName) return;
-				var displayName = (sName == 'restoreAll' || sName == 'backupAll') ? '所有' : ($(this).attr('raw-name') || sName);
+				var displayName = $(this).attr('raw-name') || $(this).text() || sName;
 				$(".planname input[name='name']").val(sMsg+'['+displayName+']');
 				if (sType == 'databases') toggleDumpTypeByDatabaseValue(sName);
 			});
+		}
+
+		if (sType == 'databases') {
+			function refreshDatabaseDropdown(){
+				var selectedTypes = getSelectedDatabaseTypes($('#implement'));
+				if(selectedTypes.length == 0){
+					$('#sName').attr('val', '').html('请选择数据库类型');
+					$("[aria-labelledby='backdata']").html('');
+					toggleDumpTypeByDatabaseValue('postgresql:backupAll');
+					return;
+				}
+				var allValue = getDatabaseAllValue(selectedTypes);
+				var allLabel = getDatabaseAllLabel(selectedTypes);
+				$("[aria-labelledby='backdata']").html(buildDatabaseDropdownOptions(filterDatabaseItems(rdata.data, selectedTypes), allValue, allLabel));
+				$('#sName').attr('val', allValue).html(allLabel);
+				$(".planname input[name='name']").val(sMsg+'['+allLabel+']');
+				toggleDumpTypeByDatabaseValue(allValue);
+				bindBackupDropdown();
+			}
+			$('.database-type-filter').change(refreshDatabaseDropdown);
+			toggleDumpTypeByDatabaseValue(defaultValue);
+		}
+		bindBackupDropdown();
 	},'json');
 }
 
@@ -625,6 +673,7 @@ function editTaskInfo(id){
 		layer.closeAll();
 		// console.log('get_crond_find:', rdata);
 		var sTypeName = '',sTypeDom = '',cycleName = '',cycleDom = '',weekName = '',weekDom = '',sNameName ='',sNameDom = '',backupsName = '',backupsDom ='';
+		var databaseTypeFilterHtml = '', editDatabaseData = [];
 		obj = {
 			from:{
 				id:rdata.id,
@@ -674,19 +723,49 @@ function editTaskInfo(id){
 					$.post('/crontab/get_data_list',{type:_listType},function(rdata){
 						// console.log(rdata);
 						obj.sNameArray = rdata.data;
-						obj.sNameArray.unshift({name:'ALL',ps:'所有'});
+						if(obj.from.stype == 'database'){
+							editDatabaseData = rdata.data;
+							var availableTypes = getAvailableDatabaseTypes(rdata.data);
+							var currentTypes = getDatabaseTypesFromValue(obj.from.sname);
+							var selectedTypes = [];
+							for(var ti = 0; ti < availableTypes.length; ti++){
+								if(currentTypes.indexOf(availableTypes[ti]) >= 0) selectedTypes.push(availableTypes[ti]);
+							}
+							if(selectedTypes.length == 0) selectedTypes = availableTypes.slice(0);
+							databaseTypeFilterHtml = buildDatabaseTypeFilter(availableTypes, selectedTypes);
+							var allValue = (obj.from.sname == 'backupAll') ? 'backupAll' : getDatabaseAllValue(selectedTypes);
+							var allLabel = getDatabaseAllLabel(selectedTypes);
+							if(obj.from.sname == 'backupAll') allLabel = '全部数据库';
+							sNameDom = buildDatabaseDropdownOptions(filterDatabaseItems(rdata.data, selectedTypes), allValue, allLabel);
+							if(obj.from.sname == 'backupAll' || obj.from.sname == 'all:backupAll' || obj.from.sname == 'mysql:backupAll' || obj.from.sname == 'postgresql:backupAll'){
+								sNameName = allLabel;
+								obj.from.sname = allValue;
+							}
+						}else{
+							obj.sNameArray.unshift({name:'ALL',ps:'所有'});
+						}
 						obj.backupsArray = rdata.orderOpt;
 						obj.backupsArray.unshift({title:'服务器磁盘',name:'localhost'});
-						for(var i = 0; i <obj['sNameArray'].length; i++){
-							var item = obj['sNameArray'][i];
-							var itemLabel = getBackupItemLabel(item);
-							var itemDisplayName = getBackupItemDisplayName(item);
-							var isCurrentName = obj.from['sname'] == item['name'] || (obj.from.stype == 'database' && obj.from['sname'] == item.raw_name);
-							if(isCurrentName){
-								sNameName  = itemLabel;
-								obj.from.sname = item['name'];
+						if(obj.from.stype != 'database'){
+							for(var i = 0; i <obj['sNameArray'].length; i++){
+								var item = obj['sNameArray'][i];
+								var itemLabel = getBackupItemLabel(item);
+								var itemDisplayName = getBackupItemDisplayName(item);
+								var isCurrentName = obj.from['sname'] == item['name'];
+								if(isCurrentName){
+									sNameName  = itemLabel;
+									obj.from.sname = item['name'];
+								}
+								sNameDom += '<li><a role="menuitem"  href="javascript:;" value="'+ escapeHtml(item['name']) +'" raw-name="'+ escapeHtml(itemDisplayName) +'" db-type="'+ escapeHtml(item.db_type || '') +'">'+ escapeHtml(itemLabel) +'</a></li>';
 							}
-							sNameDom += '<li><a role="menuitem"  href="javascript:;" value="'+ escapeHtml(item['name']) +'" raw-name="'+ escapeHtml(itemDisplayName) +'" db-type="'+ escapeHtml(item.db_type || '') +'">'+ escapeHtml(itemLabel) +'</a></li>';
+						}else if(!sNameName){
+							for(var di = 0; di < rdata.data.length; di++){
+								var dbItem = rdata.data[di];
+								if(obj.from.sname == dbItem.name || obj.from.sname == dbItem.raw_name){
+									sNameName = getBackupItemLabel(dbItem);
+									obj.from.sname = dbItem.name;
+								}
+							}
 						}
 						for(var i = 0; i <obj['backupsArray'].length; i++){
 							if(obj.from['backup_to'] == obj['backupsArray'][i]['name'])  {
@@ -747,9 +826,10 @@ function editTaskInfo(id){
 								</div>\
 							</div>\
 							<div class="clearfix plan ptb10 site_list" style="display:none">\
-								<div class="clearfix ptb10">\
+								<div class="clearfix ptb10 database-backup-main-row">\
 									<span class="typename controls c4 pull-left f14 text-right mr20">'+ sTypeName  +'</span>\
-									<div style="line-height:34px"><div class="dropdown pull-left mr20 sName_btn" style="display:'+ (obj.from.sType != "path"?'block;':'none') +'">\
+									'+ databaseTypeFilterHtml +'\
+									<div style="line-height:34px"><div class="dropdown pull-left mr20 sName_btn database-target-dropdown" style="display:'+ (obj.from.sType != "path"?'block;':'none') +'">\
 										<button class="btn btn-default dropdown-toggle sName_btn_btn" type="button"  data-toggle="dropdown" style="width:auto">\
 											<b id="sName" val="'+ obj.from.sname +'">'+ (sNameName || obj.from.sname) +'</b>\
 											<span class="caret"></span>\
@@ -824,9 +904,10 @@ function editTaskInfo(id){
 					$('.site_list').show();
 				}
 
-	        if(obj.from.stype == 'database') {
-	          toggleDumpTypeByDatabaseValue(obj.from.sname);
-	        }
+
+		        if(obj.from.stype == 'database') {
+		          toggleDumpTypeByDatabaseValue(obj.from.sname);
+		        }
 
 				if(obj.from.stype == 'restoreSiteSetting' || obj.from.stype == 'restorePluginSetting'){
 					// 恢复任务：保留 站点/插件 下拉；隐藏 '备份到' 与 '保留规则'
@@ -968,24 +1049,61 @@ function editTaskInfo(id){
 					obj.from.backup_to = $(this).attr('value');
 				});
 
-					$('[aria-labelledby="sName"] a').unbind().click(function () {
-						$('.sName_btn').find('b').attr('val',$(this).attr('value')).html($(this).text());
-						obj.from.sname = $(this).attr('value');
-						if(obj.from.stype == 'database') {
-							toggleDumpTypeByDatabaseValue(obj.from.sname);
-							if(getDatabaseTypeFromValue(obj.from.sname) === 'postgresql') obj.from.dumpType = '';
-							else if(!obj.from.dumpType) obj.from.dumpType = 'mysqldump';
+						function bindEditSnameDropdown(){
+							$('[aria-labelledby="sName"] a').unbind().click(function () {
+								$('.sName_btn').find('b').attr('val',$(this).attr('value')).html($(this).text());
+								obj.from.sname = $(this).attr('value');
+								if(obj.from.stype == 'database') {
+									toggleDumpTypeByDatabaseValue(obj.from.sname);
+									if(!databaseValueIncludesMysql(obj.from.sname)) obj.from.dumpType = '';
+									else if(!obj.from.dumpType) obj.from.dumpType = 'mysqldump';
+								}
+								var _name = obj.from.name || '';
+								var _m = _name.match(/^(.*?)\[.*\]$/);
+								if (_m) {
+									var _label = obj.from.sname == 'ALL' ? '所有' : ($(this).attr('raw-name') || $(this).text() || obj.from.sname);
+									obj.from.name = _m[1] + '[' + _label + ']';
+									$('.sName_create').val(obj.from.name);
+								}
+							});
 						}
-						// 任务名前缀[对象]部分同步
-						var _name = obj.from.name || '';
-						var _m = _name.match(/^(.*?)\[.*\]$/);
-						if (_m) {
-							var _label = obj.from.sname == 'ALL' ? '所有' : ($(this).attr('raw-name') || obj.from.sname);
-							obj.from.name = _m[1] + '[' + _label + ']';
-						$('.sName_create').val(obj.from.name);
-					}
-				});
-				$('.plan-submits').unbind().click(function(){
+						if(obj.from.stype == 'database'){
+							function refreshEditDatabaseDropdown(){
+								var selectedTypes = getSelectedDatabaseTypes($('.site_list'));
+								if(selectedTypes.length == 0){
+									$('.sName_btn').find('b').attr('val', '').html('请选择数据库类型');
+									$('[aria-labelledby="sName"]').html('');
+									obj.from.sname = '';
+									toggleDumpTypeByDatabaseValue('postgresql:backupAll');
+									return;
+								}
+								var allValue = getDatabaseAllValue(selectedTypes);
+								var allLabel = getDatabaseAllLabel(selectedTypes);
+								$('[aria-labelledby="sName"]').html(buildDatabaseDropdownOptions(filterDatabaseItems(editDatabaseData, selectedTypes), allValue, allLabel));
+								$('.sName_btn').find('b').attr('val', allValue).html(allLabel);
+								obj.from.sname = allValue;
+								var _name = obj.from.name || '';
+								var _m = _name.match(/^(.*?)\[.*\]$/);
+								if(_m){
+									obj.from.name = _m[1] + '[' + allLabel + ']';
+									$('.sName_create').val(obj.from.name);
+								}
+								toggleDumpTypeByDatabaseValue(allValue);
+								bindEditSnameDropdown();
+							}
+							$('.database-type-filter').change(refreshEditDatabaseDropdown);
+						}
+						bindEditSnameDropdown();
+					$('.plan-submits').unbind().click(function(){
+						if(obj.from.stype == 'database'){
+							if($('.database-type-filter').length > 0 && getSelectedDatabaseTypes($('.site_list')).length == 0){
+								layer.msg('请选择数据库类型!',{icon:2});
+								return;
+							}
+							if(!databaseValueIncludesMysql(obj.from.sname)) obj.from.dumpType = '';
+							else if(!obj.from.dumpType) obj.from.dumpType = 'mysqldump';
+							obj.from.sbody = obj.from.dumpType;
+						}
 					if(obj.from.type == 'hour-n'){
 						obj.from.where1 = obj.from.hour;
 						obj.from.hour = '';

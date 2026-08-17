@@ -617,8 +617,18 @@ if __name__ == "__main__":
         else:
             backup.backupDatabase(name, save, execType)
         clean_tool.cleanPath("/www/backup/database", save, "*")
+    elif type == 'mysql_database':
+        execType = 'mysqldump'
+        if len(sys.argv) > 4:
+            execType = sys.argv[4]
+        if sys.argv[2].find('backupAll') >= 0:
+            backup.backupDatabaseAll(save, execType)
+        else:
+            backup.backupDatabase(name, save, execType)
+        clean_tool.cleanPath("/www/backup/database", save, "*")
     elif type == 'pg_database':
         if sys.argv[2].find('backupAll') >= 0:
             backup.backupPgDatabaseAll(save)
         else:
             backup.backupPgDatabase(name, save)
+        clean_tool.cleanPath("/www/backup/database", save, "*")

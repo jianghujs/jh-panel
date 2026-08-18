@@ -656,6 +656,22 @@ def _health_snapshot(cfg):
 
 
 def _plugin_health_status(cfg, health_detail):
+    checks = []
+    if isinstance(health_detail, dict) and isinstance(health_detail.get('script_checks'), list):
+        checks = health_detail.get('script_checks')
+    failed = [item for item in checks if isinstance(item, dict) and item.get('status') == 'fail']
+    if failed:
+        names = [str(item.get('name') or '').strip() for item in failed if str(item.get('name') or '').strip()]
+        summary = '自检异常 {0} 项'.format(len(failed))
+        if names:
+            summary += '：' + '、'.join(names[:3])
+            if len(names) > 3:
+                summary += '等'
+        if isinstance(health_detail, dict):
+            health_detail['summary'] = summary
+        return 'warning', summary
+    if isinstance(health_detail, dict):
+        health_detail['summary'] = '正常'
     return 'normal', '正常'
 
 

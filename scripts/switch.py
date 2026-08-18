@@ -31,36 +31,56 @@ systemApi = system_api.system_api()
 siteApi = site_api.site_api()
 crontabApi = crontab_api.crontab_api()
 
+def crontabNameAliases(name):
+    names = [name]
+    if '[所有]' in name:
+        names.append(name.replace('[所有]', '[backupAll]'))
+    elif '[backupAll]' in name:
+        names.append(name.replace('[backupAll]', '[所有]'))
+    result = []
+    for item in names:
+        if item not in result:
+            result.append(item)
+    return result
+
 class switchTools:
 
     def openCrontab(self, name):
-        cronInfo = mw.M('crontab').where(
-            'name=?', (name,)).field(crontabApi.field).find()
-        if not cronInfo:
-            print("计划任务不存在")
-            return
-        if cronInfo['status'] == 1:
-            print("计划任务已经启用了")
-            return
+        found = False
+        for cronName in crontabNameAliases(name):
+            cronInfo = mw.M('crontab').where(
+                'name=?', (cronName,)).field(crontabApi.field).find()
+            if not cronInfo:
+                continue
+            found = True
+            if cronInfo['status'] == 1:
+                print("计划任务" + cronName + "已经启用了")
+                continue
 
-        mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 1)
-        cronInfo['status'] = 1
-        crontabApi.syncToCrond(cronInfo)
-        print("启用定时任务" + name + "成功!")
+            mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 1)
+            cronInfo['status'] = 1
+            crontabApi.syncToCrond(cronInfo)
+            print("启用定时任务" + cronName + "成功!")
+        if not found:
+            print("计划任务不存在")
             
     def closeCrontab(self, name):
-        cronInfo = mw.M('crontab').where(
-            'name=?', (name,)).field(crontabApi.field).find()
-        if not cronInfo:
-            print("计划任务不存在")
-            return
-        if cronInfo['status'] == 0:
-            print("计划任务已经停用了")
-            return
+        found = False
+        for cronName in crontabNameAliases(name):
+            cronInfo = mw.M('crontab').where(
+                'name=?', (cronName,)).field(crontabApi.field).find()
+            if not cronInfo:
+                continue
+            found = True
+            if cronInfo['status'] == 0:
+                print("计划任务" + cronName + "已经停用了")
+                continue
 
-        mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 0)
-        crontabApi.removeCrond(cronInfo['echo'])
-        print("停用定时任务" + name + "成功!")
+            mw.M('crontab').where('id=?', (cronInfo['id'],)).setField('status', 0)
+            crontabApi.removeCrond(cronInfo['echo'])
+            print("停用定时任务" + cronName + "成功!")
+        if not found:
+            print("计划任务不存在")
             
     def openEmailNotify(self):
         data = mw.getNotifyData(False)

@@ -20,7 +20,7 @@ var msState = {
   last_report_at: '',
   switch_run_id: '',
   switch_status: 'idle',
-  auto_recover_as_standby: false,
+  auto_recover_as_standby: true,
   health_status: 'normal',
   health_text: '正常',
   log_path: '',

@@ -448,7 +448,7 @@ def _default_config():
         'switch_run_id': '',
         'switch_status': 'idle',
         'log_path': '',
-        'auto_recover_as_standby': False,
+        'auto_recover_as_standby': True,
         'options': {
             'local_ip': mw.getHostAddr(),
             'remote_ip': '',

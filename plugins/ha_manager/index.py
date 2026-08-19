@@ -1172,6 +1172,19 @@ def _clear_peer_failover_state(cfg, switch_run_id):
     return {'status': True, 'msg': '对端待切换状态已清除'}
 
 
+def _clear_failover_after_full_switch(cfg, switch_run_id):
+    had_local_state = bool(_read_failover_state())
+    if had_local_state:
+        _clear_failover_state()
+        _append_switch_log(switch_run_id, 'switch', 'running', '完整双边切换完成，已清理本机故障恢复状态')
+    peer_result = _clear_peer_failover_state(cfg, switch_run_id)
+    if peer_result.get('status'):
+        _append_cloud_interaction_log('clear_failover_after_full_switch', 'done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, local_cleared=had_local_state, peer_cleared=True)
+    else:
+        _append_cloud_interaction_log('clear_failover_after_full_switch', 'partial', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, local_cleared=had_local_state, peer_cleared=False, msg=peer_result.get('msg'))
+    return peer_result
+
+
 def _report_both_state_after_switch_delay(switch_run_id, seconds=3):
     _append_switch_log(switch_run_id, 'switch', 'running', '切换完成后等待 {0}s 执行双端状态上报'.format(seconds))
     local_result = _report_state_after_switch_delay(seconds)
@@ -2244,6 +2257,8 @@ def switch_phase():
                 mode = _switch_execution_mode(cfg, 'master')
                 if mode.get('mode') == 'local_failover':
                     _record_local_failover_state(cfg, switch_run_id, mode.get('reason') or 'peer_unreachable')
+            elif not data.get('confirm_failover'):
+                _clear_failover_after_full_switch(cfg, switch_run_id)
             _report_both_state_after_switch_delay(switch_run_id, 3)
         else:
             _report_state_after_switch_delay(3)
@@ -2305,6 +2320,8 @@ def local_switch():
         cfg['switch_status'] = 'switch_done'
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'success', '切换主备完成')
+        if mode.get('mode') == 'full_switch':
+            _clear_failover_after_full_switch(cfg, switch_run_id)
         _state(cfg)
         _report_both_state_after_switch_delay(switch_run_id, 3) if mode.get('mode') == 'full_switch' else _report_state_after_switch_delay(3)
         report_switch_event(cfg, 'switch', 'success', '切换主备完成')
@@ -2401,6 +2418,8 @@ def finalize_switch():
         cfg['switch_status'] = 'switch_done'
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'success', '正式上线完成，切换主备完成')
+        if mode.get('mode') == 'full_switch':
+            _clear_failover_after_full_switch(cfg, switch_run_id)
         _state(cfg)
         _report_both_state_after_switch_delay(switch_run_id, 3) if mode.get('mode') == 'full_switch' else _report_state_after_switch_delay(3)
         report_switch_event(cfg, 'switch', 'success', '正式上线完成，切换主备完成')

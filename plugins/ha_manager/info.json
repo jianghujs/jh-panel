@@ -30,6 +30,14 @@
       "interval": 30,
       "timeout": 20,
       "enabled": true
+    },
+    {
+      "func": "recover_check",
+      "title": "检查主备故障恢复",
+      "args": {},
+      "interval": 30,
+      "timeout": 30,
+      "enabled": true
     }
   ]
 }

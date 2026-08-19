@@ -20,6 +20,7 @@ var msState = {
   last_report_at: '',
   switch_run_id: '',
   switch_status: 'idle',
+  auto_recover_as_standby: false,
   health_status: 'normal',
   health_text: '正常',
   log_path: '',
@@ -244,6 +245,14 @@ function msOverview() {
   var switchingTip = '正在切换中\n' + roleTitle;
   var loading = '<span class="ms-loading-state" title="' + msHtml(switchingTip) + '"><span class="ms-loading-icon"></span>切换中</span>';
   var roleCell = '<span title="' + msHtml(roleTitle) + '">' + msRoleMark(msState.role) + '</span>' + (isSwitching ? ' ' + loading : '');
+  var failover = (msState.state && msState.state.failover) || (msState.health && msState.health.ha_failover) || {};
+  var failoverRows = '';
+  if (failover.mode === 'degraded_master' || failover.pending_switch_required) {
+    failoverRows += '<tr><th>故障恢复</th><td>' + msPill('warning', '降级运行') + ' <span class="c7">待切换主机: ' + msHtml(failover.pending_switch_host_id || '--') + '，目标角色: ' + msHtml(failover.pending_switch_role || '--') + '</span></td></tr>';
+  }
+  if (failover.recovery_status === 'recovery_guard') {
+    failoverRows += '<tr><th>恢复保护</th><td>' + msPill('warning', '待恢复为备机') + ' <button class="btn btn-default btn-xs ml10" onclick="msRecoverAsStandby()">恢复为备机</button></td></tr>';
+  }
   var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msPollMonitor()">立即拉取云监控任务</button><button class="btn btn-default btn-sm" onclick="msReportState()">立即上报到云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
     '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(pluginStatus, pluginStatusText) + '</div><div class="ms-panel-body">' +
       '<table class="table table-hover ms-overview-table"><tbody>' +
@@ -252,6 +261,7 @@ function msOverview() {
         '<tr><th>本机标识</th><td><code>' + msHtml(msState.host_id || '--') + '</code> <span class="c7">' + msHtml(msState.host_ip || '') + '</span> <a class="btlink ml10" href="javascript:;" onclick="msRegenerateHostId()">重新生成</a></td></tr>' +
         '<tr><th>对端绑定</th><td>' + (bindConfigured ? msPill('normal', '已绑定') + ' <span class="c7">' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</span>' : msPill('warning', '未验证') + ' <a class="btlink" href="javascript:;" onclick="msConfigPanel()">去绑定</a>') + '</td></tr>' +
         '<tr><th>云监控</th><td>' + (monitorConfigured ? msPill('normal', '已开启') + ' <span class="c7">最近上报: ' + msHtml(msState.last_report_at) + '</span>' : msPill('warning', '未配置') + ' <a class="btlink" href="javascript:;" onclick="msMonitorPanel()">去配置</a>') + '</td></tr>' +
+        failoverRows +
       '</tbody></table>' +
     '</div></div>';
   $('.soft-man-con').html(html);
@@ -324,6 +334,7 @@ function msMonitorPanel() {
     msInput('主备关系名称', 'pair_name', msState.pair_name, 'width:260px') +
     msInput('云监控地址', 'monitor_url', msState.monitor_url, 'width:420px') +
     '<div class="line"><span class="tname">轮询/上报</span><div class="info-r c4"><input class="bt-input-text" type="number" name="poll_interval" value="' + msHtml(msState.poll_interval) + '" style="width:80px" /> 秒轮询 <input class="bt-input-text ml10" type="number" name="report_interval" value="' + msHtml(msState.report_interval) + '" style="width:80px" /> 秒上报</div></div>' +
+    '<div class="line"><span class="tname">故障恢复</span><div class="info-r c4"><label><input type="checkbox" name="auto_recover_as_standby" ' + (msState.auto_recover_as_standby ? 'checked' : '') + '> 自动恢复为备机</label> <span class="c7 ml10">关闭时只进入恢复保护并发送通知。</span></div></div>' +
     '<div class="line"><span class="tname">状态</span><div class="info-r c4">' + (configured ? '已配置云监控地址，将按主备关系名称注册并周期上传状态。' : '未配置云监控地址，不上传状态。') + '</div></div>' +
     '<div class="line"><span class="tname"></span><div class="info-r"><button type="button" class="btn btn-default btn-sm" onclick="msTestMonitor()">测试云监控</button><button type="button" class="btn btn-success btn-sm ml5" onclick="msSaveMonitor()">保存并注册</button><button type="button" class="btn btn-warning btn-sm ml5" onclick="msClearMonitor()">清空地址</button></div></div>' +
     '</form></div></div>';
@@ -352,7 +363,8 @@ function msLogPanel() {
 function msReadmePanel() {
   msSetActive(6);
   var html = '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">插件说明</div></div><div class="ms-panel-body"><ul class="ms-tip-list">' +
-    '<li>本插件第一版只做手动切换，不做自动故障切换。</li>' +
+    '<li>本插件支持正常双边切换；对端不可达时，只允许在本机确认故障升主并进入降级运行。</li>' +
+    '<li>故障主机恢复后，由 task 进程周期触发插件恢复检查；默认进入恢复保护并通知，开启自动恢复后才会自动恢复为备机。</li>' +
     '<li>绑定时先输入对方机器 IP、SSH 端口、SSH 用户和对方公钥，测试连接后保存主备关系。</li>' +
     '<li>云监控地址在“云监控”页签单独配置，默认留空；留空时不上传主备状态和切换日志。</li>' +
     '<li>插件周期轮询云监控期望状态，领取 offline 或 online 阶段任务。</li>' +
@@ -404,6 +416,7 @@ function msReadMonitorForm() {
   $('#msMonitorForm').serializeArray().forEach(function(item) {
     data[item.name] = item.value;
   });
+  data.auto_recover_as_standby = $('#msMonitorForm').find('[name="auto_recover_as_standby"]').prop('checked') === true;
   return data;
 }
 
@@ -505,7 +518,8 @@ function msRenderSwitchWizard(root) {
     body = '<div class="c6 mb10">选择切换完成后作为主机的机器。</div>' + msBuildSwitchHostSelect();
     actions = '<button type="button" class="btn btn-success btn-sm" onclick="msWizardGoOptions()">下一步</button>';
   } else if (msSwitchWizard.step === 2) {
-    body = '<div class="c6 mb10">选择预上线要执行的检查和同步动作。</div>' + msBuildSwitchOptionsForm(msSwitchWizard.options || msState.options);
+    var modeTip = msSwitchWizard.executionMode ? '<div class="ms-switch-risk-tip"><span>执行模式：</span>' + msHtml(msSwitchWizard.executionMode.mode) + '，' + msHtml(msSwitchWizard.executionMode.message || '') + '</div>' : '';
+    body = modeTip + '<div class="c6 mb10">选择预上线要执行的检查和同步动作。</div>' + msBuildSwitchOptionsForm(msSwitchWizard.options || msState.options);
     actions = '<button type="button" class="btn btn-default btn-sm" onclick="msWizardBackHost()">上一步</button><button type="button" class="btn btn-success btn-sm" onclick="msWizardRunPrepare()">开始预上线</button>';
   } else {
     body = msBuildPrepareResultContent(msSwitchWizard.prepareRunId, msSwitchWizard.prepareLog, msSwitchWizard.prepared);
@@ -525,8 +539,22 @@ function msWizardGoOptions() {
     return;
   }
   msSwitchWizard.targetRole = targetRole;
-  msSwitchWizard.step = 2;
-  msRenderSwitchWizard(root);
+  msPost('check_switch_execution_mode', {target_role: targetRole}, function(mode) {
+    if (!mode) return;
+    msSwitchWizard.executionMode = mode;
+    if (mode.mode === 'local_failover') {
+      layer.confirm(msHtml(mode.message || '对端不可达，本次将执行本机故障升主。') + '<br><span class="c7">原因：' + msHtml(mode.reason || '--') + '</span>', {icon: 3, title: '确认故障升主', btn: ['确认继续', '取消']}, function(index) {
+        layer.close(index);
+        msSwitchWizard.confirmFailover = true;
+        msSwitchWizard.step = 2;
+        msRenderSwitchWizard(root);
+      });
+      return;
+    }
+    msSwitchWizard.confirmFailover = false;
+    msSwitchWizard.step = 2;
+    msRenderSwitchWizard(root);
+  });
 }
 
 function msWizardBackHost() {
@@ -903,7 +931,7 @@ function msDoRunLocalSwitch(targetRole, options, action) {
   var title = action === 'prepare' ? '正在执行预备上线...' : (targetRole === 'master' ? '正在正式上线为主...' : '正在正式上线为备...');
   var method = action === 'prepare' ? 'prepare_switch' : 'finalize_switch';
   msShowSwitchLogWindow(title, switchRunId);
-  msPost(method, {target_role: targetRole, switch_run_id: switchRunId, options: options}, function(data, res) {
+  msPost(method, {target_role: targetRole, switch_run_id: switchRunId, options: options, confirm_failover: msSwitchWizard.confirmFailover ? 1 : 0}, function(data, res) {
     var success = !!data;
     if (data) msState = $.extend(true, msState, data);
     var responseMsg = (res && res.msg) || '';
@@ -1006,6 +1034,20 @@ function msClearMonitor() {
     if (result) msState = $.extend(true, msState, result);
     layer.msg('已清空云监控地址，不上传状态', {icon: 0});
     msMonitorPanel();
+  });
+}
+
+function msRecoverAsStandby() {
+  layer.confirm('确认将本机恢复为备机？<br>该操作会执行本机下线/备机化脚本，请确认当前主机已经是对端机器。', {icon: 3, title: '恢复为备机', btn: ['确认执行', '取消']}, function(index) {
+    layer.close(index);
+    var switchRunId = 'RECOVER_' + (new Date()).getTime();
+    msShowSwitchLogWindow('正在恢复为备机...', switchRunId);
+    msPost('recover_as_standby', {switch_run_id: switchRunId}, function(data, res) {
+      var success = !!data;
+      if (data) msState = $.extend(true, msState, data);
+      msFinishSwitchLogWindow(success, success ? '恢复为备机完成' : ((res && res.msg) || '恢复为备机失败'), switchRunId, false, !success);
+      msLoadState(msOverview);
+    }, {quiet: true});
   });
 }
 

@@ -37,6 +37,8 @@ STATE_PATH = os.path.join(DATA_DIR, 'state.json')
 QUEUE_PATH = os.path.join(DATA_DIR, 'report_queue.json')
 SEQ_PATH = os.path.join(DATA_DIR, 'seq.json')
 LOCK_PATH = os.path.join(DATA_DIR, 'switch.lock')
+FAILOVER_STATE_PATH = os.path.join(DATA_DIR, 'failover_state.json')
+RECOVERY_LOCK_PATH = os.path.join(DATA_DIR, 'recovery.lock')
 CLOUD_TASK_CLAIMS_PATH = os.path.join(DATA_DIR, 'cloud_task_claims.json')
 CLOUD_TASK_LAUNCHER_LOG_PATH = os.path.join(LOG_DIR, 'cloud_task_launcher.log')
 CLOUD_INTERACTION_LOG_PATH = os.path.join(SERVER_LOG_DIR, 'ha_manager_cloud.log')
@@ -116,6 +118,64 @@ def _write_json(path, data):
         os.chmod(path, 0o600)
     except Exception:
         pass
+
+
+def _read_failover_state():
+    data = _read_json(FAILOVER_STATE_PATH, {})
+    return data if isinstance(data, dict) else {}
+
+
+def _write_failover_state(data):
+    if not isinstance(data, dict):
+        data = {}
+    data['update_time'] = _now()
+    _write_json(FAILOVER_STATE_PATH, data)
+    return data
+
+
+def _clear_failover_state():
+    if os.path.exists(FAILOVER_STATE_PATH):
+        os.remove(FAILOVER_STATE_PATH)
+
+
+def _switch_state_fields():
+    state = _read_failover_state()
+    if not state:
+        return {}
+    keys = (
+        'mode', 'current_master_host_id', 'pending_switch_required', 'pending_switch_host_id',
+        'pending_switch_role', 'unreachable_host_id', 'coordinator_host_id', 'failover_run_id',
+        'failover_time', 'reason', 'recovery_mode', 'recovery_status', 'recovery_required',
+        'recovery_notified_at', 'recovery_run_id', 'recovery_error', 'update_time'
+    )
+    return dict([(key, state.get(key)) for key in keys if key in state])
+
+
+def _coordination_state_data(cfg=None):
+    cfg = cfg or _config()
+    switch_state = _switch_state_fields()
+    data = {
+        'host_id': cfg.get('host_id'),
+        'host_name': cfg.get('host_name'),
+        'host_ip': cfg.get('host_ip'),
+        'role': cfg.get('role'),
+        'desired_role': cfg.get('desired_role'),
+        'switch_status': cfg.get('switch_status') or 'idle',
+        'switch_lock': _switch_lock_status_data(),
+        'failover': switch_state,
+        'mode': switch_state.get('mode') or 'normal',
+        'pending_switch_required': bool(switch_state.get('pending_switch_required')),
+        'pending_switch_host_id': switch_state.get('pending_switch_host_id') or '',
+        'pending_switch_role': switch_state.get('pending_switch_role') or '',
+        'recovery_status': switch_state.get('recovery_status') or '',
+        'updated_at': _now()
+    }
+    return data
+
+
+def get_coordination_state():
+    cfg = _config()
+    return _return(True, 'ok', _coordination_state_data(cfg))
 
 
 def _write_panel_title_state(cfg):
@@ -388,6 +448,7 @@ def _default_config():
         'switch_run_id': '',
         'switch_status': 'idle',
         'log_path': '',
+        'auto_recover_as_standby': False,
         'options': {
             'local_ip': mw.getHostAddr(),
             'remote_ip': '',
@@ -695,7 +756,21 @@ def _state(cfg=None):
     cfg = _repair_role_from_script_state(cfg)
     state = _read_json(STATE_PATH, {})
     health_detail = _health_snapshot(cfg)
+    switch_state = _switch_state_fields()
+    if switch_state:
+        health_detail['ha_failover'] = switch_state
+        if switch_state.get('recovery_status') == 'recovery_guard':
+            health_detail['summary'] = '待恢复为备机'
     health_status, health_text = _plugin_health_status(cfg, health_detail)
+    if switch_state.get('mode') == 'degraded_master' or switch_state.get('pending_switch_required'):
+        health_status = 'warning'
+        health_text = '降级运行，等待对端恢复补全'
+    if switch_state.get('recovery_status') == 'recovery_guard':
+        health_status = 'warning'
+        health_text = '恢复保护：待切换为备机'
+    elif switch_state.get('recovery_status') == 'recovering_standby':
+        health_status = 'warning'
+        health_text = '正在恢复为备机'
     state.update({
         'pair_id': cfg.get('pair_id'),
         'pair_name': cfg.get('pair_name'),
@@ -712,6 +787,7 @@ def _state(cfg=None):
         'switch_status': cfg.get('switch_status'),
         'log_path': cfg.get('log_path'),
         'last_report_at': cfg.get('last_report_at'),
+        'failover': switch_state,
         'updated_at': _now()
     })
     _write_json(STATE_PATH, state)
@@ -900,6 +976,8 @@ def save_monitor():
     for key in ('pair_name', 'monitor_url', 'poll_interval', 'report_interval'):
         if key in data:
             cfg[key] = data.get(key)
+    if 'auto_recover_as_standby' in data:
+        cfg['auto_recover_as_standby'] = str(data.get('auto_recover_as_standby')).lower() in ('1', 'true', 'yes', 'on')
     cfg['monitor_disabled'] = False if cfg.get('monitor_url') else True
     cfg['poll_interval'] = int(cfg.get('poll_interval') or 10)
     cfg['report_interval'] = int(cfg.get('report_interval') or 30)
@@ -1068,6 +1146,25 @@ def _report_peer_state_after_switch(switch_run_id):
     return {'status': True, 'msg': '对端状态上报完成'}
 
 
+def _clear_peer_failover_state(cfg, switch_run_id):
+    if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
+        return {'status': False, 'msg': 'SSH未绑定或未验证'}
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py clear_failover_state '{}'"
+    _append_switch_log(switch_run_id, 'switch', 'running', '恢复完成后清除对端待切换状态，执行方式：SSH 远程触发')
+    out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=20)
+    if code != 0:
+        msg = err or out or '清除对端待切换状态失败'
+        _append_switch_log(switch_run_id, 'switch', 'running', '清除对端待切换状态失败: ' + msg[-500:])
+        return {'status': False, 'msg': msg}
+    result = _parse_plugin_json_output(out)
+    if not result.get('status'):
+        msg = result.get('msg') or '清除对端待切换状态失败'
+        _append_switch_log(switch_run_id, 'switch', 'running', msg)
+        return {'status': False, 'msg': msg}
+    _append_switch_log(switch_run_id, 'switch', 'running', '对端待切换状态已清除')
+    return {'status': True, 'msg': '对端待切换状态已清除'}
+
+
 def _report_both_state_after_switch_delay(switch_run_id, seconds=3):
     _append_switch_log(switch_run_id, 'switch', 'running', '切换完成后等待 {0}s 执行双端状态上报'.format(seconds))
     local_result = _report_state_after_switch_delay(seconds)
@@ -1124,6 +1221,298 @@ def collect_peer_state_raw(cfg):
         return {'status': True, 'data': state}
     except Exception as e:
         return {'status': False, 'msg': '对端状态格式错误: ' + str(e)}
+
+
+def _parse_plugin_json_output(out):
+    try:
+        return json.loads((out or '').strip().split('\n')[-1])
+    except Exception as e:
+        return {'status': False, 'msg': '插件返回格式错误: ' + str(e), 'raw': (out or '')[-1000:]}
+
+
+def _peer_execution_ability(cfg):
+    result = {
+        'reachable': False,
+        'ssh_ok': False,
+        'plugin_ok': False,
+        'config_ok': False,
+        'lock_ok': False,
+        'locked': False,
+        'mode_reason': '',
+        'peer': {},
+        'checks': []
+    }
+    if not cfg.get('peer_public_ip'):
+        result['mode_reason'] = '未绑定对端 IP'
+        result['checks'].append({'name': 'ssh', 'status': 'failed', 'msg': result['mode_reason']})
+        return result
+    if cfg.get('bind_test_status') != 'success':
+        result['mode_reason'] = 'SSH 未验证'
+        result['checks'].append({'name': 'ssh', 'status': 'failed', 'msg': result['mode_reason']})
+        return result
+    out, err, code = _ssh_peer_exec(cfg, 'test -f /www/server/jh-panel/plugins/ha_manager/index.py && echo ok', timeout=8)
+    result['ssh_ok'] = code == 0 and out.strip().endswith('ok')
+    result['checks'].append({'name': 'ssh', 'status': 'success' if result['ssh_ok'] else 'failed', 'msg': 'SSH 可达' if result['ssh_ok'] else (err or out or 'SSH 不可达')})
+    if not result['ssh_ok']:
+        result['mode_reason'] = result['checks'][-1]['msg']
+        return result
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py get_coordination_state '{}'"
+    out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=12)
+    if code != 0:
+        result['mode_reason'] = err or out or '对端插件不可执行'
+        result['checks'].append({'name': 'plugin', 'status': 'failed', 'msg': result['mode_reason']})
+        return result
+    parsed = _parse_plugin_json_output(out)
+    if not parsed.get('status'):
+        result['mode_reason'] = parsed.get('msg') or '对端插件返回失败'
+        result['checks'].append({'name': 'plugin', 'status': 'failed', 'msg': result['mode_reason']})
+        return result
+    peer = parsed.get('data') or {}
+    result['plugin_ok'] = True
+    result['peer'] = peer
+    result['checks'].append({'name': 'plugin', 'status': 'success', 'msg': '对端插件可执行'})
+    result['config_ok'] = bool(peer.get('host_id'))
+    result['checks'].append({'name': 'config', 'status': 'success' if result['config_ok'] else 'failed', 'msg': '对端配置完整' if result['config_ok'] else '对端 host_id 为空'})
+    lock = peer.get('switch_lock') or {}
+    result['locked'] = bool(lock.get('locked') and lock.get('alive'))
+    result['lock_ok'] = not result['locked']
+    result['checks'].append({'name': 'lock', 'status': 'success' if result['lock_ok'] else 'failed', 'msg': '对端切换锁空闲' if result['lock_ok'] else '对端已有切换任务 PID={0}'.format(lock.get('pid') or '')})
+    result['reachable'] = result['ssh_ok'] and result['plugin_ok'] and result['config_ok'] and result['lock_ok']
+    result['mode_reason'] = '对端可执行' if result['reachable'] else '；'.join([x.get('msg') for x in result['checks'] if x.get('status') == 'failed'])
+    return result
+
+
+def _switch_execution_mode(cfg, target_role=None):
+    target_role = target_role or ('standby' if cfg.get('role') == 'master' else 'master')
+    target_is_local = target_role == 'master'
+    ability = _peer_execution_ability(cfg)
+    if ability.get('reachable'):
+        mode = 'full_switch'
+        allowed = True
+        msg = '本机与对端均可执行，允许完整双边切换'
+    elif target_is_local:
+        mode = 'local_failover'
+        allowed = True
+        msg = '对端不可达，本次将跳过对端下线并进入降级运行；请确认对端已停机、隔离或不会继续写入'
+    else:
+        mode = 'blocked_remote_unreachable'
+        allowed = False
+        msg = '目标主机为对端，但对端不可达，请到目标机房处理或等待目标恢复后再切换'
+    data = {
+        'mode': mode,
+        'allowed': allowed,
+        'message': msg,
+        'reason': ability.get('mode_reason') or '',
+        'target_role': target_role,
+        'target_host_id': cfg.get('host_id') if target_is_local else (ability.get('peer') or {}).get('host_id') or cfg.get('peer_host_id') or '',
+        'coordinator_host_id': cfg.get('host_id'),
+        'peer_ability': ability
+    }
+    _append_cloud_interaction_log('check_switch_execution_mode', 'allowed' if allowed else 'blocked', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), mode=mode, target_role=target_role, reason=data.get('reason'), target_host_id=data.get('target_host_id'))
+    return data
+
+
+def check_switch_execution_mode():
+    data = _args()
+    cfg = _config()
+    mode = _switch_execution_mode(cfg, data.get('target_role'))
+    return _return(bool(mode.get('allowed')), mode.get('message'), mode)
+
+
+def _require_failover_confirm(data, mode):
+    if mode.get('mode') != 'local_failover':
+        return True, ''
+    confirmed = str(data.get('confirm_failover') or data.get('failover_confirmed') or '').lower() in ('1', 'true', 'yes', 'on')
+    if confirmed:
+        return True, ''
+    return False, '对端不可达时执行本机故障升主需要确认：请确认对端已停机、隔离或不会继续写入'
+
+
+def _record_local_failover_state(cfg, switch_run_id, reason='peer_unreachable'):
+    peer_id = cfg.get('peer_host_id') or ''
+    state = {
+        'mode': 'degraded_master',
+        'current_master_host_id': cfg.get('host_id'),
+        'pending_switch_required': True,
+        'pending_switch_host_id': peer_id,
+        'pending_switch_role': 'standby',
+        'unreachable_host_id': peer_id,
+        'coordinator_host_id': cfg.get('host_id'),
+        'failover_run_id': switch_run_id,
+        'failover_time': _now(),
+        'reason': reason,
+        'recovery_mode': 'auto' if cfg.get('auto_recover_as_standby') else 'manual',
+        'recovery_status': 'pending_peer_recovery',
+        'recovery_required': True
+    }
+    _write_failover_state(state)
+    _append_cloud_interaction_log('local_failover', 'recorded', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, pending_switch_host_id=peer_id, reason=reason)
+    return state
+
+
+def _maybe_clear_normal_failover_state(cfg, switch_run_id=''):
+    state = _read_failover_state()
+    if not state:
+        return
+    if cfg.get('role') == 'master' and not state.get('pending_switch_required'):
+        _clear_failover_state()
+        return
+    if cfg.get('role') == 'standby' and state.get('recovery_status') == 'recovered':
+        _clear_failover_state()
+
+
+def clear_failover_state():
+    _clear_failover_state()
+    cfg = _config()
+    _state(cfg)
+    _append_cloud_interaction_log('clear_failover_state', 'done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'))
+    return _return(True, '已清除故障恢复状态', _coordination_state_data(cfg))
+
+
+def _notify_recovery_required(cfg, peer_coord, state):
+    now = int(time.time())
+    last_ts = _safe_int(state.get('last_notify_ts'), 0)
+    if last_ts and now - last_ts < 1800:
+        return {'status': True, 'msg': '通知已发送过，跳过重复通知'}
+    title = '主备管理：{0} 待恢复为备机'.format(cfg.get('host_name') or cfg.get('host_id'))
+    msg = '检测到当前主机需要补全为备用机。<br>当前主机：{0} ({1})<br>当前主机ID：{2}<br>对端当前主机：{3}<br>目标角色：备机<br>恢复方式：{4}<br>请进入江湖面板主备管理插件确认处理。'.format(
+        cfg.get('host_name') or '', cfg.get('host_ip') or '', cfg.get('host_id') or '',
+        peer_coord.get('current_master_host_id') or peer_coord.get('host_id') or '',
+        '自动恢复' if cfg.get('auto_recover_as_standby') else '人工确认'
+    )
+    try:
+        ok = mw.notifyMessage(msg=msg, msgtype='html', title=title, stype='主备故障恢复', trigger_time=0)
+        state['last_notify_ts'] = now
+        state['recovery_notified_at'] = _now()
+        _write_failover_state(state)
+        return {'status': bool(ok), 'msg': '通知已发送' if ok else '通知未发送或未配置'}
+    except Exception as e:
+        return {'status': False, 'msg': str(e)}
+
+
+def _read_peer_coordination_state(cfg):
+    ability = _peer_execution_ability(cfg)
+    if ability.get('plugin_ok'):
+        return {'status': True, 'data': ability.get('peer') or {}, 'ability': ability}
+    return {'status': False, 'msg': ability.get('mode_reason') or '无法读取对端协调状态', 'ability': ability}
+
+
+def _is_master_like(cfg):
+    if cfg.get('role') == 'master' or cfg.get('desired_role') == 'master':
+        return True
+    inferred = _infer_role_from_script_state()
+    return inferred == 'master'
+
+
+def _mark_recovery_guard(cfg, peer_coord, reason):
+    state = _read_failover_state()
+    state.update({
+        'mode': 'recovery_guard',
+        'recovery_status': 'recovery_guard',
+        'recovery_required': True,
+        'pending_switch_required': True,
+        'pending_switch_host_id': cfg.get('host_id'),
+        'pending_switch_role': 'standby',
+        'current_master_host_id': peer_coord.get('current_master_host_id') or peer_coord.get('host_id') or '',
+        'coordinator_host_id': peer_coord.get('coordinator_host_id') or peer_coord.get('host_id') or '',
+        'reason': reason,
+        'detected_at': state.get('detected_at') or _now()
+    })
+    _write_failover_state(state)
+    _append_cloud_interaction_log('recovery_guard', 'entered', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), reason=reason, peer_current_master_host_id=state.get('current_master_host_id'))
+    _notify_recovery_required(cfg, peer_coord, state)
+    _state(cfg)
+    report_state()
+    return state
+
+
+def recover_check():
+    cfg = _config()
+    if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
+        _append_cloud_interaction_log('recover_check', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='SSH未绑定或未验证')
+        return _return(True, 'SSH未绑定或未验证，跳过恢复检查', _coordination_state_data(cfg))
+    peer_res = _read_peer_coordination_state(cfg)
+    if not peer_res.get('status'):
+        _append_cloud_interaction_log('recover_check', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=peer_res.get('msg'))
+        return _return(True, '无法确认对端协调状态，保持当前状态: ' + (peer_res.get('msg') or ''), {'peer': peer_res})
+    peer_coord = peer_res.get('data') or {}
+    peer_failover = peer_coord.get('failover') or {}
+    pending_host = peer_failover.get('pending_switch_host_id') or peer_coord.get('pending_switch_host_id') or ''
+    pending_role = peer_failover.get('pending_switch_role') or peer_coord.get('pending_switch_role') or ''
+    peer_mode = peer_failover.get('mode') or peer_coord.get('mode') or ''
+    matched = peer_mode == 'degraded_master' and pending_host == cfg.get('host_id') and pending_role == 'standby'
+    _append_cloud_interaction_log('recover_check', 'checked', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), peer_mode=peer_mode, pending_switch_host_id=pending_host, pending_switch_role=pending_role, local_role=cfg.get('role'), matched=matched)
+    if not matched:
+        return _return(True, '未发现本机待恢复为备机标识', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
+    if not _is_master_like(cfg):
+        return _return(True, '本机已不是主角色，无需执行恢复保护', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
+    state = _mark_recovery_guard(cfg, peer_failover, '本机匹配对端待切换为备机标识')
+    if cfg.get('auto_recover_as_standby'):
+        result = _return_data(recover_as_standby())
+        return _return(bool(result.get('status')), result.get('msg') or '自动恢复处理完成', {'guard': state, 'recover': result})
+    return _return(True, '已进入恢复保护，等待人工确认恢复为备机', {'guard': state})
+
+
+def _recovery_lock():
+    if os.path.exists(RECOVERY_LOCK_PATH):
+        pid = _safe_int(mw.readFile(RECOVERY_LOCK_PATH), 0)
+        if pid and _pid_alive(pid):
+            return False
+        os.remove(RECOVERY_LOCK_PATH)
+    mw.writeFile(RECOVERY_LOCK_PATH, str(os.getpid()))
+    return True
+
+
+def _recovery_unlock():
+    if os.path.exists(RECOVERY_LOCK_PATH):
+        os.remove(RECOVERY_LOCK_PATH)
+
+
+def recover_as_standby():
+    data = _args()
+    cfg = _config()
+    state = _read_failover_state()
+    if not state.get('recovery_required') and not data.get('force'):
+        return _return(False, '当前没有待恢复为备机状态')
+    if not _recovery_lock():
+        return _return(False, '已有恢复为备机任务正在执行')
+    switch_run_id = data.get('switch_run_id') or state.get('recovery_run_id') or 'RECOVER_' + time.strftime('%Y%m%d%H%M%S')
+    try:
+        state['recovery_status'] = 'recovering_standby'
+        state['recovery_run_id'] = switch_run_id
+        _write_failover_state(state)
+        cfg['switch_run_id'] = switch_run_id
+        cfg['switch_status'] = 'offline_running'
+        _save_config(cfg)
+        _append_switch_log(switch_run_id, 'offline', 'start', '开始恢复为备机，执行方式：本机直接执行，来源：主备管理插件恢复检查')
+        _append_cloud_interaction_log('recover_as_standby', 'start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id)
+        options = _switch_options_from_request(cfg, _dict_value(data.get('options')))
+        cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, options, '本机恢复为备机', True, True)
+        state['mode'] = 'recovered'
+        state['recovery_status'] = 'recovered'
+        state['pending_switch_required'] = False
+        state['recovery_required'] = False
+        state['recovered_at'] = _now()
+        _write_failover_state(state)
+        cfg['switch_status'] = 'recovered_standby_done'
+        _save_config(cfg)
+        _append_switch_log(switch_run_id, 'offline', 'success', '恢复为备机完成')
+        _clear_peer_failover_state(cfg, switch_run_id)
+        _append_cloud_interaction_log('recover_as_standby', 'success', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id)
+        report_state()
+        return _return(True, '恢复为备机完成', cfg)
+    except Exception as e:
+        state['recovery_status'] = 'failed'
+        state['recovery_error'] = str(e)
+        _write_failover_state(state)
+        cfg['switch_status'] = 'failed'
+        _save_config(cfg)
+        _append_switch_log(switch_run_id, 'offline', 'failed', '恢复为备机失败: ' + str(e))
+        _append_cloud_interaction_log('recover_as_standby', 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, error=str(e))
+        report_state()
+        return _return(False, '恢复为备机失败: ' + str(e))
+    finally:
+        _recovery_unlock()
 
 
 def collect_peer_logs(cfg, peer_state):
@@ -1760,13 +2149,32 @@ def switch_phase():
             report_switch_event(cfg, phase, 'start', claim_text, switch_run_id=switch_run_id)
         _append_switch_log(switch_run_id, phase, 'running', '收到云监控切换选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
         switch_options = _switch_options_from_request(cfg, request_options)
+        if request_options.get('confirm_failover'):
+            data['confirm_failover'] = True
         _append_switch_log(switch_run_id, phase, 'running', '本次执行选项：sync_files={0}, run_checksum={1}, run_xtrabackup_inc_restore={2}, promote_mysql={3}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('run_xtrabackup_inc_restore')).lower(), str(switch_options.get('promote_mysql')).lower()))
         source_label = '云监控轮询领取' if data.get('orchestrated') else '手工触发'
         execute_method = data.get('execute_method') or 'local'
+        if data.get('orchestrated'):
+            target_role_for_mode = 'master' if (data.get('execute_target_host_id') == cfg.get('host_id') or execute_method == 'local') else 'standby'
+            mode = _switch_execution_mode(cfg, target_role_for_mode)
+            _append_switch_log(switch_run_id, phase, 'running', '云监控任务执行能力检查：mode={0}, allowed={1}, reason={2}'.format(mode.get('mode'), mode.get('allowed'), mode.get('reason') or '--'))
+            if execute_method == 'ssh_peer' and phase == 'offline' and not mode.get('peer_ability', {}).get('reachable') and data.get('confirm_failover'):
+                text = '对端不可达，操作员已确认故障升主，跳过对端下线阶段并继续目标主机正式上线'
+                _append_switch_log(switch_run_id, phase, 'success', text)
+                report_switch_event(cfg, phase, 'success', text, switch_run_id=switch_run_id)
+                ack_switch_phase(cfg, phase, 'success', text)
+                _set_cloud_task_claim(claim_key, {'status': 'done', 'switch_run_id': switch_run_id, 'phase': phase, 'update_time': _now(), 'skipped': True, 'reason': mode.get('reason') or ''})
+                return _return(True, '对端下线阶段已按故障升主确认跳过', cfg)
+            if execute_method == 'ssh_peer' and not mode.get('peer_ability', {}).get('reachable'):
+                raise RuntimeError('对端不可达，无法执行远程阶段: ' + (mode.get('reason') or '未知原因'))
         result_cfg = _run_switch_phase_with_method(cfg, phase, role, switch_run_id, switch_options, execute_method, source_label, True, False)
         if execute_method != 'ssh_peer':
             cfg = result_cfg
         if phase == 'online':
+            if data.get('orchestrated') and data.get('confirm_failover') and execute_method != 'ssh_peer':
+                mode = _switch_execution_mode(cfg, 'master')
+                if mode.get('mode') == 'local_failover':
+                    _record_local_failover_state(cfg, switch_run_id, mode.get('reason') or 'peer_unreachable')
             _report_both_state_after_switch_delay(switch_run_id, 3)
         else:
             _report_state_after_switch_delay(3)
@@ -1790,6 +2198,12 @@ def local_switch():
     data = _args()
     cfg = _config()
     target_role = data.get('target_role') or ('standby' if cfg.get('role') == 'master' else 'master')
+    mode = _switch_execution_mode(cfg, target_role)
+    if not mode.get('allowed'):
+        return _return(False, mode.get('message') or '当前执行模式不允许切换', mode)
+    ok, msg = _require_failover_confirm(data, mode)
+    if not ok:
+        return _return(False, msg, mode)
     if not _lock():
         return _return(False, '已有切换任务正在执行')
     try:
@@ -1802,7 +2216,13 @@ def local_switch():
         cfg['options'].update(switch_options)
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'running', '本次预上线选项：sync_files={0}, run_checksum={1}, promote_mysql={2}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower(), str(switch_options.get('promote_mysql')).lower()))
-        if target_role == 'master':
+        _append_switch_log(switch_run_id, 'switch', 'running', '切换执行模式：{0}，协调主机：{1}，原因：{2}'.format(mode.get('mode'), mode.get('coordinator_host_id') or '--', mode.get('reason') or '--'))
+        if mode.get('mode') == 'local_failover':
+            _append_switch_log(switch_run_id, 'switch', 'start', '对端不可达，执行本机故障升主；已跳过对端下线阶段')
+            cfg = _run_switch_phase_with_method(cfg, 'prepare_online', 'master', switch_run_id, switch_options, 'local')
+            cfg = _run_switch_phase_with_method(cfg, 'online', 'master', switch_run_id, switch_options, 'local')
+            _record_local_failover_state(cfg, switch_run_id, mode.get('reason') or 'peer_unreachable')
+        elif target_role == 'master':
             _append_switch_log(switch_run_id, 'switch', 'start', '切换主备开始：先在目标主机（本机）执行预上线，再在目标备用机（对端）执行下线，最后在目标主机（本机）执行正式上线')
             cfg = _run_switch_phase_with_method(cfg, 'prepare_online', 'master', switch_run_id, switch_options, 'local')
             _run_switch_phase_with_method(cfg, 'offline', 'standby', switch_run_id, switch_options, 'ssh_peer')
@@ -1817,6 +2237,7 @@ def local_switch():
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'success', '切换主备完成')
         _state(cfg)
+        _report_both_state_after_switch_delay(switch_run_id, 3) if mode.get('mode') == 'full_switch' else _report_state_after_switch_delay(3)
         report_switch_event(cfg, 'switch', 'success', '切换主备完成')
         return _return(True, '切换执行完成', cfg)
     except Exception as e:
@@ -1835,6 +2256,12 @@ def prepare_switch():
     data = _args()
     cfg = _config()
     target_role = data.get('target_role') or ('standby' if cfg.get('role') == 'master' else 'master')
+    mode = _switch_execution_mode(cfg, target_role)
+    if not mode.get('allowed'):
+        return _return(False, mode.get('message') or '当前执行模式不允许切换', mode)
+    ok, msg = _require_failover_confirm(data, mode)
+    if not ok:
+        return _return(False, msg, mode)
     if not _lock():
         return _return(False, '已有切换任务正在执行')
     try:
@@ -1847,6 +2274,7 @@ def prepare_switch():
         switch_options = _switch_options_from_request(cfg, request_options)
         cfg['options'].update(switch_options)
         _save_config(cfg)
+        _append_switch_log(switch_run_id, 'switch', 'running', '预上线执行模式：{0}，协调主机：{1}，原因：{2}'.format(mode.get('mode'), mode.get('coordinator_host_id') or '--', mode.get('reason') or '--'))
         _append_switch_log(switch_run_id, 'switch', 'start', '预备上线开始：在切换后的目标主机执行预上线')
         _append_switch_log(switch_run_id, 'switch', 'running', '本次预上线选项：sync_files={0}, run_checksum={1}'.format(str(switch_options.get('sync_files')).lower(), str(switch_options.get('run_checksum')).lower()))
         if target_role == 'master':
@@ -1873,6 +2301,12 @@ def finalize_switch():
     data = _args()
     cfg = _config()
     target_role = data.get('target_role') or ('standby' if cfg.get('role') == 'master' else 'master')
+    mode = _switch_execution_mode(cfg, target_role)
+    if not mode.get('allowed'):
+        return _return(False, mode.get('message') or '当前执行模式不允许切换', mode)
+    ok, msg = _require_failover_confirm(data, mode)
+    if not ok:
+        return _return(False, msg, mode)
     if not _lock():
         return _return(False, '已有切换任务正在执行')
     try:
@@ -1885,8 +2319,13 @@ def finalize_switch():
         cfg['options'].update(switch_options)
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'running', '收到正式上线选项：' + json.dumps(request_options, ensure_ascii=False, sort_keys=True))
+        _append_switch_log(switch_run_id, 'switch', 'running', '正式上线执行模式：{0}，协调主机：{1}，原因：{2}'.format(mode.get('mode'), mode.get('coordinator_host_id') or '--', mode.get('reason') or '--'))
         _append_switch_log(switch_run_id, 'switch', 'start', '正式上线开始：不执行预上线，只执行目标备用机下线和目标主机正式上线')
-        if target_role == 'master':
+        if mode.get('mode') == 'local_failover':
+            _append_switch_log(switch_run_id, 'switch', 'start', '对端不可达，跳过对端下线阶段，仅执行本机正式上线并进入降级运行')
+            cfg = _run_switch_phase_with_method(cfg, 'online', 'master', switch_run_id, switch_options, 'local')
+            _record_local_failover_state(cfg, switch_run_id, mode.get('reason') or 'peer_unreachable')
+        elif target_role == 'master':
             _run_switch_phase_with_method(cfg, 'offline', 'standby', switch_run_id, switch_options, 'ssh_peer')
             cfg = _run_switch_phase_with_method(cfg, 'online', 'master', switch_run_id, switch_options, 'local')
         else:
@@ -1897,6 +2336,7 @@ def finalize_switch():
         _save_config(cfg)
         _append_switch_log(switch_run_id, 'switch', 'success', '正式上线完成，切换主备完成')
         _state(cfg)
+        _report_both_state_after_switch_delay(switch_run_id, 3) if mode.get('mode') == 'full_switch' else _report_state_after_switch_delay(3)
         report_switch_event(cfg, 'switch', 'success', '正式上线完成，切换主备完成')
         return _return(True, '正式上线完成', cfg)
     except Exception as e:
@@ -1967,6 +2407,16 @@ if __name__ == '__main__':
         print(get_state())
     elif func == 'get_local_state':
         print(get_local_state())
+    elif func == 'get_coordination_state':
+        print(get_coordination_state())
+    elif func == 'check_switch_execution_mode':
+        print(check_switch_execution_mode())
+    elif func == 'recover_check':
+        print(recover_check())
+    elif func == 'recover_as_standby':
+        print(recover_as_standby())
+    elif func == 'clear_failover_state':
+        print(clear_failover_state())
     elif func == 'regenerate_host_id':
         print(regenerate_host_id())
     elif func == 'title_state':

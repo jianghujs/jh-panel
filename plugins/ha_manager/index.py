@@ -2259,9 +2259,6 @@ def prepare_switch():
     mode = _switch_execution_mode(cfg, target_role)
     if not mode.get('allowed'):
         return _return(False, mode.get('message') or '当前执行模式不允许切换', mode)
-    ok, msg = _require_failover_confirm(data, mode)
-    if not ok:
-        return _return(False, msg, mode)
     if not _lock():
         return _return(False, '已有切换任务正在执行')
     try:

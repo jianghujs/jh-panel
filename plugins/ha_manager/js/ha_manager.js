@@ -543,12 +543,9 @@ function msWizardGoOptions() {
     if (!mode) return;
     msSwitchWizard.executionMode = mode;
     if (mode.mode === 'local_failover') {
-      layer.confirm(msHtml(mode.message || '对端不可达，本次将执行本机故障升主。') + '<br><span class="c7">原因：' + msHtml(mode.reason || '--') + '</span>', {icon: 3, title: '确认故障升主', btn: ['确认继续', '取消']}, function(index) {
-        layer.close(index);
-        msSwitchWizard.confirmFailover = true;
-        msSwitchWizard.step = 2;
-        msRenderSwitchWizard(root);
-      });
+      msSwitchWizard.confirmFailover = false;
+      msSwitchWizard.step = 2;
+      msRenderSwitchWizard(root);
       return;
     }
     msSwitchWizard.confirmFailover = false;
@@ -886,6 +883,14 @@ function msStartFinalizeFromCurrentSwitchDialog() {
     }
     msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
   };
+  if (msSwitchWizard.executionMode && msSwitchWizard.executionMode.mode === 'local_failover') {
+    layer.confirm(msHtml(msSwitchWizard.executionMode.message || '对端不可达，本次将执行本机故障升主。') + '<br><span class="c7">原因：' + msHtml(msSwitchWizard.executionMode.reason || '--') + '</span>', {icon: 3, title: '确认故障升主', btn: ['确认执行', '取消']}, function(index) {
+      layer.close(index);
+      msSwitchWizard.confirmFailover = true;
+      runFinalize();
+    });
+    return;
+  }
   if (targetRole === 'standby') {
     msConfirmPeerTakeover(runFinalize);
     return;

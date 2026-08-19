@@ -1523,6 +1523,10 @@ def recover_check():
     if not matched:
         return _return(True, '未发现本机待恢复为备机标识', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
     if not _is_master_like(cfg):
+        if local_failover:
+            _clear_failover_state()
+            _append_cloud_interaction_log('recover_check', 'cleared', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='本机已不是主角色，清理本机故障恢复状态')
+            report_state()
         return _return(True, '本机已不是主角色，无需执行恢复保护', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
     state = _mark_recovery_guard(cfg, peer_failover, '本机匹配对端待切换为备机标识或双降级状态下对端故障升主时间更新')
     guard_run_id = state.get('recovery_run_id') or state.get('failover_run_id') or cfg.get('switch_run_id') or 'RECOVERY_GUARD'
@@ -2253,11 +2257,11 @@ def switch_phase():
         if execute_method != 'ssh_peer':
             cfg = result_cfg
         if phase == 'online':
-            if data.get('orchestrated') and data.get('confirm_failover') and execute_method != 'ssh_peer':
+            if data.get('orchestrated') and data.get('confirm_failover') and execute_method != 'ssh_peer' and mode.get('mode') == 'local_failover':
                 mode = _switch_execution_mode(cfg, 'master')
                 if mode.get('mode') == 'local_failover':
                     _record_local_failover_state(cfg, switch_run_id, mode.get('reason') or 'peer_unreachable')
-            elif not data.get('confirm_failover'):
+            elif not data.get('confirm_failover') or mode.get('mode') == 'full_switch':
                 _clear_failover_after_full_switch(cfg, switch_run_id)
             _report_both_state_after_switch_delay(switch_run_id, 3)
         else:

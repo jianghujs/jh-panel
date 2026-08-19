@@ -24,6 +24,17 @@
 .ms-pill-warn{color:#9a6200;background:#fff7e6;border-color:#f1d399;}
 .ms-pill-danger{color:#b02a25;background:#fff1f0;border-color:#f0c6c4;}
 .ms-pill-info{color:#245580;background:#eef7ff;border-color:#b8d7ef;}
+.ms-failover-box{padding:0;max-width:620px;}
+.ms-failover-warning,.ms-failover-danger{background:transparent;}
+.ms-failover-line{min-height:24px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.ms-failover-line+.ms-failover-line{margin-top:6px;padding-top:6px;border-top:1px dashed #edf0f4;}
+.ms-failover-status{display:flex;align-items:center;min-width:0;gap:8px;}
+.ms-failover-desc{color:#555;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ms-failover-action{flex:0 0 auto;}
+.ms-failover-setting{justify-content:flex-start;}
+.ms-failover-toggle{display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:normal;color:#333;line-height:20px;}
+.ms-failover-toggle input{margin:0;}
+.ms-failover-note{color:#888;font-size:12px;line-height:20px;}
 .ms-host-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
 .ms-host{border:1px solid #e9edf2;background:#fbfcfd;border-radius:4px;padding:12px;min-height:112px;}
 .ms-host.master{border-color:#bfe4bf;background:#f9fff9;}
@@ -135,7 +146,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=202608191610', function(){
+$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=202608191850', function(){
   msLoadState(function(){
     msOverview();
   });

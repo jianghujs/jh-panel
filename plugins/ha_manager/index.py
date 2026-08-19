@@ -976,8 +976,6 @@ def save_monitor():
     for key in ('pair_name', 'monitor_url', 'poll_interval', 'report_interval'):
         if key in data:
             cfg[key] = data.get(key)
-    if 'auto_recover_as_standby' in data:
-        cfg['auto_recover_as_standby'] = str(data.get('auto_recover_as_standby')).lower() in ('1', 'true', 'yes', 'on')
     cfg['monitor_disabled'] = False if cfg.get('monitor_url') else True
     cfg['poll_interval'] = int(cfg.get('poll_interval') or 10)
     cfg['report_interval'] = int(cfg.get('report_interval') or 30)
@@ -1067,6 +1065,15 @@ def _register_monitor(cfg):
         cfg['last_report_at'] = _now()
         _save_config(cfg)
     return _return(bool(res.get('status')), res.get('msg') or '注册完成', cfg)
+
+
+def save_auto_recover():
+    data = _args()
+    cfg = _config()
+    cfg['auto_recover_as_standby'] = str(data.get('auto_recover_as_standby')).lower() in ('1', 'true', 'yes', 'on')
+    _save_config(cfg)
+    _append_cloud_interaction_log('save_auto_recover', 'done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), auto_recover_as_standby=cfg.get('auto_recover_as_standby'))
+    return _return(True, '自动故障恢复配置已保存', cfg)
 
 
 def report_state():
@@ -2494,6 +2501,8 @@ if __name__ == '__main__':
         print(test_peer_ssh())
     elif func == 'save_monitor':
         print(save_monitor())
+    elif func == 'save_auto_recover':
+        print(save_auto_recover())
     elif func == 'clear_monitor':
         print(clear_monitor())
     elif func == 'report_state':

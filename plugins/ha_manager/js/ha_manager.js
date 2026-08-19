@@ -246,13 +246,24 @@ function msOverview() {
   var loading = '<span class="ms-loading-state" title="' + msHtml(switchingTip) + '"><span class="ms-loading-icon"></span>切换中</span>';
   var roleCell = '<span title="' + msHtml(roleTitle) + '">' + msRoleMark(msState.role) + '</span>' + (isSwitching ? ' ' + loading : '');
   var failover = (msState.state && msState.state.failover) || (msState.health && msState.health.ha_failover) || {};
-  var failoverRows = '';
+  var failoverTone = 'normal';
+  var failoverTitle = '正常';
+  var failoverDesc = '未检测到待恢复状态';
   if (failover.mode === 'degraded_master' || failover.pending_switch_required) {
-    failoverRows += '<tr><th>故障恢复</th><td>' + msPill('warning', '降级运行') + ' <span class="c7">待切换主机: ' + msHtml(failover.pending_switch_host_id || '--') + '，目标角色: ' + msHtml(failover.pending_switch_role || '--') + '</span></td></tr>';
+    failoverTone = 'warning';
+    failoverTitle = '降级运行';
+    failoverDesc = '待切换主机: ' + (failover.pending_switch_host_name || failover.pending_switch_host_id || '--') + '，目标角色: ' + (failover.pending_switch_role || '--');
   }
   if (failover.recovery_status === 'recovery_guard') {
-    failoverRows += '<tr><th>恢复保护</th><td>' + msPill('warning', '待恢复为备机') + ' <button class="btn btn-default btn-xs ml10" onclick="msRecoverAsStandby()">恢复为备机</button></td></tr>';
+    failoverTone = 'warning';
+    failoverTitle = '待恢复为备机';
+    failoverDesc = '当前主机处于恢复保护，需要确认后执行备机化流程';
   }
+  var recoverButton = failover.recovery_status === 'recovery_guard' ? '<button class="btn btn-default btn-xs ms-failover-action" onclick="msRecoverAsStandby()">恢复为备机</button>' : '';
+  var failoverCell = '<div class="ms-failover-box ms-failover-' + failoverTone + '">' +
+    '<div class="ms-failover-line"><div class="ms-failover-status">' + msPill(failoverTone, failoverTitle) + '<span class="ms-failover-desc">' + msHtml(failoverDesc) + '</span></div>' + recoverButton + '</div>' +
+    '<div class="ms-failover-line ms-failover-setting"><label class="ms-failover-toggle"><input type="checkbox" id="msAutoRecoverSwitch" onchange="msSaveAutoRecover(this.checked)" ' + (msState.auto_recover_as_standby ? 'checked' : '') + '> <span>自动恢复为备机</span></label><span class="ms-failover-note">关闭时只进入恢复保护并通知</span></div>' +
+  '</div>';
   var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msPollMonitor()">立即拉取云监控任务</button><button class="btn btn-default btn-sm" onclick="msReportState()">立即上报到云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
     '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(pluginStatus, pluginStatusText) + '</div><div class="ms-panel-body">' +
       '<table class="table table-hover ms-overview-table"><tbody>' +
@@ -261,7 +272,7 @@ function msOverview() {
         '<tr><th>本机标识</th><td><code>' + msHtml(msState.host_id || '--') + '</code> <span class="c7">' + msHtml(msState.host_ip || '') + '</span> <a class="btlink ml10" href="javascript:;" onclick="msRegenerateHostId()">重新生成</a></td></tr>' +
         '<tr><th>对端绑定</th><td>' + (bindConfigured ? msPill('normal', '已绑定') + ' <span class="c7">' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</span>' : msPill('warning', '未验证') + ' <a class="btlink" href="javascript:;" onclick="msConfigPanel()">去绑定</a>') + '</td></tr>' +
         '<tr><th>云监控</th><td>' + (monitorConfigured ? msPill('normal', '已开启') + ' <span class="c7">最近上报: ' + msHtml(msState.last_report_at) + '</span>' : msPill('warning', '未配置') + ' <a class="btlink" href="javascript:;" onclick="msMonitorPanel()">去配置</a>') + '</td></tr>' +
-        failoverRows +
+        '<tr><th>故障恢复</th><td>' + failoverCell + '</td></tr>' +
       '</tbody></table>' +
     '</div></div>';
   $('.soft-man-con').html(html);
@@ -280,6 +291,18 @@ function msRegenerateHostId() {
         msOverview();
       });
     });
+  });
+}
+
+function msSaveAutoRecover(checked) {
+  var oldValue = !!msState.auto_recover_as_standby;
+  msPost('save_auto_recover', {auto_recover_as_standby: checked}, function(data, res) {
+    if (!data) {
+      $('#msAutoRecoverSwitch').prop('checked', oldValue);
+      return;
+    }
+    msState = $.extend(true, msState, data);
+    layer.msg(msState.auto_recover_as_standby ? '已开启自动故障恢复' : '已关闭自动故障恢复', {icon: 1});
   });
 }
 
@@ -334,7 +357,6 @@ function msMonitorPanel() {
     msInput('主备关系名称', 'pair_name', msState.pair_name, 'width:260px') +
     msInput('云监控地址', 'monitor_url', msState.monitor_url, 'width:420px') +
     '<div class="line"><span class="tname">轮询/上报</span><div class="info-r c4"><input class="bt-input-text" type="number" name="poll_interval" value="' + msHtml(msState.poll_interval) + '" style="width:80px" /> 秒轮询 <input class="bt-input-text ml10" type="number" name="report_interval" value="' + msHtml(msState.report_interval) + '" style="width:80px" /> 秒上报</div></div>' +
-    '<div class="line"><span class="tname">故障恢复</span><div class="info-r c4"><label><input type="checkbox" name="auto_recover_as_standby" ' + (msState.auto_recover_as_standby ? 'checked' : '') + '> 自动恢复为备机</label> <span class="c7 ml10">关闭时只进入恢复保护并发送通知。</span></div></div>' +
     '<div class="line"><span class="tname">状态</span><div class="info-r c4">' + (configured ? '已配置云监控地址，将按主备关系名称注册并周期上传状态。' : '未配置云监控地址，不上传状态。') + '</div></div>' +
     '<div class="line"><span class="tname"></span><div class="info-r"><button type="button" class="btn btn-default btn-sm" onclick="msTestMonitor()">测试云监控</button><button type="button" class="btn btn-success btn-sm ml5" onclick="msSaveMonitor()">保存并注册</button><button type="button" class="btn btn-warning btn-sm ml5" onclick="msClearMonitor()">清空地址</button></div></div>' +
     '</form></div></div>';
@@ -416,7 +438,6 @@ function msReadMonitorForm() {
   $('#msMonitorForm').serializeArray().forEach(function(item) {
     data[item.name] = item.value;
   });
-  data.auto_recover_as_standby = $('#msMonitorForm').find('[name="auto_recover_as_standby"]').prop('checked') === true;
   return data;
 }
 

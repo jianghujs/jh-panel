@@ -1335,8 +1335,11 @@ def _record_local_failover_state(cfg, switch_run_id, reason='peer_unreachable'):
         'current_master_host_id': cfg.get('host_id'),
         'pending_switch_required': True,
         'pending_switch_host_id': peer_id,
+        'pending_switch_host_ip': cfg.get('peer_public_ip') or '',
+        'pending_switch_host_name': cfg.get('peer_host_name') or ('对端 ' + str(cfg.get('peer_public_ip') or '')),
         'pending_switch_role': 'standby',
         'unreachable_host_id': peer_id,
+        'unreachable_host_ip': cfg.get('peer_public_ip') or '',
         'coordinator_host_id': cfg.get('host_id'),
         'failover_run_id': switch_run_id,
         'failover_time': _now(),
@@ -1348,6 +1351,52 @@ def _record_local_failover_state(cfg, switch_run_id, reason='peer_unreachable'):
     _write_failover_state(state)
     _append_cloud_interaction_log('local_failover', 'recorded', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, pending_switch_host_id=peer_id, reason=reason)
     return state
+
+
+def _repair_failover_peer_identity(cfg, peer_coord=None):
+    state = _read_failover_state()
+    if not state:
+        return state
+    peer_coord = peer_coord or {}
+    changed = False
+    peer_host_id = str(peer_coord.get('host_id') or '').strip()
+    peer_host_ip = str(peer_coord.get('host_ip') or cfg.get('peer_public_ip') or '').strip()
+    if peer_host_id and state.get('pending_switch_host_id') != peer_host_id and (str(state.get('pending_switch_host_id') or '').startswith('H_PEER_') or state.get('pending_switch_host_ip') == peer_host_ip):
+        state['pending_switch_host_id'] = peer_host_id
+        state['unreachable_host_id'] = peer_host_id
+        changed = True
+    if peer_host_ip and state.get('pending_switch_host_ip') != peer_host_ip:
+        state['pending_switch_host_ip'] = peer_host_ip
+        state['unreachable_host_ip'] = peer_host_ip
+        changed = True
+    if peer_coord.get('host_name') and state.get('pending_switch_host_name') != peer_coord.get('host_name'):
+        state['pending_switch_host_name'] = peer_coord.get('host_name')
+        changed = True
+    if changed:
+        _write_failover_state(state)
+        _append_cloud_interaction_log('repair_failover_peer_identity', 'done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), pending_switch_host_id=state.get('pending_switch_host_id'), pending_switch_host_ip=state.get('pending_switch_host_ip'))
+    return state
+
+
+def _parse_time_ts(text):
+    try:
+        return int(time.mktime(time.strptime(str(text or ''), '%Y-%m-%d %H:%M:%S')))
+    except Exception:
+        return 0
+
+
+def _pending_matches_local(cfg, pending_host_id, pending_host_ip):
+    local_id = str(cfg.get('host_id') or '').strip()
+    local_ip = str(cfg.get('host_ip') or mw.getHostAddr() or '').strip()
+    pending_host_id = str(pending_host_id or '').strip()
+    pending_host_ip = str(pending_host_ip or '').strip()
+    if pending_host_id and pending_host_id == local_id:
+        return True
+    if pending_host_ip and pending_host_ip == local_ip:
+        return True
+    if pending_host_id.startswith('H_PEER_') and cfg.get('peer_host_id') == pending_host_id:
+        return True
+    return False
 
 
 def _maybe_clear_normal_failover_state(cfg, switch_run_id=''):
@@ -1412,6 +1461,8 @@ def _mark_recovery_guard(cfg, peer_coord, reason):
         'recovery_required': True,
         'pending_switch_required': True,
         'pending_switch_host_id': cfg.get('host_id'),
+        'pending_switch_host_ip': cfg.get('host_ip') or mw.getHostAddr() or '',
+        'pending_switch_host_name': cfg.get('host_name') or '',
         'pending_switch_role': 'standby',
         'current_master_host_id': peer_coord.get('current_master_host_id') or peer_coord.get('host_id') or '',
         'coordinator_host_id': peer_coord.get('coordinator_host_id') or peer_coord.get('host_id') or '',
@@ -1437,19 +1488,30 @@ def recover_check():
         return _return(True, '无法确认对端协调状态，保持当前状态: ' + (peer_res.get('msg') or ''), {'peer': peer_res})
     peer_coord = peer_res.get('data') or {}
     peer_failover = peer_coord.get('failover') or {}
+    local_failover = _repair_failover_peer_identity(cfg, peer_coord)
     pending_host = peer_failover.get('pending_switch_host_id') or peer_coord.get('pending_switch_host_id') or ''
+    pending_ip = peer_failover.get('pending_switch_host_ip') or peer_coord.get('pending_switch_host_ip') or ''
     pending_role = peer_failover.get('pending_switch_role') or peer_coord.get('pending_switch_role') or ''
     peer_mode = peer_failover.get('mode') or peer_coord.get('mode') or ''
-    matched = peer_mode == 'degraded_master' and pending_host == cfg.get('host_id') and pending_role == 'standby'
-    _append_cloud_interaction_log('recover_check', 'checked', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), peer_mode=peer_mode, pending_switch_host_id=pending_host, pending_switch_role=pending_role, local_role=cfg.get('role'), matched=matched)
+    matched = peer_mode == 'degraded_master' and pending_role == 'standby' and _pending_matches_local(cfg, pending_host, pending_ip)
+    local_mode = local_failover.get('mode') or ''
+    if not matched and peer_mode == 'degraded_master' and local_mode == 'degraded_master' and pending_role == 'standby':
+        peer_ts = _parse_time_ts(peer_failover.get('failover_time') or peer_failover.get('update_time'))
+        local_ts = _parse_time_ts(local_failover.get('failover_time') or local_failover.get('update_time'))
+        matched = bool(peer_ts and local_ts and peer_ts > local_ts)
+    _append_cloud_interaction_log('recover_check', 'checked', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), peer_mode=peer_mode, local_mode=local_mode, pending_switch_host_id=pending_host, pending_switch_host_ip=pending_ip, pending_switch_role=pending_role, local_role=cfg.get('role'), matched=matched)
     if not matched:
         return _return(True, '未发现本机待恢复为备机标识', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
     if not _is_master_like(cfg):
         return _return(True, '本机已不是主角色，无需执行恢复保护', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
-    state = _mark_recovery_guard(cfg, peer_failover, '本机匹配对端待切换为备机标识')
+    state = _mark_recovery_guard(cfg, peer_failover, '本机匹配对端待切换为备机标识或双降级状态下对端故障升主时间更新')
+    guard_run_id = state.get('recovery_run_id') or state.get('failover_run_id') or cfg.get('switch_run_id') or 'RECOVERY_GUARD'
+    _append_switch_log(guard_run_id, 'recovery_guard', 'running', '检测到旧主恢复后需要补全为备机，当前进入恢复保护')
     if cfg.get('auto_recover_as_standby'):
+        _append_switch_log(guard_run_id, 'recovery_guard', 'running', '自动恢复为备机已开启，准备执行 recover_as_standby')
         result = _return_data(recover_as_standby())
         return _return(bool(result.get('status')), result.get('msg') or '自动恢复处理完成', {'guard': state, 'recover': result})
+    _append_switch_log(guard_run_id, 'recovery_guard', 'running', '自动恢复为备机未开启，不自动执行备机化脚本；请在插件总览页点击“恢复为备机”人工确认执行')
     return _return(True, '已进入恢复保护，等待人工确认恢复为备机', {'guard': state})
 
 

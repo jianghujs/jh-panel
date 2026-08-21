@@ -21,6 +21,14 @@ var msState = {
   switch_run_id: '',
   switch_status: 'idle',
   auto_recover_as_standby: true,
+  alert_enabled: true,
+  primary_notifier_host_id: '',
+  alert_takeover_fail_count: 3,
+  alert_takeover_recover_count: 2,
+  alert_recovery_notify: true,
+  alert_key_health_check_enabled: false,
+  alert_state: {status: 'normal', active_keys: [], alerts: {}, events: []},
+  alert_notifier_state: {takeover_active: false},
   health_status: 'normal',
   health_text: '正常',
   log_path: '',
@@ -273,6 +281,7 @@ function msOverview() {
         '<tr><th>对端绑定</th><td>' + (bindConfigured ? msPill('normal', '已绑定') + ' <span class="c7">' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</span>' : msPill('warning', '未验证') + ' <a class="btlink" href="javascript:;" onclick="msConfigPanel()">去绑定</a>') + '</td></tr>' +
         '<tr><th>云监控</th><td>' + (monitorConfigured ? msPill('normal', '已开启') + ' <span class="c7">最近上报: ' + msHtml(msState.last_report_at) + '</span>' : msPill('warning', '未配置') + ' <a class="btlink" href="javascript:;" onclick="msMonitorPanel()">去配置</a>') + '</td></tr>' +
         '<tr><th>故障恢复</th><td>' + failoverCell + '</td></tr>' +
+        '<tr><th>异常通知</th><td>' + msAlertSummaryHtml() + '</td></tr>' +
       '</tbody></table>' +
     '</div></div>';
   $('.soft-man-con').html(html);
@@ -303,6 +312,73 @@ function msSaveAutoRecover(checked) {
     }
     msState = $.extend(true, msState, data);
     layer.msg(msState.auto_recover_as_standby ? '已开启自动故障恢复' : '已关闭自动故障恢复', {icon: 1});
+  });
+}
+
+function msAlertSummaryHtml() {
+  var alertState = msState.alert_state || {};
+  var alerts = alertState.alerts || {};
+  var keys = alertState.active_keys || Object.keys(alerts);
+  var tone = keys.length ? 'warning' : 'normal';
+  var primary = msState.primary_notifier_host_id || msState.host_id || '';
+  var primaryText = primary === msState.host_id ? '本机' : primary === msState.peer_host_id ? '对端' : (primary || '--');
+  var isPrimary = primary === msState.host_id;
+  var lines = [];
+  keys.slice(0, 3).forEach(function(key) {
+    var item = alerts[key] || {};
+    lines.push(item.message || key);
+  });
+  var recentEvents = alertState.events || [];
+  var recent = recentEvents.length ? recentEvents[recentEvents.length - 1] : null;
+  return '<div class="ms-alert-box">' +
+    '<div class="ms-alert-line"><div>' + msPill(tone, keys.length ? '存在异常' : '正常') + '<span class="ms-failover-desc">主通知方: ' + msHtml(primaryText) + (isPrimary ? '，本机负责通知' : '，本机备用') + '</span></div>' +
+      '<button class="btn btn-default btn-xs" onclick="msRunAlertCheck()">立即检测</button></div>' +
+    '<div class="ms-alert-line ms-failover-setting">' +
+      '<label class="ms-failover-toggle"><input type="checkbox" onchange="msSaveAlertConfig({alert_enabled:this.checked})" ' + (msState.alert_enabled ? 'checked' : '') + '> <span>启用通知</span></label>' +
+    '</div>' +
+    '<div class="ms-alert-line ms-failover-setting"><label class="ms-failover-toggle"><input type="checkbox" onchange="msSavePrimaryNotifier(this.checked)" ' + (isPrimary ? 'checked' : '') + '> <span>本机作为主通知方</span></label></div>' +
+    (lines.length ? '<div class="ms-alert-detail">' + lines.map(msHtml).join('<br>') + '</div>' : '') +
+    (recent ? '<div class="ms-alert-detail c7">最近记录: ' + msHtml(recent.type || '') + ' / ' + msHtml(recent.status || '') + ' / ' + msHtml(recent.addtime || '') + '</div>' : '') +
+  '</div>';
+}
+
+function msSavePrimaryNotifier(checked) {
+  var oldPrimary = msState.primary_notifier_host_id || msState.host_id || '';
+  var nextPrimary = checked ? msState.host_id : msState.peer_host_id;
+  if (!nextPrimary) {
+    layer.msg('未获取到对端 host_id，请先完成对端绑定和状态采集', {icon: 2});
+    msOverview();
+    return;
+  }
+  msSaveAlertConfig({primary_notifier_host_id: nextPrimary}, function(ok) {
+    if (!ok) {
+      msState.primary_notifier_host_id = oldPrimary;
+      msOverview();
+    }
+  });
+}
+
+function msSaveAlertConfig(patch, callback) {
+  var data = $.extend({}, patch || {});
+  msPost('save_alert_config', data, function(resp) {
+    if (!resp) {
+      if (callback) callback(false);
+      return;
+    }
+    msState = $.extend(true, msState, resp);
+    layer.msg('异常通知配置已保存', {icon: 1});
+    msOverview();
+    if (callback) callback(true);
+  });
+}
+
+function msRunAlertCheck() {
+  msPost('alert_check', {}, function(resp, res) {
+    if (resp && resp.alert_state) msState.alert_state = resp.alert_state;
+    msLoadState(function() {
+      layer.msg((res && res.msg) || '异常通知检测完成', {icon: 1});
+      msOverview();
+    });
   });
 }
 

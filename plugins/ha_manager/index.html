@@ -35,6 +35,10 @@
 .ms-failover-toggle{display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:normal;color:#333;line-height:20px;}
 .ms-failover-toggle input{margin:0;}
 .ms-failover-note{color:#888;font-size:12px;line-height:20px;}
+.ms-alert-box{max-width:660px;}
+.ms-alert-line{min-height:24px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.ms-alert-line+.ms-alert-line{margin-top:6px;padding-top:6px;border-top:1px dashed #edf0f4;}
+.ms-alert-detail{margin-top:6px;color:#555;line-height:20px;}
 .ms-host-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
 .ms-host{border:1px solid #e9edf2;background:#fbfcfd;border-radius:4px;padding:12px;min-height:112px;}
 .ms-host.master{border-color:#bfe4bf;background:#f9fff9;}
@@ -146,7 +150,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=202608191910', function(){
+$.getScript('/plugins/file?name=ha_manager&f=js/ha_manager.js&v=202608201510', function(){
   msLoadState(function(){
     msOverview();
   });

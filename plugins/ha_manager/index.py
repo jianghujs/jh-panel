@@ -38,10 +38,16 @@ QUEUE_PATH = os.path.join(DATA_DIR, 'report_queue.json')
 SEQ_PATH = os.path.join(DATA_DIR, 'seq.json')
 LOCK_PATH = os.path.join(DATA_DIR, 'switch.lock')
 FAILOVER_STATE_PATH = os.path.join(DATA_DIR, 'failover_state.json')
+ALERT_STATE_PATH = os.path.join(DATA_DIR, 'alert_state.json')
+ALERT_NOTIFIER_STATE_PATH = os.path.join(DATA_DIR, 'alert_notifier_state.json')
 RECOVERY_LOCK_PATH = os.path.join(DATA_DIR, 'recovery.lock')
 CLOUD_TASK_CLAIMS_PATH = os.path.join(DATA_DIR, 'cloud_task_claims.json')
 CLOUD_TASK_LAUNCHER_LOG_PATH = os.path.join(LOG_DIR, 'cloud_task_launcher.log')
 CLOUD_INTERACTION_LOG_PATH = os.path.join(SERVER_LOG_DIR, 'ha_manager_cloud.log')
+ALERT_CHECK_LOG_PATH = os.path.join(LOG_DIR, 'alert_check.log')
+POLL_MONITOR_LOG_PATH = os.path.join(LOG_DIR, 'poll_monitor.log')
+REPORT_STATE_LOG_PATH = os.path.join(LOG_DIR, 'report_state.log')
+RECOVER_CHECK_LOG_PATH = os.path.join(LOG_DIR, 'recover_check.log')
 DRY_RUN = os.environ.get('HA_MANAGER_SWITCH_DRY_RUN') == '1'
 SSH_PRIVATE_KEY_PATH = '/root/.ssh/id_rsa'
 SSH_PUBLIC_KEY_PATH = '/root/.ssh/id_rsa.pub'
@@ -168,6 +174,14 @@ def _coordination_state_data(cfg=None):
         'pending_switch_host_id': switch_state.get('pending_switch_host_id') or '',
         'pending_switch_role': switch_state.get('pending_switch_role') or '',
         'recovery_status': switch_state.get('recovery_status') or '',
+        'alert_config': {
+            'alert_enabled': cfg.get('alert_enabled'),
+            'primary_notifier_host_id': cfg.get('primary_notifier_host_id'),
+            'alert_takeover_fail_count': cfg.get('alert_takeover_fail_count'),
+            'alert_takeover_recover_count': cfg.get('alert_takeover_recover_count'),
+            'alert_recovery_notify': cfg.get('alert_recovery_notify'),
+            'alert_key_health_check_enabled': cfg.get('alert_key_health_check_enabled')
+        },
         'updated_at': _now()
     }
     return data
@@ -363,6 +377,24 @@ def _report_peer_host_id(cfg, peer):
     return peer_id or cfg.get('peer_host_id') or _peer_host_id(peer_ip)
 
 
+def _default_primary_notifier_host_id(cfg, peer=None):
+    peer = peer or {}
+    if cfg.get('role') == 'master':
+        return cfg.get('host_id') or ''
+    peer_id = _report_peer_host_id(cfg, peer) if peer else cfg.get('peer_host_id')
+    if peer_id and (peer.get('role') == 'master' or cfg.get('role') == 'standby'):
+        return peer_id
+    return cfg.get('host_id') or peer_id or ''
+
+
+def _alert_config_keys():
+    return ('alert_enabled', 'primary_notifier_host_id', 'alert_takeover_fail_count', 'alert_takeover_recover_count', 'alert_recovery_notify', 'alert_key_health_check_enabled')
+
+
+def _alert_config_payload(cfg):
+    return dict([(key, cfg.get(key)) for key in _alert_config_keys()])
+
+
 def _peer_report_host(cfg, peer=None, report_time=None):
     peer = peer or {}
     has_peer_state = bool(peer)
@@ -449,6 +481,12 @@ def _default_config():
         'switch_status': 'idle',
         'log_path': '',
         'auto_recover_as_standby': True,
+        'alert_enabled': True,
+        'primary_notifier_host_id': '',
+        'alert_takeover_fail_count': 3,
+        'alert_takeover_recover_count': 2,
+        'alert_recovery_notify': True,
+        'alert_key_health_check_enabled': False,
         'options': {
             'local_ip': mw.getHostAddr(),
             'remote_ip': '',
@@ -484,6 +522,14 @@ def _config():
         source = cfg.get('host_id', '') + '_' + cfg.get('peer_public_ip', '')
         cfg['pair_id'] = 'HA_' + hashlib.sha1(source.encode('utf-8')).hexdigest()[:12].upper()
         config_changed = True
+    if not cfg.get('primary_notifier_host_id'):
+        cfg['primary_notifier_host_id'] = _default_primary_notifier_host_id(cfg)
+        config_changed = True
+    cfg['alert_takeover_fail_count'] = max(1, _safe_int(cfg.get('alert_takeover_fail_count'), 3))
+    cfg['alert_takeover_recover_count'] = max(1, _safe_int(cfg.get('alert_takeover_recover_count'), 2))
+    cfg['alert_enabled'] = str(cfg.get('alert_enabled')).lower() not in ('0', 'false', 'no', 'off')
+    cfg['alert_recovery_notify'] = str(cfg.get('alert_recovery_notify')).lower() not in ('0', 'false', 'no', 'off')
+    cfg['alert_key_health_check_enabled'] = str(cfg.get('alert_key_health_check_enabled')).lower() in ('1', 'true', 'yes', 'on')
     if _sync_binding_options(cfg) or config_changed or identity_changed:
         _save_config(cfg)
     return cfg
@@ -783,6 +829,7 @@ def _state(cfg=None):
         'health_status': health_status,
         'health_text': health_text,
         'health_detail': health_detail,
+        'alert_config': _alert_config_payload(cfg),
         'switch_run_id': cfg.get('switch_run_id'),
         'switch_status': cfg.get('switch_status'),
         'log_path': cfg.get('log_path'),
@@ -838,6 +885,8 @@ def get_state():
     data['peer_state'] = peer_state.get('data') if peer_state.get('status') else None
     data['peer_collect_status'] = 'success' if peer_state.get('status') else 'failed'
     data['peer_collect_msg'] = peer_state.get('msg', '')
+    data['alert_state'] = _read_alert_state()
+    data['alert_notifier_state'] = _read_alert_notifier_state()
     data['log'] = read_latest_log_text()
     return _return(True, 'ok', data)
 
@@ -876,10 +925,15 @@ def save_binding():
         return _return(False, '请填写对方IP和对方公钥')
     if not cfg.get('peer_host_id'):
         cfg['peer_host_id'] = _peer_host_id(cfg.get('peer_public_ip'))
+    if data.get('primary_notifier_host_id'):
+        cfg['primary_notifier_host_id'] = str(data.get('primary_notifier_host_id') or '').strip()
+    elif not cfg.get('primary_notifier_host_id'):
+        cfg['primary_notifier_host_id'] = _default_primary_notifier_host_id(cfg)
     cfg['options']['remote_ip'] = cfg.get('peer_public_ip')
     cfg['options']['remote_ssh_port'] = cfg.get('peer_ssh_port')
     _save_config(cfg)
     _state(cfg)
+    _sync_alert_config_to_peer(cfg)
     return _return(True, '绑定已保存', cfg)
 
 
@@ -1076,9 +1130,80 @@ def save_auto_recover():
     return _return(True, '自动故障恢复配置已保存', cfg)
 
 
+def _bool_config_value(value, default=False):
+    if value is None:
+        return default
+    return str(value).lower() in ('1', 'true', 'yes', 'on')
+
+
+def _apply_alert_config(cfg, data):
+    if 'alert_enabled' in data:
+        cfg['alert_enabled'] = _bool_config_value(data.get('alert_enabled'), True)
+    if 'primary_notifier_host_id' in data:
+        host_id = str(data.get('primary_notifier_host_id') or '').strip()
+        if host_id:
+            cfg['primary_notifier_host_id'] = host_id
+    if 'alert_takeover_fail_count' in data:
+        cfg['alert_takeover_fail_count'] = max(1, _safe_int(data.get('alert_takeover_fail_count'), 3))
+    if 'alert_takeover_recover_count' in data:
+        cfg['alert_takeover_recover_count'] = max(1, _safe_int(data.get('alert_takeover_recover_count'), 2))
+    if 'alert_recovery_notify' in data:
+        cfg['alert_recovery_notify'] = _bool_config_value(data.get('alert_recovery_notify'), True)
+    if 'alert_key_health_check_enabled' in data:
+        cfg['alert_key_health_check_enabled'] = _bool_config_value(data.get('alert_key_health_check_enabled'), False)
+    if not cfg.get('primary_notifier_host_id'):
+        cfg['primary_notifier_host_id'] = _default_primary_notifier_host_id(cfg)
+    return cfg
+
+
+def _sync_alert_config_to_peer(cfg):
+    if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
+        _append_cloud_interaction_log('sync_alert_config', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='SSH未绑定或未验证')
+        return {'status': False, 'msg': 'SSH未绑定或未验证'}
+    payload = _alert_config_payload(cfg)
+    payload['source_host_id'] = cfg.get('host_id')
+    payload['pair_id'] = cfg.get('pair_id')
+    args = shlex.quote(json.dumps(payload, ensure_ascii=False))
+    remote_cmd = 'cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py sync_alert_config {0}'.format(args)
+    out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=15)
+    if code != 0:
+        msg = err or out or '同步通知配置到对端失败'
+        _append_cloud_interaction_log('sync_alert_config', 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=msg)
+        return {'status': False, 'msg': msg}
+    result = _parse_plugin_json_output(out)
+    _append_cloud_interaction_log('sync_alert_config', 'done' if result.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=result.get('msg'))
+    return result
+
+
+def save_alert_config():
+    data = _args()
+    cfg = _config()
+    cfg = _apply_alert_config(cfg, data)
+    _save_config(cfg)
+    sync_result = _sync_alert_config_to_peer(cfg) if data.get('sync_peer', True) is not False else {'status': True, 'msg': '未同步对端'}
+    data = cfg.copy()
+    data['alert_state'] = _read_alert_state()
+    data['alert_notifier_state'] = _read_alert_notifier_state()
+    data['sync_peer_result'] = sync_result
+    return _return(True, '异常通知配置已保存', data)
+
+
+def sync_alert_config():
+    data = _args()
+    cfg = _config()
+    if data.get('pair_id') and data.get('pair_id') != cfg.get('pair_id'):
+        return _return(False, '主备关系不匹配')
+    cfg = _apply_alert_config(cfg, data)
+    _save_config(cfg)
+    _append_cloud_interaction_log('sync_alert_config', 'received', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), source_host_id=data.get('source_host_id'), primary_notifier_host_id=cfg.get('primary_notifier_host_id'))
+    return _return(True, '异常通知配置已同步', cfg)
+
+
 def report_state():
     cfg = _config()
+    _append_report_state_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), monitor_url=cfg.get('monitor_url'), monitor_disabled=cfg.get('monitor_disabled'))
     if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+        _append_report_state_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='云监控地址为空或已禁用')
         return _return(True, '云监控地址为空，不上传状态', {'hosts': []})
     report_time = _now()
     report_batch_id = 'HRB_' + str(int(time.time())) + '_' + mw.getRandomString(6)
@@ -1122,8 +1247,10 @@ def report_state():
             break
     if cfg.get('switch_status') == 'switch_done' and actual_master_id:
         payload['desired_master_host_id'] = actual_master_id
+    _append_report_state_log('collected', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), host_count=len(hosts), report_batch_id=report_batch_id, peer_status=peer_state.get('status'), peer_msg=peer_state.get('msg'), actual_master_host_id=actual_master_id)
     res = _post_monitor_with_auth_retry(cfg, 'ha_report_state', payload)
     _append_cloud_interaction_log('report_state', 'done' if res.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), host_count=len(hosts), report_batch_id=report_batch_id, msg=res.get('msg'))
+    _append_report_state_log('done' if res.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), host_count=len(hosts), report_batch_id=report_batch_id, msg=res.get('msg'))
     if res.get('status'):
         cfg['last_report_at'] = _now()
         _save_config(cfg)
@@ -1241,6 +1368,371 @@ def collect_peer_state_raw(cfg):
         return {'status': True, 'data': state}
     except Exception as e:
         return {'status': False, 'msg': '对端状态格式错误: ' + str(e)}
+
+
+def _read_alert_state():
+    data = _read_json(ALERT_STATE_PATH, {})
+    if not isinstance(data, dict):
+        data = {}
+    data.setdefault('status', 'normal')
+    data.setdefault('notification_owner_host_id', '')
+    data.setdefault('notification_owner_mode', '')
+    data.setdefault('active_keys', [])
+    data.setdefault('alerts', {})
+    data.setdefault('events', [])
+    return data
+
+
+def _write_alert_state(data):
+    if not isinstance(data, dict):
+        data = {}
+    data['update_time'] = _now()
+    events = data.get('events') if isinstance(data.get('events'), list) else []
+    data['events'] = events[-50:]
+    _write_json(ALERT_STATE_PATH, data)
+    return data
+
+
+def _read_alert_notifier_state():
+    data = _read_json(ALERT_NOTIFIER_STATE_PATH, {})
+    if not isinstance(data, dict):
+        data = {}
+    data.setdefault('takeover_active', False)
+    data.setdefault('primary_unreachable_count', 0)
+    data.setdefault('primary_reachable_count', 0)
+    data.setdefault('takeover_started_at', '')
+    data.setdefault('takeover_recovered_at', '')
+    return data
+
+
+def _write_alert_notifier_state(data):
+    if not isinstance(data, dict):
+        data = {}
+    data['update_time'] = _now()
+    _write_json(ALERT_NOTIFIER_STATE_PATH, data)
+    return data
+
+
+def _alert_level_text(level):
+    return {'danger': '异常', 'warning': '提醒', 'info': '信息', 'success': '恢复'}.get(level, level or '信息')
+
+
+def _host_label(state, fallback_id=''):
+    state = state or {}
+    name = state.get('host_name') or ''
+    ip = state.get('host_ip') or ''
+    host_id = state.get('host_id') or fallback_id or ''
+    if name and ip:
+        return '{0}({1})'.format(name, ip)
+    return name or ip or host_id or '未知主机'
+
+
+def _alert_key(cfg, alert_type, subject=''):
+    parts = [cfg.get('pair_id') or 'HA_UNKNOWN', alert_type]
+    if subject:
+        parts.append(str(subject))
+    return ':'.join(parts)
+
+
+def _make_alert(cfg, alert_type, level, message, recovery_message, host_id='', context=None):
+    key = _alert_key(cfg, alert_type, host_id if host_id else '')
+    if alert_type in ('double_master', 'no_master'):
+        key = _alert_key(cfg, alert_type)
+    if alert_type == 'switch_stuck':
+        key = _alert_key(cfg, alert_type, (context or {}).get('switch_run_id') or host_id)
+    return {
+        'key': key,
+        'alert_type': alert_type,
+        'level': level,
+        'message': message,
+        'recovery_message': recovery_message,
+        'host_id': host_id or '',
+        'context': context or {},
+        'first_seen_at': _now(),
+        'last_seen_at': _now()
+    }
+
+
+def _collect_alert_context(cfg):
+    local_state = _state(cfg)
+    peer_res = collect_peer_state_raw(cfg)
+    peer_state = peer_res.get('data') if peer_res.get('status') else {}
+    return {
+        'local': local_state,
+        'peer': peer_state,
+        'peer_status': bool(peer_res.get('status')),
+        'peer_msg': peer_res.get('msg') or '',
+        'failover': _read_failover_state(),
+        'switch_lock': _switch_lock_status_data()
+    }
+
+
+def _active_alerts(cfg, context):
+    alerts = {}
+    local_state = context.get('local') or {}
+    peer_state = context.get('peer') or {}
+    peer_status = context.get('peer_status')
+    failover = context.get('failover') or {}
+    switch_lock = context.get('switch_lock') or {}
+    if cfg.get('peer_host_id') and not peer_status:
+        alert = _make_alert(
+            cfg, 'host_unreachable', 'danger',
+            '对端主机不可达：{0}'.format(cfg.get('peer_public_ip') or cfg.get('peer_host_id')),
+            '对端主机已恢复可达：{0}'.format(cfg.get('peer_public_ip') or cfg.get('peer_host_id')),
+            cfg.get('peer_host_id'), {'reason': context.get('peer_msg') or 'SSH或插件不可达'}
+        )
+        alerts[alert['key']] = alert
+    roles = []
+    for state in (local_state, peer_state):
+        if state and state.get('role') in ('master', 'standby'):
+            roles.append({'host_id': state.get('host_id'), 'role': state.get('role'), 'label': _host_label(state)})
+    master_count = len([item for item in roles if item.get('role') == 'master'])
+    if len(roles) >= 2 and master_count >= 2:
+        alert = _make_alert(cfg, 'double_master', 'danger', '主备关系异常：检测到双主状态', '双主状态已恢复', '', {'roles': roles})
+        alerts[alert['key']] = alert
+    elif len(roles) >= 2 and master_count == 0:
+        alert = _make_alert(cfg, 'no_master', 'danger', '主备关系异常：未检测到主机或双备状态', '主备角色已恢复为一主一备', '', {'roles': roles})
+        alerts[alert['key']] = alert
+    if failover.get('mode') == 'degraded_master' or failover.get('pending_switch_required'):
+        host_id = failover.get('current_master_host_id') or cfg.get('host_id')
+        alert = _make_alert(cfg, 'degraded_master', 'warning', '当前处于降级运行，等待对端恢复补全', '降级运行状态已解除', host_id, failover)
+        alerts[alert['key']] = alert
+    if failover.get('recovery_status') == 'recovery_guard':
+        alert = _make_alert(cfg, 'recovery_guard', 'warning', '当前处于恢复保护，待恢复为备机', '恢复保护已解除', cfg.get('host_id'), failover)
+        alerts[alert['key']] = alert
+    if switch_lock.get('locked') and not switch_lock.get('alive'):
+        run_id = cfg.get('switch_run_id') or 'unknown'
+        alert = _make_alert(cfg, 'switch_stuck', 'warning', '检测到切换锁残留，可能存在卡住的切换任务', '切换锁状态已恢复', cfg.get('host_id'), {'switch_run_id': run_id, 'lock': switch_lock})
+        alerts[alert['key']] = alert
+    for state in (local_state, peer_state):
+        if not isinstance(state, dict) or not state:
+            continue
+        detail = state.get('health_detail') if isinstance(state.get('health_detail'), dict) else {}
+        failed_checks = [item for item in (detail.get('script_checks') or []) if isinstance(item, dict) and item.get('status') == 'fail']
+        for item in failed_checks:
+            subject = '{0}:{1}'.format(state.get('host_id') or '', item.get('name') or '')
+            message = '自检提醒：{0} {1}，当前 {2}，期望 {3}'.format(_host_label(state), item.get('name') or '', item.get('actual') or '--', item.get('expected') or '--')
+            recovery_message = '自检提醒已恢复：{0} {1}'.format(_host_label(state), item.get('name') or '')
+            alert = _make_alert(cfg, 'health_failed', 'warning', message, recovery_message, subject, item)
+            alerts[alert['key']] = alert
+        if not failed_checks and state.get('health_status') in ('warning', 'danger', 'failed'):
+            summary = detail.get('summary') or state.get('health_text') or '自检状态提醒'
+            alert = _make_alert(cfg, 'health_warning', 'warning', '自检提醒：{0} {1}'.format(_host_label(state), summary), '自检提醒已恢复：{0}'.format(_host_label(state)), state.get('host_id') or '', {'summary': summary, 'health_status': state.get('health_status')})
+            alerts[alert['key']] = alert
+    return alerts
+
+
+def _primary_notifier_reachable(cfg, context):
+    primary_id = cfg.get('primary_notifier_host_id') or cfg.get('host_id')
+    if primary_id == cfg.get('host_id'):
+        return True
+    peer = context.get('peer') or {}
+    return bool(context.get('peer_status') and peer.get('host_id') == primary_id)
+
+
+def _notifier_mode(cfg, context, saved_alert_state=None):
+    saved_alert_state = saved_alert_state or _read_alert_state()
+    primary_id = cfg.get('primary_notifier_host_id') or cfg.get('host_id')
+    local_id = cfg.get('host_id')
+    notifier_state = _read_alert_notifier_state()
+    primary_reachable = _primary_notifier_reachable(cfg, context)
+    is_primary = local_id == primary_id
+    if is_primary:
+        notifier_state['takeover_active'] = False
+        notifier_state['primary_unreachable_count'] = 0
+        notifier_state['primary_reachable_count'] = 0
+        _write_alert_notifier_state(notifier_state)
+        return {'can_notify': True, 'mode': 'primary', 'primary_reachable': True, 'state': notifier_state, 'reason': '本机是主通知方'}
+    if primary_reachable:
+        notifier_state['primary_reachable_count'] = _safe_int(notifier_state.get('primary_reachable_count'), 0) + 1
+        notifier_state['primary_unreachable_count'] = 0
+        if notifier_state.get('takeover_active') and notifier_state['primary_reachable_count'] >= _safe_int(cfg.get('alert_takeover_recover_count'), 2):
+            notifier_state['takeover_active'] = False
+            notifier_state['takeover_recovered_at'] = _now()
+            _append_cloud_interaction_log('alert_takeover', 'exit', pair_id=cfg.get('pair_id'), host_id=local_id, primary_notifier_host_id=primary_id)
+            _append_alert_check_log('takeover_exit', pair_id=cfg.get('pair_id'), host_id=local_id, primary_notifier_host_id=primary_id, reachable_count=notifier_state['primary_reachable_count'])
+            report_alert_event(cfg, 'ha_alert_takeover', 'recovered', '主备异常通知接管已退出', '主通知方已恢复可达，后续新异常回到主通知方处理', [], 'standby')
+        _write_alert_notifier_state(notifier_state)
+    else:
+        notifier_state['primary_unreachable_count'] = _safe_int(notifier_state.get('primary_unreachable_count'), 0) + 1
+        notifier_state['primary_reachable_count'] = 0
+        if not notifier_state.get('takeover_active') and notifier_state['primary_unreachable_count'] >= _safe_int(cfg.get('alert_takeover_fail_count'), 3):
+            notifier_state['takeover_active'] = True
+            notifier_state['takeover_started_at'] = _now()
+            _append_cloud_interaction_log('alert_takeover', 'enter', pair_id=cfg.get('pair_id'), host_id=local_id, primary_notifier_host_id=primary_id, fail_count=notifier_state['primary_unreachable_count'])
+            _append_alert_check_log('takeover_enter', pair_id=cfg.get('pair_id'), host_id=local_id, primary_notifier_host_id=primary_id, fail_count=notifier_state['primary_unreachable_count'])
+            report_alert_event(cfg, 'ha_alert_takeover', 'sent', '主备异常通知备用方接管', '主通知方连续不可达，备用通知方开始处理主备异常通知', [], 'backup_takeover')
+        _write_alert_notifier_state(notifier_state)
+    owner = saved_alert_state.get('notification_owner_host_id') or ''
+    if owner:
+        return {'can_notify': owner == local_id, 'mode': 'owner' if owner == local_id else 'not_owner', 'primary_reachable': primary_reachable, 'state': notifier_state, 'reason': '当前异常周期 owner={0}'.format(owner)}
+    can_takeover = bool(notifier_state.get('takeover_active'))
+    return {'can_notify': can_takeover, 'mode': 'backup_takeover' if can_takeover else 'standby', 'primary_reachable': primary_reachable, 'state': notifier_state, 'reason': '备用通知方接管' if can_takeover else '主通知方可达或未达到接管阈值'}
+
+
+def _merge_alerts(previous_alerts, current_alerts):
+    previous_alerts = previous_alerts if isinstance(previous_alerts, dict) else {}
+    merged = {}
+    for key, alert in current_alerts.items():
+        item = dict(alert)
+        if key in previous_alerts and isinstance(previous_alerts.get(key), dict):
+            item['first_seen_at'] = previous_alerts[key].get('first_seen_at') or item.get('first_seen_at')
+        item['last_seen_at'] = _now()
+        merged[key] = item
+    return merged
+
+
+def _alert_events_push(state, event):
+    events = state.get('events') if isinstance(state.get('events'), list) else []
+    event['addtime'] = _now()
+    events.append(event)
+    state['events'] = events[-50:]
+    return state
+
+
+def _alert_html(cfg, title, alerts, context, recovery=False):
+    alerts = alerts if isinstance(alerts, list) else []
+    show_alerts = alerts[:5]
+    remain_count = max(len(alerts) - len(show_alerts), 0)
+    lines = []
+    lines.append('主备关系：{0}'.format(cfg.get('pair_name') or cfg.get('pair_id')))
+    lines.append('{0}数量：{1} 项'.format('恢复' if recovery else '异常', len(alerts)))
+    for alert in show_alerts:
+        text = alert.get('recovery_message') if recovery else alert.get('message')
+        lines.append('- {0}'.format(text))
+    if remain_count > 0:
+        lines.append('- 其余 {0} 项请查看插件自检状态或云监控主备管理。'.format(remain_count))
+    lines.append('时间：{0}'.format(_now()))
+    return '<br>'.join([str(x) for x in lines])
+
+
+def _send_ha_alert_notification(cfg, alerts, context, mode):
+    title = '🔴 主备异常通知：{0}'.format(cfg.get('pair_name') or cfg.get('host_name') or cfg.get('pair_id'))
+    msg = _alert_html(cfg, title, alerts, context, False)
+    try:
+        ok = mw.notifyMessage(msg=msg, msgtype='html', title=title, stype='主备异常通知', trigger_time=0)
+        return {'status': bool(ok), 'msg': '通知已发送' if ok else '通知未发送或未配置', 'title': title, 'message': msg}
+    except Exception as e:
+        return {'status': False, 'msg': str(e), 'title': title, 'message': msg}
+
+
+def _send_ha_recovery_notification(cfg, alerts, context, state):
+    title = '🟢 主备异常恢复：{0}'.format(cfg.get('pair_name') or cfg.get('host_name') or cfg.get('pair_id'))
+    msg = _alert_html(cfg, title, alerts, context, True)
+    if state.get('first_seen_at'):
+        msg += '<br>异常开始：{0}'.format(state.get('first_seen_at'))
+    try:
+        ok = mw.notifyMessage(msg=msg, msgtype='html', title=title, stype='主备异常恢复', trigger_time=0)
+        return {'status': bool(ok), 'msg': '恢复通知已发送' if ok else '通知未发送或未配置', 'title': title, 'message': msg}
+    except Exception as e:
+        return {'status': False, 'msg': str(e), 'title': title, 'message': msg}
+
+
+def report_alert_event(cfg, event_type, status, title, message, alerts=None, mode=''):
+    if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+        _append_cloud_interaction_log('report_alert_event', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), event_type=event_type, status=status, msg='云监控未启用')
+        return {'status': False, 'msg': '云监控未启用'}
+    alerts = alerts if isinstance(alerts, list) else []
+    primary = alerts[0] if alerts else {}
+    payload = {
+        'pair_id': cfg.get('pair_id'),
+        'event_id': '{0}:{1}:{2}:{3}'.format(cfg.get('pair_id'), cfg.get('host_id'), event_type, int(time.time() * 1000)),
+        'host_id': cfg.get('host_id'),
+        'event_type': event_type,
+        'alert_key': primary.get('key') or '',
+        'alert_type': primary.get('alert_type') or event_type,
+        'alert_level': primary.get('level') or ('success' if event_type == 'ha_alert_recovery' else 'warning'),
+        'status': status,
+        'title': title,
+        'message': message,
+        'sent_by_host_id': cfg.get('host_id'),
+        'notifier_mode': mode,
+        'alerts': alerts
+    }
+    res = _post_monitor_with_auth_retry(cfg, 'ha_report_alert_event', payload)
+    _append_cloud_interaction_log('report_alert_event', 'done' if res.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), event_type=event_type, event_status=status, msg=res.get('msg'))
+    return res
+
+
+def _check_notifier_config_mismatch(cfg, context):
+    peer = context.get('peer') or {}
+    peer_alert_config = peer.get('alert_config') or {}
+    peer_primary = peer_alert_config.get('primary_notifier_host_id') or ''
+    local_primary = cfg.get('primary_notifier_host_id') or ''
+    if peer_primary and local_primary and peer_primary != local_primary:
+        _append_cloud_interaction_log('alert_config', 'mismatch', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), local_primary_notifier_host_id=local_primary, peer_primary_notifier_host_id=peer_primary)
+        return _make_alert(cfg, 'notifier_config_mismatch', 'warning', '主备异常通知主方配置不一致', '主备异常通知主方配置已一致', cfg.get('host_id'), {'local_primary': local_primary, 'peer_primary': peer_primary})
+    return None
+
+
+def alert_check():
+    cfg = _config()
+    _append_alert_check_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), primary_notifier_host_id=cfg.get('primary_notifier_host_id'), alert_enabled=cfg.get('alert_enabled'))
+    if not cfg.get('alert_enabled'):
+        _append_cloud_interaction_log('alert_check', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='异常通知未开启')
+        _append_alert_check_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='异常通知未开启')
+        return _return(True, '异常通知未开启，跳过检测', {'enabled': False})
+    context = _collect_alert_context(cfg)
+    current_alerts = _active_alerts(cfg, context)
+    mismatch_alert = _check_notifier_config_mismatch(cfg, context)
+    if mismatch_alert:
+        current_alerts[mismatch_alert['key']] = mismatch_alert
+    state = _read_alert_state()
+    mode = _notifier_mode(cfg, context, state)
+    previous_keys = set(state.get('active_keys') or [])
+    current_keys = set(current_alerts.keys())
+    merged_alerts = _merge_alerts(state.get('alerts'), current_alerts)
+    _append_alert_check_log('checked', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), previous_count=len(previous_keys), current_count=len(current_keys), current_keys=sorted(current_keys), notifier_mode=mode.get('mode'), can_notify=mode.get('can_notify'), reason=mode.get('reason'), peer_status=context.get('peer_status'), peer_msg=context.get('peer_msg'))
+    if not previous_keys and not current_keys:
+        state.update({'status': 'normal', 'active_keys': [], 'alerts': {}, 'last_seen_at': _now()})
+        _write_alert_state(state)
+        _append_alert_check_log('normal', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='当前无主备异常')
+        return _return(True, '当前无主备异常', {'alerts': [], 'notifier': mode})
+    if previous_keys and current_keys:
+        if state.get('notification_owner_host_id') == cfg.get('host_id'):
+            state.update({'status': 'abnormal', 'active_keys': sorted(current_keys), 'alerts': merged_alerts, 'last_seen_at': _now()})
+            _write_alert_state(state)
+        _append_alert_check_log('abnormal_keep', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), owner=state.get('notification_owner_host_id'), current_keys=sorted(current_keys), msg='主备异常仍存在，不重复发送通知')
+        return _return(True, '主备异常仍存在，不重复发送通知', {'alerts': list(merged_alerts.values()), 'notifier': mode})
+    if not previous_keys and current_keys:
+        if not mode.get('can_notify'):
+            _append_cloud_interaction_log('alert_check', 'skip_notifier', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), reason=mode.get('reason'), primary_notifier_host_id=cfg.get('primary_notifier_host_id'))
+            _append_alert_check_log('skip_notifier', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), primary_notifier_host_id=cfg.get('primary_notifier_host_id'), reason=mode.get('reason'), current_keys=sorted(current_keys))
+            return _return(True, '本机不是当前通知方，跳过通知', {'alerts': list(merged_alerts.values()), 'notifier': mode})
+        send = _send_ha_alert_notification(cfg, list(merged_alerts.values()), context, mode)
+        if not send.get('status'):
+            _append_cloud_interaction_log('alert_notify', 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=send.get('msg'))
+            _append_alert_check_log('notify_failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=send.get('msg'), current_keys=sorted(current_keys))
+            report_alert_event(cfg, 'ha_alert_notify', 'failed', send.get('title'), send.get('msg'), list(merged_alerts.values()), mode.get('mode'))
+            return _return(False, '异常通知发送失败: ' + (send.get('msg') or ''), {'alerts': list(merged_alerts.values()), 'notifier': mode})
+        state.update({'status': 'abnormal', 'first_seen_at': _now(), 'last_seen_at': _now(), 'last_notify_at': _now(), 'notification_owner_host_id': cfg.get('host_id'), 'notification_owner_mode': mode.get('mode'), 'active_keys': sorted(current_keys), 'alerts': merged_alerts})
+        state = _alert_events_push(state, {'type': 'notify', 'status': 'sent', 'title': send.get('title'), 'message': send.get('message'), 'alert_count': len(current_keys)})
+        _write_alert_state(state)
+        _append_cloud_interaction_log('alert_owner', 'fixed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), notification_owner_host_id=cfg.get('host_id'), mode=mode.get('mode'))
+        _append_alert_check_log('notify_sent', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), owner=cfg.get('host_id'), mode=mode.get('mode'), current_keys=sorted(current_keys))
+        report_alert_event(cfg, 'ha_alert_notify', 'sent', send.get('title'), send.get('message'), list(merged_alerts.values()), mode.get('mode'))
+        return _return(True, '主备异常通知已发送', {'alerts': list(merged_alerts.values()), 'notifier': mode})
+    if previous_keys and not current_keys:
+        old_alerts = state.get('alerts') if isinstance(state.get('alerts'), dict) else {}
+        owner = state.get('notification_owner_host_id') or ''
+        if owner and owner != cfg.get('host_id'):
+            _append_alert_check_log('wait_owner_recovery', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), owner=owner, msg='等待 owner 发送恢复通知')
+            return _return(True, '本机不是当前异常周期通知方，等待 owner 发送恢复通知', {'owner': owner, 'notifier': mode})
+        if cfg.get('alert_recovery_notify'):
+            send = _send_ha_recovery_notification(cfg, list(old_alerts.values()), context, state)
+            if not send.get('status'):
+                _append_cloud_interaction_log('alert_recovery', 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=send.get('msg'))
+                _append_alert_check_log('recovery_failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=send.get('msg'), old_keys=sorted(previous_keys))
+                report_alert_event(cfg, 'ha_alert_recovery', 'failed', send.get('title'), send.get('msg'), list(old_alerts.values()), mode.get('mode'))
+                return _return(False, '恢复通知发送失败: ' + (send.get('msg') or ''), {'alerts': list(old_alerts.values()), 'notifier': mode})
+            report_alert_event(cfg, 'ha_alert_recovery', 'sent', send.get('title'), send.get('message'), list(old_alerts.values()), mode.get('mode'))
+        state.update({'status': 'normal', 'last_recovery_notify_at': _now(), 'notification_owner_host_id': '', 'notification_owner_mode': '', 'active_keys': [], 'alerts': {}, 'first_seen_at': '', 'last_seen_at': _now()})
+        state = _alert_events_push(state, {'type': 'recovery', 'status': 'sent' if cfg.get('alert_recovery_notify') else 'skipped', 'alert_count': len(old_alerts)})
+        _write_alert_state(state)
+        _append_alert_check_log('recovered', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), old_keys=sorted(previous_keys), recovery_notify=cfg.get('alert_recovery_notify'))
+        return _return(True, '主备异常已恢复', {'alerts': [], 'notifier': mode})
+    _append_alert_check_log('done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), current_keys=sorted(current_keys))
+    return _return(True, '主备异常检测完成', {'alerts': list(merged_alerts.values()), 'notifier': mode})
 
 
 def _parse_plugin_json_output(out):
@@ -1499,12 +1991,15 @@ def _mark_recovery_guard(cfg, peer_coord, reason):
 
 def recover_check():
     cfg = _config()
+    _append_recover_check_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), role=cfg.get('role'), bind_test_status=cfg.get('bind_test_status'), peer_public_ip=cfg.get('peer_public_ip'))
     if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
         _append_cloud_interaction_log('recover_check', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='SSH未绑定或未验证')
+        _append_recover_check_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='SSH未绑定或未验证')
         return _return(True, 'SSH未绑定或未验证，跳过恢复检查', _coordination_state_data(cfg))
     peer_res = _read_peer_coordination_state(cfg)
     if not peer_res.get('status'):
         _append_cloud_interaction_log('recover_check', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=peer_res.get('msg'))
+        _append_recover_check_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=peer_res.get('msg'))
         return _return(True, '无法确认对端协调状态，保持当前状态: ' + (peer_res.get('msg') or ''), {'peer': peer_res})
     peer_coord = peer_res.get('data') or {}
     peer_failover = peer_coord.get('failover') or {}
@@ -1520,22 +2015,29 @@ def recover_check():
         local_ts = _parse_time_ts(local_failover.get('failover_time') or local_failover.get('update_time'))
         matched = bool(peer_ts and local_ts and peer_ts > local_ts)
     _append_cloud_interaction_log('recover_check', 'checked', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), peer_mode=peer_mode, local_mode=local_mode, pending_switch_host_id=pending_host, pending_switch_host_ip=pending_ip, pending_switch_role=pending_role, local_role=cfg.get('role'), matched=matched)
+    _append_recover_check_log('checked', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), peer_mode=peer_mode, local_mode=local_mode, pending_switch_host_id=pending_host, pending_switch_host_ip=pending_ip, pending_switch_role=pending_role, local_role=cfg.get('role'), matched=matched)
     if not matched:
+        _append_recover_check_log('done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='未发现本机待恢复为备机标识')
         return _return(True, '未发现本机待恢复为备机标识', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
     if not _is_master_like(cfg):
         if local_failover:
             _clear_failover_state()
             _append_cloud_interaction_log('recover_check', 'cleared', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='本机已不是主角色，清理本机故障恢复状态')
+            _append_recover_check_log('cleared', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='本机已不是主角色，清理本机故障恢复状态')
             report_state()
+        _append_recover_check_log('done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='本机已不是主角色，无需执行恢复保护')
         return _return(True, '本机已不是主角色，无需执行恢复保护', {'peer': peer_coord, 'local': _coordination_state_data(cfg)})
     state = _mark_recovery_guard(cfg, peer_failover, '本机匹配对端待切换为备机标识或双降级状态下对端故障升主时间更新')
+    _append_recover_check_log('guard_enter', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), auto_recover_as_standby=cfg.get('auto_recover_as_standby'), guard=state)
     guard_run_id = state.get('recovery_run_id') or state.get('failover_run_id') or cfg.get('switch_run_id') or 'RECOVERY_GUARD'
     _append_switch_log(guard_run_id, 'recovery_guard', 'running', '检测到旧主恢复后需要补全为备机，当前进入恢复保护')
     if cfg.get('auto_recover_as_standby'):
         _append_switch_log(guard_run_id, 'recovery_guard', 'running', '自动恢复为备机已开启，准备执行 recover_as_standby')
         result = _return_data(recover_as_standby())
+        _append_recover_check_log('auto_recover_done' if result.get('status') else 'auto_recover_failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=result.get('msg'), recover=result)
         return _return(bool(result.get('status')), result.get('msg') or '自动恢复处理完成', {'guard': state, 'recover': result})
     _append_switch_log(guard_run_id, 'recovery_guard', 'running', '自动恢复为备机未开启，不自动执行备机化脚本；请在插件总览页点击“恢复为备机”人工确认执行')
+    _append_recover_check_log('wait_manual', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='已进入恢复保护，等待人工确认恢复为备机')
     return _return(True, '已进入恢复保护，等待人工确认恢复为备机', {'guard': state})
 
 
@@ -1633,8 +2135,10 @@ def collect_peer_logs(cfg, peer_state):
 
 def poll_monitor():
     cfg = _config()
+    _append_poll_monitor_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), monitor_url=cfg.get('monitor_url'), monitor_disabled=cfg.get('monitor_disabled'))
     if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
         _append_cloud_interaction_log('poll_monitor', 'skip', msg='云监控地址为空或已禁用', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'))
+        _append_poll_monitor_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='云监控地址为空或已禁用')
         return _return(True, '云监控地址为空，不轮询期望状态', cfg)
     payload = {'pair_id': cfg.get('pair_id'), 'host_id': cfg.get('host_id')}
     res = _post_monitor_with_auth_retry(cfg, 'ha_pull_desired_state', payload)
@@ -1642,6 +2146,7 @@ def poll_monitor():
         run = res['data'].get('switch_run') or {}
         desired = res['data'].get('desired_master_host_id')
         _append_cloud_interaction_log('poll_monitor', 'pulled', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), desired_master_host_id=desired, switch_run_id=run.get('switch_run_id') or '', phase=run.get('execute_phase') or run.get('current_phase') or '', execute_method=run.get('execute_method') or '', execute_target_host_id=run.get('execute_target_host_id') or '', run_status=run.get('status') or '')
+        _append_poll_monitor_log('pulled', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), desired_master_host_id=desired, switch_run_id=run.get('switch_run_id') or '', phase=run.get('execute_phase') or run.get('current_phase') or '', execute_method=run.get('execute_method') or '', execute_target_host_id=run.get('execute_target_host_id') or '', run_status=run.get('status') or '')
         desired_role = 'master' if desired == cfg.get('host_id') else 'standby'
         cfg['desired_role'] = desired_role
         if run.get('switch_run_id'):
@@ -1654,6 +2159,9 @@ def poll_monitor():
                 cfg['switch_status'] = 'idle'
         _save_config(cfg)
         _start_cloud_switch_phase(cfg, run)
+    else:
+        _append_poll_monitor_log('failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=res.get('msg'))
+    _append_poll_monitor_log('done' if res.get('status') else 'failed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=res.get('msg'))
     return _return(bool(res.get('status')), res.get('msg') or '轮询完成', cfg)
 
 
@@ -1664,6 +2172,7 @@ def _start_cloud_switch_phase(cfg, run):
         reason = run.get('dispatch_reason') if isinstance(run, dict) else ''
         msg = '无可执行切换阶段' + (': ' + reason if reason else '')
         _append_cloud_interaction_log('start_switch_task', 'skip', msg=msg, pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, phase=run.get('execute_phase') if isinstance(run, dict) else '', current_phase=phase, execute_method=run.get('execute_method') if isinstance(run, dict) else '', execute_target_host_id=run.get('execute_target_host_id') if isinstance(run, dict) else '', run_status=run.get('status') if isinstance(run, dict) else '')
+        _append_poll_monitor_log('switch_skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, phase=run.get('execute_phase') if isinstance(run, dict) else '', current_phase=phase, execute_method=run.get('execute_method') if isinstance(run, dict) else '', execute_target_host_id=run.get('execute_target_host_id') if isinstance(run, dict) else '', run_status=run.get('status') if isinstance(run, dict) else '', msg=msg)
         if switch_run_id and reason:
             text = '云监控任务暂未下发给当前插件：任务ID={0}，当前阶段={1}，原因：{2}'.format(switch_run_id, _phase_text(phase), reason)
             _append_switch_log(switch_run_id, phase or 'switch', 'running', text)
@@ -1673,6 +2182,7 @@ def _start_cloud_switch_phase(cfg, run):
     run_status = str(run.get('status') or '').strip()
     if run_status not in ('pending_prepare', 'pending_finalize', 'pending_online', 'running'):
         _append_cloud_interaction_log('start_switch_task', 'skip', msg='任务状态不可领取', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, run_status=run_status)
+        _append_poll_monitor_log('switch_skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, run_status=run_status, msg='任务状态不可领取')
         return
     claim_key = _cloud_task_claim_key(run.get('switch_run_id'), phase)
     claims = _read_cloud_task_claims()
@@ -1683,18 +2193,21 @@ def _start_cloud_switch_phase(cfg, run):
     if claim.get('status') == 'running' and claim_running_pid and _pid_alive(claim_running_pid):
         text = '云监控任务已领取，当前阶段正在执行中：任务ID={0}，阶段={1}，PID={2}，等待脚本输出或完成确认'.format(run.get('switch_run_id'), _phase_text(phase), claim_running_pid)
         _append_cloud_interaction_log('start_switch_task', 'skip', msg='本阶段已有执行进程', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=claim_running_pid, run_status=run_status)
+        _append_poll_monitor_log('switch_skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=claim_running_pid, run_status=run_status, msg='本阶段已有执行进程')
         _append_cloud_task_launcher_log('skip cloud task switch_run_id={0} phase={1} pid={2} reason=same_phase_already_running'.format(run.get('switch_run_id'), phase, claim_running_pid))
         _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
         return
     if lock_pid and _pid_alive(lock_pid) and cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') in (running_status, 'running'):
         text = '云监控任务已领取，当前阶段正在执行中：任务ID={0}，阶段={1}，本地锁PID={2}，等待脚本输出或完成确认'.format(run.get('switch_run_id'), _phase_text(phase), lock_pid)
         _append_cloud_interaction_log('start_switch_task', 'skip', msg='当前阶段正在执行', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, current_switch_status=cfg.get('switch_status'), run_status=run_status)
+        _append_poll_monitor_log('switch_skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, current_switch_status=cfg.get('switch_status'), run_status=run_status, msg='当前阶段正在执行')
         _append_cloud_task_launcher_log('skip cloud task switch_run_id={0} phase={1} lock_pid={2} current_switch_status={3} reason=same_phase_lock_running'.format(run.get('switch_run_id'), phase, lock_pid, cfg.get('switch_status')))
         _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
         return
     if lock_pid and _pid_alive(lock_pid) and cfg.get('switch_run_id') == run.get('switch_run_id'):
         text = '云监控任务暂未领取下一阶段：同一切换任务上一阶段仍在收尾，本地锁PID={0}，当前本机状态={1}，等待下一轮轮询'.format(lock_pid, cfg.get('switch_status') or '--')
         _append_cloud_interaction_log('start_switch_task', 'defer', msg='同一切换任务上一阶段仍在收尾，等待本地锁释放后再领取下一阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, current_switch_status=cfg.get('switch_status'), run_status=run_status)
+        _append_poll_monitor_log('switch_defer', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, current_switch_status=cfg.get('switch_status'), run_status=run_status, msg='同一切换任务上一阶段仍在收尾')
         _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} lock_pid={2} current_switch_status={3} reason=same_run_previous_phase_finishing'.format(run.get('switch_run_id'), phase, lock_pid, cfg.get('switch_status')))
         _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
         return
@@ -1707,6 +2220,7 @@ def _start_cloud_switch_phase(cfg, run):
         if old_pid and _pid_alive(old_pid):
             text = '云监控任务暂未领取下一阶段：同一切换任务的 {0} 阶段仍在执行，PID={1}，等待下一轮轮询'.format(_phase_text(old_claim.get('phase')), old_pid)
             _append_cloud_interaction_log('start_switch_task', 'defer', msg='同一切换任务已有其他阶段执行进程，等待结束后再领取下一阶段', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, old_phase=old_claim.get('phase'), old_pid=old_pid, run_status=run_status)
+            _append_poll_monitor_log('switch_defer', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, old_phase=old_claim.get('phase'), old_pid=old_pid, run_status=run_status, msg='同一切换任务已有其他阶段执行进程')
             _append_cloud_task_launcher_log('defer cloud task switch_run_id={0} phase={1} old_phase={2} old_pid={3} reason=other_phase_running'.format(run.get('switch_run_id'), phase, old_claim.get('phase'), old_pid))
             _emit_cloud_claim_notice(cfg, run, phase, text, claim_key, claim)
             return
@@ -1717,10 +2231,12 @@ def _start_cloud_switch_phase(cfg, run):
         cfg['log_path'] = run.get('log_path') or cfg.get('log_path')
         _save_config(cfg)
         _append_cloud_interaction_log('start_switch_task', 'skip', msg='本阶段本机已完成，补发确认', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, run_status=run_status)
+        _append_poll_monitor_log('switch_ack_done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, run_status=run_status, msg='本阶段本机已完成，补发确认')
         ack_switch_phase(cfg, phase, 'success', _phase_text(phase) + '完成')
         return
     if cfg.get('switch_run_id') == run.get('switch_run_id') and cfg.get('switch_status') == running_status and (_pid_alive(lock_pid) or _pid_alive(claim_running_pid)):
         _append_cloud_interaction_log('start_switch_task', 'skip', msg='当前阶段正在执行', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, claim_pid=claim_running_pid, run_status=run_status)
+        _append_poll_monitor_log('switch_skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, lock_pid=lock_pid, claim_pid=claim_running_pid, run_status=run_status, msg='当前阶段正在执行')
         return
     options = _dict_value(run.get('options_json') or run.get('options'))
     for key in ('local_ip', 'remote_ip', 'remote_ssh_port'):
@@ -1742,6 +2258,7 @@ def _start_cloud_switch_phase(cfg, run):
     claim_text = '已领取云监控任务：任务ID={0}，阶段={1}，执行方式={2}，目标主机={3}'.format(run.get('switch_run_id'), _phase_text(phase), payload.get('execute_method'), payload.get('execute_target_host_id') or '--')
     _append_switch_log(run.get('switch_run_id'), phase, 'start', claim_text)
     _append_cloud_interaction_log('claim_switch_task', 'claimed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, execute_method=payload.get('execute_method'), execute_target_host_id=payload.get('execute_target_host_id') or '', role=payload.get('role'), run_status=run_status)
+    _append_poll_monitor_log('switch_claimed', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, execute_method=payload.get('execute_method'), execute_target_host_id=payload.get('execute_target_host_id') or '', role=payload.get('role'), run_status=run_status)
     cmd = ['python3', os.path.join(PLUGIN_DIR, 'index.py'), 'switch_phase', json.dumps(payload, ensure_ascii=False)]
     stdout_fp = open(CLOUD_TASK_LAUNCHER_LOG_PATH, 'a', encoding='utf-8')
     try:
@@ -1751,6 +2268,7 @@ def _start_cloud_switch_phase(cfg, run):
         pass
     proc = subprocess.Popen(cmd, cwd=PANEL_DIR, stdout=stdout_fp, stderr=subprocess.STDOUT, start_new_session=True)
     _append_cloud_interaction_log('start_switch_task', 'started', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=proc.pid, execute_method=payload.get('execute_method'), execute_target_host_id=payload.get('execute_target_host_id') or '')
+    _append_poll_monitor_log('switch_started', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=run.get('switch_run_id'), phase=phase, pid=proc.pid, execute_method=payload.get('execute_method'), execute_target_host_id=payload.get('execute_target_host_id') or '')
     try:
         stdout_fp.close()
     except Exception:
@@ -1853,6 +2371,47 @@ def _append_cloud_interaction_log(action, status='info', **kwargs):
             fp.write(' '.join(parts) + '\n')
     except Exception:
         pass
+
+
+def _append_task_log(path, status='info', **kwargs):
+    try:
+        _ensure_dirs()
+        if os.path.exists(path) and os.path.getsize(path) > 5 * 1024 * 1024:
+            backup_path = path + '.1'
+            if os.path.exists(backup_path):
+                os.remove(backup_path)
+            os.rename(path, backup_path)
+        parts = ['[{0}]'.format(_now()), 'status={0}'.format(status)]
+        for key in sorted(kwargs.keys()):
+            if key in ('api_secret', 'signature', 'peer_public_key'):
+                continue
+            value = kwargs.get(key)
+            if isinstance(value, (dict, list)):
+                value = _short_json(value)
+            value = str(value if value is not None else '').replace('\n', ' ')
+            if len(value) > 1200:
+                value = value[:1200] + '...'
+            parts.append('{0}={1}'.format(key, value))
+        with open(path, 'a', encoding='utf-8') as fp:
+            fp.write(' '.join(parts) + '\n')
+    except Exception:
+        pass
+
+
+def _append_alert_check_log(status='info', **kwargs):
+    _append_task_log(ALERT_CHECK_LOG_PATH, status, **kwargs)
+
+
+def _append_poll_monitor_log(status='info', **kwargs):
+    _append_task_log(POLL_MONITOR_LOG_PATH, status, **kwargs)
+
+
+def _append_report_state_log(status='info', **kwargs):
+    _append_task_log(REPORT_STATE_LOG_PATH, status, **kwargs)
+
+
+def _append_recover_check_log(status='info', **kwargs):
+    _append_task_log(RECOVER_CHECK_LOG_PATH, status, **kwargs)
 
 
 def _preempt_old_cloud_switch_tasks(cfg, switch_run_id, phase):
@@ -2526,10 +3085,16 @@ if __name__ == '__main__':
         print(save_monitor())
     elif func == 'save_auto_recover':
         print(save_auto_recover())
+    elif func == 'save_alert_config':
+        print(save_alert_config())
+    elif func == 'sync_alert_config':
+        print(sync_alert_config())
     elif func == 'clear_monitor':
         print(clear_monitor())
     elif func == 'report_state':
         print(report_state())
+    elif func == 'alert_check':
+        print(alert_check())
     elif func == 'poll_monitor':
         print(poll_monitor())
     elif func == 'read_log':

@@ -38,6 +38,14 @@
       "interval": 30,
       "timeout": 30,
       "enabled": true
+    },
+    {
+      "func": "alert_check",
+      "title": "检查主备异常通知",
+      "args": {},
+      "interval": 30,
+      "timeout": 30,
+      "enabled": true
     }
   ]
 }

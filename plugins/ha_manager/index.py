@@ -1654,17 +1654,6 @@ def report_alert_event(cfg, event_type, status, title, message, alerts=None, mod
     return res
 
 
-def _check_notifier_config_mismatch(cfg, context):
-    peer = context.get('peer') or {}
-    peer_alert_config = peer.get('alert_config') or {}
-    peer_primary = peer_alert_config.get('primary_notifier_host_id') or ''
-    local_primary = cfg.get('primary_notifier_host_id') or ''
-    if peer_primary and local_primary and peer_primary != local_primary:
-        _append_cloud_interaction_log('alert_config', 'mismatch', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), local_primary_notifier_host_id=local_primary, peer_primary_notifier_host_id=peer_primary)
-        return _make_alert(cfg, 'notifier_config_mismatch', 'warning', '主备异常通知主方配置不一致', '主备异常通知主方配置已一致', cfg.get('host_id'), {'local_primary': local_primary, 'peer_primary': peer_primary})
-    return None
-
-
 def alert_check():
     cfg = _config()
     _append_alert_check_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), primary_notifier_host_id=cfg.get('primary_notifier_host_id'), alert_enabled=cfg.get('alert_enabled'))
@@ -1674,9 +1663,6 @@ def alert_check():
         return _return(True, '异常通知未开启，跳过检测', {'enabled': False})
     context = _collect_alert_context(cfg)
     current_alerts = _active_alerts(cfg, context)
-    mismatch_alert = _check_notifier_config_mismatch(cfg, context)
-    if mismatch_alert:
-        current_alerts[mismatch_alert['key']] = mismatch_alert
     state = _read_alert_state()
     mode = _notifier_mode(cfg, context, state)
     previous_keys = set(state.get('active_keys') or [])

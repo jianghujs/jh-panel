@@ -1687,7 +1687,7 @@ def alert_check():
         state.update({'status': 'normal', 'active_keys': [], 'alerts': {}, 'last_seen_at': _now()})
         _write_alert_state(state)
         _append_alert_check_log('normal', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='当前无主备异常')
-        return _return(True, '当前无主备异常', {'alerts': [], 'notifier': mode})
+        return _return(True, '当前无主备异常', {'alerts': [], 'notifier': mode, 'alert_state': state})
     if previous_keys and current_keys:
         if state.get('notification_owner_host_id') == cfg.get('host_id'):
             state.update({'status': 'abnormal', 'active_keys': sorted(current_keys), 'alerts': merged_alerts, 'last_seen_at': _now()})
@@ -1730,7 +1730,7 @@ def alert_check():
         state = _alert_events_push(state, {'type': 'recovery', 'status': 'sent' if cfg.get('alert_recovery_notify') else 'skipped', 'alert_count': len(old_alerts)})
         _write_alert_state(state)
         _append_alert_check_log('recovered', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), old_keys=sorted(previous_keys), recovery_notify=cfg.get('alert_recovery_notify'))
-        return _return(True, '主备异常已恢复', {'alerts': [], 'notifier': mode})
+        return _return(True, '主备异常已恢复', {'alerts': [], 'notifier': mode, 'alert_state': state})
     _append_alert_check_log('done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), current_keys=sorted(current_keys))
     return _return(True, '主备异常检测完成', {'alerts': list(merged_alerts.values()), 'notifier': mode})
 

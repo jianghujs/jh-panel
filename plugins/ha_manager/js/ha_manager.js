@@ -319,6 +319,7 @@ function msAlertSummaryHtml() {
   var alertState = msState.alert_state || {};
   var alerts = alertState.alerts || {};
   var keys = alertState.active_keys || Object.keys(alerts);
+  if (alertState.status === 'normal') keys = [];
   var tone = keys.length ? 'warning' : 'normal';
   var primary = msState.primary_notifier_host_id || msState.host_id || '';
   var primaryText = primary === msState.host_id ? '本机' : primary === msState.peer_host_id ? '对端' : (primary || '--');
@@ -330,6 +331,10 @@ function msAlertSummaryHtml() {
   });
   var recentEvents = alertState.events || [];
   var recent = recentEvents.length ? recentEvents[recentEvents.length - 1] : null;
+  var recentText = '';
+  if (recent) {
+    recentText = recent.type === 'recovery' ? '最近记录: 已恢复 / ' + (recent.addtime || '') : '最近记录: ' + (recent.type || '') + ' / ' + (recent.status || '') + ' / ' + (recent.addtime || '');
+  }
   return '<div class="ms-alert-box">' +
     '<div class="ms-alert-line"><div>' + msPill(tone, keys.length ? '存在异常' : '正常') + '<span class="ms-failover-desc">主通知方: ' + msHtml(primaryText) + (isPrimary ? '，本机负责通知' : '，本机备用') + '</span></div>' +
       '<button class="btn btn-default btn-xs" onclick="msRunAlertCheck()">立即检测</button></div>' +
@@ -338,7 +343,7 @@ function msAlertSummaryHtml() {
     '</div>' +
     '<div class="ms-alert-line ms-failover-setting"><label class="ms-failover-toggle"><input type="checkbox" onchange="msSavePrimaryNotifier(this.checked)" ' + (isPrimary ? 'checked' : '') + '> <span>本机作为主通知方</span></label></div>' +
     (lines.length ? '<div class="ms-alert-detail">' + lines.map(msHtml).join('<br>') + '</div>' : '') +
-    (recent ? '<div class="ms-alert-detail c7">最近记录: ' + msHtml(recent.type || '') + ' / ' + msHtml(recent.status || '') + ' / ' + msHtml(recent.addtime || '') + '</div>' : '') +
+    (recentText ? '<div class="ms-alert-detail c7">' + msHtml(recentText) + '</div>' : '') +
   '</div>';
 }
 

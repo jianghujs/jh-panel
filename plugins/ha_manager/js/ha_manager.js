@@ -21,7 +21,7 @@ var msState = {
   switch_run_id: '',
   switch_status: 'idle',
   auto_recover_as_standby: true,
-  alert_enabled: true,
+  alert_enabled: false,
   primary_notifier_host_id: '',
   alert_takeover_fail_count: 3,
   alert_takeover_recover_count: 2,

@@ -481,7 +481,7 @@ def _default_config():
         'switch_status': 'idle',
         'log_path': '',
         'auto_recover_as_standby': True,
-        'alert_enabled': True,
+        'alert_enabled': False,
         'primary_notifier_host_id': '',
         'alert_takeover_fail_count': 3,
         'alert_takeover_recover_count': 2,
@@ -527,7 +527,7 @@ def _config():
         config_changed = True
     cfg['alert_takeover_fail_count'] = max(1, _safe_int(cfg.get('alert_takeover_fail_count'), 3))
     cfg['alert_takeover_recover_count'] = max(1, _safe_int(cfg.get('alert_takeover_recover_count'), 2))
-    cfg['alert_enabled'] = str(cfg.get('alert_enabled')).lower() not in ('0', 'false', 'no', 'off')
+    cfg['alert_enabled'] = str(cfg.get('alert_enabled')).lower() in ('1', 'true', 'yes', 'on')
     cfg['alert_recovery_notify'] = str(cfg.get('alert_recovery_notify')).lower() not in ('0', 'false', 'no', 'off')
     cfg['alert_key_health_check_enabled'] = str(cfg.get('alert_key_health_check_enabled')).lower() in ('1', 'true', 'yes', 'on')
     if _sync_binding_options(cfg) or config_changed or identity_changed:
@@ -1138,7 +1138,7 @@ def _bool_config_value(value, default=False):
 
 def _apply_alert_config(cfg, data):
     if 'alert_enabled' in data:
-        cfg['alert_enabled'] = _bool_config_value(data.get('alert_enabled'), True)
+        cfg['alert_enabled'] = _bool_config_value(data.get('alert_enabled'), False)
     if 'primary_notifier_host_id' in data:
         host_id = str(data.get('primary_notifier_host_id') or '').strip()
         if host_id:

@@ -1582,6 +1582,19 @@ def _merge_alerts(previous_alerts, current_alerts):
     return merged
 
 
+def _is_ignored_alert(alert):
+    if not isinstance(alert, dict):
+        return False
+    alert_type = alert.get('alert_type') or ''
+    key = alert.get('key') or ''
+    return alert_type == 'notifier_config_mismatch' or ':notifier_config_mismatch:' in key
+
+
+def _drop_ignored_alerts(alerts):
+    alerts = alerts if isinstance(alerts, dict) else {}
+    return dict((key, alert) for key, alert in alerts.items() if not _is_ignored_alert(alert))
+
+
 def _alert_events_push(state, event):
     events = state.get('events') if isinstance(state.get('events'), list) else []
     event['addtime'] = _now()
@@ -1662,8 +1675,16 @@ def alert_check():
         _append_alert_check_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='异常通知未开启')
         return _return(True, '异常通知未开启，跳过检测', {'enabled': False})
     context = _collect_alert_context(cfg)
-    current_alerts = _active_alerts(cfg, context)
+    current_alerts = _drop_ignored_alerts(_active_alerts(cfg, context))
     state = _read_alert_state()
+    saved_alerts = state.get('alerts') if isinstance(state.get('alerts'), dict) else {}
+    cleaned_saved_alerts = _drop_ignored_alerts(saved_alerts)
+    if len(cleaned_saved_alerts) != len(saved_alerts):
+        state.update({'alerts': cleaned_saved_alerts, 'active_keys': sorted(cleaned_saved_alerts.keys())})
+        if not cleaned_saved_alerts:
+            state.update({'status': 'normal', 'notification_owner_host_id': '', 'notification_owner_mode': '', 'first_seen_at': '', 'last_seen_at': _now()})
+        _write_alert_state(state)
+        _append_alert_check_log('legacy_alert_cleaned', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), ignored='notifier_config_mismatch')
     mode = _notifier_mode(cfg, context, state)
     previous_keys = set(state.get('active_keys') or [])
     current_keys = set(current_alerts.keys())

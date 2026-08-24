@@ -666,6 +666,10 @@ class files_api:
         return True
 
     def setFileAccept(self, filename):
+        realname = os.path.abspath(os.path.realpath(filename))
+        if realname == '/root':
+            return
+
         auth = 'www:www'
         if mw.getOs() == 'darwin':
             user = mw.execShell(

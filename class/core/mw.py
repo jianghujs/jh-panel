@@ -213,6 +213,15 @@ def systemdCfgDir():
     return "/tmp"
 
 
+def systemctlExists(service):
+    cmd = 'systemctl list-unit-files {0}.service --no-legend | grep -q "^{0}.service"'.format(shlex.quote(service))
+    return execShell(cmd)[2] == 0
+
+
+def systemctlIsActive(service):
+    return execShell('systemctl is-active --quiet {0}'.format(shlex.quote(service)))[2] == 0
+
+
 def getSslCrt():
     if os.path.exists('/etc/ssl/certs/ca-certificates.crt'):
         return '/etc/ssl/certs/ca-certificates.crt'

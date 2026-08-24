@@ -8,6 +8,7 @@ import sys
 
 PANEL_DIR = '/www/server/jh-panel'
 SWITCH_PY = os.path.join(PANEL_DIR, 'scripts/switch.py')
+MYSQL_PY = os.path.join(PANEL_DIR, 'scripts/mysql.py')
 RSYNCD_INDEX = os.path.join(PANEL_DIR, 'plugins/rsyncd/index.py')
 OPENRESTY_INDEX = os.path.join(PANEL_DIR, 'plugins/openresty/index.py')
 DRY_RUN = os.environ.get('HA_MANAGER_SWITCH_DRY_RUN') == '1'
@@ -276,6 +277,10 @@ def _service_active(service):
     return proc.returncode == 0
 
 
+def _ensure_mysql_running(reason):
+    _run('python3 {0} ensureRunning --reason {1}'.format(_quote(MYSQL_PY), _quote(reason)), '确保 MySQL 服务正常')
+
+
 def _ensure_openresty_master():
     if _systemctl_exists('nginx'):
         _run_optional('systemctl stop nginx', '停止系统 nginx 服务，避免占用 Web 端口')
@@ -302,6 +307,7 @@ def _ensure_openresty_standby():
 
 
 def run_offline(args):
+    _ensure_mysql_running('恢复为备机前')
     _run('python3 {0} closeMysqlSlaveNotify'.format(SWITCH_PY), '优先关闭主从同步异常提醒')
     _set_authorized_key(True)
     _open_cron('备份数据库[backupAll]')
@@ -325,6 +331,7 @@ def run_offline(args):
 
 def run_prepare_online(args):
     opts = _json_arg(args.args)
+    _ensure_mysql_running('预上线检查前')
     print('|- 预上线选项 sync_files={0}, run_checksum={1}'.format(str(_bool_opt(opts, 'sync_files')).lower(), str(_bool_opt(opts, 'run_checksum')).lower()))
     if _bool_opt(opts, 'run_xtrabackup_inc_restore'):
         _run('python3 /www/server/jh-panel/plugins/xtrabackup-inc/index.py get_inc_recovery_cron_script | python3 -c "import sys,json,subprocess; d=json.load(sys.stdin); script=d.get(\'data\') or \"\"; subprocess.check_call(script, shell=True) if script else None"', '执行 xtrabackup 增量恢复')
@@ -375,6 +382,7 @@ def run_prepare_online(args):
 
 def run_online(args):
     opts = _json_arg(args.args)
+    _ensure_mysql_running('正式上线前')
     if _bool_opt(opts, 'promote_mysql', True):
         _run_node_script('switch__mysql_master.js', '将当前数据库提升为主')
     _set_authorized_key(False)

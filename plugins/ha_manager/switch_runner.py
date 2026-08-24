@@ -280,6 +280,7 @@ def _ensure_openresty_master():
     if _systemctl_exists('nginx'):
         _run_optional('systemctl stop nginx', '停止系统 nginx 服务，避免占用 Web 端口')
         _run_optional('systemctl disable nginx', '禁用系统 nginx 自启动')
+    _run_optional('systemctl unmask openresty', '解除 OpenResty mask')
     _run('systemctl enable openresty', '启用 OpenResty 自启动')
     _run('python3 {0} start'.format(OPENRESTY_INDEX), '启动 OpenResty')
     if not DRY_RUN and not _service_active('openresty'):
@@ -292,6 +293,7 @@ def _ensure_openresty_standby():
     _run('python3 {0} stop'.format(OPENRESTY_INDEX), '停止 OpenResty')
     _run_optional('systemctl stop openresty', '兜底停止 OpenResty 服务')
     _run_optional('systemctl disable openresty', '禁用 OpenResty 自启动')
+    _run('systemctl mask openresty', 'mask OpenResty，防止备用机被自动拉起')
     if _systemctl_exists('nginx'):
         _run_optional('systemctl stop nginx', '停止系统 nginx 服务')
         _run_optional('systemctl disable nginx', '禁用系统 nginx 自启动')

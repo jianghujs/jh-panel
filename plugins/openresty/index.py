@@ -239,7 +239,11 @@ def restyOp(method):
         return check_data[1]
 
     if not mw.isAppleSystem():
+        if method == 'start':
+            mw.execShell('systemctl unmask openresty')
         data = mw.execShell('systemctl ' + method + ' openresty')
+        if method == 'stop':
+            mw.execShell('systemctl mask openresty')
         if data[1] == '':
             return 'ok'
         return data[1]
@@ -309,6 +313,7 @@ def initdInstall():
     if mw.isAppleSystem():
         return "Apple Computer does not support"
 
+    mw.execShell('systemctl unmask openresty')
     mw.execShell('systemctl enable openresty')
     return 'ok'
 
@@ -318,6 +323,7 @@ def initdUinstall():
         return "Apple Computer does not support"
 
     mw.execShell('systemctl disable openresty')
+    mw.execShell('systemctl mask openresty')
     return 'ok'
 
 

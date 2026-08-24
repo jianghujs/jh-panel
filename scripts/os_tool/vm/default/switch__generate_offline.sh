@@ -146,6 +146,8 @@ if [ $choice == "y" ]; then
   echo "# 关闭openresty" >> $script_file
   echo "python3 /www/server/jh-panel/plugins/openresty/index.py stop" >> $script_file
   echo "check_and_continue \"关闭 OpenResty\"" >> $script_file
+  echo "systemctl mask openresty" >> $script_file
+  echo "check_and_continue \"mask OpenResty\"" >> $script_file
   echo "show_info \"|- 关闭 OpenResty’ 完成✅\"" >> $script_file
   echo "" >> $script_file
   # echo "# 关闭邮件通知" >> $script_file

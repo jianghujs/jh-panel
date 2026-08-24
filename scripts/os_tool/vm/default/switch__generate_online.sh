@@ -394,6 +394,8 @@ if [ $choice == "y" ]; then
   # 启用openresty
   confirm_online_opts+="- 启用Openresty\n"
   echo "# 启用openresty" >> $tmp_online_script_file
+  echo "systemctl unmask openresty" >> $tmp_online_script_file
+  echo "check_and_continue \"unmask OpenResty\"" >> $tmp_online_script_file
   echo "python3 /www/server/jh-panel/plugins/openresty/index.py start" >> $tmp_online_script_file
   echo "check_and_continue \"启动 OpenResty\"" >> $tmp_online_script_file
   echo "show_info \"|- 启动 OpenResty’ 完成✅\"" >> $tmp_online_script_file

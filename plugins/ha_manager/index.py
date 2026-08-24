@@ -842,6 +842,58 @@ def _state(cfg=None):
     return state
 
 
+def _host_matches_identity(host, host_id='', host_ip=''):
+    host = host or {}
+    host_id = str(host_id or '').strip()
+    host_ip = str(host_ip or '').strip()
+    if host_id and str(host.get('host_id') or '').strip() == host_id:
+        return True
+    if host_ip and str(host.get('host_ip') or '').strip() == host_ip:
+        return True
+    return False
+
+
+def _failover_pending_target_is_standby(failover, local_state, peer_state):
+    failover = failover or {}
+    pending_role = str(failover.get('pending_switch_role') or '').strip()
+    if pending_role and pending_role != 'standby':
+        return False
+    pending_id = str(failover.get('pending_switch_host_id') or '').strip()
+    pending_ip = str(failover.get('pending_switch_host_ip') or '').strip()
+    if not pending_id and not pending_ip:
+        return False
+    for host in (local_state or {}, peer_state or {}):
+        if _host_matches_identity(host, pending_id, pending_ip) and host.get('role') == 'standby':
+            return True
+    return False
+
+
+def _pair_roles_are_normal(local_state, peer_state):
+    roles = [local_state.get('role'), peer_state.get('role')]
+    return roles.count('master') == 1 and roles.count('standby') == 1
+
+
+def _maybe_clear_recovered_failover_state(cfg, local_state, peer_state):
+    failover = _read_failover_state()
+    if not failover:
+        return {'status': False, 'cleared': False, 'msg': 'no failover state'}
+    if not peer_state:
+        return {'status': False, 'cleared': False, 'msg': 'peer state unavailable'}
+    recovery_status = str(failover.get('recovery_status') or '').strip()
+    mode = str(failover.get('mode') or '').strip()
+    if recovery_status in ('recovery_guard', 'recovering_standby'):
+        return {'status': False, 'cleared': False, 'msg': 'recovery still active'}
+    if not (failover.get('pending_switch_required') or mode == 'degraded_master' or recovery_status == 'pending_peer_recovery'):
+        return {'status': False, 'cleared': False, 'msg': 'not pending recovery'}
+    if not _pair_roles_are_normal(local_state, peer_state):
+        return {'status': False, 'cleared': False, 'msg': 'pair roles are not normal'}
+    if not _failover_pending_target_is_standby(failover, local_state, peer_state):
+        return {'status': False, 'cleared': False, 'msg': 'pending target is not standby'}
+    _clear_failover_state()
+    _append_cloud_interaction_log('auto_clear_failover_state', 'done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), local_role=local_state.get('role'), peer_role=peer_state.get('role'), pending_switch_host_id=failover.get('pending_switch_host_id'), recovery_status=recovery_status, mode=mode)
+    return {'status': True, 'cleared': True, 'msg': '已自动清除已恢复的故障状态'}
+
+
 def _seq():
     data = _read_json(SEQ_PATH, {'seq': 0})
     data['seq'] = int(data.get('seq') or 0) + 1
@@ -1214,6 +1266,10 @@ def report_state():
         if repaired_cfg.get('host_id') != cfg.get('host_id'):
             cfg = repaired_cfg
             local_state = _state(cfg)
+        clear_result = _maybe_clear_recovered_failover_state(cfg, local_state, peer_state.get('data') or {})
+        if clear_result.get('cleared'):
+            local_state = _state(cfg)
+            _append_report_state_log('auto_clear_failover_state', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg=clear_result.get('msg'))
     hosts = [{
         'host_id': cfg.get('host_id'),
         'host_name': cfg.get('host_name'),

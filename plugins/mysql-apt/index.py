@@ -86,6 +86,16 @@ def getConf():
     return path
 
 
+def getServiceExpectedStatusFile():
+    return getServerDir() + '/service_expected_status.pl'
+
+
+def writeServiceExpectedStatus(expected_status):
+    if not os.path.exists(getServerDir()):
+        os.makedirs(getServerDir())
+    return mw.writeFile(getServiceExpectedStatusFile(), expected_status)
+
+
 def getSemiSyncPluginDir():
     return getServerDir() + '/bin/usr/lib/mysql/plugin'
 
@@ -582,16 +592,22 @@ def appCMD(version, action):
 
 
 def start(version=''):
-    res = appCMD(version, 'start')
-    return appCMD(version, 'start')
+    ret = appCMD(version, 'start')
+    if ret == 'ok':
+        writeServiceExpectedStatus('start')
+    return ret
 
 
 def stop(version=''):
+    writeServiceExpectedStatus('stop')
     return appCMD(version, 'stop')
 
 
 def restart(version=''):
-    return appCMD(version, 'restart')
+    ret = appCMD(version, 'restart')
+    if ret == 'ok':
+        writeServiceExpectedStatus('start')
+    return ret
 
 
 def reload(version=''):

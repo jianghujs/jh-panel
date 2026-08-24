@@ -66,6 +66,15 @@ class mysqlTools:
         plugin = plugin or self._getPluginName()
         return os.path.join(PANEL_DIR, 'plugins', plugin, 'index.py')
 
+
+    def _runPluginMethod(self, plugin, method, step, check=True):
+        index = self._getPluginIndex(plugin)
+        if not os.path.exists(index):
+            if check:
+                raise RuntimeError('未找到 MySQL 插件入口: ' + index)
+            return 1, ''
+        return self._runShell('python3 {0} {1}'.format(self._quote(index), self._quote(method)), step, check=check)
+
     def _getPluginStatus(self, plugin=None):
         plugin = plugin or self._getPluginName()
         index = self._getPluginIndex(plugin)
@@ -93,6 +102,14 @@ class mysqlTools:
     def _start(self):
         plugin = self._getPluginName()
         service = self._getServiceName(plugin)
+        index = self._getPluginIndex(plugin)
+        if os.path.exists(index):
+            self._runPluginMethod(plugin, 'start', '通过数据库插件启动 MySQL')
+            if not DRY_RUN:
+                if self._getPluginStatus(plugin) == 'start':
+                    return
+                if mw.systemctlExists(service) and mw.systemctlIsActive(service):
+                    return
         if mw.systemctlExists(service):
             self._runShell('systemctl daemon-reload', '刷新 systemd 配置', check=False)
             self._runShell('systemctl enable {0}'.format(self._quote(service)), '启用 MySQL 自启动', check=False)
@@ -102,10 +119,27 @@ class mysqlTools:
             self._runShell('systemctl start {0}'.format(self._quote(service)), '启动 MySQL 服务')
             if not DRY_RUN and mw.systemctlIsActive(service):
                 return
-        index = self._getPluginIndex(plugin)
         if not os.path.exists(index):
             raise RuntimeError('未找到 MySQL systemd 服务，也未找到插件入口: ' + index)
-        self._runShell('python3 {0} start'.format(self._quote(index)), '通过数据库插件启动 MySQL')
+
+
+    def _stop(self):
+        plugin = self._getPluginName()
+        service = self._getServiceName(plugin)
+        index = self._getPluginIndex(plugin)
+        if os.path.exists(index):
+            self._runPluginMethod(plugin, 'stop', '通过数据库插件停止 MySQL')
+            if not DRY_RUN:
+                if self._getPluginStatus(plugin) == 'stop':
+                    return
+                if mw.systemctlExists(service) and not mw.systemctlIsActive(service):
+                    return
+        if mw.systemctlExists(service):
+            self._runShell('systemctl stop {0}'.format(self._quote(service)), '停止 MySQL 服务')
+            if not DRY_RUN and not mw.systemctlIsActive(service):
+                return
+        if not os.path.exists(index):
+            raise RuntimeError('未找到 MySQL systemd 服务，也未找到插件入口: ' + index)
 
     def ensureRunning(self, reason=''):
         plugin = self._getPluginName()
@@ -121,6 +155,20 @@ class mysqlTools:
                 raise RuntimeError('MySQL 插件状态异常: ' + status)
         print('|- MySQL 服务检查完成')
 
+
+    def ensureStopped(self, reason=''):
+        plugin = self._getPluginName()
+        service = self._getServiceName(plugin)
+        print('|- 停止 MySQL 服务：plugin={0}, service={1}, reason={2}'.format(plugin, service, reason or '未指定'))
+        self._stop()
+        if not DRY_RUN:
+            status = self._getPluginStatus(plugin)
+            if status and status != 'stop':
+                raise RuntimeError('MySQL 插件状态异常: ' + status)
+            if mw.systemctlExists(service) and mw.systemctlIsActive(service):
+                raise RuntimeError('MySQL 服务停止后仍在运行: ' + service)
+        print('|- MySQL 服务停止完成')
+
     def status(self):
         plugin = self._getPluginName()
         service = self._getServiceName(plugin)
@@ -135,7 +183,7 @@ class mysqlTools:
 if __name__ == "__main__":
     mysql = mysqlTools()
     if len(sys.argv) < 2:
-        print('用法: python3 scripts/mysql.py <ensureRunning|status> [args]')
+        print('用法: python3 scripts/mysql.py <ensureRunning|ensureStopped|status> [args]')
         sys.exit(1)
 
     type = sys.argv[1]
@@ -149,6 +197,15 @@ if __name__ == "__main__":
             elif len(sys.argv) > 2:
                 reason = sys.argv[2]
             mysql.ensureRunning(reason)
+        elif type == 'ensureStopped':
+            reason = ''
+            if '--reason' in sys.argv:
+                idx = sys.argv.index('--reason')
+                if len(sys.argv) > idx + 1:
+                    reason = sys.argv[idx + 1]
+            elif len(sys.argv) > 2:
+                reason = sys.argv[2]
+            mysql.ensureStopped(reason)
         elif type == 'status':
             mysql.status()
         else:

@@ -68,6 +68,12 @@ if [ $choice == "y" ]; then
   echo "}" >> $script_file
   echo "" >> $script_file
 
+  echo "# 确保MySQL服务正常" >> $script_file
+  echo "python3 /www/server/jh-panel/scripts/mysql.py ensureRunning --reason 恢复为备机前" >> $script_file
+  echo "check_and_continue \"确保 MySQL 服务正常\"" >> $script_file
+  echo "show_info \"|- 确保 MySQL 服务正常完成✅\"" >> $script_file
+  echo "" >> $script_file
+
   echo "# 调整计划任务" >> $script_file
   echo "python3 /www/server/jh-panel/scripts/switch.py openCrontab 备份数据库[backupAll]" >> $script_file
   echo "check_and_continue \"开启 备份数据库 定时任务\"" >> $script_file

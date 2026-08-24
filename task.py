@@ -655,6 +655,43 @@ def openrestyAutoRestart():
 # --------------------------------------OpenResty Auto Restart End   --------------------------------------------- #
 
 
+# --------------------------------------MySQL Auto Start When Stopped Start --------------------------------------------- #
+# MySQL在面板内被设置为启动状态后，如果进程被外部异常停止，则自动拉起；面板内手动停止则不拉起。
+def mysqlAutoStartWhenStopped():
+    plugin_name = 'mysql-apt'
+    plugin_dir = mw.getServerDir() + '/' + plugin_name
+    expected_status_file = plugin_dir + '/service_expected_status.pl'
+    plugin_index = os.getcwd() + '/plugins/' + plugin_name + '/index.py'
+    while True:
+        try:
+            if not os.path.exists(plugin_dir) or not os.path.exists(plugin_index):
+                time.sleep(30)
+                continue
+
+            status_cmd = 'cd ' + os.getcwd() + ' && python3 ' + plugin_index + ' status'
+            status = mw.execShell(status_cmd)[0].strip()
+
+            if not os.path.exists(expected_status_file):
+                if status == 'start':
+                    mw.writeFile(expected_status_file, 'start')
+                time.sleep(30)
+                continue
+
+            expected_status = mw.readFile(expected_status_file)
+            if not expected_status:
+                time.sleep(30)
+                continue
+            expected_status = expected_status.strip()
+            if expected_status == 'start' and status != 'start':
+                start_cmd = 'cd ' + os.getcwd() + ' && python3 ' + plugin_index + ' start'
+                execShell(start_cmd)
+        except Exception as e:
+            print(str(e))
+        time.sleep(30)
+
+# --------------------------------------MySQL Auto Start When Stopped End   --------------------------------------------- #
+
+
 # --------------------------------------Panel Restart Start   --------------------------------------------- #
 def restartService():
     restartTip = 'data/restart.pl'
@@ -738,6 +775,11 @@ if __name__ == "__main__":
     oar = threading.Thread(target=openrestyAutoRestart)
     oar = setDaemon(oar)
     oar.start()
+
+    # MySQL Auto Start When Stopped Start
+    mast = threading.Thread(target=mysqlAutoStartWhenStopped)
+    mast = setDaemon(mast)
+    mast.start()
 
     # Panel Restart Start
     rps = threading.Thread(target=restartPanelService)

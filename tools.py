@@ -61,6 +61,7 @@ def mwcli(mw_input=0, confirm=False):
         print("(3) 启动面板服务")
         print("(4) 重载面板服务")
         print("(5) 修改面板端口")
+        print("(6) 更新面板服务")
         print("(10) 查看面板默认信息")
         print("(11) 修改面板密码")
         print("(12) 修改面板用户名")
@@ -77,7 +78,7 @@ def mwcli(mw_input=0, confirm=False):
         except:
             mw_input = 0
 
-    nums = [1, 2, 3, 4, 5, 10, 11, 12, 13, 20, 21, 22]
+    nums = [1, 2, 3, 4, 5, 6, 10, 11, 12, 13, 20, 21, 22]
     if not mw_input in nums:
         print(raw_tip)
         print("已取消!")
@@ -113,6 +114,8 @@ def mwcli(mw_input=0, confirm=False):
         else:
             print("|-端口范围在0-65536之间")
         return
+    elif mw_input == 6:
+      os.system(INIT_CMD + " upgrade")
     elif mw_input == 10:
         os.system(INIT_CMD + " default")
     elif mw_input == 11:

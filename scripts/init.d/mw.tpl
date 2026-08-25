@@ -220,6 +220,47 @@ mw_update_dev()
     cd /www/server/jh-panel
 }
 
+mw_upgrade()
+{
+    mkdir -p $mw_path/logs $mw_path/tmp
+    log_file=$mw_path/logs/upgrade.log
+
+    nohup bash -c '
+        mw_path=/www/server/jh-panel
+        log_file=$mw_path/logs/upgrade.log
+        lock_file=$mw_path/tmp/upgrade.lock
+
+        mkdir -p $mw_path/logs $mw_path/tmp
+        {
+            if command -v flock >/dev/null 2>&1; then
+                exec 9>$lock_file
+                if ! flock -n 9; then
+                    echo "[$(date \"+%F %T\")] jh-panel upgrade is already running"
+                    exit 0
+                fi
+            fi
+
+            echo "======================================================"
+            echo "[$(date \"+%F %T\")] start jh-panel upgrade"
+            cd $mw_path || exit 1
+            git pull
+            pull_status=$?
+            if [ $pull_status -ne 0 ]; then
+                echo "[$(date \"+%F %T\")] git pull failed, status: $pull_status"
+                exit $pull_status
+            fi
+            echo "[$(date \"+%F %T\")] git pull done, restart jh-panel"
+            /usr/bin/jh 1 -y
+            restart_status=$?
+            echo "[$(date \"+%F %T\")] restart done, status: $restart_status"
+            exit $restart_status
+        } >> $log_file 2>&1
+    ' >/dev/null 2>&1 &
+
+    echo "jh-panel upgrade started in background"
+    echo "log: $log_file"
+}
+
 mw_install_app()
 {
     bash $mw_path/scripts/quick/app.sh
@@ -290,6 +331,7 @@ case "$1" in
     'open') mw_open;;
     'update') mw_update;;
     'update_dev') mw_update_dev;;
+    'upgrade') mw_upgrade;;
     'install_app') mw_install_app;;
     'close_admin_path') mw_close_admin_path;;
     'unbind_domain') mw_unbind_domain;;

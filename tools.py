@@ -36,6 +36,17 @@ if mw.isAppleSystem():
 INIT_CMD = INIT_DIR + "/mw"
 
 
+def restart_panel_background():
+    log_dir = mw.getRunDir() + '/logs'
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_file = log_dir + '/restart.log'
+    cmd = "nohup bash -c 'echo \"======================================================\"; echo \"[$(date \"+%F %T\")] start jh-panel restart\"; " + INIT_CMD + " restart; restart_status=$?; echo \"[$(date \"+%F %T\")] restart done, status: $restart_status\"; exit $restart_status' >> " + log_file + " 2>&1 &"
+    os.system(cmd)
+    print("jh-panel restart started in background")
+    print("log: " + log_file)
+
+
 def mw_input_cmd(msg):
     if sys.version_info[0] == 2:
         in_val = raw_input(msg)
@@ -86,14 +97,14 @@ def mwcli(mw_input=0, confirm=False):
 
     if mw_input == 1:
       if not confirm:
-        confirm = mw_input_default_cmd("提示：在面板终端执行此操作可能会失败，请勿在面板终端执行此操作\n确定要重启面板吗？（默认y）[y/n]：", 'y')
+        confirm = mw_input_default_cmd("确定要重启面板吗？（默认y）[y/n]：", 'y')
         if confirm != 'y':
             print("已取消")
             exit()
-      os.system(INIT_CMD + " restart")
+      restart_panel_background()
     elif mw_input == 2:
       if not confirm:
-        confirm = mw_input_default_cmd("提示：在面板终端执行此操作可能会失败，请勿在面板终端执行此操作\n确定要停止面板吗？（默认n）[y/n]：", 'n')
+        confirm = mw_input_default_cmd("确定要停止面板吗？（默认n）[y/n]：", 'n')
         if confirm != 'y':
             print("已取消")
             exit()

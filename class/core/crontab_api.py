@@ -214,6 +214,9 @@ class crontab_api:
         urladdress = request.form.get('urladdress', '')
 
         if stype == 'database':
+          db_type, db_name = self.parseDatabaseSname(sname)
+          if dumpType == '' and db_type in ['mysql', 'legacy', 'all']:
+            dumpType = 'mysqldump'
           sbody = dumpType
 
         if len(iname) < 1:
@@ -328,6 +331,9 @@ class crontab_api:
 
         stype = params["stype"]
         if stype == 'database':
+          db_type, db_name = self.parseDatabaseSname(params.get("sname", ""))
+          if params.get("dumpType", "") == "" and db_type in ['mysql', 'legacy', 'all']:
+            params["dumpType"] = "mysqldump"
           params["sbody"] = params.get("dumpType", "")
         iname = params["name"]
         field_type = params["type"]
@@ -478,12 +484,18 @@ class crontab_api:
             return 'mysql', sname.split(':', 1)[1]
         return 'mysql', sname
 
+    def getDatabaseDumpType(self, param, db_type):
+        dump_type = param.get('dumpType', '') or param.get('sbody', '')
+        if db_type in ['mysql', 'legacy', 'all'] and dump_type not in ['mysqldump', 'mydumper']:
+            return 'mysqldump'
+        return dump_type
+
     def getDatabaseBackupShell(self, head, param, save):
         db_type, db_name = self.parseDatabaseSname(param['sname'])
         script_dir = mw.getServerDir() + "/jh-panel/scripts"
         backup_py = shlex.quote(script_dir + "/backup.py")
         save_arg = shlex.quote(str(save))
-        dump_type = shlex.quote(param.get('dumpType', ''))
+        dump_type = shlex.quote(self.getDatabaseDumpType(param, db_type))
 
         if db_type == 'legacy':
             return head + "python3 " + backup_py + " database backupAll " + save_arg + " " + dump_type

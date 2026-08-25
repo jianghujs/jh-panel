@@ -3755,6 +3755,15 @@ html .menu .menu_exit:hover {
     display: block
 }
 
+.menu .menu_terminal {
+    background-image: url("../img/soft_ico/ico-cmd.png")
+}
+
+.menu .current .menu_terminal,
+.menu .menu_terminal:hover {
+    background-image: url("../img/soft_ico/ico-cmd-hover.png")
+}
+
 .fileUploadDiv {
     padding: 10px
 }

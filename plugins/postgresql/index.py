@@ -19,7 +19,9 @@ import shlex
 # vi /etc/sysconfig/network-scripts/ifcfg-eth0
 
 sys.path.append(os.getcwd() + "/class/core")
+sys.path.append(os.getcwd() + "/class/plugin")
 import mw
+from value_tool import quotePgIdentifier, quotePgLiteral
 
 
 if mw.isAppleSystem():
@@ -897,13 +899,17 @@ def addDb():
 
     sql = "select pg_terminate_backend(pid) from pg_stat_activity where DATNAME = 'template1';"
     pdb.execute(sql)
-    r = pdb.execute("create database " + dbname)
+
+    q_dbname = quotePgIdentifier(dbname)
+    q_dbuser = quotePgIdentifier(dbuser)
+    q_password = quotePgLiteral(password)
+
+    r = pdb.execute("create user {} with password {}".format(q_dbuser, q_password))
     # print(r)
-    r = pdb.execute("create user " + dbuser)
+    r = pdb.execute("create database {} owner {}".format(q_dbname, q_dbuser))
     # print(r)
-    pdb.execute("alter user {} with password '{}'".format(dbuser, password,))
     pdb.execute(
-        "GRANT ALL PRIVILEGES ON DATABASE {} TO {}".format(dbname, dbuser,))
+        "GRANT ALL PRIVILEGES ON DATABASE {} TO {}".format(q_dbname, q_dbuser,))
 
     pg_hba = getServerDir() + "/data/pg_hba.conf"
 

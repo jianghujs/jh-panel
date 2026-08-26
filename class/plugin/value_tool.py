@@ -143,6 +143,14 @@ def escapeHtml(value):
     return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
 
+def quotePgIdentifier(name):
+    return '"' + str(name).replace('"', '""') + '"'
+
+
+def quotePgLiteral(value):
+    return "'" + str(value).replace("'", "''") + "'"
+
+
 def getNested(data, path, default=None):
     current = data
     for key in path:

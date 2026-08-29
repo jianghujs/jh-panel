@@ -29,8 +29,40 @@ var hmlState = {
   ]
 };
 
+var hmlFlowConfig = null;
+var hmlFlowConfigLoaded = false;
+
+function hmlEnsureFlowConfig(callback) {
+  if (hmlFlowConfigLoaded) {
+    if (callback) callback();
+    return;
+  }
+  $.getJSON('/plugins/file?name=ha_manager_local&f=flow_config.json&v=202608292730', function(data) {
+    hmlFlowConfig = data || {};
+    hmlFlowConfigLoaded = true;
+    if (callback) callback();
+  }).fail(function() {
+    hmlFlowConfig = {roles: {}, guides: {}};
+    hmlFlowConfigLoaded = true;
+    if (callback) callback();
+  });
+}
+
+function hmlFlowRoleConfig(role) {
+  var roles = (hmlFlowConfig && hmlFlowConfig.roles) || {};
+  return roles[role] || roles.master || {stages: [], steps: []};
+}
+
+function hmlFlowGuideConfig(step) {
+  if (!step) return null;
+  var guides = (hmlFlowConfig && hmlFlowConfig.guides) || {};
+  return guides[step.guide_ref] || guides.default || null;
+}
+
 function hmlBoot() {
-  hmlRender();
+  hmlEnsureFlowConfig(function() {
+    hmlRender();
+  });
 }
 
 function hmlCloneSteps() {
@@ -45,6 +77,17 @@ function hmlHtml(value) {
 function hmlNow() {
   var d = new Date();
   return [d.getHours(), d.getMinutes(), d.getSeconds()].map(function(n) { return n < 10 ? '0' + n : '' + n; }).join(':');
+}
+
+function hmlEnsureStepLog(step) {
+  if (!step) return [];
+  if (!step.logs) step.logs = [];
+  return step.logs;
+}
+
+function hmlAppendStepLog(step, text) {
+  if (!step || !text) return;
+  hmlEnsureStepLog(step).push('[' + hmlNow() + '] ' + text);
 }
 
 function hmlLog(text) {
@@ -90,19 +133,20 @@ function hmlRender() {
 
 function hmlRenderOverview() {
   var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
-  var html = '' +
-    '<div class="hml-grid">' +
-      '<div class="hml-card"><div class="hml-card-label">当前角色</div><div class="hml-card-value">' + hmlRoleText(hmlState.role) + '</div><div class="hml-card-note">只代表本机状态</div></div>' +
-      '<div class="hml-card"><div class="hml-card-label">目标角色</div><div class="hml-card-value">' + hmlRoleText(hmlState.desired_role) + '</div><div class="hml-card-note">可手动切到主或备</div></div>' +
-      '<div class="hml-card"><div class="hml-card-label">对外服务</div><div class="hml-card-value">' + (hmlState.external_closed ? '已关闭' : '开放中') + '</div><div class="hml-card-note">OpenResty ' + (hmlState.external_closed ? '已停止' : '运行中') + '</div></div>' +
-      '<div class="hml-card"><div class="hml-card-label">自检状态</div><div class="hml-card-value">' + (failedChecks ? '有异常' : '正常') + '</div><div class="hml-card-note">异常项 ' + failedChecks + ' 个</div></div>' +
-    '</div>' +
-    '<div class="hml-section"><div class="hml-section-body"><div class="hml-step-actions hml-overview-actions" style="margin-top:0;">' +
-        '<button class="btn btn-success btn-sm" onclick="hmlOpenSwitchDialog()">切换角色</button>' +
-        '<button class="btn btn-danger btn-sm" onclick="hmlCloseExternalService()">关闭对外服务</button>' +
-        '<button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button>' +
-      '</div></div></div>';
+  var html = '<div class="hml-topbar"><div><div class="hml-title">主备管理</div><div class="hml-sub">查看本机主备状态，必要时执行角色切换与对外服务控制。</div></div><div class="hml-actions"><button class="btn btn-success btn-sm" onclick="hmlOpenSwitchDialog()">切换角色</button><button class="btn btn-danger btn-sm" onclick="hmlCloseExternalService()">关闭对外服务</button><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button></div></div>' +
+    '<div class="hml-panel"><div class="hml-panel-body">' +
+      '<table class="table table-hover hml-overview-table"><tbody>' +
+        '<tr><th>当前角色</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleText(hmlState.role)) + '</td></tr>' +
+        '<tr><th>目标角色</th><td>' + hmlPill(hmlState.desired_role === 'master' ? 'ok' : 'info', hmlRoleText(hmlState.desired_role)) + '</td></tr>' +
+        '<tr><th>对外服务</th><td>' + hmlPill(hmlState.external_closed ? 'bad' : 'ok', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
+        '<tr><th>自检状态</th><td>' + hmlPill(failedChecks ? 'bad' : 'ok', failedChecks ? '有异常' : '正常') + '<span class="hml-overview-note">异常项 ' + failedChecks + ' 个</span></td></tr>' +
+      '</tbody></table>' +
+    '</div></div>';
   $('.soft-man-con').html(html);
+}
+
+function hmlCloneFlowStep(step) {
+  return $.extend(true, {}, step);
 }
 
 function hmlOpenSwitchDialog() {
@@ -138,28 +182,16 @@ function hmlOpenSwitchDialog() {
   return dialog;
 }
 
-function hmlFlowNextText(role) {
-  if (role === 'standby') return '备机下线完成，请回到主机执行正式上线流程。';
-  return '主机正式上线完成。';
-}
-
 function hmlBuildFlowStages(state) {
-  if (!state || state.target_role === 'standby') {
-    return [{key: 'standby_offline', text: '备机下线'}];
-  }
-  return [
-    {key: 'master_prepare', text: '主机预上线'},
-    {key: 'standby_offline', text: '备机下线'},
-    {key: 'master_online', text: '主机正式上线'}
-  ];
+  var role = state && state.target_role ? state.target_role : 'master';
+  return (hmlFlowRoleConfig(role).stages || []).map(function(item) {
+    return $.extend(true, {}, item);
+  });
 }
 
 function hmlFlowStageKey(step) {
   if (!step) return '';
-  if (step.key === 'wait_standby_offline') return 'standby_offline';
-  if (step.stage === '主机预上线') return 'master_prepare';
-  if (step.stage === '备机下线' || step.stage === '准备下线' || step.stage === '备机流程') return 'standby_offline';
-  return 'master_online';
+  return step.phase || '';
 }
 
 function hmlBuildFlowStageBar(state, steps, activeStep) {
@@ -176,86 +208,14 @@ function hmlBuildFlowStageBar(state, steps, activeStep) {
   }).join('') + '</div>';
 }
 
-function hmlMasterPrepareSteps() {
-  return hmlWithPhase([
-    {key: 'close_external', title: '关闭对外服务', desc: '先停 OpenResty，确保上线准备期间入口收敛。', stage: '主机预上线', state: 'pending', required: true},
-    {key: 'mysql_prepare', title: '确保 MySQL 服务正常', desc: '对应旧脚本：预上线检查前确保 MySQL 正常。', stage: '主机预上线', state: 'pending', required: true},
-    {key: 'xtrabackup_restore', title: '执行 xtrabackup 增量恢复', desc: '可选项：run_xtrabackup_inc_restore。', stage: '主机预上线', state: 'pending', required: false},
-    {key: 'async_dryrun_check', title: '检查文件一致性', desc: '参考 rsyncd 预检查只检查 /www/wwwstorage 相关同步任务。', stage: '主机预上线', state: 'pending', required: true},
-    {key: 'checksum_check', title: '检查主备 checksum', desc: '可选项：run_checksum，发现差异后需要人工确认。', stage: '主机预上线', state: 'pending', required: false},
-    {key: 'sync_files', title: '同步文件目录', desc: '可选项：sync_files，同步 /www/wwwroot、/www/wwwstorage 等目录。', stage: '主机预上线', state: 'pending', required: false},
-    {key: 'restore_site_setting', title: '恢复网站配置', desc: '可选项：restore_site_setting，导入站点和 Web 配置。', stage: '主机预上线', state: 'pending', required: false},
-    {key: 'restore_plugin_setting', title: '恢复插件配置', desc: '可选项：restore_plugin_setting，恢复插件运行配置。', stage: '主机预上线', state: 'pending', required: false}
-  ], 'master_prepare');
-}
-
-function hmlMasterOnlineSteps() {
-  return hmlWithPhase([
-    {key: 'mysql_online', title: '正式上线前确认 MySQL', desc: '对应旧脚本：正式上线前确保 MySQL 正常。', stage: '主机正式上线', state: 'pending'},
-    {key: 'promote_mysql', title: '将数据库提升为主', desc: '执行 switch__mysql_master.js。', stage: '主机正式上线', state: 'pending'},
-    {key: 'authorized_key_off', title: '移除同步公钥授权', desc: '从 authorized_keys 中移除 standby_sync 公钥。', stage: '主机正式上线', state: 'pending'},
-    {key: 'close_backup_db', title: '关闭数据库备份任务', desc: '关闭 备份数据库[backupAll]。', stage: '计划任务', state: 'pending'},
-    {key: 'close_xtrabackup', title: '关闭 xtrabackup 任务', desc: '关闭 [勿删]xtrabackup-cron。', stage: '计划任务', state: 'pending'},
-    {key: 'close_xtrabackup_full', title: '关闭 xtrabackup-inc 全量备份', desc: '关闭 [勿删]xtrabackup-inc全量备份。', stage: '计划任务', state: 'pending'},
-    {key: 'close_xtrabackup_inc', title: '关闭 xtrabackup-inc 增量备份', desc: '关闭 [勿删]xtrabackup-inc增量备份。', stage: '计划任务', state: 'pending'},
-    {key: 'open_site_backup', title: '开启网站配置备份', desc: '开启 备份网站配置[backupAll]。', stage: '计划任务', state: 'pending'},
-    {key: 'open_plugin_backup_all', title: '开启插件配置备份（所有）', desc: '开启 备份插件配置[所有]。', stage: '计划任务', state: 'pending'},
-    {key: 'open_plugin_backup_batch', title: '开启插件配置备份（backupAll）', desc: '开启 备份插件配置[backupAll]。', stage: '计划任务', state: 'pending'},
-    {key: 'open_lsyncd_cron', title: '开启 lsyncd 定时同步', desc: '开启 [勿删]lsyncd实时任务定时同步。', stage: '计划任务', state: 'pending'},
-    {key: 'open_cert_cron', title: '开启证书续签任务', desc: '开启 [勿删]续签Let\'s Encrypt证书。', stage: '计划任务', state: 'pending'},
-    {key: 'close_site_restore', title: '关闭网站配置恢复', desc: '关闭 恢复网站配置[所有]。', stage: '计划任务', state: 'pending'},
-    {key: 'close_plugin_restore', title: '关闭插件配置恢复', desc: '关闭 恢复插件配置[所有]。', stage: '计划任务', state: 'pending'},
-    {key: 'open_ssl_notify', title: '开启 SSL 到期提醒', desc: '对应旧脚本：setNotifyValue {ssl_cert:14}。', stage: '通知策略', state: 'pending'},
-    {key: 'enable_rsyncd_tasks', title: '启用 rsyncd 同步任务', desc: '批量调整 rsyncd 任务为 enabled。', stage: '同步服务', state: 'pending'},
-    {key: 'restart_lsyncd', title: '启动 lsyncd 服务', desc: '执行 systemctl restart lsyncd。', stage: '同步服务', state: 'pending'},
-    {key: 'master_openresty', title: '启动 OpenResty', desc: '解除 mask、启用自启动、启动 OpenResty，并停止系统 nginx 冲突。', stage: 'Web 服务', state: 'pending'},
-    {key: 'open_email_notify', title: '开启邮件通知', desc: '对应旧脚本：openEmailNotify。', stage: '通知策略', state: 'pending'},
-    {key: 'open_mysql_notify', title: '开启主从同步异常提醒', desc: '对应旧脚本：openMysqlSlaveNotify。', stage: '通知策略', state: 'pending'},
-    {key: 'open_rsync_notify', title: '开启 Rsync 状态异常提醒', desc: '对应旧脚本：openRsyncStatusNotify。', stage: '通知策略', state: 'pending'},
-    {key: 'role_master', title: '标记为主机', desc: '把当前机器角色标记成主机。', stage: '角色切换', state: 'pending'},
-    {key: 'master_check', title: '执行主机自检', desc: '确认 OpenResty、rsync 和任务状态符合主机预期。', stage: '状态确认', state: 'pending'}
-  ], 'master_online');
-}
-
 function hmlBuildFlowSteps(role) {
-  if (role === 'master') {
-    return hmlMasterPrepareSteps().concat([
-      {key: 'wait_standby_offline', title: '等待备机下线', desc: '主机预上线完成，请到备用机执行下线流程；备用机下线完成后，再回到这里执行主机正式上线。', stage: '备机下线', state: 'pending', guide: true, phase: 'standby_offline'}
-    ], hmlMasterOnlineSteps());
-  }
-  if (role === 'standby') {
-    return hmlWithPhase([
-      {key: 'close_external', title: '关闭对外服务', desc: '停止 OpenResty，先阻断主要入口流量。', stage: '准备下线', state: 'pending'},
-      {key: 'mysql_running_standby', title: '确保 MySQL 服务正常', desc: '对应旧脚本：恢复为备机前确保 MySQL 正常。', stage: '备机流程', state: 'pending'},
-      {key: 'close_mysql_notify', title: '关闭主从同步异常提醒', desc: '对应旧脚本：closeMysqlSlaveNotify。', stage: '备机流程', state: 'pending'},
-      {key: 'authorized_key_on', title: '授权同步公钥', desc: '把 standby_sync 公钥加入 authorized_keys。', stage: '备机流程', state: 'pending'},
-      {key: 'open_backup_db', title: '开启数据库备份任务', desc: '开启 备份数据库[backupAll]。', stage: '计划任务', state: 'pending'},
-      {key: 'open_xtrabackup', title: '开启 xtrabackup 任务', desc: '开启 [勿删]xtrabackup-cron。', stage: '计划任务', state: 'pending'},
-      {key: 'open_xtrabackup_full', title: '开启 xtrabackup-inc 全量备份', desc: '开启 [勿删]xtrabackup-inc全量备份。', stage: '计划任务', state: 'pending'},
-      {key: 'open_xtrabackup_inc', title: '开启 xtrabackup-inc 增量备份', desc: '开启 [勿删]xtrabackup-inc增量备份。', stage: '计划任务', state: 'pending'},
-      {key: 'close_site_backup', title: '关闭网站配置备份', desc: '关闭 备份网站配置[backupAll]。', stage: '计划任务', state: 'pending'},
-      {key: 'close_plugin_backup_all', title: '关闭插件配置备份（所有）', desc: '关闭 备份插件配置[所有]。', stage: '计划任务', state: 'pending'},
-      {key: 'close_plugin_backup_batch', title: '关闭插件配置备份（backupAll）', desc: '关闭 备份插件配置[backupAll]。', stage: '计划任务', state: 'pending'},
-      {key: 'close_lsyncd_cron', title: '关闭 lsyncd 定时同步', desc: '关闭 [勿删]lsyncd实时任务定时同步。', stage: '计划任务', state: 'pending'},
-      {key: 'close_cert_cron', title: '关闭证书续签任务', desc: '关闭 [勿删]续签Let\'s Encrypt证书。', stage: '计划任务', state: 'pending'},
-      {key: 'open_site_restore', title: '开启网站配置恢复', desc: '开启 恢复网站配置[所有]。', stage: '计划任务', state: 'pending'},
-      {key: 'open_plugin_restore', title: '开启插件配置恢复', desc: '开启 恢复插件配置[所有]。', stage: '计划任务', state: 'pending'},
-      {key: 'close_ssl_notify', title: '关闭 SSL 到期提醒', desc: '对应旧脚本：setNotifyValue {ssl_cert:-1}。', stage: '通知策略', state: 'pending'},
-      {key: 'close_rsync_notify', title: '关闭 Rsync 状态异常提醒', desc: '对应旧脚本：closeRsyncStatusNotify。', stage: '通知策略', state: 'pending'},
-      {key: 'disable_rsyncd_tasks', title: '停用 rsyncd 同步任务', desc: '批量调整 rsyncd 任务为 disabled。', stage: '同步服务', state: 'pending'},
-      {key: 'stop_lsyncd', title: '停止 lsyncd 服务', desc: '执行 systemctl stop lsyncd。', stage: '同步服务', state: 'pending'},
-      {key: 'kill_rsync', title: '清理 rsync 进程', desc: '清理残留 /bin/rsync 进程。', stage: '同步服务', state: 'pending'},
-      {key: 'standby_openresty', title: '停止并锁定 OpenResty', desc: '停止 OpenResty，disable 并 mask，必要时停止系统 nginx。', stage: 'Web 服务', state: 'pending'},
-      {key: 'role_standby', title: '标记为备机', desc: '把当前机器角色标记成备机。', stage: '角色切换', state: 'pending'},
-      {key: 'standby_check', title: '执行备机自检', desc: '确认 OpenResty、rsync 和任务状态符合备机预期。', stage: '状态确认', state: 'pending'}
-    ], 'standby_offline');
-  }
-  return hmlMasterPrepareSteps();
+  return hmlCloneStepsFromConfig(role);
 }
 
-function hmlWithPhase(list, phase) {
-  return list.map(function(item) {
-    return $.extend(true, {}, item, {phase: phase});
+function hmlCloneStepsFromConfig(role) {
+  var cfg = hmlFlowRoleConfig(role);
+  return (cfg.steps || []).map(function(item) {
+    return $.extend(true, {}, item, {state: item.state || 'pending'});
   });
 }
 
@@ -280,6 +240,58 @@ function hmlStepBadgeHtml(step) {
   if (!label) return '';
   var cls = label === '必选' ? 'hml-step-flag-required' : 'hml-step-flag-optional';
   return '<span class="hml-step-flag ' + cls + '">' + label + '</span>';
+}
+
+function hmlStepHintHtml(step) {
+  if (!step) return '';
+  if (!hmlFlowGuideConfig(step)) return '';
+  return '<button type="button" class="hml-step-hint" title="异常处理指导" onclick="hmlOpenStepGuide()">!</button>';
+}
+
+function hmlStepFailureGuide(step) {
+  var guide = hmlFlowGuideConfig(step);
+  return (guide && guide.text) || '当前步骤执行失败，请先查看日志输出，再按提示处理后重新进入该步骤。';
+}
+
+function hmlStepGuideCommands(step) {
+  var guide = hmlFlowGuideConfig(step);
+  return (guide && guide.commands) || [];
+}
+
+function hmlOpenStepGuide() {
+  var state = window.hmlFlowState;
+  if (!state || !state.steps) return;
+  var step = state.steps[state.active_step] || state.steps[0];
+  if (!step) return;
+  var guide = hmlFlowGuideConfig(step) || {};
+  var commands = guide.commands || [];
+  window.hmlGuideCommands = commands;
+  var commandHtml = commands.map(function(item, index) {
+    return '<div class="hml-guide-command"><div class="hml-guide-command-desc">' + hmlHtml(item.desc) + '</div><div class="hml-guide-code-row"><pre>' + hmlHtml(item.cmd) + '</pre><button class="btn btn-default btn-xs hml-guide-copy" onclick="hmlCopyGuideCommand(' + index + ')">复制</button></div></div>';
+  }).join('');
+  layer.open({
+    type: 1,
+    title: step.title + ' 处理指引',
+    area: ['620px', '460px'],
+    shadeClose: true,
+    content: '<div class="hml-guide-layer"><div class="hml-guide-section-title">处理流程</div><div class="hml-guide-text">' + hmlHtml(guide.text || hmlStepFailureGuide(step)) + '</div><div class="hml-guide-section-title">常用命令</div>' + commandHtml + '</div>'
+  });
+}
+
+function hmlCopyGuideCommand(index) {
+  var commands = window.hmlGuideCommands || [];
+  var item = commands[index];
+  var cmd = item && item.cmd;
+  if (!cmd) return;
+  function ok() { layer.msg('已复制', {icon: 1, time: 1000}); }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(cmd).then(ok);
+    return;
+  }
+  var input = $('<textarea>').val(cmd).appendTo('body').select();
+  document.execCommand('copy');
+  input.remove();
+  ok();
 }
 
 function hmlRenderFlowDialog(root, state, steps) {
@@ -318,12 +330,12 @@ function hmlRenderFlowDialog(root, state, steps) {
     return;
   }
   var html = hmlBuildFlowStageBar(state, steps, activeStep) + '<div class="hml-flow-head"><div><div class="hml-flow-title">' + hmlHtml(current.title) + '</div><div class="hml-flow-sub">' + hmlHtml(current.desc) + '</div></div></div>' +
-    '<div class="hml-flow-body"><div class="hml-flow-list">' + list + '</div><div class="hml-flow-detail"><div class="hml-flow-detail-title">' + hmlHtml(current.title) + '</div><div class="hml-flow-detail-desc">' + hmlHtml(current.desc) + '</div><div class="hml-flow-stage">阶段：' + hmlHtml(current.stage) + '</div>' +
+    '<div class="hml-flow-body"><div class="hml-flow-list">' + list + '</div><div class="hml-flow-detail"><div class="hml-flow-detail-title">' + hmlHtml(current.title) + hmlStepHintHtml(current) + '</div><div class="hml-flow-detail-desc">' + hmlHtml(current.desc) + '</div><div class="hml-flow-stage">阶段：' + hmlHtml(current.stage) + '</div>' +
       (hmlStepRequiredLabel(current) ? '<div class="hml-flow-stage">类型：' + hmlStepRequiredLabel(current) + '</div>' : '') +
-      (current.state === 'failed' ? '<div class="hml-flow-error"><div class="hml-flow-error-title">异常处理指引</div><div class="hml-flow-error-text">当前步骤执行失败，请先查看日志输出，再按提示处理后重新进入该步骤。\n如果是依赖项异常，先恢复依赖服务；如果是配置异常，先修正配置再重试。</div></div>' : '') +
       '<div class="hml-step-actions">' +
         '<button class="btn btn-success btn-sm" onclick="hmlRunFlowStepWithCode()">执行当前操作</button>' +
       '</div>' +
+      '<div class="hml-flow-step-log"><div class="hml-flow-step-log-title">当前步骤日志</div><pre class="hml-flow-step-log-box">' + hmlHtml((current.logs || []).join('\n') || '暂无日志') + '</pre></div>' +
     '</div></div>' +
     '<div class="hml-flow-footer"><button class="btn btn-default btn-sm" onclick="hmlCancelFlowDialog()">取消</button><button class="btn btn-default btn-sm" onclick="hmlStepBack()"' + (hmlCanGoPrevFlowPhase(state) ? '' : ' disabled') + '>上一步</button><button class="btn btn-success btn-sm" onclick="hmlToggleFlowAuto()">' + hmlFlowNextButtonText(state) + '</button></div>';
   root.html(html);
@@ -396,12 +408,13 @@ function hmlMarkCurrentFlowStep(state, steps, status) {
   var listEl = $('#hmlFlowDialog .hml-flow-list')[0];
   state.list_scroll_top = listEl ? listEl.scrollTop : state.list_scroll_top || 0;
   state.focus_step = state.active_step;
+  hmlEnsureStepLog(step);
   if (status === 'done') {
     step.state = 'done';
-    if (step.key === 'close_external') hmlApplyExternalClosed();
-    if (step.key === 'role_standby') hmlApplyRole('standby');
-    if (step.key === 'role_master') hmlApplyRole('master');
-    if (step.key === 'master_openresty') hmlApplyExternalOpen();
+    if (step.effect === 'external_closed') hmlApplyExternalClosed();
+    if (step.effect === 'external_open') hmlApplyExternalOpen();
+    if (step.effect === 'role_standby') hmlApplyRole('standby');
+    if (step.effect === 'role_master') hmlApplyRole('master');
   } else if (status === 'failed') {
     step.state = 'failed';
     state.auto_running = false;
@@ -413,6 +426,7 @@ function hmlMarkCurrentFlowStep(state, steps, status) {
   if (status === 'done') {
     state.running = false;
     state.just_stepped = true;
+    hmlAppendStepLog(step, '步骤执行完成');
   }
   if (status === 'done' && steps.every(function(item) { return item.state === 'done'; })) {
     state.completed = true;
@@ -426,62 +440,8 @@ function hmlMarkCurrentFlowStep(state, steps, status) {
 }
 
 function hmlGetFlowStepCode(step) {
-  var codeMap = {
-    close_external: 'systemctl stop openresty\nsystemctl stop nginx || true',
-    mysql_running_standby: 'systemctl start mysqld\nsystemctl status mysqld --no-pager',
-    close_mysql_notify: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeMysqlSlaveNotify.js',
-    authorized_key_on: 'mkdir -p /root/.ssh\ngrep -qxF "$STANDBY_SYNC_PUBLIC_KEY" /root/.ssh/authorized_keys || echo "$STANDBY_SYNC_PUBLIC_KEY" >> /root/.ssh/authorized_keys',
-    open_backup_db: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份数据库[backupAll]" enabled',
-    open_xtrabackup: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]xtrabackup-cron" enabled',
-    open_xtrabackup_full: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]xtrabackup-inc全量备份" enabled',
-    open_xtrabackup_inc: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]xtrabackup-inc增量备份" enabled',
-    close_site_backup: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份网站配置[backupAll]" disabled',
-    close_plugin_backup_all: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份插件配置[所有]" disabled',
-    close_plugin_backup_batch: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份插件配置[backupAll]" disabled',
-    close_lsyncd_cron: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]lsyncd实时任务定时同步" disabled',
-    close_cert_cron: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]续签Let\'s Encrypt证书" disabled',
-    open_site_restore: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "恢复网站配置[所有]" enabled',
-    open_plugin_restore: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "恢复插件配置[所有]" enabled',
-    close_ssl_notify: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert -1',
-    close_rsync_notify: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeRsyncStatusNotify.js',
-    disable_rsyncd_tasks: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py disabled',
-    stop_lsyncd: 'systemctl stop lsyncd',
-    kill_rsync: 'pkill -f /bin/rsync || true',
-    standby_openresty: 'systemctl stop openresty\nsystemctl disable openresty\nsystemctl mask openresty\nsystemctl stop nginx || true',
-    role_standby: 'echo standby > /www/server/ha_manager_local/role',
-    standby_check: 'btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\"',
-    mysql_prepare: 'systemctl start mysqld\nsystemctl status mysqld --no-pager',
-    xtrabackup_restore: 'bash /www/server/jh-panel/plugins/ha_manager_local/scripts/run_xtrabackup_inc_restore.sh',
-    checksum_check: 'bash /www/server/jh-panel/plugins/ha_manager_local/scripts/run_checksum.sh',
-    sync_files: 'bash /www/server/jh-panel/plugins/ha_manager_local/scripts/sync_files.sh',
-    async_dryrun_check: 'python3 - <<\'PY\'\nimport json\nimport os\nimport subprocess\nimport sys\n\ncfg_path = \'/www/server/rsyncd/config.json\'\nif not os.path.exists(cfg_path):\n    print(\'未找到 rsyncd 配置，跳过预检\')\n    sys.exit(0)\n\nwith open(cfg_path, \'r\', encoding=\'utf-8\') as fp:\n    cfg = json.load(fp)\n\nitems = cfg.get(\'send\', {}).get(\'list\', [])\nselected = []\nfor item in items:\n    name = item.get(\'name\') or \'\'\n    path = item.get(\'path\') or \'\'\n    target_path = item.get(\'target_path\') or \'\'\n    if \'/www/wwwstorage\' in path or \'/www/wwwstorage\' in target_path or \'wwwstorage\' in name:\n        selected.append(name)\n\nif not selected:\n    print(\'未找到 /www/wwwstorage 相关 rsyncd 任务，跳过预检\')\n    sys.exit(0)\n\nfor name in selected:\n    print(\'==> rsyncd 预检查:\', name)\n    subprocess.check_call([\'python3\', \'/www/server/jh-panel/plugins/rsyncd/tool_run.py\', \'preflight\', name])\nPY',
-    restore_site_setting: 'bash /www/server/jh-panel/plugins/ha_manager_local/scripts/restore_site_setting.sh',
-    restore_plugin_setting: 'bash /www/server/jh-panel/plugins/ha_manager_local/scripts/restore_plugin_setting.sh',
-    mysql_online: 'systemctl start mysqld\nsystemctl status mysqld --no-pager',
-    promote_mysql: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_master.js',
-    authorized_key_off: 'sed -i \"/standby_sync/d\" /root/.ssh/authorized_keys',
-    close_backup_db: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份数据库[backupAll]" disabled',
-    close_xtrabackup: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]xtrabackup-cron" disabled',
-    close_xtrabackup_full: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]xtrabackup-inc全量备份" disabled',
-    close_xtrabackup_inc: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]xtrabackup-inc增量备份" disabled',
-    open_site_backup: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份网站配置[backupAll]" enabled',
-    open_plugin_backup_all: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份插件配置[所有]" enabled',
-    open_plugin_backup_batch: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "备份插件配置[backupAll]" enabled',
-    open_lsyncd_cron: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]lsyncd实时任务定时同步" enabled',
-    open_cert_cron: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "[勿删]续签Let\'s Encrypt证书" enabled',
-    close_site_restore: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "恢复网站配置[所有]" disabled',
-    close_plugin_restore: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py "恢复插件配置[所有]" disabled',
-    open_ssl_notify: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert 14',
-    enable_rsyncd_tasks: 'btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py enabled',
-    restart_lsyncd: 'systemctl restart lsyncd',
-    master_openresty: 'systemctl unmask openresty\nsystemctl enable openresty\nsystemctl start openresty\nsystemctl stop nginx || true',
-    open_email_notify: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/openEmailNotify.js',
-    open_mysql_notify: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/openMysqlSlaveNotify.js',
-    open_rsync_notify: 'node /www/server/jh-panel/plugins/ha_manager_local/scripts/openRsyncStatusNotify.js',
-    role_master: 'echo master > /www/server/ha_manager_local/role',
-    master_check: 'btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\"'
-  };
-  return codeMap[step.key] || ('# ' + step.title + '\n# 待接入真实执行脚本');
+  if (!step) return '# 待接入真实执行脚本';
+  return step.code || ('# ' + step.title + '\n# 待接入真实执行脚本');
 }
 
 function hmlOpenFlowCodeDialog(step, confirm) {
@@ -501,10 +461,10 @@ function hmlOpenFlowCodeDialog(step, confirm) {
 }
 
 function hmlRunFlowStepWithCode() {
-  hmlRunFlowStep(null, false);
+  hmlRunFlowStep(null, false, true);
 }
 
-function hmlRunFlowStep(done, skipConfirm) {
+function hmlRunFlowStep(done, skipConfirm, forceRun) {
   var state = window.hmlFlowState;
   if (!state || state.running) return;
   var listEl = $('#hmlFlowDialog .hml-flow-list')[0];
@@ -514,12 +474,7 @@ function hmlRunFlowStep(done, skipConfirm) {
   if (state.active_step >= steps.length) state.active_step = steps.length - 1;
   var step = steps[state.active_step];
   if (!step) return;
-  if (step.state === 'done') {
-    hmlGoNextFlowStep();
-    if (done) done(true);
-    return;
-  }
-  if (steps.every(function(item) { return item.state === 'done'; })) {
+  if (!forceRun && steps.every(function(item) { return item.state === 'done'; })) {
     state.completed = true;
     state.auto_running = false;
     hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
@@ -528,38 +483,42 @@ function hmlRunFlowStep(done, skipConfirm) {
   }
   state.focus_step = state.active_step;
   if (step.guide) {
-    hmlPromptNextFlow('master_prepare');
+    hmlAppendStepLog(step, '进入提示步骤');
+    hmlPromptNextFlow('standby_offline');
     hmlMarkCurrentFlowStep(state, steps, 'done');
     hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
     if (done) done(true);
     return;
   }
   if (!skipConfirm) {
+    hmlAppendStepLog(step, '打开代码确认框');
     hmlOpenFlowCodeDialog(step, function() {
-      hmlRunFlowStep(done, true);
+      hmlRunFlowStep(done, true, forceRun);
     });
     return;
   }
+  hmlAppendStepLog(step, '开始执行');
   hmlMarkCurrentFlowStep(state, steps, 'running');
   hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
   setTimeout(function() {
     if (!window.hmlFlowState || window.hmlFlowState !== state) return;
-    if (step.key === 'standby_check' || step.key === 'master_check') {
+    if (step.check_health) {
       var failCount = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
       if (failCount > 0) {
         hmlMarkCurrentFlowStep(state, steps, 'failed');
+        hmlAppendStepLog(step, '自检发现 ' + failCount + ' 个异常项');
         hmlLog(step.title + '失败，发现 ' + failCount + ' 个异常项');
       } else {
         hmlMarkCurrentFlowStep(state, steps, 'done');
+        hmlAppendStepLog(step, '自检通过');
         hmlLog(step.title + '完成');
       }
     } else {
       hmlMarkCurrentFlowStep(state, steps, 'done');
-      if (step.key === 'close_external') hmlLog('关闭对外服务完成：OpenResty 已停止');
-      if (step.key.indexOf('task') >= 0 || step.key.indexOf('backup') >= 0 || step.key.indexOf('restore') >= 0 || step.key.indexOf('cron') >= 0) hmlLog('计划任务调整完成');
-      if (step.key === 'standby_openresty') hmlLog('已切入备机策略');
-      if (step.key === 'master_openresty') hmlLog('已切入主机策略');
-      if (step.key === 'role_standby' || step.key === 'role_master') hmlLog('本机角色已更新');
+      if (step.log_done) {
+        hmlAppendStepLog(step, step.log_done);
+        hmlLog(step.log_done);
+      }
     }
     hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
     if (state.auto_running) {
@@ -690,9 +649,8 @@ function hmlGoNextFlowStep() {
   var allDone = hmlIsFlowPhaseReadyForNext(state);
   if (!allDone) return;
   if (phase === 'master_prepare') {
-    var waitIndex = state.steps.findIndex(function(step) { return step.key === 'wait_standby_offline'; });
+    var waitIndex = state.steps.findIndex(function(step) { return step.guide; });
     if (waitIndex >= 0) {
-      hmlPromptNextFlow('master_prepare');
       state.active_step = waitIndex;
       state.focus_step = waitIndex;
       state.just_stepped = true;
@@ -720,7 +678,9 @@ function hmlGoNextFlowStep() {
 }
 
 function hmlPromptNextFlow(flow) {
-  var text = flow === 'master_prepare' ? '请到备用机执行下线流程；备用机下线完成后，再回到主机执行正式上线流程。' : hmlFlowNextText(flow);
+  var text = '请到备用机执行下线流程；备用机下线完成后，再回到主机执行正式上线流程。';
+  if (flow === 'standby_offline') text = '请到备用机执行下线流程；备用机下线完成后，再回到主机执行正式上线流程。';
+  if (flow === 'master_online') text = '主机正式上线完成。';
   hmlState.last_action = text;
   hmlLog(text);
   layer.msg(text, {icon: 1, time: 2500});
@@ -822,9 +782,10 @@ function hmlUndoFlowStep(index, event) {
   state.running = false;
   state.active_step = Math.max(0, index - 1);
   state.focus_step = state.active_step;
-  if (state.steps[index].key === 'role_master') hmlApplyRole('standby');
-  if (state.steps[index].key === 'role_standby') hmlApplyRole('master');
-  if (state.steps[index].key === 'master_openresty') hmlApplyExternalClosed();
+  if (state.steps[index].undo_effect === 'role_master') hmlApplyRole('master');
+  if (state.steps[index].undo_effect === 'role_standby') hmlApplyRole('standby');
+  if (state.steps[index].undo_effect === 'external_closed') hmlApplyExternalClosed();
+  if (state.steps[index].undo_effect === 'external_open') hmlApplyExternalOpen();
   hmlLog('撤销步骤：' + state.steps[index].title);
   hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
 }

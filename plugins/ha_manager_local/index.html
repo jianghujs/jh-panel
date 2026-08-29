@@ -1,0 +1,117 @@
+<style>
+.hml-page{height:100%;}
+.hml-title{font-size:15px;font-weight:600;color:#222;line-height:22px;}
+.hml-sub{font-size:12px;color:#888;line-height:20px;margin-top:2px;}
+.hml-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+.hml-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+.hml-card{border:1px solid #e8ebf0;border-radius:4px;background:#fff;padding:12px;min-height:82px;}
+.hml-card-label{font-size:12px;color:#888;}
+.hml-card-value{font-size:22px;font-weight:600;color:#222;line-height:30px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hml-card-note{font-size:12px;color:#999;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hml-pill{display:inline-block;min-width:58px;text-align:center;padding:3px 8px;border-radius:3px;font-size:12px;line-height:16px;border:1px solid transparent;}
+.hml-pill-ok{color:#2e7d32;background:#f0fff0;border-color:#bfe4bf;}
+.hml-pill-warn{color:#9a6200;background:#fff7e6;border-color:#f1d399;}
+.hml-pill-bad{color:#b02a25;background:#fff1f0;border-color:#f0c6c4;}
+.hml-pill-info{color:#245580;background:#eef7ff;border-color:#b8d7ef;}
+.hml-section{border:1px solid #e8ebf0;border-radius:4px;background:#fff;margin-bottom:12px;overflow:hidden;}
+.hml-section-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #edf0f4;}
+.hml-section-title{font-size:14px;font-weight:600;color:#222;}
+.hml-section-sub{font-size:12px;color:#888;margin-top:3px;}
+.hml-section-body{padding:14px;}
+.hml-step-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+.hml-step{border:1px solid #e6e9ef;border-radius:4px;background:#fafbfc;padding:10px;min-height:70px;}
+.hml-step.active{border-color:#8dbde8;background:#eef7ff;}
+.hml-step.done{border-color:#bfe4bf;background:#f6fff6;}
+.hml-step-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#dfe4ea;color:#666;font-size:12px;font-weight:600;margin-bottom:8px;}
+.hml-step.active .hml-step-badge{background:#337ab7;color:#fff;}
+.hml-step.done .hml-step-badge{background:#5cb85c;color:#fff;}
+.hml-step-name{font-size:13px;font-weight:600;color:#333;line-height:18px;}
+.hml-step-desc{font-size:12px;color:#888;line-height:18px;margin-top:4px;}
+.hml-step-panel{border:1px solid #e6e9ef;border-radius:4px;padding:14px;background:#fff;}
+.hml-step-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;}
+.hml-step-panel-title{font-size:14px;font-weight:600;color:#333;}
+.hml-step-panel-desc{font-size:12px;color:#888;line-height:18px;}
+.hml-step-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.hml-overview-actions{align-items:center;gap:6px;}
+.hml-overview-actions .btn{min-width:88px;}
+.hml-overview-actions .btn-danger{margin-left:8px;}
+.hml-flow-wrap{padding:14px;background:#fff;}
+.hml-flow-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+.hml-flow-title{font-size:15px;font-weight:600;color:#222;line-height:22px;}
+.hml-flow-sub{font-size:12px;color:#888;line-height:20px;margin-top:2px;}
+.hml-flow-body{display:grid;grid-template-columns:320px 1fr;gap:12px;min-height:410px;}
+.hml-flow-list{border:1px solid #e6e9ef;border-radius:4px;background:#fafbfc;overflow:auto;max-height:430px;}
+.hml-flow-item{display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid #edf0f4;cursor:pointer;}
+.hml-flow-item:last-child{border-bottom:0;}
+.hml-flow-item.active{background:#eef7ff;}
+.hml-flow-item.done{background:#f6fff6;}
+.hml-flow-index{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#dfe4ea;color:#666;font-size:12px;line-height:20px;}
+.hml-flow-item.active .hml-flow-index{background:#337ab7;color:#fff;}
+.hml-flow-item.done .hml-flow-index{background:#5cb85c;color:#fff;}
+.hml-flow-item-title{font-size:12px;font-weight:600;color:#333;line-height:18px;}
+.hml-flow-item-desc{font-size:12px;color:#888;line-height:18px;}
+.hml-flow-detail{border:1px solid #e6e9ef;border-radius:4px;background:#fff;padding:14px;}
+.hml-flow-detail-title{font-size:14px;font-weight:600;color:#333;line-height:22px;margin-bottom:6px;}
+.hml-flow-detail-desc{font-size:12px;color:#666;line-height:22px;}
+.hml-flow-stage{font-size:12px;color:#888;line-height:20px;margin-bottom:8px;}
+.hml-table{width:100%;margin-bottom:0;}
+.hml-table th{width:120px;color:#777;font-weight:normal;background:#fafafa;}
+.hml-table th,.hml-table td{vertical-align:middle!important;}
+.hml-check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.hml-check-card{border:1px solid #e6e9ef;border-radius:4px;overflow:hidden;background:#fff;}
+.hml-check-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f7f8fa;border-bottom:1px solid #edf0f4;}
+.hml-check-host-head{height:48px;padding:10px 12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #edf0f4;background:#f7f8fa;}
+.hml-check-name{font-size:13px;font-weight:600;color:#333;}
+.hml-check-state{font-size:12px;color:#888;}
+.hml-check-table{width:100%;margin-bottom:0;table-layout:fixed;}
+.hml-check-table th,.hml-check-table td{vertical-align:middle!important;}
+.hml-check-table th{background:#fff;color:#666;font-weight:normal;}
+.hml-check-group-row td{background:#f7f8fa;color:#666;font-weight:600;}
+.hml-check-status-col{width:260px;}
+.hml-check-actual{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:20px;}
+.hml-check-actual-pass{color:#2e7d32;}
+.hml-check-actual-fail{color:#b02a25;}
+.hml-check-icon{display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;margin-right:6px;font-size:12px;}
+.hml-check-pass{color:#2e7d32;background:#f0fff0;}
+.hml-check-unknown{color:#777;background:#f1f3f5;}
+.hml-check-fail{color:#b02a25;background:#fff1f0;}
+.hml-role-mark{display:inline-block;min-width:22px;text-align:center;border-radius:3px;padding:2px 5px;font-size:12px;line-height:16px;}
+.hml-role-master{color:#2e7d32;background:#f0fff0;border:1px solid #bfe4bf;}
+.hml-role-standby{color:#245580;background:#eef7ff;border:1px solid #b8d7ef;}
+.hml-current-site-tag{display:inline-block;border:1px solid #b8d7ef;background:#eef7ff;color:#245580;border-radius:3px;padding:2px 6px;font-size:12px;line-height:16px;}
+.hml-host-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5cb85c;flex:0 0 auto;}
+.hml-check-list{padding:12px;}
+.hml-check-item{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px dashed #edf0f4;}
+.hml-check-item:last-child{border-bottom:0;padding-bottom:0;}
+.hml-check-item-name{font-size:12px;color:#333;line-height:18px;}
+.hml-check-item-value{font-size:12px;color:#777;line-height:18px;text-align:right;}
+.hml-log{height:320px;background:#1f2329;color:#d7dde8;border-radius:4px;padding:12px;overflow:auto;font-family:Menlo,Consolas,monospace;font-size:12px;line-height:20px;white-space:pre-wrap;}
+.hml-tip{border:1px solid #f1d399;background:#fff7e6;color:#555;border-radius:4px;padding:10px 12px;line-height:20px;font-size:12px;}
+.hml-tip span{color:#d9534f;font-weight:600;}
+.hml-muted{color:#777;}
+.hml-inline-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+@media(max-width:1100px){.hml-grid,.hml-check-grid,.hml-step-list{grid-template-columns:1fr 1fr;}.hml-flow-body{grid-template-columns:1fr;}}
+@media(max-width:720px){.hml-grid,.hml-check-grid,.hml-step-list{grid-template-columns:1fr;}.hml-actions{justify-content:flex-start;}}
+</style>
+
+<div class="bt-form hml-page">
+  <div class="bt-w-main">
+    <div class="bt-w-menu">
+      <p class="bgw" data-view="overview" onclick="hmlSetView('overview')">总览</p>
+      <p data-view="health" onclick="hmlSetView('health')">自检状态</p>
+      <p data-view="log" onclick="hmlSetView('log')">操作日志</p>
+      <p data-view="readme" onclick="hmlSetView('readme')">说明</p>
+    </div>
+    <div class="bt-w-con pd15">
+      <div class="soft-man-con"></div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+resetPluginWinWidth(980);
+resetPluginWinHeight(620);
+$.getScript('/plugins/file?name=ha_manager_local&f=js/ha_manager_local.js&v=202608292125', function(){
+  hmlBoot();
+});
+</script>

@@ -1,0 +1,17 @@
+{
+  "sort": 13,
+  "ps": "江湖面板主备管理（本地版）插件",
+  "name": "ha_manager_local",
+  "title": "主备管理（本地版）",
+  "shell": "install.sh",
+  "versions": ["1.0"],
+  "tip": "soft",
+  "checks": "server/ha_manager_local",
+  "path": "server/ha_manager_local",
+  "display": 1,
+  "author": "jianghujs",
+  "date": "2026-08-29",
+  "home": "https://cn.jianghujs.org/",
+  "type": "soft",
+  "pid": "4"
+}

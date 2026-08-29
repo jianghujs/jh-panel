@@ -56,7 +56,7 @@ LEGACY_LOG_DIR = os.path.join(PLUGIN_DIR, 'logs')
 OLD_RUNTIME_DIR = '/www/server/ha_manager'
 REMOTE_STATE_PATH = '/www/server/ha_manager_ssh/data/state.json'
 REMOTE_SWITCH_LOG_DIR = '/www/server/ha_manager_ssh/logs/switch'
-PANEL_TITLE_STATE_PATH = '/www/server/jh-panel/data/ha_manager_ssh_title_state.json'
+PANEL_TITLE_STATE_PATH = '/www/server/jh-panel/data/ha_manager_title_state.json'
 
 
 def _now():
@@ -111,7 +111,7 @@ def _migrate_runtime_data():
     _copy_if_missing(os.path.join(OLD_RUNTIME_DIR, 'host_id.pl'), os.path.join(RUNTIME_DIR, 'host_id.pl'))
     _copy_if_missing('/www/server/jh-panel/data/ha_manager_host_id.pl', os.path.join(RUNTIME_DIR, 'host_id.pl'))
     _copy_if_missing('/www/server/jh-panel/data/ha_manager_title_state.json', PANEL_TITLE_STATE_PATH)
-    legacy_host_file = '/www/server/jh-panel/data/ha_manager_ssh_host_id.pl'
+    legacy_host_file = '/www/server/jh-panel/data/ha_manager_host_id.pl'
     _copy_if_missing(legacy_host_file, os.path.join(RUNTIME_DIR, 'host_id.pl'))
 
 
@@ -314,7 +314,7 @@ def _set_host_id(cfg, host_id):
     cfg['host_id'] = host_id
     mw.writeFile(os.path.join(RUNTIME_DIR, 'host_id.pl'), host_id)
     try:
-        mw.writeFile('/www/server/jh-panel/data/ha_manager_ssh_host_id.pl', host_id)
+        mw.writeFile('/www/server/jh-panel/data/ha_manager_host_id.pl', host_id)
     except Exception:
         pass
     return cfg

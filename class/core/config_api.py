@@ -856,13 +856,13 @@ class config_api:
                 if notify_data[tag]['enable']:
                     data[new_tag] = 'checked'
 
-        title_state_path = '/www/server/jh-panel/data/ha_manager_title_state.json'
-        data['ha_manager_installed'] = os.path.exists('/www/server/ha_manager/version.pl')
-        data['ha_manager_title_state'] = {}
+        title_state_path = '/www/server/jh-panel/data/ha_manager_ssh_title_state.json'
+        data['ha_manager_ssh_installed'] = os.path.exists('/www/server/ha_manager_ssh/version.pl')
+        data['ha_manager_ssh_title_state'] = {}
         if os.path.exists(title_state_path):
             try:
-                data['ha_manager_title_state'] = json.loads(mw.readFile(title_state_path) or '{}')
+                data['ha_manager_ssh_title_state'] = json.loads(mw.readFile(title_state_path) or '{}')
             except Exception:
-                data['ha_manager_title_state'] = {}
+                data['ha_manager_ssh_title_state'] = {}
 
         return data

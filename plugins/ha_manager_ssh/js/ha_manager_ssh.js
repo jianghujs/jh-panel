@@ -63,7 +63,7 @@ var msSwitchLogHeartbeat = 0;
 function msPost(method, args, callback, options) {
   options = options || {};
   var loadT = options.quiet ? null : layer.msg('正在处理...', {icon: 16, time: 0});
-  $.post('/plugins/run', {name: 'ha_manager', func: method, args: encodeURIComponent(JSON.stringify(args || {}))}, function(res) {
+  $.post('/plugins/run', {name: 'ha_manager_ssh', func: method, args: encodeURIComponent(JSON.stringify(args || {}))}, function(res) {
     if (loadT) layer.close(loadT);
     if (typeof res === 'string') {
       try { res = JSON.parse(res); } catch (e) { res = {status: false, msg: res}; }
@@ -99,8 +99,8 @@ function msLoadState(callback) {
       msState = $.extend(true, msState, data);
       if (data.health) msState.health = data.health;
       if (data.log) msState.log = data.log;
-      if (typeof applyHaManagerBrowserTitle === 'function') {
-        applyHaManagerBrowserTitle({installed: true, role: msState.role, desired_role: msState.desired_role, switch_status: msState.switch_status});
+      if (typeof applyHaManagerSshBrowserTitle === 'function') {
+        applyHaManagerSshBrowserTitle({installed: true, role: msState.role, desired_role: msState.desired_role, switch_status: msState.switch_status});
       }
     }
     if (callback) callback();
@@ -272,7 +272,7 @@ function msOverview() {
     '<div class="ms-failover-line"><div class="ms-failover-status">' + msPill(failoverTone, failoverTitle) + '<span class="ms-failover-desc">' + msHtml(failoverDesc) + '</span></div>' + recoverButton + '</div>' +
     '<div class="ms-failover-line ms-failover-setting"><label class="ms-failover-toggle"><input type="checkbox" id="msAutoRecoverSwitch" onchange="msSaveAutoRecover(this.checked)" ' + (msState.auto_recover_as_standby ? 'checked' : '') + '> <span>自动恢复为备机</span></label><span class="ms-failover-note">关闭时只进入恢复保护并通知</span></div>' +
   '</div>';
-  var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理插件</div><div class="ms-sub">查看本机主备状态，必要时手动发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msPollMonitor()">立即拉取云监控任务</button><button class="btn btn-default btn-sm" onclick="msReportState()">立即上报到云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
+  var html = '<div class="ms-topbar"><div><div class="ms-title">主备管理（SSH一键版）</div><div class="ms-sub">查看本机主备状态，必要时通过 SSH 一键发起切换。</div></div><div class="ms-actions"><button class="btn btn-default btn-sm" onclick="msPollMonitor()">立即拉取云监控任务</button><button class="btn btn-default btn-sm" onclick="msReportState()">立即上报到云监控</button><button class="btn btn-success btn-sm" onclick="msOpenLocalSwitchDialog()">切换主备</button></div></div>' +
     '<div class="ms-panel"><div class="ms-panel-head"><div class="ms-title">当前状态</div>' + msPill(pluginStatus, pluginStatusText) + '</div><div class="ms-panel-body">' +
       '<table class="table table-hover ms-overview-table"><tbody>' +
         '<tr><th>本机角色</th><td>' + roleCell + '</td><td class="ms-overview-actions" rowspan="5"><button class="btn btn-default btn-sm" onclick="msHealthPanel()">查看自检</button><button class="btn btn-default btn-sm" onclick="msLogPanel()">查看日志</button></td></tr>' +

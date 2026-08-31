@@ -807,7 +807,7 @@ function hmlCanGoPrevFlowPhase(state) {
   if (!phase) return false;
   var stages = hmlBuildFlowStages(state);
   var currentStageIndex = stages.findIndex(function(item) { return item.key === phase; });
-  return currentStageIndex > 0;
+  return currentStageIndex >= 0;
 }
 
 function hmlStepBack() {
@@ -818,7 +818,16 @@ function hmlStepBack() {
   hmlPauseFlowAuto(false);
   var stages = hmlBuildFlowStages(state);
   var currentStageIndex = stages.findIndex(function(item) { return item.key === phase; });
-  if (currentStageIndex <= 0) {
+  if (currentStageIndex === 0) {
+    state.role_selected = false;
+    state.active_step = -1;
+    state.focus_step = 0;
+    state.auto_running = false;
+    state.running = false;
+    hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
+    return;
+  }
+  if (currentStageIndex < 0) {
     return;
   }
   var prevStage = stages[currentStageIndex - 1];

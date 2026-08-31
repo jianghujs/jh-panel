@@ -5,6 +5,14 @@ var hmlState = {
   switch_status: 'idle',
   external_closed: false,
   target_role: 'master',
+  host_id: '',
+  host_name: '',
+  host_ip: '',
+  pair_id: '',
+  pair_name: '',
+  monitor_url: '',
+  report_interval: 30,
+  last_report_at: '',
   last_action: '等待操作',
   log: [
     '[21:00:00] UI-only 预览已加载，当前未连接真实后端。',
@@ -60,8 +68,37 @@ function hmlFlowGuideConfig(step) {
 }
 
 function hmlBoot() {
-  hmlEnsureFlowConfig(function() {
-    hmlRender();
+  hmlLoadState(function() {
+    hmlEnsureFlowConfig(function() {
+      hmlRender();
+    });
+  });
+}
+
+function hmlPost(method, args, callback) {
+  $.post('/plugins/run', {
+    name: 'ha_manager_local',
+    func: method,
+    args: encodeURIComponent(JSON.stringify(args || {}))
+  }, function(res) {
+    var data = null;
+    try {
+      data = typeof res === 'string' ? JSON.parse(res) : res;
+    } catch (e) {
+      data = null;
+    }
+    if (!data || !data.status) {
+      layer.msg((data && data.msg) || '操作失败', {icon: 2});
+      return;
+    }
+    if (callback) callback(data.data || {});
+  }, 'json');
+}
+
+function hmlLoadState(callback) {
+  hmlPost('get_state', {}, function(data) {
+    hmlState = $.extend(true, hmlState, data);
+    if (callback) callback();
   });
 }
 
@@ -126,6 +163,7 @@ function hmlRender() {
   $('.bt-w-menu p').removeClass('bgw');
   $('.bt-w-menu p[data-view="' + hmlState.view + '"]').addClass('bgw');
   if (hmlState.view === 'overview') return hmlRenderOverview();
+  if (hmlState.view === 'monitor') return hmlRenderMonitor();
   if (hmlState.view === 'health') return hmlRenderHealth();
   if (hmlState.view === 'log') return hmlRenderLog();
   hmlRenderReadme();
@@ -140,9 +178,67 @@ function hmlRenderOverview() {
         '<tr><th>目标角色</th><td>' + hmlPill(hmlState.desired_role === 'master' ? 'ok' : 'info', hmlRoleText(hmlState.desired_role)) + '</td></tr>' +
         '<tr><th>对外服务</th><td>' + hmlPill(hmlState.external_closed ? 'bad' : 'ok', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
         '<tr><th>自检状态</th><td>' + hmlPill(failedChecks ? 'bad' : 'ok', failedChecks ? '有异常' : '正常') + '<span class="hml-overview-note">异常项 ' + failedChecks + ' 个</span></td></tr>' +
+        '<tr><th>云监控</th><td>' + (hmlState.monitor_url ? hmlPill('ok', '已开启') : hmlPill('warn', '未配置')) + '<span class="hml-overview-note">' + hmlHtml(hmlState.monitor_url ? '最近上报：' + (hmlState.last_report_at || '未上报') : '不上传本机状态') + '</span></td></tr>' +
       '</tbody></table>' +
     '</div></div>';
   $('.soft-man-con').html(html);
+}
+
+function hmlInput(label, name, value, style, type, placeholder) {
+  return '<div class="line"><span class="tname">' + hmlHtml(label) + '</span><div class="info-r"><input class="bt-input-text" type="' + (type || 'text') + '" name="' + hmlHtml(name) + '" value="' + hmlHtml(value) + '" style="' + hmlHtml(style) + '" placeholder="' + hmlHtml(placeholder || '') + '" /></div></div>';
+}
+
+function hmlRenderMonitor() {
+  var configured = !!hmlState.monitor_url;
+  var html = '<div class="hml-section"><div class="hml-section-head"><div><div class="hml-section-title">绑定云监控上报配置</div><div class="hml-section-sub">配置本机 ID、主备关系 ID 和云监控地址。</div></div>' + (configured ? hmlPill('ok', '已开启') : hmlPill('warn', '未配置')) + '</div><div class="hml-section-body"><form class="bt-form hml-form" id="hmlMonitorForm">' +
+    '<div class="line"><span class="tname">本机ID</span><div class="info-r hml-inline-actions"><input class="bt-input-text" type="text" name="host_id" value="' + hmlHtml(hmlState.host_id) + '" style="width:360px" readonly /><button type="button" class="btn btn-default btn-sm" onclick="hmlRegenerateHostId()">重新生成</button></div></div>' +
+    hmlInput('主备关系ID', 'pair_id', hmlState.pair_id, 'width:360px') +
+    hmlInput('云监控地址', 'monitor_url', hmlState.monitor_url, 'width:420px', 'text', '例如：http://192.168.100.1:10844') +
+    '<div class="line"><span class="tname"></span><div class="info-r hml-inline-actions"><button type="button" class="btn btn-default btn-sm" onclick="hmlSaveMonitor()">测试并注册</button><button type="button" class="btn btn-success btn-sm" onclick="hmlSaveMonitor(true)">保存并注册</button><button type="button" class="btn btn-default btn-sm" onclick="hmlReportState()">立即上报</button><button type="button" class="btn btn-warning btn-sm" onclick="hmlClearMonitor()">清空地址</button></div></div>' +
+  '</form></div></div>';
+  $('.soft-man-con').html(html);
+}
+
+function hmlReadMonitorForm() {
+  var data = {};
+  $('#hmlMonitorForm').serializeArray().forEach(function(item) {
+    data[item.name] = item.value;
+  });
+  return data;
+}
+
+function hmlSaveMonitor(report) {
+  var data = hmlReadMonitorForm();
+  hmlState.pair_id = data.pair_id || '';
+  hmlState.monitor_url = data.monitor_url || '';
+  layer.msg(report === true ? '已保存配置（预览）' : '云监控配置测试完成（预览）', {icon: hmlState.monitor_url ? 1 : 0});
+  hmlRenderMonitor();
+}
+
+function hmlReportState() {
+  if (!hmlState.monitor_url) return layer.msg('云监控地址为空，当前不会上传状态', {icon: 0});
+  hmlState.last_report_at = hmlNow();
+  layer.msg('本机状态已上报云监控（预览）', {icon: 1});
+  hmlRenderMonitor();
+}
+
+function hmlClearMonitor() {
+  layer.confirm('确认清空云监控地址？清空后本机状态不再上报。', {icon: 3, title: '清空云监控', btn: ['确认', '取消']}, function(index) {
+    layer.close(index);
+    hmlState.monitor_url = '';
+    hmlState.last_report_at = '';
+    layer.msg('已清空云监控地址，不上传状态（预览）', {icon: 1});
+    hmlRenderMonitor();
+  });
+}
+
+function hmlRegenerateHostId() {
+  layer.confirm('确认重新生成本机ID？重新生成后需要重新注册云监控。', {icon: 3, title: '重新生成本机ID', btn: ['确认', '取消']}, function(index) {
+    layer.close(index);
+    hmlState.host_id = 'H_LOCAL_' + (new Date()).getTime();
+    layer.msg('本机ID已重新生成（预览）', {icon: 1});
+    hmlRenderMonitor();
+  });
 }
 
 function hmlCloneFlowStep(step) {
@@ -316,9 +412,7 @@ function hmlRenderFlowDialog(root, state, steps) {
         '<div class="hml-role-option ' + (role === 'master' ? 'active' : '') + '" onclick="hmlPickFlowRole(\'master\')"><div class="hml-role-option-title">主机</div><div class="hml-role-option-desc">把当前机器切到主机流程。</div></div>' +
         '<div class="hml-role-option ' + (role === 'standby' ? 'active' : '') + '" onclick="hmlPickFlowRole(\'standby\')"><div class="hml-role-option-title">备机</div><div class="hml-role-option-desc">把当前机器切到备机流程。</div></div>' +
       '</div>' +
-      '<div class="hml-step-actions" style="margin-top:12px;">' +
-        '<button class="btn btn-success btn-sm" onclick="hmlConfirmFlowRole()">继续</button>' +
-      '</div>';
+      '<div class="hml-flow-footer"><button class="btn btn-default btn-sm" onclick="hmlCancelFlowDialog()">取消</button><button class="btn btn-success btn-sm" onclick="hmlConfirmFlowRole()">继续</button></div>';
     root.html(html);
     return;
   }

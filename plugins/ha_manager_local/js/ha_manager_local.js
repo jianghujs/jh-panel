@@ -169,9 +169,17 @@ function hmlRender() {
   hmlRenderReadme();
 }
 
+function hmlExternalServiceButtonText() {
+  return hmlState.external_closed ? '打开对外服务' : '关闭对外服务';
+}
+
+function hmlExternalServiceButtonClass() {
+  return hmlState.external_closed ? 'btn-success' : 'btn-danger';
+}
+
 function hmlRenderOverview() {
   var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
-  var html = '<div class="hml-topbar"><div><div class="hml-title">主备管理</div><div class="hml-sub">查看本机主备状态，必要时执行角色切换与对外服务控制。</div></div><div class="hml-actions"><button class="btn btn-success btn-sm" onclick="hmlOpenSwitchDialog()">切换角色</button><button class="btn btn-danger btn-sm" onclick="hmlCloseExternalService()">关闭对外服务</button><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button></div></div>' +
+  var html = '<div class="hml-topbar"><div><div class="hml-title">主备管理</div><div class="hml-sub">查看本机主备状态，必要时执行角色切换与对外服务控制。</div></div><div class="hml-actions"><button class="btn btn-success btn-sm" onclick="hmlOpenSwitchDialog()">切换角色</button><button class="btn ' + hmlExternalServiceButtonClass() + ' btn-sm" onclick="hmlToggleExternalService()">' + hmlHtml(hmlExternalServiceButtonText()) + '</button><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button></div></div>' +
     '<div class="hml-panel"><div class="hml-panel-body">' +
       '<table class="table table-hover hml-overview-table"><tbody>' +
         '<tr><th>当前角色</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleText(hmlState.role)) + '</td></tr>' +
@@ -292,6 +300,7 @@ function hmlFlowStageKey(step) {
 
 function hmlBuildFlowStageBar(state, steps, activeStep) {
   var stages = hmlBuildFlowStages(state);
+  if (!stages.length || stages.length === 1 || state.target_role === 'standby') return '';
   return '<div class="hml-flow-stages">' + stages.map(function(stage) {
     var indices = [];
     steps.forEach(function(step, index) {
@@ -900,10 +909,16 @@ function hmlCancelFlowDialog() {
   window.hmlFlowState = null;
 }
 
-function hmlCloseExternalService() {
-  hmlApplyExternalClosed();
-  hmlLog('关闭对外服务完成：OpenResty 已停止');
-  layer.msg('已模拟关闭 OpenResty', {icon: 1});
+function hmlToggleExternalService() {
+  if (hmlState.external_closed) {
+    hmlApplyExternalOpen();
+    hmlLog('打开对外服务完成：OpenResty 已启动');
+    layer.msg('已模拟打开 OpenResty', {icon: 1});
+  } else {
+    hmlApplyExternalClosed();
+    hmlLog('关闭对外服务完成：OpenResty 已停止');
+    layer.msg('已模拟关闭 OpenResty', {icon: 1});
+  }
   hmlRender();
 }
 

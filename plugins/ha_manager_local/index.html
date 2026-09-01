@@ -68,10 +68,23 @@
 .hml-flow-stage-step.active .hml-flow-stage-num{background:#337ab7;color:#fff;}
 .hml-flow-stage-step.done .hml-flow-stage-num{background:#5cb85c;color:#fff;}
 .hml-flow-list{border:1px solid #e6e9ef;border-radius:4px;background:#fafbfc;overflow:auto;max-height:100%;scroll-behavior:smooth;}
+.hml-flow-group{border-bottom:1px solid #edf0f4;background:#fff;}
+.hml-flow-group:last-child{border-bottom:0;}
+.hml-flow-group-head{display:flex;align-items:center;gap:8px;padding:9px 10px;background:#f7f8fa;cursor:pointer;user-select:none;}
+.hml-flow-group.active .hml-flow-group-head{background:#eef7ff;}
+.hml-flow-group.done .hml-flow-group-head{background:#f6fff6;}
+.hml-flow-group-toggle{width:14px;color:#777;font-size:12px;line-height:18px;text-align:center;flex:0 0 auto;}
+.hml-flow-group-title{font-size:12px;font-weight:600;color:#333;line-height:18px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hml-flow-group-count{font-size:12px;color:#888;line-height:18px;flex:0 0 auto;}
+.hml-flow-group-body{display:none;background:#fff;}
+.hml-flow-group.open .hml-flow-group-body{display:block;}
 .hml-flow-item{display:flex;align-items:flex-start;gap:8px;padding:9px 10px;border-bottom:1px solid #edf0f4;cursor:pointer;}
 .hml-flow-item:last-child{border-bottom:0;}
 .hml-flow-item.active{background:#eef7ff;}
 .hml-flow-item.done{background:#f6fff6;}
+.hml-flow-group-body .hml-flow-item{padding-left:28px;background:#fff;}
+.hml-flow-group-body .hml-flow-item.active{background:#eef7ff;}
+.hml-flow-group-body .hml-flow-item.done{background:#f6fff6;}
 .hml-flow-index{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#dfe4ea;color:#666;font-size:12px;line-height:20px;}
 .hml-flow-item.active .hml-flow-index{background:#337ab7;color:#fff;}
 .hml-flow-item.done .hml-flow-index{background:#5cb85c;color:#fff;}
@@ -92,6 +105,10 @@
 .hml-flow-footer{display:flex;justify-content:flex-end;gap:8px;padding-top:12px;margin-top:12px;border-top:1px solid #edf0f4;background:#fff;flex:0 0 auto;}
 .hml-flow-guide{border:1px solid #e6e9ef;border-radius:4px;background:#f7f8fa;padding:16px 18px;flex:1;display:flex;align-items:center;justify-content:center;text-align:center;min-height:220px;}
 .hml-flow-guide-text{font-size:13px;color:#666;line-height:24px;white-space:pre-line;max-width:560px;}
+.hml-flow-complete{border:1px solid #bfe4bf;border-radius:4px;background:#f6fff6;padding:36px 24px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:360px;}
+.hml-flow-complete-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#5cb85c;color:#fff;font-size:24px;line-height:48px;margin-bottom:14px;}
+.hml-flow-complete-title{font-size:16px;font-weight:600;color:#2e7d32;line-height:24px;margin-bottom:6px;}
+.hml-flow-complete-text{font-size:13px;color:#555;line-height:24px;max-width:520px;}
 .hml-role-select{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px;flex:1;align-content:start;}
 .hml-role-option{border:1px solid #e6e9ef;border-radius:4px;background:#fff;padding:14px;cursor:pointer;}
 .hml-role-option.active{border-color:#8dbde8;background:#eef7ff;}
@@ -155,7 +172,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager_local&f=js/ha_manager_local.js&v=202609010002', function(){
+$.getScript('/plugins/file?name=ha_manager_local&f=js/ha_manager_local.js&v=202609010006', function(){
   hmlBoot();
 });
 </script>

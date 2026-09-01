@@ -3,78 +3,771 @@
   "roles": {
     "master": {
       "stages": [
-        {"key": "master_online", "text": "主机正式上线"}
+        {
+          "key": "master_online",
+          "text": "主机正式上线"
+        }
       ],
       "steps": [
-        {"key": "mysql_online", "title": "正式上线前确认 MySQL", "desc": "对应旧脚本：正式上线前确保 MySQL 正常。", "stage": "主机正式上线", "phase": "master_online", "guide_ref": "mysql", "code": "systemctl start mysqld\nsystemctl status mysqld --no-pager"},
-        {"key": "promote_mysql", "title": "将数据库提升为主", "desc": "执行 switch__mysql_master.js。", "stage": "主机正式上线", "phase": "master_online", "guide_ref": "promote_mysql", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_master.js"},
-        {"key": "authorized_key_off", "title": "移除同步公钥授权", "desc": "从 authorized_keys 中移除 standby_sync 公钥。", "stage": "主机正式上线", "phase": "master_online", "guide_ref": "ssh_key", "code": "sed -i \"/standby_sync/d\" /root/.ssh/authorized_keys"},
-        {"key": "close_backup_db", "title": "关闭数据库备份任务", "desc": "关闭 备份数据库[backupAll]。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份数据库[backupAll]\" disabled"},
-        {"key": "close_xtrabackup", "title": "关闭 xtrabackup 任务", "desc": "关闭 [勿删]xtrabackup-cron。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-cron\" disabled"},
-        {"key": "close_xtrabackup_full", "title": "关闭 xtrabackup-inc 全量备份", "desc": "关闭 [勿删]xtrabackup-inc全量备份。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc全量备份\" disabled"},
-        {"key": "close_xtrabackup_inc", "title": "关闭 xtrabackup-inc 增量备份", "desc": "关闭 [勿删]xtrabackup-inc增量备份。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc增量备份\" disabled"},
-        {"key": "open_site_backup", "title": "开启网站配置备份", "desc": "开启 备份网站配置[backupAll]。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份网站配置[backupAll]\" enabled"},
-        {"key": "open_plugin_backup_all", "title": "开启插件配置备份（所有）", "desc": "开启 备份插件配置[所有]。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[所有]\" enabled"},
-        {"key": "open_plugin_backup_batch", "title": "开启插件配置备份（backupAll）", "desc": "开启 备份插件配置[backupAll]。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[backupAll]\" enabled"},
-        {"key": "open_lsyncd_cron", "title": "开启 lsyncd 定时同步", "desc": "开启 [勿删]lsyncd实时任务定时同步。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" enabled"},
-        {"key": "open_cert_cron", "title": "开启证书续签任务", "desc": "开启 [勿删]续签Let's Encrypt证书。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" enabled"},
-        {"key": "close_site_restore", "title": "关闭网站配置恢复", "desc": "关闭 恢复网站配置[所有]。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复网站配置[所有]\" disabled"},
-        {"key": "close_plugin_restore", "title": "关闭插件配置恢复", "desc": "关闭 恢复插件配置[所有]。", "stage": "计划任务", "phase": "master_online", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复插件配置[所有]\" disabled"},
-        {"key": "open_ssl_notify", "title": "开启 SSL 到期提醒", "desc": "对应旧脚本：setNotifyValue {ssl_cert:14}。", "stage": "通知策略", "phase": "master_online", "guide_ref": "notify", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert 14"},
-        {"key": "enable_rsyncd_tasks", "title": "启用 rsyncd 同步任务", "desc": "批量调整 rsyncd 任务为 enabled。", "stage": "同步服务", "phase": "master_online", "guide_ref": "rsyncd_tasks", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py enabled"},
-        {"key": "restart_lsyncd", "title": "启动 lsyncd 服务", "desc": "执行 systemctl restart lsyncd。", "stage": "同步服务", "phase": "master_online", "guide_ref": "lsyncd", "code": "systemctl restart lsyncd"},
-        {"key": "master_openresty", "title": "启动 OpenResty", "desc": "解除 mask、启用自启动、启动 OpenResty，并停止系统 nginx 冲突。", "stage": "Web 服务", "phase": "master_online", "guide_ref": "openresty", "effect": "external_open", "undo_effect": "external_closed", "log_done": "已切入主机策略", "code": "systemctl unmask openresty\nsystemctl enable openresty\nsystemctl start openresty\nsystemctl stop nginx || true"},
-        {"key": "open_email_notify", "title": "开启邮件通知", "desc": "对应旧脚本：openEmailNotify。", "stage": "通知策略", "phase": "master_online", "guide_ref": "notify", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/openEmailNotify.js"},
-        {"key": "open_mysql_notify", "title": "开启主从同步异常提醒", "desc": "对应旧脚本：openMysqlSlaveNotify。", "stage": "通知策略", "phase": "master_online", "guide_ref": "notify", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/openMysqlSlaveNotify.js"},
-        {"key": "open_rsync_notify", "title": "开启 Rsync 状态异常提醒", "desc": "对应旧脚本：openRsyncStatusNotify。", "stage": "通知策略", "phase": "master_online", "guide_ref": "notify", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/openRsyncStatusNotify.js"},
-        {"key": "role_master", "title": "标记为主机", "desc": "把当前机器角色标记成主机。", "stage": "角色切换", "phase": "master_online", "guide_ref": "role", "effect": "role_master", "undo_effect": "role_standby", "log_done": "本机角色已更新", "code": "echo master > /www/server/ha_manager_local/role"},
-        {"key": "master_check", "title": "执行主机自检", "desc": "确认 OpenResty、rsync 和任务状态符合主机预期。", "stage": "状态确认", "phase": "master_online", "guide_ref": "health_check", "check_health": true, "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\""}
+        {
+          "key": "mysql_online",
+          "title": "正式上线前确认 MySQL",
+          "desc": "对应旧脚本：正式上线前确保 MySQL 正常。",
+          "stage": "主机正式上线",
+          "phase": "master_online",
+          "guide_ref": "mysql",
+          "code": "systemctl start mysqld\nsystemctl status mysqld --no-pager",
+          "group": "数据库切主"
+        },
+        {
+          "key": "promote_mysql",
+          "title": "将数据库提升为主",
+          "desc": "执行 switch__mysql_master.js。",
+          "stage": "主机正式上线",
+          "phase": "master_online",
+          "guide_ref": "promote_mysql",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_master.js",
+          "group": "数据库切主"
+        },
+        {
+          "key": "authorized_key_off",
+          "title": "移除同步公钥授权",
+          "desc": "从 authorized_keys 中移除 standby_sync 公钥。",
+          "stage": "主机正式上线",
+          "phase": "master_online",
+          "guide_ref": "ssh_key",
+          "code": "sed -i \"/standby_sync/d\" /root/.ssh/authorized_keys",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_backup_db",
+          "title": "关闭数据库备份任务",
+          "desc": "关闭 备份数据库[backupAll]。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份数据库[backupAll]\" disabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_xtrabackup",
+          "title": "关闭 xtrabackup 任务",
+          "desc": "关闭 [勿删]xtrabackup-cron。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-cron\" disabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_xtrabackup_full",
+          "title": "关闭 xtrabackup-inc 全量备份",
+          "desc": "关闭 [勿删]xtrabackup-inc全量备份。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc全量备份\" disabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_xtrabackup_inc",
+          "title": "关闭 xtrabackup-inc 增量备份",
+          "desc": "关闭 [勿删]xtrabackup-inc增量备份。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc增量备份\" disabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_site_backup",
+          "title": "开启网站配置备份",
+          "desc": "开启 备份网站配置[backupAll]。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份网站配置[backupAll]\" enabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_plugin_backup_all",
+          "title": "开启插件配置备份（所有）",
+          "desc": "开启 备份插件配置[所有]。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[所有]\" enabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_plugin_backup_batch",
+          "title": "开启插件配置备份（backupAll）",
+          "desc": "开启 备份插件配置[backupAll]。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[backupAll]\" enabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_lsyncd_cron",
+          "title": "开启 lsyncd 定时同步",
+          "desc": "开启 [勿删]lsyncd实时任务定时同步。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" enabled",
+          "group": "文件同步开启"
+        },
+        {
+          "key": "open_cert_cron",
+          "title": "开启证书续签任务",
+          "desc": "开启 [勿删]续签Let's Encrypt证书。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" enabled",
+          "group": "计划任务调整"
+        },
+        {
+          "key": "close_site_restore",
+          "title": "关闭网站配置恢复",
+          "desc": "关闭 恢复网站配置[所有]。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复网站配置[所有]\" disabled",
+          "group": "计划任务调整"
+        },
+        {
+          "key": "close_plugin_restore",
+          "title": "关闭插件配置恢复",
+          "desc": "关闭 恢复插件配置[所有]。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复插件配置[所有]\" disabled",
+          "group": "计划任务调整"
+        },
+        {
+          "key": "open_ssl_notify",
+          "title": "开启 SSL 到期提醒",
+          "desc": "对应旧脚本：setNotifyValue {ssl_cert:14}。",
+          "stage": "通知策略",
+          "phase": "master_online",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert 14",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "enable_rsyncd_tasks",
+          "title": "启用 rsyncd 同步任务",
+          "desc": "批量调整 rsyncd 任务为 enabled。",
+          "stage": "同步服务",
+          "phase": "master_online",
+          "guide_ref": "rsyncd_tasks",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py enabled",
+          "group": "文件同步开启"
+        },
+        {
+          "key": "restart_lsyncd",
+          "title": "启动 lsyncd 服务",
+          "desc": "执行 systemctl restart lsyncd。",
+          "stage": "同步服务",
+          "phase": "master_online",
+          "guide_ref": "lsyncd",
+          "code": "systemctl restart lsyncd",
+          "group": "文件同步开启"
+        },
+        {
+          "key": "master_openresty",
+          "title": "启动 OpenResty",
+          "desc": "解除 mask、启用自启动、启动 OpenResty，并停止系统 nginx 冲突。",
+          "stage": "Web 服务",
+          "phase": "master_online",
+          "guide_ref": "openresty",
+          "effect": "external_open",
+          "undo_effect": "external_closed",
+          "log_done": "已切入主机策略",
+          "code": "systemctl unmask openresty\nsystemctl enable openresty\nsystemctl start openresty\nsystemctl stop nginx || true",
+          "group": "打开 OpenResty"
+        },
+        {
+          "key": "open_email_notify",
+          "title": "开启邮件通知",
+          "desc": "对应旧脚本：openEmailNotify。",
+          "stage": "通知策略",
+          "phase": "master_online",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/openEmailNotify.js",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "open_mysql_notify",
+          "title": "开启主从同步异常提醒",
+          "desc": "对应旧脚本：openMysqlSlaveNotify。",
+          "stage": "通知策略",
+          "phase": "master_online",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/openMysqlSlaveNotify.js",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "open_rsync_notify",
+          "title": "开启 Rsync 状态异常提醒",
+          "desc": "对应旧脚本：openRsyncStatusNotify。",
+          "stage": "通知策略",
+          "phase": "master_online",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/openRsyncStatusNotify.js",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "switch_zenlayer",
+          "title": "切换 Zenlayer",
+          "desc": "请确认 Zenlayer 入口流量已经切换到当前机器。",
+          "stage": "入口切换",
+          "phase": "master_online",
+          "group": "切换 Zenlayer",
+          "guide_ref": "zenlayer",
+          "code": "# 请在 Zenlayer 控制台确认入口流量已切换到当前机器\n# 确认完成后执行当前步骤"
+        },
+        {
+          "key": "role_master",
+          "title": "标记为主机",
+          "desc": "把当前机器角色标记成主机。",
+          "stage": "角色切换",
+          "phase": "master_online",
+          "guide_ref": "role",
+          "effect": "role_master",
+          "undo_effect": "role_standby",
+          "log_done": "本机角色已更新",
+          "code": "echo master > /www/server/ha_manager_local/role",
+          "group": "标记为主机"
+        },
+        {
+          "key": "master_check",
+          "title": "执行主机自检",
+          "desc": "确认 OpenResty、rsync 和任务状态符合主机预期。",
+          "stage": "状态确认",
+          "phase": "master_online",
+          "guide_ref": "health_check",
+          "check_health": true,
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\"",
+          "group": "主机自检"
+        }
       ]
     },
     "standby": {
-      "stages": [{"key": "standby_offline", "text": "备机下线"}],
+      "stages": [
+        {
+          "key": "standby_offline",
+          "text": "备机下线"
+        }
+      ],
       "steps": [
-        {"key": "close_external", "title": "关闭对外服务", "desc": "停止 OpenResty，先阻断主要入口流量。", "stage": "准备下线", "phase": "standby_offline", "guide_ref": "openresty", "effect": "external_closed", "log_done": "关闭对外服务完成：OpenResty 已停止", "code": "systemctl stop openresty\nsystemctl stop nginx || true"},
-        {"key": "mysql_running_standby", "title": "确保 MySQL 服务正常", "desc": "对应旧脚本：恢复为备机前确保 MySQL 正常。", "stage": "备机流程", "phase": "standby_offline", "guide_ref": "mysql", "code": "systemctl start mysqld\nsystemctl status mysqld --no-pager"},
-        {"key": "close_mysql_notify", "title": "关闭主从同步异常提醒", "desc": "对应旧脚本：closeMysqlSlaveNotify。", "stage": "备机流程", "phase": "standby_offline", "guide_ref": "notify", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeMysqlSlaveNotify.js"},
-        {"key": "authorized_key_on", "title": "授权同步公钥", "desc": "把 standby_sync 公钥加入 authorized_keys。", "stage": "备机流程", "phase": "standby_offline", "guide_ref": "ssh_key", "code": "mkdir -p /root/.ssh\ngrep -qxF \"$STANDBY_SYNC_PUBLIC_KEY\" /root/.ssh/authorized_keys || echo \"$STANDBY_SYNC_PUBLIC_KEY\" >> /root/.ssh/authorized_keys"},
-        {"key": "open_backup_db", "title": "开启数据库备份任务", "desc": "开启 备份数据库[backupAll]。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份数据库[backupAll]\" enabled"},
-        {"key": "open_xtrabackup", "title": "开启 xtrabackup 任务", "desc": "开启 [勿删]xtrabackup-cron。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-cron\" enabled"},
-        {"key": "open_xtrabackup_full", "title": "开启 xtrabackup-inc 全量备份", "desc": "开启 [勿删]xtrabackup-inc全量备份。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc全量备份\" enabled"},
-        {"key": "open_xtrabackup_inc", "title": "开启 xtrabackup-inc 增量备份", "desc": "开启 [勿删]xtrabackup-inc增量备份。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc增量备份\" enabled"},
-        {"key": "close_site_backup", "title": "关闭网站配置备份", "desc": "关闭 备份网站配置[backupAll]。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份网站配置[backupAll]\" disabled"},
-        {"key": "close_plugin_backup_all", "title": "关闭插件配置备份（所有）", "desc": "关闭 备份插件配置[所有]。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[所有]\" disabled"},
-        {"key": "close_plugin_backup_batch", "title": "关闭插件配置备份（backupAll）", "desc": "关闭 备份插件配置[backupAll]。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[backupAll]\" disabled"},
-        {"key": "close_lsyncd_cron", "title": "关闭 lsyncd 定时同步", "desc": "关闭 [勿删]lsyncd实时任务定时同步。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" disabled"},
-        {"key": "close_cert_cron", "title": "关闭证书续签任务", "desc": "关闭 [勿删]续签Let's Encrypt证书。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" disabled"},
-        {"key": "open_site_restore", "title": "开启网站配置恢复", "desc": "开启 恢复网站配置[所有]。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复网站配置[所有]\" enabled"},
-        {"key": "open_plugin_restore", "title": "开启插件配置恢复", "desc": "开启 恢复插件配置[所有]。", "stage": "计划任务", "phase": "standby_offline", "guide_ref": "cron", "log_done": "计划任务调整完成", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复插件配置[所有]\" enabled"},
-        {"key": "close_ssl_notify", "title": "关闭 SSL 到期提醒", "desc": "对应旧脚本：setNotifyValue {ssl_cert:-1}。", "stage": "通知策略", "phase": "standby_offline", "guide_ref": "notify", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert -1"},
-        {"key": "close_rsync_notify", "title": "关闭 Rsync 状态异常提醒", "desc": "对应旧脚本：closeRsyncStatusNotify。", "stage": "通知策略", "phase": "standby_offline", "guide_ref": "notify", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeRsyncStatusNotify.js"},
-        {"key": "disable_rsyncd_tasks", "title": "停用 rsyncd 同步任务", "desc": "批量调整 rsyncd 任务为 disabled。", "stage": "同步服务", "phase": "standby_offline", "guide_ref": "rsyncd_tasks", "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py disabled"},
-        {"key": "stop_lsyncd", "title": "停止 lsyncd 服务", "desc": "执行 systemctl stop lsyncd。", "stage": "同步服务", "phase": "standby_offline", "guide_ref": "lsyncd", "code": "systemctl stop lsyncd"},
-        {"key": "kill_rsync", "title": "清理 rsync 进程", "desc": "清理残留 /bin/rsync 进程。", "stage": "同步服务", "phase": "standby_offline", "guide_ref": "lsyncd", "code": "pkill -f /bin/rsync || true"},
-        {"key": "standby_openresty", "title": "停止并锁定 OpenResty", "desc": "停止 OpenResty，disable 并 mask，必要时停止系统 nginx。", "stage": "Web 服务", "phase": "standby_offline", "guide_ref": "openresty", "log_done": "已切入备机策略", "code": "systemctl stop openresty\nsystemctl disable openresty\nsystemctl mask openresty\nsystemctl stop nginx || true"},
-        {"key": "role_standby", "title": "标记为备机", "desc": "把当前机器角色标记成备机。", "stage": "角色切换", "phase": "standby_offline", "guide_ref": "role", "effect": "role_standby", "undo_effect": "role_master", "log_done": "本机角色已更新", "code": "echo standby > /www/server/ha_manager_local/role"},
-        {"key": "standby_check", "title": "执行备机自检", "desc": "确认 OpenResty、rsync 和任务状态符合备机预期。", "stage": "状态确认", "phase": "standby_offline", "guide_ref": "health_check", "check_health": true, "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\""}
+        {
+          "key": "close_external",
+          "title": "关闭 OpenResty",
+          "desc": "停止、禁用并锁定 OpenResty，先阻断当前机器对外 Web 服务。",
+          "stage": "关闭 OpenResty",
+          "phase": "standby_offline",
+          "guide_ref": "openresty",
+          "effect": "external_closed",
+          "log_done": "已切入备机策略",
+          "code": "systemctl stop openresty\nsystemctl disable openresty\nsystemctl mask openresty\nsystemctl stop nginx || true",
+          "group": "关闭 OpenResty"
+        },
+        {
+          "key": "demote_mysql",
+          "title": "数据库降为从",
+          "desc": "将当前机器数据库切换为从库。",
+          "stage": "数据库降从",
+          "phase": "standby_offline",
+          "guide_ref": "mysql",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_slave.js",
+          "group": "数据库降从"
+        },
+        {
+          "key": "close_mysql_notify",
+          "title": "关闭主从同步异常提醒",
+          "desc": "对应旧脚本：closeMysqlSlaveNotify。",
+          "stage": "备机流程",
+          "phase": "standby_offline",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeMysqlSlaveNotify.js",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "authorized_key_on",
+          "title": "授权同步公钥",
+          "desc": "把 standby_sync 公钥加入 authorized_keys。",
+          "stage": "备机流程",
+          "phase": "standby_offline",
+          "guide_ref": "ssh_key",
+          "code": "mkdir -p /root/.ssh\ngrep -qxF \"$STANDBY_SYNC_PUBLIC_KEY\" /root/.ssh/authorized_keys || echo \"$STANDBY_SYNC_PUBLIC_KEY\" >> /root/.ssh/authorized_keys",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_backup_db",
+          "title": "开启数据库备份任务",
+          "desc": "开启 备份数据库[backupAll]。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份数据库[backupAll]\" enabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_xtrabackup",
+          "title": "开启 xtrabackup 任务",
+          "desc": "开启 [勿删]xtrabackup-cron。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-cron\" enabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_xtrabackup_full",
+          "title": "开启 xtrabackup-inc 全量备份",
+          "desc": "开启 [勿删]xtrabackup-inc全量备份。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc全量备份\" enabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "open_xtrabackup_inc",
+          "title": "开启 xtrabackup-inc 增量备份",
+          "desc": "开启 [勿删]xtrabackup-inc增量备份。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]xtrabackup-inc增量备份\" enabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_site_backup",
+          "title": "关闭网站配置备份",
+          "desc": "关闭 备份网站配置[backupAll]。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份网站配置[backupAll]\" disabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_plugin_backup_all",
+          "title": "关闭插件配置备份（所有）",
+          "desc": "关闭 备份插件配置[所有]。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[所有]\" disabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_plugin_backup_batch",
+          "title": "关闭插件配置备份（backupAll）",
+          "desc": "关闭 备份插件配置[backupAll]。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"备份插件配置[backupAll]\" disabled",
+          "group": "备份策略调整"
+        },
+        {
+          "key": "close_lsyncd_cron",
+          "title": "关闭 lsyncd 定时同步",
+          "desc": "关闭 [勿删]lsyncd实时任务定时同步。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" disabled",
+          "group": "文件同步关闭"
+        },
+        {
+          "key": "close_cert_cron",
+          "title": "关闭证书续签任务",
+          "desc": "关闭 [勿删]续签Let's Encrypt证书。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" disabled",
+          "group": "计划任务调整"
+        },
+        {
+          "key": "open_site_restore",
+          "title": "开启网站配置恢复",
+          "desc": "开启 恢复网站配置[所有]。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复网站配置[所有]\" enabled",
+          "group": "计划任务调整"
+        },
+        {
+          "key": "open_plugin_restore",
+          "title": "开启插件配置恢复",
+          "desc": "开启 恢复插件配置[所有]。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"恢复插件配置[所有]\" enabled",
+          "group": "计划任务调整"
+        },
+        {
+          "key": "close_ssl_notify",
+          "title": "关闭 SSL 到期提醒",
+          "desc": "对应旧脚本：setNotifyValue {ssl_cert:-1}。",
+          "stage": "通知策略",
+          "phase": "standby_offline",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert -1",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "close_rsync_notify",
+          "title": "关闭 Rsync 状态异常提醒",
+          "desc": "对应旧脚本：closeRsyncStatusNotify。",
+          "stage": "通知策略",
+          "phase": "standby_offline",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeRsyncStatusNotify.js",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "disable_rsyncd_tasks",
+          "title": "停用 rsyncd 同步任务",
+          "desc": "批量调整 rsyncd 任务为 disabled。",
+          "stage": "同步服务",
+          "phase": "standby_offline",
+          "guide_ref": "rsyncd_tasks",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py disabled",
+          "group": "文件同步关闭"
+        },
+        {
+          "key": "stop_lsyncd",
+          "title": "停止 lsyncd 服务",
+          "desc": "执行 systemctl stop lsyncd。",
+          "stage": "同步服务",
+          "phase": "standby_offline",
+          "guide_ref": "lsyncd",
+          "code": "systemctl stop lsyncd",
+          "group": "文件同步关闭"
+        },
+        {
+          "key": "kill_rsync",
+          "title": "清理 rsync 进程",
+          "desc": "清理残留 /bin/rsync 进程。",
+          "stage": "同步服务",
+          "phase": "standby_offline",
+          "guide_ref": "lsyncd",
+          "code": "pkill -f /bin/rsync || true",
+          "group": "文件同步关闭"
+        },
+        {
+          "key": "role_standby",
+          "title": "标记为备机",
+          "desc": "把当前机器角色标记成备机。",
+          "stage": "角色切换",
+          "phase": "standby_offline",
+          "guide_ref": "role",
+          "effect": "role_standby",
+          "undo_effect": "role_master",
+          "log_done": "本机角色已更新",
+          "code": "echo standby > /www/server/ha_manager_local/role",
+          "group": "标记为备机"
+        },
+        {
+          "key": "standby_check",
+          "title": "执行备机自检",
+          "desc": "确认 OpenResty、rsync 和任务状态符合备机预期。",
+          "stage": "状态确认",
+          "phase": "standby_offline",
+          "guide_ref": "health_check",
+          "check_health": true,
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\"",
+          "group": "备机自检"
+        }
       ]
     }
   },
   "guides": {
-    "default": {"text": "当前步骤执行失败，请先查看日志输出，再按提示处理后重新进入该步骤。", "commands": [{"desc": "查看 MySQL 服务状态", "cmd": "systemctl status mysqld --no-pager"}, {"desc": "查看面板最近错误日志", "cmd": "tail -n 100 /www/server/jh-panel/logs/error.log"}]},
-    "promote_mysql": {"text": "MySQL 提升为主失败时，优先在备用机使用 jh 22 脚本库里的“修复MySQL从库：从xtrabackup备份中恢复从库和GTID事务”脚本。\n先用最近的 xtrabackup 备份把备用机恢复到可接入状态；必要时在主机重新做一次 xtrabackup 备份，保证 GTID 一致，再重新建立主从同步。\n如果恢复后仍失败，先确认两边 MySQL 状态、备份文件和 GTID 信息是否一致。", "commands": [{"desc": "查看 MySQL 服务是否正常运行", "cmd": "systemctl status mysqld --no-pager"}, {"desc": "打开 jh 22 脚本库中的修复入口", "cmd": "bash /www/server/os_tool/vm/default/index__repair.sh"}, {"desc": "直接执行从 xtrabackup 恢复从库和 GTID 的脚本", "cmd": "bash /www/server/os_tool/vm/default/repair__restore_mysql_slave_from_xtrabackup.sh"}]},
-    "mysql": {"text": "MySQL 状态异常时，先确认 mysqld 服务是否正常启动，再检查端口和错误日志。\n如果数据库插件显示异常，先处理数据库服务后再继续。", "commands": [{"desc": "查看 MySQL 服务状态", "cmd": "systemctl status mysqld --no-pager"}, {"desc": "重启 MySQL 服务", "cmd": "systemctl restart mysqld"}, {"desc": "确认 3306 端口是否监听", "cmd": "ss -lntp | grep 3306"}]},
-    "openresty": {"text": "OpenResty 相关步骤失败时，先确认进程是否残留，再检查 systemctl 状态和端口占用。\n如果被其他 nginx 或进程占用，先停止冲突服务再重试。", "commands": [{"desc": "查看 OpenResty 服务状态", "cmd": "systemctl status openresty --no-pager"}, {"desc": "检查 80/443 端口占用", "cmd": "ss -lntp | grep -E \":80|:443\""}, {"desc": "停止可能冲突的系统 nginx", "cmd": "systemctl stop nginx || true"}]},
-    "wwwstorage_dryrun": {"text": "预检查失败时，先确认 /www/wwwstorage 目录是否可访问，再确认对端 IP、SSH 登录和目录权限。\n如果 dry-run 输出存在差异，先确认两边是否仍有写入，再决定是否同步。", "commands": [{"desc": "统计本机 /www/wwwstorage 文件数量", "cmd": "find /www/wwwstorage -type f | wc -l"}, {"desc": "查看本机 /www/wwwstorage 目录大小", "cmd": "du -sh /www/wwwstorage"}, {"desc": "dry-run 对比两边 /www/wwwstorage 差异", "cmd": "rsync -avzn --delete /www/wwwstorage/ root@对端IP:/www/wwwstorage/"}]},
-    "checksum": {"text": "checksum 检查发现异常时，先确认两边文件是否仍在变动，再决定是否继续。\n如果文件还在变化，先暂停相关写入后重新检查。", "commands": [{"desc": "生成本机文件列表校验值", "cmd": "find /www/wwwstorage -type f -printf \"%P\\n\" | sort | md5sum"}, {"desc": "生成本机文件内容校验值", "cmd": "find /www/wwwstorage -type f -exec md5sum {} \\; | sort | md5sum"}]},
-    "xtrabackup_restore": {"text": "xtrabackup 增量恢复失败时，先确认备份文件是否存在、备份链是否完整、磁盘空间是否足够。\n如果恢复脚本报错，先查看 xtrabackup 日志，再决定是否改用最近一次完整备份。", "commands": [{"desc": "查看 xtrabackup-inc 服务目录", "cmd": "ls -lah /www/server/xtrabackup-inc"}, {"desc": "查看最近的 xtrabackup-inc 日志", "cmd": "ls -t /www/server/xtrabackup-inc/logs/* 2>/dev/null | head"}, {"desc": "查看备份目录空间占用", "cmd": "df -h /www/backup"}]},
-    "setting_restore": {"text": "配置恢复失败时，先确认备份文件存在并且可以解压，再检查目标目录权限。\n如果导入脚本报错，先确认备份文件版本和当前面板版本是否兼容。", "commands": [{"desc": "查看网站配置备份文件", "cmd": "ls -t /www/backup/site_setting/*.zip 2>/dev/null | head"}, {"desc": "查看插件配置备份文件", "cmd": "ls -t /www/backup/plugin_setting/*.zip 2>/dev/null | head"}, {"desc": "确认备份文件能正常解压", "cmd": "unzip -t 备份文件.zip"}]},
-    "ssh_key": {"text": "同步公钥授权失败时，先检查 /root/.ssh 目录权限和 authorized_keys 文件内容。\n如果 key 不存在，先重新生成或同步公钥后再执行。", "commands": [{"desc": "查看 SSH 授权文件权限", "cmd": "ls -ld /root/.ssh && ls -l /root/.ssh/authorized_keys"}, {"desc": "检查同步公钥是否已经授权", "cmd": "grep -n \"standby_sync\" /root/.ssh/authorized_keys"}, {"desc": "修正 SSH 授权目录权限", "cmd": "chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys"}]},
-    "cron": {"text": "计划任务调整失败时，先确认对应计划任务是否存在，再检查任务名称是否和面板中一致。\n如果任务不存在，先到对应插件重新保存任务配置，再回到这里执行。", "commands": [{"desc": "查看计划任务列表中是否存在对应任务", "cmd": "sqlite3 /www/server/panel/data/default.db \"select id,name,status from crontab where name like '%备份%' or name like '%恢复%' or name like '%xtrabackup%';\""}, {"desc": "查看面板计划任务日志目录", "cmd": "ls -lah /www/server/cron"}, {"desc": "查看面板最近错误日志", "cmd": "tail -n 100 /www/server/jh-panel/logs/error.log"}]},
-    "notify": {"text": "通知配置调整失败时，先确认通知插件或面板通知配置是否正常，再查看脚本输出。\n如果通知项不存在，先到对应通知配置页面保存一次配置。", "commands": [{"desc": "查看面板通知相关配置", "cmd": "ls -lah /www/server/panel/data | grep -i notify"}, {"desc": "查看面板最近错误日志", "cmd": "tail -n 100 /www/server/jh-panel/logs/error.log"}, {"desc": "查看当前步骤脚本是否存在", "cmd": "ls -lah /www/server/jh-panel/plugins/ha_manager_local/scripts"}]},
-    "rsyncd_tasks": {"text": "rsyncd 任务状态调整失败时，先确认 rsyncd 插件是否已安装，以及 /www/server/rsyncd/config.json 是否存在。\n如果任务列表为空，先到 rsyncd 插件确认同步任务配置。", "commands": [{"desc": "确认 rsyncd 配置文件存在", "cmd": "ls -l /www/server/rsyncd/config.json"}, {"desc": "查看 rsyncd 同步任务名称", "cmd": "python3 - <<'PY'\nimport json\nprint('\\n'.join([x.get('name', '') for x in json.load(open('/www/server/rsyncd/config.json')).get('send', {}).get('list', [])]))\nPY"}, {"desc": "查看 rsyncd 插件入口", "cmd": "ls -lah /www/server/jh-panel/plugins/rsyncd"}]},
-    "lsyncd": {"text": "同步服务调整失败时，先查看 lsyncd 服务状态和残留 rsync 进程。\n如果服务文件不存在，先到 rsyncd 插件重建配置或重新安装服务。", "commands": [{"desc": "查看 lsyncd 服务状态", "cmd": "systemctl status lsyncd --no-pager"}, {"desc": "查看残留 rsync 进程", "cmd": "ps aux | grep '/bin/[r]sync'"}, {"desc": "查看 lsyncd 最近日志", "cmd": "tail -n 100 /www/server/rsyncd/logs/lsyncd.log"}]},
-    "role": {"text": "角色标记失败时，先确认本机状态是否已经切到目标角色对应的服务状态，再重新执行角色写入。\n如果前置步骤未完成，先补齐前置步骤后再继续。", "commands": [{"desc": "查看本机角色标记文件", "cmd": "cat /www/server/ha_manager_local/role"}, {"desc": "确认角色目录存在", "cmd": "mkdir -p /www/server/ha_manager_local && ls -ld /www/server/ha_manager_local"}, {"desc": "查看当前 OpenResty 服务状态", "cmd": "systemctl status openresty --no-pager"}]},
-    "health_check": {"text": "自检失败时，先打开自检结果，逐项处理异常项，再重新执行自检。\n如果是服务状态不一致，先修正服务状态后再复查。", "commands": [{"desc": "重新执行本插件自检", "cmd": "btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\""}, {"desc": "查看 OpenResty 服务状态", "cmd": "systemctl status openresty --no-pager"}, {"desc": "查看 lsyncd 服务状态", "cmd": "systemctl status lsyncd --no-pager"}]}
+    "default": {
+      "text": "当前步骤执行失败，请先查看日志输出，再按提示处理后重新进入该步骤。",
+      "commands": [
+        {
+          "desc": "查看 MySQL 服务状态",
+          "cmd": "systemctl status mysqld --no-pager"
+        },
+        {
+          "desc": "查看面板最近错误日志",
+          "cmd": "tail -n 100 /www/server/jh-panel/logs/error.log"
+        }
+      ]
+    },
+    "promote_mysql": {
+      "text": "MySQL 提升为主失败时，优先在备用机使用 jh 22 脚本库里的“修复MySQL从库：从xtrabackup备份中恢复从库和GTID事务”脚本。\n先用最近的 xtrabackup 备份把备用机恢复到可接入状态；必要时在主机重新做一次 xtrabackup 备份，保证 GTID 一致，再重新建立主从同步。\n如果恢复后仍失败，先确认两边 MySQL 状态、备份文件和 GTID 信息是否一致。",
+      "commands": [
+        {
+          "desc": "查看 MySQL 服务是否正常运行",
+          "cmd": "systemctl status mysqld --no-pager"
+        },
+        {
+          "desc": "打开 jh 22 脚本库中的修复入口",
+          "cmd": "bash /www/server/os_tool/vm/default/index__repair.sh"
+        },
+        {
+          "desc": "直接执行从 xtrabackup 恢复从库和 GTID 的脚本",
+          "cmd": "bash /www/server/os_tool/vm/default/repair__restore_mysql_slave_from_xtrabackup.sh"
+        }
+      ]
+    },
+    "mysql": {
+      "text": "MySQL 状态异常时，先确认 mysqld 服务是否正常启动，再检查端口和错误日志。\n如果数据库插件显示异常，先处理数据库服务后再继续。",
+      "commands": [
+        {
+          "desc": "查看 MySQL 服务状态",
+          "cmd": "systemctl status mysqld --no-pager"
+        },
+        {
+          "desc": "重启 MySQL 服务",
+          "cmd": "systemctl restart mysqld"
+        },
+        {
+          "desc": "确认 3306 端口是否监听",
+          "cmd": "ss -lntp | grep 3306"
+        }
+      ]
+    },
+    "openresty": {
+      "text": "OpenResty 相关步骤失败时，先确认进程是否残留，再检查 systemctl 状态和端口占用。\n如果被其他 nginx 或进程占用，先停止冲突服务再重试。",
+      "commands": [
+        {
+          "desc": "查看 OpenResty 服务状态",
+          "cmd": "systemctl status openresty --no-pager"
+        },
+        {
+          "desc": "检查 80/443 端口占用",
+          "cmd": "ss -lntp | grep -E \":80|:443\""
+        },
+        {
+          "desc": "停止可能冲突的系统 nginx",
+          "cmd": "systemctl stop nginx || true"
+        }
+      ]
+    },
+    "wwwstorage_dryrun": {
+      "text": "预检查失败时，先确认 /www/wwwstorage 目录是否可访问，再确认对端 IP、SSH 登录和目录权限。\n如果 dry-run 输出存在差异，先确认两边是否仍有写入，再决定是否同步。",
+      "commands": [
+        {
+          "desc": "统计本机 /www/wwwstorage 文件数量",
+          "cmd": "find /www/wwwstorage -type f | wc -l"
+        },
+        {
+          "desc": "查看本机 /www/wwwstorage 目录大小",
+          "cmd": "du -sh /www/wwwstorage"
+        },
+        {
+          "desc": "dry-run 对比两边 /www/wwwstorage 差异",
+          "cmd": "rsync -avzn --delete /www/wwwstorage/ root@对端IP:/www/wwwstorage/"
+        }
+      ]
+    },
+    "checksum": {
+      "text": "checksum 检查发现异常时，先确认两边文件是否仍在变动，再决定是否继续。\n如果文件还在变化，先暂停相关写入后重新检查。",
+      "commands": [
+        {
+          "desc": "生成本机文件列表校验值",
+          "cmd": "find /www/wwwstorage -type f -printf \"%P\\n\" | sort | md5sum"
+        },
+        {
+          "desc": "生成本机文件内容校验值",
+          "cmd": "find /www/wwwstorage -type f -exec md5sum {} \\; | sort | md5sum"
+        }
+      ]
+    },
+    "xtrabackup_restore": {
+      "text": "xtrabackup 增量恢复失败时，先确认备份文件是否存在、备份链是否完整、磁盘空间是否足够。\n如果恢复脚本报错，先查看 xtrabackup 日志，再决定是否改用最近一次完整备份。",
+      "commands": [
+        {
+          "desc": "查看 xtrabackup-inc 服务目录",
+          "cmd": "ls -lah /www/server/xtrabackup-inc"
+        },
+        {
+          "desc": "查看最近的 xtrabackup-inc 日志",
+          "cmd": "ls -t /www/server/xtrabackup-inc/logs/* 2>/dev/null | head"
+        },
+        {
+          "desc": "查看备份目录空间占用",
+          "cmd": "df -h /www/backup"
+        }
+      ]
+    },
+    "setting_restore": {
+      "text": "配置恢复失败时，先确认备份文件存在并且可以解压，再检查目标目录权限。\n如果导入脚本报错，先确认备份文件版本和当前面板版本是否兼容。",
+      "commands": [
+        {
+          "desc": "查看网站配置备份文件",
+          "cmd": "ls -t /www/backup/site_setting/*.zip 2>/dev/null | head"
+        },
+        {
+          "desc": "查看插件配置备份文件",
+          "cmd": "ls -t /www/backup/plugin_setting/*.zip 2>/dev/null | head"
+        },
+        {
+          "desc": "确认备份文件能正常解压",
+          "cmd": "unzip -t 备份文件.zip"
+        }
+      ]
+    },
+    "ssh_key": {
+      "text": "同步公钥授权失败时，先检查 /root/.ssh 目录权限和 authorized_keys 文件内容。\n如果 key 不存在，先重新生成或同步公钥后再执行。",
+      "commands": [
+        {
+          "desc": "查看 SSH 授权文件权限",
+          "cmd": "ls -ld /root/.ssh && ls -l /root/.ssh/authorized_keys"
+        },
+        {
+          "desc": "检查同步公钥是否已经授权",
+          "cmd": "grep -n \"standby_sync\" /root/.ssh/authorized_keys"
+        },
+        {
+          "desc": "修正 SSH 授权目录权限",
+          "cmd": "chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys"
+        }
+      ]
+    },
+    "cron": {
+      "text": "计划任务调整失败时，先确认对应计划任务是否存在，再检查任务名称是否和面板中一致。\n如果任务不存在，先到对应插件重新保存任务配置，再回到这里执行。",
+      "commands": [
+        {
+          "desc": "查看计划任务列表中是否存在对应任务",
+          "cmd": "sqlite3 /www/server/panel/data/default.db \"select id,name,status from crontab where name like '%备份%' or name like '%恢复%' or name like '%xtrabackup%';\""
+        },
+        {
+          "desc": "查看面板计划任务日志目录",
+          "cmd": "ls -lah /www/server/cron"
+        },
+        {
+          "desc": "查看面板最近错误日志",
+          "cmd": "tail -n 100 /www/server/jh-panel/logs/error.log"
+        }
+      ]
+    },
+    "notify": {
+      "text": "通知配置调整失败时，先确认通知插件或面板通知配置是否正常，再查看脚本输出。\n如果通知项不存在，先到对应通知配置页面保存一次配置。",
+      "commands": [
+        {
+          "desc": "查看面板通知相关配置",
+          "cmd": "ls -lah /www/server/panel/data | grep -i notify"
+        },
+        {
+          "desc": "查看面板最近错误日志",
+          "cmd": "tail -n 100 /www/server/jh-panel/logs/error.log"
+        },
+        {
+          "desc": "查看当前步骤脚本是否存在",
+          "cmd": "ls -lah /www/server/jh-panel/plugins/ha_manager_local/scripts"
+        }
+      ]
+    },
+    "rsyncd_tasks": {
+      "text": "rsyncd 任务状态调整失败时，先确认 rsyncd 插件是否已安装，以及 /www/server/rsyncd/config.json 是否存在。\n如果任务列表为空，先到 rsyncd 插件确认同步任务配置。",
+      "commands": [
+        {
+          "desc": "确认 rsyncd 配置文件存在",
+          "cmd": "ls -l /www/server/rsyncd/config.json"
+        },
+        {
+          "desc": "查看 rsyncd 同步任务名称",
+          "cmd": "python3 - <<'PY'\nimport json\nprint('\\n'.join([x.get('name', '') for x in json.load(open('/www/server/rsyncd/config.json')).get('send', {}).get('list', [])]))\nPY"
+        },
+        {
+          "desc": "查看 rsyncd 插件入口",
+          "cmd": "ls -lah /www/server/jh-panel/plugins/rsyncd"
+        }
+      ]
+    },
+    "lsyncd": {
+      "text": "同步服务调整失败时，先查看 lsyncd 服务状态和残留 rsync 进程。\n如果服务文件不存在，先到 rsyncd 插件重建配置或重新安装服务。",
+      "commands": [
+        {
+          "desc": "查看 lsyncd 服务状态",
+          "cmd": "systemctl status lsyncd --no-pager"
+        },
+        {
+          "desc": "查看残留 rsync 进程",
+          "cmd": "ps aux | grep '/bin/[r]sync'"
+        },
+        {
+          "desc": "查看 lsyncd 最近日志",
+          "cmd": "tail -n 100 /www/server/rsyncd/logs/lsyncd.log"
+        }
+      ]
+    },
+    "role": {
+      "text": "角色标记失败时，先确认本机状态是否已经切到目标角色对应的服务状态，再重新执行角色写入。\n如果前置步骤未完成，先补齐前置步骤后再继续。",
+      "commands": [
+        {
+          "desc": "查看本机角色标记文件",
+          "cmd": "cat /www/server/ha_manager_local/role"
+        },
+        {
+          "desc": "确认角色目录存在",
+          "cmd": "mkdir -p /www/server/ha_manager_local && ls -ld /www/server/ha_manager_local"
+        },
+        {
+          "desc": "查看当前 OpenResty 服务状态",
+          "cmd": "systemctl status openresty --no-pager"
+        }
+      ]
+    },
+    "health_check": {
+      "text": "自检失败时，先打开自检结果，逐项处理异常项，再重新执行自检。\n如果是服务状态不一致，先修正服务状态后再复查。",
+      "commands": [
+        {
+          "desc": "重新执行本插件自检",
+          "cmd": "btpython /www/server/jh-panel/plugins/ha_manager_local/index.py health_check \"{}\""
+        },
+        {
+          "desc": "查看 OpenResty 服务状态",
+          "cmd": "systemctl status openresty --no-pager"
+        },
+        {
+          "desc": "查看 lsyncd 服务状态",
+          "cmd": "systemctl status lsyncd --no-pager"
+        }
+      ]
+    },
+    "zenlayer": {
+      "text": "Zenlayer 切换需要确认入口流量已经指向当前机器。\n如果尚未接入自动接口，请先到 Zenlayer 控制台完成切换，再回到这里确认当前步骤。",
+      "commands": []
+    }
   }
 }

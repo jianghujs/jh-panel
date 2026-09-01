@@ -333,6 +333,84 @@ function hmlCloneStepsFromConfig(role) {
   });
 }
 
+function hmlStepGroupTitle(step) {
+  if (!step) return '其他操作';
+  if (step.group) return step.group;
+  if (step.stage) return step.stage;
+  return '其他操作';
+}
+
+function hmlFlowGroups(steps) {
+  var groups = [];
+  var indexMap = {};
+  (steps || []).forEach(function(step, index) {
+    var title = hmlStepGroupTitle(step);
+    if (indexMap[title] == null) {
+      indexMap[title] = groups.length;
+      groups.push({title: title, steps: []});
+    }
+    groups[indexMap[title]].steps.push({step: step, index: index});
+  });
+  return groups;
+}
+
+function hmlEnsureOpenGroups(state, steps) {
+  if (!state) return;
+  if (!state.open_groups) state.open_groups = {};
+  var active = steps && steps[state.active_step];
+  if (!active) return;
+  var activeGroup = hmlStepGroupTitle(active);
+  if (state.last_active_group !== activeGroup) {
+    state.open_groups[activeGroup] = true;
+    state.last_active_group = activeGroup;
+  }
+}
+
+function hmlStepStatusText(state) {
+  if (state === 'done') return '已完成';
+  if (state === 'running') return '执行中';
+  if (state === 'failed') return '失败';
+  return '待执行';
+}
+
+function hmlIsFlowGroupDone(steps, groupTitle) {
+  if (!groupTitle) return false;
+  var items = (steps || []).filter(function(item) { return hmlStepGroupTitle(item) === groupTitle; });
+  return items.length > 0 && items.every(function(item) { return item.state === 'done'; });
+}
+
+function hmlRenderFlowGroupList(state, steps, activeStep) {
+  hmlEnsureOpenGroups(state, steps);
+  return hmlFlowGroups(steps).map(function(group) {
+    var active = group.steps.some(function(item) { return item.index === activeStep; });
+    var doneCount = group.steps.filter(function(item) { return item.step.state === 'done'; }).length;
+    var allDone = doneCount === group.steps.length;
+    var open = !!(state.open_groups && state.open_groups[group.title]);
+    var groupCls = (open ? 'open ' : '') + (active ? 'active ' : '') + (allDone ? 'done' : '');
+    var body = group.steps.map(function(item) {
+      var step = item.step;
+      var cls = step.state === 'done' ? 'done' : item.index === activeStep ? 'active' : '';
+      var undo = step.state === 'done' ? '<button class="btn btn-default btn-xs hml-flow-undo" onclick="hmlUndoFlowStep(' + item.index + ', event)">撤销</button>' : '';
+      return '<div class="hml-flow-item ' + cls + '" data-step-index="' + item.index + '" onclick="hmlJumpFlowStep(' + item.index + ')"><span class="hml-flow-index">' + (step.state === 'done' ? '✓' : (item.index + 1)) + '</span><div class="hml-flow-item-main"><div class="hml-flow-item-title">' + hmlHtml(step.title) + hmlStepBadgeHtml(step) + '</div><div class="hml-flow-item-desc">' + hmlHtml(hmlStepStatusText(step.state)) + '</div></div>' + undo + '</div>';
+    }).join('');
+    return '<div class="hml-flow-group ' + groupCls + '" data-group-title="' + hmlHtml(group.title) + '"><div class="hml-flow-group-head" onclick="hmlToggleFlowGroup(\'' + hmlAttr(group.title) + '\')"><span class="hml-flow-group-toggle">' + (open ? '▾' : '▸') + '</span><span class="hml-flow-group-title">' + hmlHtml(group.title) + '</span><span class="hml-flow-group-count">' + doneCount + '/' + group.steps.length + '</span></div><div class="hml-flow-group-body">' + body + '</div></div>';
+  }).join('');
+}
+
+function hmlAttr(value) {
+  return hmlHtml(value).replace(/'/g, '&#39;');
+}
+
+function hmlToggleFlowGroup(title) {
+  var state = window.hmlFlowState;
+  if (!state) return;
+  var listEl = $('#hmlFlowDialog .hml-flow-list')[0];
+  state.list_scroll_top = listEl ? listEl.scrollTop : state.list_scroll_top || 0;
+  if (!state.open_groups) state.open_groups = {};
+  state.open_groups[title] = !state.open_groups[title];
+  hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
+}
+
 function hmlGetVisibleFlowSteps(state, steps) {
   steps = steps || [];
   if (!state || !steps.length) return steps;
@@ -410,18 +488,17 @@ function hmlCopyGuideCommand(index) {
 function hmlRenderFlowDialog(root, state, steps) {
   root = root && root.length ? root : $('#hmlFlowDialog');
   if (!root.length) return;
+  if (state.completed_view) {
+    var completedTitle = state.target_role === 'master' ? '升主完成' : '降从完成';
+    var completedText = state.target_role === 'master' ? '当前机器已完成升主流程，请确认业务访问和入口流量状态。' : '当前机器已完成降从流程，请确认对外服务已关闭并进入备机状态。';
+    root.html('<div class="hml-flow-complete"><div class="hml-flow-complete-icon">✓</div><div class="hml-flow-complete-title">' + hmlHtml(completedTitle) + '</div><div class="hml-flow-complete-text">' + hmlHtml(completedText) + '</div></div><div class="hml-flow-footer"><button class="btn btn-success btn-sm" onclick="hmlCancelFlowDialog()">关闭窗口</button></div>');
+    return;
+  }
   var activeStep = state.active_step < 0 ? 0 : state.active_step;
   var current = steps[activeStep] || steps[steps.length - 1];
   var previousScrollTop = state.list_scroll_top || 0;
   var currentIsGuide = current && current.guide;
-  var visibleSteps = hmlGetVisibleFlowSteps(state, steps);
-  var list = visibleSteps.map(function(step, index) {
-    var stepIndex = steps.indexOf(step);
-    if (stepIndex < 0) stepIndex = index;
-    var cls = step.state === 'done' ? 'done' : stepIndex === activeStep ? 'active' : '';
-    var undo = step.state === 'done' ? '<button class="btn btn-default btn-xs hml-flow-undo" onclick="hmlUndoFlowStep(' + stepIndex + ', event)">撤销</button>' : '';
-    return '<div class="hml-flow-item ' + cls + '" data-step-index="' + stepIndex + '" onclick="hmlJumpFlowStep(' + stepIndex + ')"><span class="hml-flow-index">' + (step.state === 'done' ? '✓' : (index + 1)) + '</span><div class="hml-flow-item-main"><div class="hml-flow-item-title">' + hmlHtml(step.title) + hmlStepBadgeHtml(step) + '</div><div class="hml-flow-item-desc">' + hmlHtml(step.stage) + '</div></div>' + undo + '</div>';
-  }).join('');
+  var list = hmlRenderFlowGroupList(state, steps, activeStep);
   if (currentIsGuide) {
     var guideHtml = hmlBuildFlowStageBar(state, steps, activeStep) +
       '<div class="hml-flow-guide"><div class="hml-flow-guide-text">' + hmlHtml(current.desc) + '</div></div>' +
@@ -456,6 +533,11 @@ function hmlJumpFlowStep(index) {
   state.list_scroll_top = listEl ? listEl.scrollTop : 0;
   state.active_step = index;
   state.focus_step = index;
+  var step = state.steps && state.steps[index];
+  if (step) {
+    if (!state.open_groups) state.open_groups = {};
+    state.open_groups[hmlStepGroupTitle(step)] = true;
+  }
   hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
 }
 
@@ -503,15 +585,16 @@ function hmlMarkCurrentFlowStep(state, steps, status) {
     state.running = false;
     state.just_stepped = true;
     hmlAppendStepLog(step, '步骤执行完成');
+    var finishedGroup = hmlStepGroupTitle(step);
+    if (hmlIsFlowGroupDone(steps, finishedGroup)) {
+      if (!state.open_groups) state.open_groups = {};
+      state.open_groups[finishedGroup] = false;
+    }
   }
   if (status === 'done' && steps.every(function(item) { return item.state === 'done'; })) {
     state.completed = true;
     state.auto_running = false;
     hmlState.switch_status = 'idle';
-    if (!state.prompted_next) {
-      state.prompted_next = true;
-      hmlPromptNextFlow(state.target_role);
-    }
   }
 }
 
@@ -610,6 +693,7 @@ function hmlRunFlowStep(done, skipConfirm, forceRun) {
 
 function hmlFlowNextButtonText(state) {
   if (!state) return '继续执行';
+  if (state.completed) return '下一步';
   var step = state.steps && state.steps[state.active_step];
   if (!step) return '继续执行';
   if (state.auto_running) return '暂停执行';
@@ -703,6 +787,12 @@ function hmlContinueCurrentFlowPhase() {
 function hmlGoNextFlowStep() {
   var state = window.hmlFlowState;
   if (!state || !state.steps) return;
+  if (state.completed) {
+    state.completed_view = true;
+    hmlPromptNextFlow(state.target_role);
+    hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
+    return;
+  }
   var current = state.steps[state.active_step];
   if (current && current.guide) {
     current.state = 'done';
@@ -857,6 +947,7 @@ function hmlCancelFlowDialog() {
   if (state) hmlPauseFlowAuto(false);
   if (state && state.layer_id) layer.close(state.layer_id);
   window.hmlFlowState = null;
+  hmlRender();
 }
 
 function hmlToggleExternalService() {

@@ -3,20 +3,9 @@
   "roles": {
     "master": {
       "stages": [
-        {"key": "master_prepare", "text": "主机预上线"},
-        {"key": "standby_offline", "text": "备机下线"},
         {"key": "master_online", "text": "主机正式上线"}
       ],
       "steps": [
-        {"key": "close_external", "title": "关闭对外服务", "desc": "先停 OpenResty，确保上线准备期间入口收敛。", "stage": "主机预上线", "phase": "master_prepare", "required": true, "guide_ref": "openresty", "effect": "external_closed", "log_done": "关闭对外服务完成：OpenResty 已停止", "code": "systemctl stop openresty\nsystemctl stop nginx || true"},
-        {"key": "mysql_prepare", "title": "确保 MySQL 服务正常", "desc": "对应旧脚本：预上线检查前确保 MySQL 正常。", "stage": "主机预上线", "phase": "master_prepare", "required": true, "guide_ref": "mysql", "code": "systemctl start mysqld\nsystemctl status mysqld --no-pager"},
-        {"key": "xtrabackup_restore", "title": "执行 xtrabackup 增量恢复", "desc": "可选项：run_xtrabackup_inc_restore。", "stage": "主机预上线", "phase": "master_prepare", "required": false, "guide_ref": "xtrabackup_restore", "code": "bash /www/server/jh-panel/plugins/ha_manager_local/scripts/run_xtrabackup_inc_restore.sh"},
-        {"key": "async_dryrun_check", "title": "检查文件一致性", "desc": "直接 dry-run 对比两边 /www/wwwstorage 文件差异。", "stage": "主机预上线", "phase": "master_prepare", "required": true, "guide_ref": "wwwstorage_dryrun", "code": "read -p '请输入对端IP: ' PEER_IP\nrsync -avzn --delete /www/wwwstorage/ root@${PEER_IP}:/www/wwwstorage/"},
-        {"key": "checksum_check", "title": "检查主备 checksum", "desc": "可选项：run_checksum，发现差异后需要人工确认。", "stage": "主机预上线", "phase": "master_prepare", "required": false, "guide_ref": "checksum", "code": "bash /www/server/jh-panel/plugins/ha_manager_local/scripts/run_checksum.sh"},
-        {"key": "sync_files", "title": "同步文件目录", "desc": "可选项：sync_files，同步 /www/wwwroot、/www/wwwstorage 等目录。", "stage": "主机预上线", "phase": "master_prepare", "required": false, "guide_ref": "wwwstorage_dryrun", "code": "bash /www/server/jh-panel/plugins/ha_manager_local/scripts/sync_files.sh"},
-        {"key": "restore_site_setting", "title": "恢复网站配置", "desc": "可选项：restore_site_setting，导入站点和 Web 配置。", "stage": "主机预上线", "phase": "master_prepare", "required": false, "guide_ref": "setting_restore", "code": "bash /www/server/jh-panel/plugins/ha_manager_local/scripts/restore_site_setting.sh"},
-        {"key": "restore_plugin_setting", "title": "恢复插件配置", "desc": "可选项：restore_plugin_setting，恢复插件运行配置。", "stage": "主机预上线", "phase": "master_prepare", "required": false, "guide_ref": "setting_restore", "code": "bash /www/server/jh-panel/plugins/ha_manager_local/scripts/restore_plugin_setting.sh"},
-        {"key": "wait_standby_offline", "title": "等待备机下线", "desc": "主机预上线完成，请到备用机执行下线流程；备用机下线完成后，再回到这里点击下一步执行主机正式上线。", "stage": "备机下线", "phase": "standby_offline", "guide": true},
         {"key": "mysql_online", "title": "正式上线前确认 MySQL", "desc": "对应旧脚本：正式上线前确保 MySQL 正常。", "stage": "主机正式上线", "phase": "master_online", "guide_ref": "mysql", "code": "systemctl start mysqld\nsystemctl status mysqld --no-pager"},
         {"key": "promote_mysql", "title": "将数据库提升为主", "desc": "执行 switch__mysql_master.js。", "stage": "主机正式上线", "phase": "master_online", "guide_ref": "promote_mysql", "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_master.js"},
         {"key": "authorized_key_off", "title": "移除同步公钥授权", "desc": "从 authorized_keys 中移除 standby_sync 公钥。", "stage": "主机正式上线", "phase": "master_online", "guide_ref": "ssh_key", "code": "sed -i \"/standby_sync/d\" /root/.ssh/authorized_keys"},

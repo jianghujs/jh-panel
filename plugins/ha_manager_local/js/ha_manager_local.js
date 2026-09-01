@@ -179,7 +179,13 @@ function hmlExternalServiceButtonClass() {
 
 function hmlRenderOverview() {
   var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
-  var html = '<div class="hml-topbar"><div><div class="hml-title">主备管理</div><div class="hml-sub">查看本机主备状态，必要时执行角色切换与对外服务控制。</div></div><div class="hml-actions"><button class="btn btn-success btn-sm" onclick="hmlOpenSwitchDialog()">切换角色</button><button class="btn ' + hmlExternalServiceButtonClass() + ' btn-sm" onclick="hmlToggleExternalService()">' + hmlHtml(hmlExternalServiceButtonText()) + '</button><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button></div></div>' +
+  var promoteDisabled = hmlState.role === 'master';
+  var demoteDisabled = hmlState.role === 'standby';
+  var promoteTitle = promoteDisabled ? '当前已是主机' : '将当前机器升为主机';
+  var demoteTitle = demoteDisabled ? '当前已是备机' : '将当前机器降为从机';
+  var promoteBtn = '<button class="btn ' + (promoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'master\')" title="' + promoteTitle + '"' + (promoteDisabled ? ' disabled' : '') + '>升为主</button>';
+  var demoteBtn = '<button class="btn ' + (demoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'standby\')" title="' + demoteTitle + '"' + (demoteDisabled ? ' disabled' : '') + '>降为从</button>';
+  var html = '<div class="hml-topbar"><div><div class="hml-title">主备管理</div><div class="hml-sub">查看本机主备状态，必要时执行升主、降从与对外服务控制。</div></div><div class="hml-actions">' + promoteBtn + demoteBtn + '<button class="btn ' + hmlExternalServiceButtonClass() + ' btn-sm" onclick="hmlToggleExternalService()">' + hmlHtml(hmlExternalServiceButtonText()) + '</button><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button></div></div>' +
     '<div class="hml-panel"><div class="hml-panel-body">' +
       '<table class="table table-hover hml-overview-table"><tbody>' +
         '<tr><th>当前角色</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleText(hmlState.role)) + '</td></tr>' +
@@ -253,8 +259,9 @@ function hmlCloneFlowStep(step) {
   return $.extend(true, {}, step);
 }
 
-function hmlOpenSwitchDialog() {
-  var defaultRole = hmlState.role === 'master' ? 'standby' : 'master';
+function hmlOpenSwitchDialog(targetRole) {
+  var defaultRole = targetRole || (hmlState.role === 'master' ? 'standby' : 'master');
+  if (defaultRole === hmlState.role) return;
   var state = {
     role: hmlState.role,
     desired_role: defaultRole,
@@ -265,15 +272,17 @@ function hmlOpenSwitchDialog() {
     auto_running: false,
     running: false,
     flow_timer: null,
-    log: []
+    log: [],
+    role_selected: true
   };
   state.steps = hmlBuildFlowSteps(defaultRole);
-  state.role_selected = false;
+  state.active_step = 0;
   window.hmlFlowState = state;
+  var flowTitle = defaultRole === 'master' ? '升为主' : '降为从';
   var dialog = layer.open({
     type: 1,
     area: ['900px', '620px'],
-    title: '切换流程',
+    title: flowTitle,
     closeBtn: 1,
     shadeClose: false,
     content: '<div id="hmlFlowDialog" class="hml-flow-wrap" style="height:552px; min-height: 552px;"></div>',
@@ -282,7 +291,7 @@ function hmlOpenSwitchDialog() {
     }
   });
   state.layer_id = dialog;
-  hmlLog('打开切换流程弹框：目标=' + hmlRoleText(defaultRole));
+  hmlLog('打开' + flowTitle + '流程弹框');
   return dialog;
 }
 
@@ -336,14 +345,13 @@ function hmlGetVisibleFlowSteps(state, steps) {
 }
 
 function hmlStepRequiredLabel(step) {
-  if (!step || step.phase !== 'master_prepare') return '';
-  return step.required === false ? '可选' : '必选';
+  return '';
 }
 
 function hmlStepBadgeHtml(step) {
   var label = hmlStepRequiredLabel(step);
   if (!label) return '';
-  var cls = label === '必选' ? 'hml-step-flag-required' : 'hml-step-flag-optional';
+  var cls = 'hml-step-flag-optional';
   return '<span class="hml-step-flag ' + cls + '">' + label + '</span>';
 }
 
@@ -414,17 +422,6 @@ function hmlRenderFlowDialog(root, state, steps) {
     var undo = step.state === 'done' ? '<button class="btn btn-default btn-xs hml-flow-undo" onclick="hmlUndoFlowStep(' + stepIndex + ', event)">撤销</button>' : '';
     return '<div class="hml-flow-item ' + cls + '" data-step-index="' + stepIndex + '" onclick="hmlJumpFlowStep(' + stepIndex + ')"><span class="hml-flow-index">' + (step.state === 'done' ? '✓' : (index + 1)) + '</span><div class="hml-flow-item-main"><div class="hml-flow-item-title">' + hmlHtml(step.title) + hmlStepBadgeHtml(step) + '</div><div class="hml-flow-item-desc">' + hmlHtml(step.stage) + '</div></div>' + undo + '</div>';
   }).join('');
-  if (!state.role_selected) {
-    var role = state.target_role || 'master';
-    var html = '<div class="hml-flow-head"><div><div class="hml-flow-title">选择角色</div><div class="hml-flow-sub">先选择切换后的角色，再进入后续流程。</div></div></div>' +
-      '<div class="hml-role-select">' +
-        '<div class="hml-role-option ' + (role === 'master' ? 'active' : '') + '" onclick="hmlPickFlowRole(\'master\')"><div class="hml-role-option-title">主机</div><div class="hml-role-option-desc">把当前机器切到主机流程。</div></div>' +
-        '<div class="hml-role-option ' + (role === 'standby' ? 'active' : '') + '" onclick="hmlPickFlowRole(\'standby\')"><div class="hml-role-option-title">备机</div><div class="hml-role-option-desc">把当前机器切到备机流程。</div></div>' +
-      '</div>' +
-      '<div class="hml-flow-footer"><button class="btn btn-default btn-sm" onclick="hmlCancelFlowDialog()">取消</button><button class="btn btn-success btn-sm" onclick="hmlConfirmFlowRole()">继续</button></div>';
-    root.html(html);
-    return;
-  }
   if (currentIsGuide) {
     var guideHtml = hmlBuildFlowStageBar(state, steps, activeStep) +
       '<div class="hml-flow-guide"><div class="hml-flow-guide-text">' + hmlHtml(current.desc) + '</div></div>' +
@@ -450,30 +447,6 @@ function hmlRenderFlowDialog(root, state, steps) {
     }, 0);
   }
   state.just_stepped = false;
-}
-
-function hmlPickFlowRole(role) {
-  var state = window.hmlFlowState;
-  if (!state) return;
-  state.target_role = role;
-  state.desired_role = role;
-  state.steps = hmlBuildFlowSteps(role);
-  state.active_step = -1;
-  state.focus_step = 0;
-  state.auto_running = false;
-  hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
-}
-
-function hmlConfirmFlowRole() {
-  var state = window.hmlFlowState;
-  if (!state) return;
-  state.steps = hmlBuildFlowSteps(state.target_role || 'master');
-  state.active_step = 0;
-  state.focus_step = 0;
-  state.role_selected = true;
-  state.completed = false;
-  state.prompted_next = false;
-  hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
 }
 
 function hmlJumpFlowStep(index) {
@@ -587,7 +560,7 @@ function hmlRunFlowStep(done, skipConfirm, forceRun) {
   state.focus_step = state.active_step;
   if (step.guide) {
     hmlAppendStepLog(step, '进入提示步骤');
-    hmlPromptNextFlow('standby_offline');
+    hmlPromptNextFlow(state.target_role);
     hmlMarkCurrentFlowStep(state, steps, 'done');
     hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
     if (done) done(true);
@@ -641,7 +614,6 @@ function hmlFlowNextButtonText(state) {
   if (!step) return '继续执行';
   if (state.auto_running) return '暂停执行';
   if (step.guide) return '下一步';
-  if (hmlIsFlowPhaseReadyForNext(state)) return '下一步';
   return '继续执行';
 }
 
@@ -661,7 +633,7 @@ function hmlIsFlowPhaseDone(state) {
 function hmlIsAutoRequiredFlowStep(step, phase) {
   if (!step) return false;
   if ((step.phase || '') !== phase) return false;
-  return phase !== 'master_prepare' || step.required !== false;
+  return true;
 }
 
 function hmlIsFlowPhaseReadyForNext(state) {
@@ -675,10 +647,7 @@ function hmlIsFlowPhaseReadyForNext(state) {
 
 function hmlIsFlowStageReadyForNext(state, stageKey) {
   if (!state || !state.steps || !stageKey) return false;
-  var items = state.steps.filter(function(step) {
-    if ((step.phase || '') !== stageKey) return false;
-    return stageKey !== 'master_prepare' || step.required !== false;
-  });
+  var items = state.steps.filter(function(step) { return (step.phase || '') === stageKey; });
   return items.length > 0 && items.every(function(item) { return item.state === 'done'; });
 }
 
@@ -748,19 +717,8 @@ function hmlGoNextFlowStep() {
   }
   var phase = hmlGetFlowPhase(state);
   if (!phase) return;
-  var currentPhaseSteps = state.steps.filter(function(step) { return (step.phase || '') === phase; });
   var allDone = hmlIsFlowPhaseReadyForNext(state);
   if (!allDone) return;
-  if (phase === 'master_prepare') {
-    var waitIndex = state.steps.findIndex(function(step) { return step.guide; });
-    if (waitIndex >= 0) {
-      state.active_step = waitIndex;
-      state.focus_step = waitIndex;
-      state.just_stepped = true;
-      hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
-      return;
-    }
-  }
   if (phase === 'master_online') {
     state.completed = true;
     hmlPromptNextFlow(state.target_role);
@@ -781,9 +739,9 @@ function hmlGoNextFlowStep() {
 }
 
 function hmlPromptNextFlow(flow) {
-  var text = '请到备用机执行下线流程；备用机下线完成后，再回到主机执行正式上线流程。';
-  if (flow === 'standby_offline') text = '请到备用机执行下线流程；备用机下线完成后，再回到主机执行正式上线流程。';
-  if (flow === 'master_online') text = '主机正式上线完成。';
+  var text = '流程已完成。';
+  if (flow === 'standby_offline' || flow === 'standby') text = '降从流程完成。';
+  if (flow === 'master_online' || flow === 'master') text = '升主流程完成。';
   hmlState.last_action = text;
   hmlLog(text);
   layer.msg(text, {icon: 1, time: 2500});
@@ -816,7 +774,7 @@ function hmlCanGoPrevFlowPhase(state) {
   if (!phase) return false;
   var stages = hmlBuildFlowStages(state);
   var currentStageIndex = stages.findIndex(function(item) { return item.key === phase; });
-  return currentStageIndex >= 0;
+  return currentStageIndex > 0;
 }
 
 function hmlStepBack() {
@@ -827,15 +785,7 @@ function hmlStepBack() {
   hmlPauseFlowAuto(false);
   var stages = hmlBuildFlowStages(state);
   var currentStageIndex = stages.findIndex(function(item) { return item.key === phase; });
-  if (currentStageIndex === 0) {
-    state.role_selected = false;
-    state.active_step = -1;
-    state.focus_step = 0;
-    state.auto_running = false;
-    state.running = false;
-    hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
-    return;
-  }
+  if (currentStageIndex === 0) return;
   if (currentStageIndex < 0) {
     return;
   }

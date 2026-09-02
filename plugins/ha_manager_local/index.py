@@ -275,6 +275,10 @@ def _script_header(title):
     return 'cd {0}\necho "执行目录: $(pwd)"\necho {1}\nset -e\nset -x'.format(_quote(PANEL_DIR), _quote('开始执行: ' + str(title or '当前步骤')))
 
 
+def _script_runtime_wrapper(script_content, title):
+    return _script_header(title) + '\n' + str(script_content or '').rstrip() + '\n'
+
+
 def _rsyncd_task_script(status):
     return """names=$(python3 - <<'PY'
 import json
@@ -352,9 +356,8 @@ sys.exit(1)
 PY""".format(mysql_apt_index=_quote(MYSQL_APT_INDEX))
 
 
-def _step_script_content(step_key, target_role=''):
+def _step_script_body(step_key, target_role=''):
     step_meta = _step_meta(target_role if target_role in ('master', 'standby') else 'master', step_key)
-    title = step_meta.get('title') or step_key
     scripts = {
         'mysql_online': 'python3 {0} ensureRunning --reason {1}'.format(_quote(MYSQL_PY), _quote('HA 本地切换')) if os.path.exists(MYSQL_PY) else 'systemctl start mysqld',
         'promote_mysql': _node_script_cmd('switch__mysql_master.js'),
@@ -402,8 +405,13 @@ def _step_script_content(step_key, target_role=''):
         'role_standby': 'echo standby > {0}'.format(_quote(ROLE_PATH)),
         'standby_check': _health_check_script('standby')
     }
-    body = scripts.get(step_key) or step_meta.get('code') or ('echo ' + _quote('未知步骤: ' + step_key))
-    return _script_header(title) + '\n' + body + '\n'
+    return scripts.get(step_key) or step_meta.get('code') or ('echo ' + _quote('未知步骤: ' + step_key))
+
+
+def _step_script_content(step_key, target_role=''):
+    step_meta = _step_meta(target_role if target_role in ('master', 'standby') else 'master', step_key)
+    title = step_meta.get('title') or step_key
+    return _script_runtime_wrapper(_step_script_body(step_key, target_role), title)
 
 
 def _run(cmd, title, timeout=1800, required=True):
@@ -496,12 +504,13 @@ def _run_script_content(script_content, title, run_id, timeout=1800):
     fd, script_path = tempfile.mkstemp(prefix='hml_step_', suffix='.sh', dir=LOG_DIR)
     os.close(fd)
     try:
+        runtime_script = _script_runtime_wrapper(script_content, title)
         with open(script_path, 'w', encoding='utf-8') as fp:
-            fp.write(script_content)
+            fp.write(runtime_script)
         os.chmod(script_path, 0o750)
         _append_step_log(run_id, '|- 临时脚本文件: ' + script_path)
         _append_step_log(run_id, '|- 脚本内容开始')
-        _write_step_log_lines(run_id, script_content)
+        _write_step_log_lines(run_id, runtime_script)
         _append_step_log(run_id, '|- 脚本内容结束')
         return _run('bash ' + _quote(script_path), title, timeout=timeout)
     finally:
@@ -946,7 +955,7 @@ def get_step_script():
     if step_key not in STEP_ACTIONS:
         return _return(False, '未知步骤: ' + step_key)
     step_meta = _step_meta(target_role, step_key)
-    script = _step_script_content(step_key, target_role)
+    script = _step_script_body(step_key, target_role)
     return _return(True, 'ok', {'step_key': step_key, 'target_role': target_role, 'title': step_meta.get('title') or step_key, 'script': script})
 
 

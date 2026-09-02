@@ -45,7 +45,7 @@ function hmlEnsureFlowConfig(callback) {
     if (callback) callback();
     return;
   }
-  $.getJSON('/plugins/file?name=ha_manager_local&f=flow_config.json&v=202609020021', function(data) {
+  $.getJSON('/plugins/file?name=ha_manager_local&f=flow_config.json&v=202609020025', function(data) {
     hmlFlowConfig = data || {};
     hmlFlowConfigLoaded = true;
     if (callback) callback();

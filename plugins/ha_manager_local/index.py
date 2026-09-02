@@ -947,10 +947,40 @@ def _health_warning_msg(role):
     return '自检发现 {0} 个异常项：{1}'.format(len(failed), names)
 
 
-def _step_warning_msg(step_key, target_role, logs):
-    if not _is_health_check_step(step_key):
+def _mysql_slave_warning_msg():
+    try:
+        cmd = 'python3 {0} get_slave_list {{page:1,page_size:5}}'.format(_quote(MYSQL_APT_INDEX))
+        out, err, code = mw.execShell('cd {0} && {1}'.format(_quote(PANEL_DIR), cmd))
+        text = (out or '') + ('\n' + err if err else '')
+        if code != 0:
+            return '主从状态检查失败，请查看 mysql-apt get_slave_list 输出；可能需要通过脚本库“修复主从”脚本修复主从状态。'
+        data = json.loads((out or '').strip() or '{}')
+        if data.get('status') is False:
+            return '主从状态检查失败：{0}；可能需要通过脚本库“修复主从”脚本修复主从状态。'.format(data.get('msg') or 'mysql-apt 返回失败')
+        rows = data.get('data') if isinstance(data.get('data'), list) else []
+        if not rows:
+            return '未检测到从库状态，请确认 init_slave_status 是否已经建立主从；可能需要通过脚本库“修复主从”脚本修复主从状态。'
+        bad = []
+        for item in rows:
+            io = str(item.get('Slave_IO_Running') or '')
+            sql = str(item.get('Slave_SQL_Running') or '')
+            if io != 'Yes' or sql != 'Yes':
+                host = str(item.get('Master_Host') or '-')
+                err_msg = str(item.get('Last_Error') or item.get('Last_IO_Error') or '-')
+                bad.append('主库 {0} IO={1} SQL={2} 错误={3}'.format(host, io or '-', sql or '-', err_msg))
+        if bad:
+            return '主从状态异常：{0}；可能需要通过脚本库“修复主从”脚本修复主从状态。'.format('；'.join(bad[:3]))
         return ''
-    return _health_warning_msg(target_role) or _step_warning_from_logs(step_key, logs)
+    except Exception as e:
+        return '主从状态检查异常：{0}；可能需要通过脚本库“修复主从”脚本修复主从状态。'.format(str(e))
+
+
+def _step_warning_msg(step_key, target_role, logs):
+    if step_key == 'demote_mysql':
+        return _mysql_slave_warning_msg()
+    if _is_health_check_step(step_key):
+        return _health_warning_msg(target_role) or _step_warning_from_logs(step_key, logs)
+    return ''
 
 
 def _lock():

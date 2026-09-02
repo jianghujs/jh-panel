@@ -1,5 +1,5 @@
 {
-  "version": "202609020021",
+  "version": "202609020025",
   "roles": {
     "master": {
       "stages": [
@@ -673,28 +673,24 @@
         {
           "key": "demote_mysql",
           "title": "数据库降为从",
-          "desc": "调用 MySQL APT 插件初始化从库状态。",
+          "desc": "调用 MySQL APT 插件初始化从库状态，执行后检查主从 IO/SQL 状态；如果主从异常，会提示但不阻断后续流程。",
           "stage": "数据库降从",
           "phase": "standby_offline",
           "guide_ref": "mysql",
           "code": "python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status",
           "group": "数据库降从",
           "repair": {
-            "title": "检查 MySQL 降从",
-            "action": "处理数据库后重试",
-            "text": "降从失败时，优先查看 MySQL APT 插件 init_slave_status 的返回内容。请确认主库连接参数、复制账号、GTID 状态和 MySQL 服务状态正常；确认后重新执行当前步骤。",
+            "title": "检查并修复 MySQL 主从",
+            "action": "通过脚本库修复主从后重试",
+            "text": "降从后如果主从状态异常，可能需要通过脚本库(jh 22)-“服务器修复”中的“修复MySQL从库：从xtrabackup备份中恢复从库和GTID事务”脚本修复主从状态。",
             "commands": [
               {
-                "desc": "查看 MySQL 服务状态",
-                "cmd": "systemctl status mysqld --no-pager"
+                "desc": "查看当前从库状态",
+                "cmd": "python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_list {page:1,page_size:5}"
               },
               {
-                "desc": "手动执行降从初始化",
-                "cmd": "python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status"
-              },
-              {
-                "desc": "查看面板错误日志",
-                "cmd": "tail -n 100 /www/server/jh-panel/logs/error.log"
+                "desc": "执行从 xtrabackup 恢复从库和 GTID 的脚本",
+                "cmd": "bash /www/server/os_tool/vm/default/repair__restore_mysql_slave_from_xtrabackup.sh"
               }
             ]
           }

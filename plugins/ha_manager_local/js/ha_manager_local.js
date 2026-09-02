@@ -45,7 +45,7 @@ function hmlEnsureFlowConfig(callback) {
     if (callback) callback();
     return;
   }
-  $.getJSON('/plugins/file?name=ha_manager_local&f=flow_config.json&v=202608292730', function(data) {
+  $.getJSON('/plugins/file?name=ha_manager_local&f=flow_config.json&v=202609020021', function(data) {
     hmlFlowConfig = data || {};
     hmlFlowConfigLoaded = true;
     if (callback) callback();
@@ -63,8 +63,9 @@ function hmlFlowRoleConfig(role) {
 
 function hmlFlowGuideConfig(step) {
   if (!step) return null;
-  var guides = (hmlFlowConfig && hmlFlowConfig.guides) || {};
-  return guides[step.guide_ref] || guides.default || null;
+  if (step.repair && step.repair.text) return step.repair;
+  if (step.repair_data && step.repair_data.text) return step.repair_data;
+  return null;
 }
 
 function hmlBoot() {
@@ -165,6 +166,7 @@ function hmlReadStepLog(runId, callback) {
 }
 
 function hmlApplyStepLogFromResponse(step, data) {
+  if (data && data.warning_msg) step.warning_msg = data.warning_msg;
   var logs = hmlBackendLogs(data, window.hmlFlowState, step);
   if (!logs.length) return false;
   var prefix = $.isArray(step.active_run_log_prefix) ? step.active_run_log_prefix : [];
@@ -452,7 +454,8 @@ function hmlCloneStepsFromConfig(role, fresh) {
     return $.extend(true, {}, item, {
       state: saved.state || item.state || 'pending',
       logs: saved.logs || item.logs || [],
-      failure_msg: saved.msg || item.failure_msg || ''
+      failure_msg: saved.msg || item.failure_msg || '',
+      warning_msg: saved.warning_msg || item.warning_msg || ''
     });
   });
 }
@@ -514,7 +517,9 @@ function hmlRenderFlowGroupList(state, steps, activeStep) {
     var body = group.steps.map(function(item) {
       var step = item.step;
       var cls = step.state === 'done' ? 'done' : item.index === activeStep ? 'active' : '';
-      var undo = step.state === 'done' ? '<button class="btn btn-default btn-xs hml-flow-undo" onclick="hmlUndoFlowStep(' + item.index + ', event)">撤销</button>' : '';
+      // 暂时隐藏撤销按钮
+      // var undo = step.state === 'done' ? '<button class="btn btn-default btn-xs hml-flow-undo" onclick="hmlUndoFlowStep(' + item.index + ', event)">撤销</button>' : '';
+      var undo = '';
       return '<div class="hml-flow-item ' + cls + '" data-step-index="' + item.index + '" onclick="hmlJumpFlowStep(' + item.index + ')"><span class="hml-flow-index">' + (step.state === 'done' ? '✓' : (item.index + 1)) + '</span><div class="hml-flow-item-main"><div class="hml-flow-item-title">' + hmlHtml(step.title) + hmlStepBadgeHtml(step) + '</div><div class="hml-flow-item-desc">' + hmlHtml(hmlStepStatusText(step.state)) + '</div></div>' + undo + '</div>';
     }).join('');
     return '<div class="hml-flow-group ' + groupCls + '" data-group-title="' + hmlHtml(group.title) + '"><div class="hml-flow-group-head" onclick="hmlToggleFlowGroup(\'' + hmlAttr(group.title) + '\')"><span class="hml-flow-group-toggle">' + (open ? '▾' : '▸') + '</span><span class="hml-flow-group-title">' + hmlHtml(group.title) + '</span><span class="hml-flow-group-count">' + doneCount + '/' + group.steps.length + '</span></div><div class="hml-flow-group-body">' + body + '</div></div>';
@@ -570,7 +575,7 @@ function hmlStepRepairButton(step) {
 
 function hmlStepFailureGuide(step) {
   var guide = hmlFlowGuideConfig(step);
-  return (guide && guide.text) || '当前步骤执行失败，请先查看日志输出，再按提示处理后重新进入该步骤。';
+  return (guide && guide.text) || '';
 }
 
 function hmlStepGuideCommands(step) {
@@ -584,6 +589,7 @@ function hmlOpenStepGuide() {
   var step = state.steps[state.active_step] || state.steps[0];
   if (!step) return;
   var guide = hmlFlowGuideConfig(step) || {};
+  if (!guide.text) return;
   var commands = guide.commands || [];
   window.hmlGuideCommands = commands;
   var commandHtml = commands.map(function(item, index) {
@@ -638,6 +644,7 @@ function hmlRenderFlowDialog(root, state, steps) {
   var html = hmlBuildFlowStageBar(state, steps, activeStep) + '<div class="hml-flow-body"><div class="hml-flow-list">' + list + '</div><div class="hml-flow-detail"><div class="hml-flow-detail-title">' + hmlHtml(current.title) + hmlStepHintHtml(current) + '</div><div class="hml-flow-detail-desc">' + hmlHtml(current.desc) + '</div><div class="hml-flow-stage">阶段：' + hmlHtml(current.stage) + '</div>' +
       (hmlStepRequiredLabel(current) ? '<div class="hml-flow-stage">类型：' + hmlStepRequiredLabel(current) + '</div>' : '') +
       (current.state === 'failed' && current.failure_msg ? '<div class="hml-tip" style="margin-top:12px;">' + hmlHtml(current.failure_msg) + '</div>' : '') +
+      (current.warning_msg ? '<div class="hml-tip" style="margin-top:12px;">' + hmlHtml(current.warning_msg) + '</div>' : '') +
       '<div class="hml-step-actions">' +
         '<button class="btn btn-success btn-sm" onclick="hmlRunFlowStepWithCode()">执行当前步骤</button>' +
         hmlStepRepairButton(current) +
@@ -851,6 +858,7 @@ function hmlExecuteFlowStep(done, forceRun, scriptContent) {
         hmlApplyStepLogFromResponse(step, data);
       }
       if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      if (data.warning_msg) step.warning_msg = data.warning_msg;
       hmlMarkCurrentFlowStep(state, steps, 'done');
       if (!hasFileLog) {
         hmlApplyStepLogFromResponse(step, data);

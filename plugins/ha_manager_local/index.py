@@ -328,7 +328,7 @@ fi""".format(pub_file=_quote(STANDBY_SYNC_PUBLIC_KEY), auth_file=_quote(AUTHORIZ
 def _health_check_script(role):
     return """result=$(python3 {index_py} health_check '{{}}')
 echo "$result"
-echo "$result" | grep -q '"health_status": "normal"'""".format(index_py=_quote(os.path.join(PLUGIN_DIR, 'index.py')))
+echo "|- 自检结果仅用于提示，不阻断切换流程""".format(index_py=_quote(os.path.join(PLUGIN_DIR, 'index.py')))
 
 
 def _mysql_apt_init_slave_script():
@@ -362,6 +362,8 @@ def _mysql_apt_cmd(func):
 
 def _step_script_body(step_key, target_role=''):
     step_meta = _step_meta(target_role if target_role in ('master', 'standby') else 'master', step_key)
+    if step_meta.get('code'):
+        return str(step_meta.get('code'))
     scripts = {
         'mysql_online': 'python3 {0} ensureRunning --reason {1}'.format(_quote(MYSQL_PY), _quote('HA 本地切换')) if os.path.exists(MYSQL_PY) else 'systemctl start mysqld',
         'promote_mysql': _mysql_apt_cmd('delete_slave'),
@@ -756,10 +758,10 @@ def _step_state():
     return data if isinstance(data, dict) else {}
 
 
-def _save_step_result(target_role, step_key, status, logs='', msg=''):
+def _save_step_result(target_role, step_key, status, logs='', msg='', warning_msg=''):
     data = _step_state()
     flow = data.setdefault(target_role, {})
-    flow[step_key] = {'state': status, 'logs': _split_lines(logs)[-400:], 'msg': msg, 'updated_at': _now()}
+    flow[step_key] = {'state': status, 'logs': _split_lines(logs)[-400:], 'msg': msg, 'warning_msg': warning_msg, 'updated_at': _now()}
     _write_json(STEP_STATE_PATH, data)
 
 
@@ -774,6 +776,7 @@ def _step_list(target_role):
         item['state'] = state.get('state') or 'pending'
         item['logs'] = state.get('logs') or []
         item['failure_msg'] = state.get('msg') or ''
+        item['warning_msg'] = state.get('warning_msg') or ''
         result.append(item)
     return result
 
@@ -784,7 +787,11 @@ def _step_meta(target_role, step_key):
     for step in steps:
         if step.get('key') == step_key:
             return step
-    return {'key': step_key, 'title': step_key}
+    return {}
+
+
+def _valid_step(target_role, step_key):
+    return bool(_step_meta(target_role, step_key).get('key'))
 
 
 def _state(cfg=None):
@@ -912,8 +919,38 @@ def _assert_health(role):
     failed = [item for item in checks if item.get('status') == 'fail']
     if failed:
         names = '、'.join([item.get('name') or '' for item in failed[:5]])
-        raise RuntimeError('自检发现 {0} 个异常项：{1}'.format(len(failed), names))
+        return '|- 自检发现 {0} 个异常项：{1}\n|- 自检结果仅用于提示，不阻断切换流程'.format(len(failed), names)
     return '|- 自检通过'
+
+
+def _is_health_check_step(step_key):
+    return step_key in ('master_check', 'standby_check')
+
+
+def _step_warning_from_logs(step_key, logs):
+    if not _is_health_check_step(step_key):
+        return ''
+    for line in _split_lines(logs):
+        if '自检发现' in line and '异常项' in line:
+            return line.replace('|-', '').strip() + '；可以继续下一步。'
+    return ''
+
+
+def _health_warning_msg(role):
+    checks = _health_checks(role)
+    failed = [item for item in checks if item.get('status') == 'fail']
+    if not failed:
+        return ''
+    names = '、'.join([item.get('name') or '' for item in failed[:5]])
+    if len(failed) > 5:
+        names += ' 等'
+    return '自检发现 {0} 个异常项：{1}'.format(len(failed), names)
+
+
+def _step_warning_msg(step_key, target_role, logs):
+    if not _is_health_check_step(step_key):
+        return ''
+    return _health_warning_msg(target_role) or _step_warning_from_logs(step_key, logs)
 
 
 def _lock():
@@ -960,7 +997,7 @@ def get_step_script():
     target_role = str(data.get('target_role') or '').strip()
     if target_role not in ('master', 'standby'):
         return _return(False, '目标状态无效')
-    if step_key not in STEP_ACTIONS:
+    if not _valid_step(target_role, step_key):
         return _return(False, '未知步骤: ' + step_key)
     step_meta = _step_meta(target_role, step_key)
     script = _step_script_body(step_key, target_role)
@@ -976,7 +1013,7 @@ def run_step():
     script_content = str(data.get('script_content') or '').strip()
     if target_role not in ('master', 'standby'):
         return _return(False, '目标状态无效')
-    if step_key not in STEP_ACTIONS:
+    if not _valid_step(target_role, step_key):
         return _return(False, '未知步骤: ' + step_key)
     if not _lock():
         return _return(False, '已有步骤正在执行，请稍后再试')
@@ -1000,19 +1037,19 @@ def run_step():
         if script_content:
             _run_script_content(script_content, step_meta.get('title') or step_key, run_id)
         else:
-            action_result = STEP_ACTIONS[step_key]()
-            if step_key in STEP_ACTIONS_APPEND_RESULT and action_result:
-                _write_step_log_lines(run_id, action_result)
+            _append_step_log(run_id, '|- 执行来源: 步骤配置脚本')
+            _run_script_content(_step_script_body(step_key, target_role), step_meta.get('title') or step_key, run_id)
         _append_step_log(run_id, '|- 步骤执行完成')
         done_logs = _step_log_lines(run_id)
-        _save_step_result(target_role, step_key, 'done', done_logs, '')
+        warning_msg = _step_warning_msg(step_key, target_role, done_logs)
+        _save_step_result(target_role, step_key, 'done', done_logs, '', warning_msg)
         cfg = _config()
         cfg['desired_role'] = target_role
         cfg['switch_status'] = 'idle'
         cfg['last_action'] = '步骤完成: ' + step_key
         _save_config(cfg)
         _append_log(cfg['last_action'])
-        return _return(True, '步骤执行完成', {'state': 'done', 'logs': done_logs, 'log': _read_step_log(run_id), 'run_id': run_id, 'log_path': _step_log_path(run_id), 'state_snapshot': _state(cfg)})
+        return _return(True, '步骤执行完成', {'state': 'done', 'logs': done_logs, 'log': _read_step_log(run_id), 'run_id': run_id, 'log_path': _step_log_path(run_id), 'warning_msg': warning_msg, 'state_snapshot': _state(cfg)})
     except Exception as e:
         msg = str(e)
         step_meta = _step_meta(target_role, step_key)
@@ -1025,13 +1062,25 @@ def run_step():
             _write_step_log_lines(run_id, _split_lines(msg))
         _append_step_log(run_id, '|- 步骤执行失败: ' + msg)
         fail_logs = _step_log_lines(run_id)
+        if _is_health_check_step(step_key):
+            _append_step_log(run_id, '|- 自检异常不阻断流程，允许继续完成')
+            done_logs = _step_log_lines(run_id)
+            warning_msg = _step_warning_msg(step_key, target_role, done_logs) or (msg + '；可以继续下一步。')
+            _save_step_result(target_role, step_key, 'done', done_logs, '', warning_msg)
+            cfg = _config()
+            cfg['desired_role'] = target_role
+            cfg['switch_status'] = 'idle'
+            cfg['last_action'] = '自检完成: ' + step_key
+            _save_config(cfg)
+            _append_log(cfg['last_action'])
+            return _return(True, '自检完成，异常不阻断流程', {'state': 'done', 'logs': done_logs, 'log': _read_step_log(run_id), 'run_id': run_id, 'log_path': _step_log_path(run_id), 'warning_msg': warning_msg, 'state_snapshot': _state(cfg)})
         _save_step_result(target_role, step_key, 'failed', fail_logs, msg)
         cfg = _config()
         cfg['switch_status'] = 'failed'
         cfg['last_action'] = '步骤失败: ' + step_key
         _save_config(cfg)
         _append_log(cfg['last_action'] + '，' + msg)
-        return _return(False, msg, {'state': 'failed', 'logs': fail_logs, 'log': _read_step_log(run_id), 'run_id': run_id, 'log_path': _step_log_path(run_id), 'repair': _repair_guidance(step_key, msg), 'state_snapshot': _state(cfg)})
+        return _return(False, msg, {'state': 'failed', 'logs': fail_logs, 'log': _read_step_log(run_id), 'run_id': run_id, 'log_path': _step_log_path(run_id), 'repair': _repair_guidance(target_role, step_key, msg), 'state_snapshot': _state(cfg)})
     finally:
         CURRENT_STEP_RUN_ID = ''
         _unlock()
@@ -1043,14 +1092,11 @@ def read_step_log():
     return _return(True, 'ok', {'run_id': run_id, 'log': _read_step_log(run_id), 'log_path': _step_log_path(run_id)})
 
 
-def _repair_guidance(step_key, msg):
-    if step_key in ('close_external', 'master_openresty'):
-        return {'title': '检查 OpenResty', 'action': '重新执行当前步骤', 'text': '请检查 OpenResty 服务状态和 80/443 端口占用后重试。'}
-    if step_key in ('demote_mysql', 'promote_mysql', 'mysql_online'):
-        return {'title': '检查数据库', 'action': '处理数据库后重试', 'text': '请确认 MySQL 服务正常、主从参数完整，再重新执行当前步骤。'}
-    if 'cron' in step_key or 'backup' in step_key or 'restore' in step_key:
-        return {'title': '检查计划任务', 'action': '重新执行当前步骤', 'text': '请确认计划任务存在，必要时先在计划任务页面恢复对应任务。'}
-    return {'title': '查看日志后重试', 'action': '重新执行当前步骤', 'text': msg}
+def _repair_guidance(target_role, step_key, msg):
+    repair = _step_meta(target_role, step_key).get('repair') or {}
+    if isinstance(repair, dict) and repair.get('text'):
+        return repair
+    return None
 
 
 def reset_step():
@@ -1072,7 +1118,7 @@ def close_external_service():
         _append_log('关闭对外服务完成')
         return _return(True, '关闭对外服务完成', {'external_closed': _external_closed(), 'logs': logs.splitlines(), 'state_snapshot': _state(_config())})
     except Exception as e:
-        return _return(False, str(e), {'repair': _repair_guidance('close_external', str(e))})
+        return _return(False, str(e), {'repair': _repair_guidance('standby', 'close_external', str(e))})
 
 
 def open_external_service():
@@ -1081,7 +1127,7 @@ def open_external_service():
         _append_log('打开对外服务完成')
         return _return(True, '打开对外服务完成', {'external_closed': _external_closed(), 'logs': logs.splitlines(), 'state_snapshot': _state(_config())})
     except Exception as e:
-        return _return(False, str(e), {'repair': _repair_guidance('master_openresty', str(e))})
+        return _return(False, str(e), {'repair': _repair_guidance('master', 'master_openresty', str(e))})
 
 
 def save_monitor():

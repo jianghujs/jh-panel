@@ -356,11 +356,15 @@ sys.exit(1)
 PY""".format(mysql_apt_index=_quote(MYSQL_APT_INDEX))
 
 
+def _mysql_apt_cmd(func):
+    return 'python3 {0} {1}'.format(_quote(MYSQL_APT_INDEX), func)
+
+
 def _step_script_body(step_key, target_role=''):
     step_meta = _step_meta(target_role if target_role in ('master', 'standby') else 'master', step_key)
     scripts = {
         'mysql_online': 'python3 {0} ensureRunning --reason {1}'.format(_quote(MYSQL_PY), _quote('HA 本地切换')) if os.path.exists(MYSQL_PY) else 'systemctl start mysqld',
-        'promote_mysql': _node_script_cmd('switch__mysql_master.js'),
+        'promote_mysql': _mysql_apt_cmd('delete_slave'),
         'open_lsyncd_cron': 'python3 {0} openCrontab {1}'.format(_quote(SWITCH_PY), _quote('[勿删]lsyncd实时任务定时同步')),
         'enable_rsyncd_tasks': _rsyncd_task_script('enabled'),
         'restart_lsyncd': 'systemctl restart lsyncd',
@@ -383,7 +387,7 @@ def _step_script_body(step_key, target_role=''):
         'role_master': 'echo master > {0}'.format(_quote(ROLE_PATH)),
         'master_check': _health_check_script('master'),
         'close_external': '\n'.join(['python3 {0} stop'.format(_quote(OPENRESTY_INDEX)) if os.path.exists(OPENRESTY_INDEX) else 'systemctl stop openresty', 'systemctl stop openresty || true', 'systemctl disable openresty || true', 'systemctl mask openresty || true', 'systemctl stop nginx || true', 'systemctl disable nginx || true']),
-        'demote_mysql': _mysql_apt_init_slave_script(),
+        'demote_mysql': _mysql_apt_cmd('init_slave_status'),
         'disable_rsyncd_tasks': _rsyncd_task_script('disabled'),
         'stop_lsyncd': 'systemctl stop lsyncd',
         'kill_rsync': "ps aux | grep '/bin/[r]sync' | awk '{print $2}' | xargs -r kill -9",
@@ -845,12 +849,16 @@ def _openresty_standby():
 
 
 def _demote_mysql_to_standby():
-    return _run(_mysql_apt_init_slave_script(), '调用 mysql-apt 初始化从库')
+    return _run(_mysql_apt_cmd('init_slave_status'), '调用 mysql-apt 初始化从库')
+
+
+def _promote_mysql_to_master():
+    return _run(_mysql_apt_cmd('delete_slave'), '调用 mysql-apt 删除从库配置')
 
 
 STEP_ACTIONS = {
     'mysql_online': lambda: _ensure_mysql_running(),
-    'promote_mysql': lambda: _run_node_script('switch__mysql_master.js', '将数据库提升为主'),
+    'promote_mysql': lambda: _promote_mysql_to_master(),
     'open_lsyncd_cron': lambda: _set_cron('[勿删]lsyncd实时任务定时同步', True),
     'enable_rsyncd_tasks': lambda: _set_rsyncd_tasks('enabled'),
     'restart_lsyncd': lambda: _run('systemctl restart lsyncd', '启动 lsyncd 服务'),

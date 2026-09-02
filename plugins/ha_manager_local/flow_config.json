@@ -22,11 +22,11 @@
         {
           "key": "promote_mysql",
           "title": "将数据库提升为主",
-          "desc": "执行 switch__mysql_master.js。",
+          "desc": "调用 MySQL APT 插件删除从库配置。",
           "stage": "主机正式上线",
           "phase": "master_online",
           "guide_ref": "promote_mysql",
-          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_master.js",
+          "code": "python3 /www/server/jh-panel/plugins/mysql-apt/index.py delete_slave",
           "group": "数据库升为主"
         },
         {
@@ -282,7 +282,7 @@
         {
           "key": "demote_mysql",
           "title": "数据库降为从",
-          "desc": "将当前机器数据库切换为从库。",
+          "desc": "调用 MySQL APT 插件初始化从库状态。",
           "stage": "数据库降从",
           "phase": "standby_offline",
           "guide_ref": "mysql",

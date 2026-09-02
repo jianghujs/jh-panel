@@ -45,7 +45,7 @@ function hmlEnsureFlowConfig(callback) {
     if (callback) callback();
     return;
   }
-  $.getJSON('/plugins/file?name=ha_manager_local&f=flow_config.json&v=202609020025', function(data) {
+  $.getJSON('/plugins/file?name=ha_manager_local&f=flow_config.json&v=202609020029', function(data) {
     hmlFlowConfig = data || {};
     hmlFlowConfigLoaded = true;
     if (callback) callback();
@@ -595,12 +595,13 @@ function hmlOpenStepGuide() {
   var commandHtml = commands.map(function(item, index) {
     return '<div class="hml-guide-command"><div class="hml-guide-command-desc">' + hmlHtml(item.desc) + '</div><div class="hml-guide-code-row"><pre>' + hmlHtml(item.cmd) + '</pre><button class="btn btn-default btn-xs hml-guide-copy" onclick="hmlCopyGuideCommand(' + index + ')">复制</button></div></div>';
   }).join('');
+  var commandSection = commandHtml ? '<div class="hml-guide-section-title">常用命令</div>' + commandHtml : '';
   layer.open({
     type: 1,
     title: step.title + ' 处理指引',
     area: ['620px', '460px'],
     shadeClose: true,
-    content: '<div class="hml-guide-layer"><div class="hml-guide-section-title">处理流程</div><div class="hml-guide-text">' + hmlHtml(guide.text || hmlStepFailureGuide(step)) + '</div><div class="hml-guide-section-title">常用命令</div>' + commandHtml + '</div>'
+    content: '<div class="hml-guide-layer"><div class="hml-guide-section-title">处理流程</div><div class="hml-guide-text">' + hmlHtml(guide.text || hmlStepFailureGuide(step)) + '</div>' + commandSection + '</div>'
   });
 }
 

@@ -288,12 +288,19 @@ function hmlExternalServiceButtonText() {
   return hmlState.external_closed ? '打开对外服务' : '关闭对外服务';
 }
 
+function hmlExternalServiceNormal(externalClosed) {
+  if (hmlState.role === 'master') return !externalClosed;
+  return !!externalClosed;
+}
+
 function hmlExternalServiceButtonClass() {
-  return hmlState.external_closed ? 'btn-success' : 'btn-danger';
+  var nextExternalClosed = !hmlState.external_closed;
+  return hmlExternalServiceNormal(nextExternalClosed) ? 'btn-success' : 'btn-danger';
 }
 
 function hmlRenderOverview() {
   var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
+  var externalNormal = hmlExternalServiceNormal(hmlState.external_closed);
   var promoteDisabled = hmlState.role === 'master';
   var demoteDisabled = hmlState.role === 'standby';
   var promoteTitle = promoteDisabled ? '当前已是主' : '将当前机器从备切换为主';
@@ -304,7 +311,7 @@ function hmlRenderOverview() {
     '<div class="hml-panel"><div class="hml-panel-body">' +
       '<table class="table table-hover hml-overview-table"><tbody>' +
         '<tr><th>当前主备状态</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleShortText(hmlState.role)) + '</td></tr>' +
-        '<tr><th>对外服务</th><td>' + hmlPill(hmlState.external_closed ? 'bad' : 'ok', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
+        '<tr><th>对外服务</th><td>' + hmlPill(externalNormal ? 'ok' : 'bad', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
         '<tr><th>自检状态</th><td>' + hmlPill(failedChecks ? 'bad' : 'ok', failedChecks ? '有异常' : '正常') + '<span class="hml-overview-note">异常项 ' + failedChecks + ' 个</span></td></tr>' +
         '<tr><th>云监控</th><td>' + (hmlState.monitor_url ? hmlPill('ok', '已开启') : hmlPill('warn', '未配置')) + '<span class="hml-overview-note">' + hmlHtml(hmlState.monitor_url ? '最近上报：' + (hmlState.last_report_at || '未上报') : '不上传本机状态') + '</span></td></tr>' +
       '</tbody></table>' +

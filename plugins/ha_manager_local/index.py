@@ -272,7 +272,7 @@ def _node_script_cmd(script_name):
 
 
 def _script_header(title):
-    return 'echo {0}\nset -e\nset -x'.format(_quote('开始执行: ' + str(title or '当前步骤')))
+    return 'cd {0}\necho "执行目录: $(pwd)"\necho {1}\nset -e\nset -x'.format(_quote(PANEL_DIR), _quote('开始执行: ' + str(title or '当前步骤')))
 
 
 def _rsyncd_task_script(status):
@@ -407,7 +407,7 @@ def _step_script_content(step_key, target_role=''):
 
 
 def _run(cmd, title, timeout=1800, required=True):
-    log = ['|- ' + title, '|- 执行脚本: ' + cmd]
+    log = ['|- ' + title, '|- 执行目录: ' + PANEL_DIR, '|- 执行脚本: ' + cmd]
     if CURRENT_STEP_RUN_ID:
         _write_step_log_lines(CURRENT_STEP_RUN_ID, log)
     if DRY_RUN:
@@ -977,6 +977,7 @@ def run_step():
         if script_content:
             start_logs.append('|- 执行来源: 前端代码编辑框')
             start_logs.append('|- 实际执行脚本: 前端提交脚本内容')
+            start_logs.append('|- 前端提交脚本长度: {0} 字符'.format(len(script_content)))
         _overwrite_step_log_lines(run_id, start_logs)
         _save_step_result(target_role, step_key, 'running', start_logs, '')
         if script_content:

@@ -35,6 +35,7 @@ ACTION_LOG_PATH = os.path.join(LOG_DIR, 'actions.log')
 PANEL_TITLE_STATE_PATH = '/www/server/jh-panel/data/ha_manager_title_state.json'
 SWITCH_PY = os.path.join(PANEL_DIR, 'scripts/switch.py')
 MYSQL_PY = os.path.join(PANEL_DIR, 'scripts/mysql.py')
+MYSQL_APT_INDEX = os.path.join(PANEL_DIR, 'plugins/mysql-apt/index.py')
 RSYNCD_INDEX = os.path.join(PANEL_DIR, 'plugins/rsyncd/index.py')
 OPENRESTY_INDEX = os.path.join(PANEL_DIR, 'plugins/openresty/index.py')
 OS_TOOL_DIR = os.path.join(PANEL_DIR, 'scripts/os_tool/vm/default')
@@ -326,6 +327,31 @@ echo "$result"
 echo "$result" | grep -q '"health_status": "normal"'""".format(index_py=_quote(os.path.join(PLUGIN_DIR, 'index.py')))
 
 
+def _mysql_apt_init_slave_script():
+    return """result_file=$(mktemp /tmp/hml_mysql_apt_init_slave.XXXXXX)
+trap 'rm -f "$result_file"' EXIT
+python3 {mysql_apt_index} init_slave_status 2>&1 | tee "$result_file"
+python3 - "$result_file" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8', errors='replace') as fp:
+    text = fp.read().strip()
+lines = [line.strip() for line in text.splitlines() if line.strip()]
+for line in reversed(lines):
+    if line.startswith('{{') or line.startswith('['):
+        data = json.loads(line)
+        if not data.get('status'):
+            sys.stderr.write('|- mysql-apt 初始化从库失败: ' + str(data.get('msg') or data) + '\\n')
+            sys.exit(1)
+        print('|- mysql-apt 初始化从库返回成功: ' + str(data.get('msg') or 'ok'))
+        sys.exit(0)
+sys.stderr.write('|- mysql-apt init_slave_status 未返回 JSON，无法确认执行结果\\n')
+sys.exit(1)
+PY""".format(mysql_apt_index=_quote(MYSQL_APT_INDEX))
+
+
 def _step_script_content(step_key, target_role=''):
     step_meta = _step_meta(target_role if target_role in ('master', 'standby') else 'master', step_key)
     title = step_meta.get('title') or step_key
@@ -354,7 +380,7 @@ def _step_script_content(step_key, target_role=''):
         'role_master': 'echo master > {0}'.format(_quote(ROLE_PATH)),
         'master_check': _health_check_script('master'),
         'close_external': '\n'.join(['python3 {0} stop'.format(_quote(OPENRESTY_INDEX)) if os.path.exists(OPENRESTY_INDEX) else 'systemctl stop openresty', 'systemctl stop openresty || true', 'systemctl disable openresty || true', 'systemctl mask openresty || true', 'systemctl stop nginx || true', 'systemctl disable nginx || true']),
-        'demote_mysql': 'LOCAL_IP={0} REMOTE_IP={1} NODE_DISABLE_COLORS=1 node {2}'.format(_quote(mw.getHostAddr() or '127.0.0.1'), _quote((_config().get('options') or {}).get('remote_ip') or ''), _quote(os.path.join(OS_TOOL_DIR, 'switch__mysql_master_slave.js'))),
+        'demote_mysql': _mysql_apt_init_slave_script(),
         'disable_rsyncd_tasks': _rsyncd_task_script('disabled'),
         'stop_lsyncd': 'systemctl stop lsyncd',
         'kill_rsync': "ps aux | grep '/bin/[r]sync' | awk '{print $2}' | xargs -r kill -9",
@@ -810,16 +836,7 @@ def _openresty_standby():
 
 
 def _demote_mysql_to_standby():
-    cfg = _config()
-    opts = cfg.get('options') or {}
-    remote_ip = opts.get('remote_ip') or opts.get('master_ip') or ''
-    if not remote_ip:
-        raise RuntimeError('数据库降从需要目标主库 IP。请先在配置中补充 options.remote_ip 或手动执行降从脚本后重试。')
-    script = os.path.join(OS_TOOL_DIR, 'switch__mysql_master_slave.js')
-    if not os.path.exists(script):
-        raise RuntimeError('数据库降从脚本不存在: ' + script)
-    env = 'LOCAL_IP={0} REMOTE_IP={1} NODE_DISABLE_COLORS=1 '.format(_quote(mw.getHostAddr() or '127.0.0.1'), _quote(remote_ip))
-    return _run(env + 'node ' + _quote(script), '数据库降从')
+    return _run(_mysql_apt_init_slave_script(), '调用 mysql-apt 初始化从库')
 
 
 STEP_ACTIONS = {

@@ -286,7 +286,7 @@
           "stage": "数据库降从",
           "phase": "standby_offline",
           "guide_ref": "mysql",
-          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_slave.js",
+          "code": "python3 /www/server/jh-panel/plugins/mysql-apt/index.py init_slave_status",
           "group": "数据库降从"
         },
         {

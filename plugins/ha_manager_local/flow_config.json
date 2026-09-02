@@ -1,5 +1,5 @@
 {
-  "version": "202609020029",
+  "version": "202609020045",
   "roles": {
     "master": {
       "stages": [
@@ -694,16 +694,16 @@
         {
           "key": "check_mysql_slave_status",
           "title": "检查主从状态",
-          "desc": "读取 MySQL APT 从库状态，确认 Slave_IO_Running 和 Slave_SQL_Running 都为 Yes。异常时提示使用脚本库修复主从。",
+          "desc": "调用 MySQL APT 插件检查从库状态，确认 Slave_IO_Running 和 Slave_SQL_Running 都为 Yes。异常时提示使用脚本库修复主从。",
           "stage": "数据库降从",
           "phase": "standby_offline",
           "guide_ref": "mysql",
-          "code": "result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py get_slave_list {page:1,page_size:5})\necho \"$result\"\npython3 - \"$result\" <<'PY'\nimport json\nimport sys\n\nraw = sys.argv[1]\ndata = json.loads(raw or '{}')\nrows = data.get('data') if isinstance(data.get('data'), list) else []\nif not rows:\n    sys.stderr.write('|- 未检测到从库状态，请确认 init_slave_status 是否已经建立主从\\n')\n    sys.exit(1)\nbad = []\nfor item in rows:\n    io = str(item.get('Slave_IO_Running') or '')\n    sql = str(item.get('Slave_SQL_Running') or '')\n    delay = item.get('Seconds_Behind_Master')\n    host = str(item.get('Master_Host') or '-')\n    port = str(item.get('Master_Port') or '-')\n    err = str(item.get('Last_Error') or item.get('Last_IO_Error') or '-')\n    print('|- 主库 {0}:{1} IO={2} SQL={3} 延迟={4}'.format(host, port, io or '-', sql or '-', delay))\n    if io != 'Yes' or sql != 'Yes':\n        bad.append('主库 {0}:{1} IO={2} SQL={3} 错误={4}'.format(host, port, io or '-', sql or '-', err))\nif bad:\n    sys.stderr.write('|- 主从状态异常：' + '；'.join(bad[:3]) + '\\n')\n    sys.stderr.write('|- 可能需要通过脚本库“修复主从”脚本修复主从状态\\n')\n    sys.exit(1)\nprint('|- 主从状态正常')\nPY",
+          "code": "python3 /www/server/jh-panel/plugins/mysql-apt/index.py check_slave_status",
           "group": "数据库降从",
           "repair": {
             "title": "检查并修复 MySQL 主从",
             "action": "通过脚本库修复主从后重试",
-            "text": "主从状态检查异常时，可能需要通过脚本库(jh 22)-“服务器修复”中的“修复MySQL从库：从xtrabackup备份中恢复从库和GTID事务”脚本修复主从状态。请先查看当前步骤日志里的 get_slave_list 输出，确认 IO/SQL 状态、主库地址和错误信息，再按脚本库指引修复。",
+            "text": "主从状态检查异常时，先到 MySQL 插件的“主从管理”里查看当前主备组状态，确认主库配置、连接测试、复制账号和权限是否正常。如果主从链路仍异常，再进入脚本库(jh 22) → 服务器修复，使用“修复MySQL从库：从xtrabackup备份中恢复从库和GTID事务”脚本修复主从状态。",
             "commands": [
               {
                 "desc": "查看当前从库状态",

@@ -15,8 +15,8 @@ var hmlState = {
   last_report_at: '',
   last_action: '等待操作',
   log: [
-    '[21:00:00] UI-only 预览已加载，当前未连接真实后端。',
-    '[21:00:02] 本地版只展示本机操作流程，不执行对端 SSH 联动。'
+    '[21:00:00] 本地版已加载，等待实际操作。',
+    '[21:00:02] 本地版只执行当前主机动作。'
   ],
   steps: [
     {key: 'close_external', name: '关闭对外服务', desc: '停止 OpenResty，阻断主要入口流量。', state: 'pending', action: '关闭 OpenResty', repair: '重新停止 OpenResty'},
@@ -75,7 +75,7 @@ function hmlBoot() {
   });
 }
 
-function hmlPost(method, args, callback) {
+function hmlPost(method, args, callback, failCallback) {
   $.post('/plugins/run', {
     name: 'ha_manager_local',
     func: method,
@@ -88,11 +88,84 @@ function hmlPost(method, args, callback) {
       data = null;
     }
     if (!data || !data.status) {
+      if (failCallback) {
+        failCallback(data || {status: false, msg: '操作失败', data: {}});
+        return;
+      }
       layer.msg((data && data.msg) || '操作失败', {icon: 2});
       return;
     }
-    if (callback) callback(data.data || {});
+    var payload = data.data;
+    if (typeof payload === 'string') {
+      try { payload = JSON.parse(payload); } catch (e2) {}
+    }
+    if (payload && typeof payload === 'object' && payload.hasOwnProperty('status') && payload.hasOwnProperty('msg')) {
+      if (!payload.status) {
+        if (failCallback) {
+          failCallback(payload);
+          return;
+        }
+        layer.msg(payload.msg || '操作失败', {icon: 2});
+        return;
+      }
+      payload = payload.data || {};
+    }
+    if (callback) callback(payload || {});
   }, 'json');
+}
+
+function hmlBackendLogs(data, state, step) {
+  data = data || {};
+  var targetRole = state && state.target_role;
+  var backendStep = data.state_snapshot && data.state_snapshot.step_list && data.state_snapshot.step_list[targetRole] && data.state_snapshot.step_list[targetRole][step.key];
+  if (backendStep && $.isArray(backendStep.logs) && backendStep.logs.length) return backendStep.logs;
+  if ($.isArray(data.logs) && data.logs.length) return data.logs;
+  if (typeof data.logs === 'string' && data.logs) return data.logs.split('\n');
+  if (typeof data.log === 'string' && data.log) return data.log.replace(/\r\n/g, '\n').split('\n');
+  return [];
+}
+
+function hmlCreateRunId() {
+  var now = new Date();
+  var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+  return 'LOCAL_' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + '_' + Math.floor(Math.random() * 1000);
+}
+
+function hmlStopStepLogPolling() {
+  if (window.hmlStepLogTimer) {
+    clearInterval(window.hmlStepLogTimer);
+    window.hmlStepLogTimer = null;
+  }
+}
+
+function hmlReadStepLog(runId, callback) {
+  if (!runId) return;
+  hmlPost('read_step_log', {run_id: runId}, function(data) {
+    if (callback) callback(data || {});
+  }, function() {
+    if (callback) callback({log: ''});
+  });
+}
+
+function hmlApplyStepLogFromResponse(step, data) {
+  var logs = hmlBackendLogs(data, window.hmlFlowState, step);
+  step.logs = logs.slice();
+  hmlUpdateVisibleStepLog(step);
+}
+
+function hmlSetStepLogFromFile(step, logData) {
+  if (!step || !logData || !logData.log) return false;
+  step.logs = String(logData.log).replace(/\r\n/g, '\n').split('\n');
+  hmlUpdateVisibleStepLog(step);
+  return true;
+}
+
+function hmlUpdateVisibleStepLog(step) {
+  var box = $('#hmlFlowDialog .hml-flow-step-log-box');
+  if (!box.length) return;
+  box.text((step && step.logs ? step.logs : []).join('\n') || '暂无日志');
+  var el = box[0];
+  if (el) el.scrollTop = el.scrollHeight;
 }
 
 function hmlLoadState(callback) {
@@ -122,6 +195,10 @@ function hmlEnsureStepLog(step) {
   return step.logs;
 }
 
+function hmlStepLogsText(step) {
+  return hmlHtml((step && step.logs ? step.logs : []).join('\n') || '暂无日志');
+}
+
 function hmlAppendStepLog(step, text) {
   if (!step || !text) return;
   hmlEnsureStepLog(step).push('[' + hmlNow() + '] ' + text);
@@ -144,6 +221,10 @@ function hmlPill(status, text) {
 
 function hmlRoleText(role) {
   return role === 'master' ? '主机' : '备机';
+}
+
+function hmlRoleShortText(role) {
+  return role === 'master' ? '主' : '备';
 }
 
 function hmlStepText(state) {
@@ -181,15 +262,14 @@ function hmlRenderOverview() {
   var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
   var promoteDisabled = hmlState.role === 'master';
   var demoteDisabled = hmlState.role === 'standby';
-  var promoteTitle = promoteDisabled ? '当前已是主机' : '将当前机器升为主机';
-  var demoteTitle = demoteDisabled ? '当前已是备机' : '将当前机器降为从机';
-  var promoteBtn = '<button class="btn ' + (promoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'master\')" title="' + promoteTitle + '"' + (promoteDisabled ? ' disabled' : '') + '>升为主</button>';
-  var demoteBtn = '<button class="btn ' + (demoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'standby\')" title="' + demoteTitle + '"' + (demoteDisabled ? ' disabled' : '') + '>降为从</button>';
+  var promoteTitle = promoteDisabled ? '当前已是主' : '将当前机器从备切换为主';
+  var demoteTitle = demoteDisabled ? '当前已是备' : '将当前机器从主切换为备';
+  var promoteBtn = '<button class="btn ' + (promoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'master\')" title="' + promoteTitle + '"' + (promoteDisabled ? ' disabled' : '') + '>备-&gt;主</button>';
+  var demoteBtn = '<button class="btn ' + (demoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'standby\')" title="' + demoteTitle + '"' + (demoteDisabled ? ' disabled' : '') + '>主-&gt;备</button>';
   var html = '<div class="hml-topbar"><div><div class="hml-title">主备管理</div><div class="hml-sub">查看本机主备状态，必要时执行升主、降从与对外服务控制。</div></div><div class="hml-actions">' + promoteBtn + demoteBtn + '<button class="btn ' + hmlExternalServiceButtonClass() + ' btn-sm" onclick="hmlToggleExternalService()">' + hmlHtml(hmlExternalServiceButtonText()) + '</button><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button></div></div>' +
     '<div class="hml-panel"><div class="hml-panel-body">' +
       '<table class="table table-hover hml-overview-table"><tbody>' +
-        '<tr><th>当前角色</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleText(hmlState.role)) + '</td></tr>' +
-        '<tr><th>目标角色</th><td>' + hmlPill(hmlState.desired_role === 'master' ? 'ok' : 'info', hmlRoleText(hmlState.desired_role)) + '</td></tr>' +
+        '<tr><th>当前主备状态</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleShortText(hmlState.role)) + '</td></tr>' +
         '<tr><th>对外服务</th><td>' + hmlPill(hmlState.external_closed ? 'bad' : 'ok', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
         '<tr><th>自检状态</th><td>' + hmlPill(failedChecks ? 'bad' : 'ok', failedChecks ? '有异常' : '正常') + '<span class="hml-overview-note">异常项 ' + failedChecks + ' 个</span></td></tr>' +
         '<tr><th>云监控</th><td>' + (hmlState.monitor_url ? hmlPill('ok', '已开启') : hmlPill('warn', '未配置')) + '<span class="hml-overview-note">' + hmlHtml(hmlState.monitor_url ? '最近上报：' + (hmlState.last_report_at || '未上报') : '不上传本机状态') + '</span></td></tr>' +
@@ -223,35 +303,41 @@ function hmlReadMonitorForm() {
 
 function hmlSaveMonitor(report) {
   var data = hmlReadMonitorForm();
-  hmlState.pair_id = data.pair_id || '';
-  hmlState.monitor_url = data.monitor_url || '';
-  layer.msg(report === true ? '已保存配置（预览）' : '云监控配置测试完成（预览）', {icon: hmlState.monitor_url ? 1 : 0});
-  hmlRenderMonitor();
+  hmlPost('save_monitor', data, function(next) {
+    hmlState = $.extend(true, hmlState, next);
+    layer.msg(report === true ? '已保存配置' : '配置已保存', {icon: hmlState.monitor_url ? 1 : 0});
+    hmlRenderMonitor();
+  });
 }
 
 function hmlReportState() {
   if (!hmlState.monitor_url) return layer.msg('云监控地址为空，当前不会上传状态', {icon: 0});
-  hmlState.last_report_at = hmlNow();
-  layer.msg('本机状态已上报云监控（预览）', {icon: 1});
-  hmlRenderMonitor();
+  hmlPost('report_state', {}, function(next) {
+    hmlState = $.extend(true, hmlState, next);
+    layer.msg('本机状态已刷新', {icon: 1});
+    hmlRenderMonitor();
+  });
 }
 
 function hmlClearMonitor() {
   layer.confirm('确认清空云监控地址？清空后本机状态不再上报。', {icon: 3, title: '清空云监控', btn: ['确认', '取消']}, function(index) {
     layer.close(index);
-    hmlState.monitor_url = '';
-    hmlState.last_report_at = '';
-    layer.msg('已清空云监控地址，不上传状态（预览）', {icon: 1});
-    hmlRenderMonitor();
+    hmlPost('clear_monitor', {}, function(next) {
+      hmlState = $.extend(true, hmlState, next);
+      layer.msg('已清空云监控地址', {icon: 1});
+      hmlRenderMonitor();
+    });
   });
 }
 
 function hmlRegenerateHostId() {
   layer.confirm('确认重新生成本机ID？重新生成后需要重新注册云监控。', {icon: 3, title: '重新生成本机ID', btn: ['确认', '取消']}, function(index) {
     layer.close(index);
-    hmlState.host_id = 'H_LOCAL_' + (new Date()).getTime();
-    layer.msg('本机ID已重新生成（预览）', {icon: 1});
-    hmlRenderMonitor();
+    hmlPost('regenerate_host_id', {}, function(next) {
+      hmlState.host_id = next.host_id || hmlState.host_id;
+      layer.msg('本机ID已重新生成', {icon: 1});
+      hmlRenderMonitor();
+    });
   });
 }
 
@@ -278,7 +364,7 @@ function hmlOpenSwitchDialog(targetRole) {
   state.steps = hmlBuildFlowSteps(defaultRole);
   state.active_step = 0;
   window.hmlFlowState = state;
-  var flowTitle = defaultRole === 'master' ? '升为主' : '降为从';
+  var flowTitle = defaultRole === 'master' ? '备->主' : '主->备';
   var dialog = layer.open({
     type: 1,
     area: ['900px', '620px'],
@@ -329,7 +415,12 @@ function hmlBuildFlowSteps(role) {
 function hmlCloneStepsFromConfig(role) {
   var cfg = hmlFlowRoleConfig(role);
   return (cfg.steps || []).map(function(item) {
-    return $.extend(true, {}, item, {state: item.state || 'pending'});
+    var saved = ((hmlState.step_list || {})[role] || {})[item.key] || {};
+    return $.extend(true, {}, item, {
+      state: saved.state || item.state || 'pending',
+      logs: saved.logs || item.logs || [],
+      failure_msg: saved.msg || item.failure_msg || ''
+    });
   });
 }
 
@@ -439,6 +530,11 @@ function hmlStepHintHtml(step) {
   return '<button type="button" class="hml-step-hint" title="异常处理指导" onclick="hmlOpenStepGuide()">!</button>';
 }
 
+function hmlStepRepairButton(step) {
+  if (!step || step.state !== 'failed') return '';
+  return '<button class="btn btn-warning btn-sm" onclick="hmlRunFlowStepWithCode()">重新执行当前步骤</button>';
+}
+
 function hmlStepFailureGuide(step) {
   var guide = hmlFlowGuideConfig(step);
   return (guide && guide.text) || '当前步骤执行失败，请先查看日志输出，再按提示处理后重新进入该步骤。';
@@ -489,9 +585,9 @@ function hmlRenderFlowDialog(root, state, steps) {
   root = root && root.length ? root : $('#hmlFlowDialog');
   if (!root.length) return;
   if (state.completed_view) {
-    var completedTitle = state.target_role === 'master' ? '升主完成' : '降从完成';
-    var completedText = state.target_role === 'master' ? '当前机器已完成升主流程，请确认业务访问和入口流量状态。' : '当前机器已完成降从流程，请确认对外服务已关闭并进入备机状态。';
-    root.html('<div class="hml-flow-complete"><div class="hml-flow-complete-icon">✓</div><div class="hml-flow-complete-title">' + hmlHtml(completedTitle) + '</div><div class="hml-flow-complete-text">' + hmlHtml(completedText) + '</div></div><div class="hml-flow-footer"><button class="btn btn-success btn-sm" onclick="hmlCancelFlowDialog()">关闭窗口</button></div>');
+    var completedTitle = state.target_role === 'master' ? '当前主机已切换为主' : '当前主机已切换为备';
+    var completedText = state.target_role === 'master' ? '请到 Zenlayer 切换 DNS 或入口解析，将业务流量指向当前主机。' : '请确认对外服务已关闭并进入备机状态。';
+    root.html('<div class="hml-flow-complete"><div class="hml-flow-complete-title">' + hmlHtml(completedTitle) + '</div><div class="hml-flow-complete-text">' + hmlHtml(completedText) + '</div></div><div class="hml-flow-footer"><button class="btn btn-success btn-sm" onclick="hmlCancelFlowDialog()">关闭窗口</button></div>');
     return;
   }
   var activeStep = state.active_step < 0 ? 0 : state.active_step;
@@ -506,13 +602,14 @@ function hmlRenderFlowDialog(root, state, steps) {
     root.html(guideHtml);
     return;
   }
-  var html = hmlBuildFlowStageBar(state, steps, activeStep) + '<div class="hml-flow-head"><div><div class="hml-flow-title">' + hmlHtml(current.title) + '</div><div class="hml-flow-sub">' + hmlHtml(current.desc) + '</div></div></div>' +
-    '<div class="hml-flow-body"><div class="hml-flow-list">' + list + '</div><div class="hml-flow-detail"><div class="hml-flow-detail-title">' + hmlHtml(current.title) + hmlStepHintHtml(current) + '</div><div class="hml-flow-detail-desc">' + hmlHtml(current.desc) + '</div><div class="hml-flow-stage">阶段：' + hmlHtml(current.stage) + '</div>' +
+  var html = hmlBuildFlowStageBar(state, steps, activeStep) + '<div class="hml-flow-body"><div class="hml-flow-list">' + list + '</div><div class="hml-flow-detail"><div class="hml-flow-detail-title">' + hmlHtml(current.title) + hmlStepHintHtml(current) + '</div><div class="hml-flow-detail-desc">' + hmlHtml(current.desc) + '</div><div class="hml-flow-stage">阶段：' + hmlHtml(current.stage) + '</div>' +
       (hmlStepRequiredLabel(current) ? '<div class="hml-flow-stage">类型：' + hmlStepRequiredLabel(current) + '</div>' : '') +
+      (current.state === 'failed' && current.failure_msg ? '<div class="hml-tip" style="margin-top:12px;">' + hmlHtml(current.failure_msg) + '</div>' : '') +
       '<div class="hml-step-actions">' +
         '<button class="btn btn-success btn-sm" onclick="hmlRunFlowStepWithCode()">执行当前操作</button>' +
+        hmlStepRepairButton(current) +
       '</div>' +
-      '<div class="hml-flow-step-log"><div class="hml-flow-step-log-title">当前步骤日志</div><pre class="hml-flow-step-log-box">' + hmlHtml((current.logs || []).join('\n') || '暂无日志') + '</pre></div>' +
+      '<div class="hml-flow-step-log"><div class="hml-flow-step-log-title">当前步骤日志</div><pre class="hml-flow-step-log-box">' + hmlStepLogsText(current) + '</pre></div>' +
     '</div></div>' +
     '<div class="hml-flow-footer"><button class="btn btn-default btn-sm" onclick="hmlCancelFlowDialog()">取消</button><button class="btn btn-default btn-sm" onclick="hmlStepBack()"' + (hmlCanGoPrevFlowPhase(state) ? '' : ' disabled') + '>上一步</button><button class="btn btn-success btn-sm" onclick="hmlToggleFlowAuto()">' + hmlFlowNextButtonText(state) + '</button></div>';
   root.html(html);
@@ -584,7 +681,7 @@ function hmlMarkCurrentFlowStep(state, steps, status) {
   if (status === 'done') {
     state.running = false;
     state.just_stepped = true;
-    hmlAppendStepLog(step, '步骤执行完成');
+    if (!step.logs || !step.logs.length) hmlAppendStepLog(step, '步骤执行完成');
     var finishedGroup = hmlStepGroupTitle(step);
     if (hmlIsFlowGroupDone(steps, finishedGroup)) {
       if (!state.open_groups) state.open_groups = {};
@@ -604,18 +701,20 @@ function hmlGetFlowStepCode(step) {
 }
 
 function hmlOpenFlowCodeDialog(step, confirm) {
-  openEditCode({
-    title: step.title,
-    content: hmlGetFlowStepCode(step),
-    mode: 'shell',
-    width: '640px',
-    height: '400px',
-    submitBtn: '执行',
-    onSubmit: function(content) {
-      $('#openEditCodeCloseBtn').click();
-      messageBox({timeout: 300, autoClose: true, toLogAfterComplete: true});
-      confirm(content);
-    }
+  hmlPost('get_step_script', {step_key: step.key, target_role: window.hmlFlowState ? window.hmlFlowState.target_role : ''}, function(data) {
+    var script = (data && data.script) ? data.script : hmlGetFlowStepCode(step);
+    openEditCode({
+      title: '执行当前步骤 - ' + (data && data.title ? data.title : step.title),
+      content: script,
+      mode: 'shell',
+      width: '640px',
+      height: '400px',
+      submitBtn: '执行',
+      onSubmit: function(content) {
+        $('#openEditCodeCloseBtn').click();
+        confirm(content);
+      }
+    });
   });
 }
 
@@ -650,8 +749,8 @@ function hmlRunFlowStep(done, skipConfirm, forceRun) {
     return;
   }
   if (!skipConfirm) {
-    hmlAppendStepLog(step, '打开代码确认框');
-    hmlOpenFlowCodeDialog(step, function() {
+    hmlOpenFlowCodeDialog(step, function(content) {
+      step.script_content = content;
       hmlRunFlowStep(done, true, forceRun);
     });
     return;
@@ -659,36 +758,73 @@ function hmlRunFlowStep(done, skipConfirm, forceRun) {
   hmlAppendStepLog(step, '开始执行');
   hmlMarkCurrentFlowStep(state, steps, 'running');
   hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
-  setTimeout(function() {
+  var runId = hmlCreateRunId();
+  state.current_run_id = runId;
+  var scriptContent = step.script_content || '';
+  step.script_content = '';
+  hmlStopStepLogPolling();
+  window.hmlStepLogTimer = setInterval(function() {
+    if (!window.hmlFlowState || window.hmlFlowState !== state || state.current_run_id !== runId) return;
+    hmlReadStepLog(runId, function(logData) {
+      if (!window.hmlFlowState || window.hmlFlowState !== state || state.current_run_id !== runId) return;
+      if (logData && logData.log) {
+        hmlSetStepLogFromFile(step, logData);
+      }
+    });
+  }, 500);
+  hmlPost('run_step', {step_key: step.key, target_role: state.target_role, run_id: runId, script_content: scriptContent}, function(data) {
     if (!window.hmlFlowState || window.hmlFlowState !== state) return;
-    if (step.check_health) {
-      var failCount = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
-      if (failCount > 0) {
-        hmlMarkCurrentFlowStep(state, steps, 'failed');
-        hmlAppendStepLog(step, '自检发现 ' + failCount + ' 个异常项');
-        hmlLog(step.title + '失败，发现 ' + failCount + ' 个异常项');
-      } else {
-        hmlMarkCurrentFlowStep(state, steps, 'done');
-        hmlAppendStepLog(step, '自检通过');
-        hmlLog(step.title + '完成');
+    hmlStopStepLogPolling();
+    hmlReadStepLog(runId, function(logData) {
+      if (!window.hmlFlowState || window.hmlFlowState !== state) return;
+      var hasFileLog = hmlSetStepLogFromFile(step, logData);
+      if (!hasFileLog) {
+        hmlApplyStepLogFromResponse(step, data);
       }
-    } else {
+      if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
       hmlMarkCurrentFlowStep(state, steps, 'done');
-      if (step.log_done) {
-        hmlAppendStepLog(step, step.log_done);
-        hmlLog(step.log_done);
+      if (!hasFileLog) {
+        hmlApplyStepLogFromResponse(step, data);
       }
-    }
-    hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
-    if (state.auto_running) {
-      if (step.state === 'done') {
-        state.flow_timer = setTimeout(hmlContinueCurrentFlowPhase, 180);
-      } else {
-        hmlPauseFlowAuto(true);
+      if (steps.every(function(item) { return item.state === 'done'; })) {
+        state.completed_view = true;
       }
-    }
-    if (done) done(step.state === 'done');
-  }, 450);
+      state.current_run_id = '';
+      hmlUpdateVisibleStepLog(step);
+      hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
+      if (state.auto_running) {
+        if (step.state === 'done') {
+          state.flow_timer = setTimeout(hmlContinueCurrentFlowPhase, 180);
+        } else {
+          hmlPauseFlowAuto(true);
+        }
+      }
+      if (done) done(step.state === 'done');
+    });
+  }, function(res) {
+    if (!window.hmlFlowState || window.hmlFlowState !== state) return;
+    hmlStopStepLogPolling();
+    var data = (res && res.data) || {};
+    hmlReadStepLog(runId, function(logData) {
+      if (!window.hmlFlowState || window.hmlFlowState !== state) return;
+      var hasFileLog = hmlSetStepLogFromFile(step, logData);
+      if (!hasFileLog) {
+        hmlApplyStepLogFromResponse(step, data);
+      }
+      if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      step.repair_data = data.repair || null;
+      step.failure_msg = (res && res.msg) || '步骤执行失败';
+      hmlMarkCurrentFlowStep(state, steps, 'failed');
+      if (!hasFileLog) {
+        hmlApplyStepLogFromResponse(step, data);
+      }
+      state.current_run_id = '';
+      hmlUpdateVisibleStepLog(step);
+      hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
+      if (state.auto_running) hmlPauseFlowAuto(true);
+      if (done) done(false);
+    });
+  });
 }
 
 function hmlFlowNextButtonText(state) {
@@ -811,6 +947,7 @@ function hmlGoNextFlowStep() {
   if (!allDone) return;
   if (phase === 'master_online') {
     state.completed = true;
+    state.completed_view = true;
     hmlPromptNextFlow(state.target_role);
     hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
     return;
@@ -819,7 +956,13 @@ function hmlGoNextFlowStep() {
   var currentStageIndex = stages.findIndex(function(item) { return item.key === phase; });
   if (currentStageIndex < 0) return;
   var nextStage = stages[currentStageIndex + 1];
-  if (!nextStage) return;
+  if (!nextStage) {
+    state.completed = true;
+    state.completed_view = true;
+    hmlPromptNextFlow(state.target_role);
+    hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
+    return;
+  }
   var nextIndex = state.steps.findIndex(function(step) { return (step.phase || '') === nextStage.key; });
   if (nextIndex < 0) return;
   state.active_step = nextIndex;
@@ -834,7 +977,6 @@ function hmlPromptNextFlow(flow) {
   if (flow === 'master_online' || flow === 'master') text = '升主流程完成。';
   hmlState.last_action = text;
   hmlLog(text);
-  layer.msg(text, {icon: 1, time: 2500});
 }
 
 function hmlToggleFlowAuto() {
@@ -929,38 +1071,45 @@ function hmlUndoFlowStep(index, event) {
   hmlPauseFlowAuto(false);
   var listEl = $('#hmlFlowDialog .hml-flow-list')[0];
   state.list_scroll_top = listEl ? listEl.scrollTop : state.list_scroll_top || 0;
-  state.steps[index].state = 'pending';
-  state.completed = false;
-  state.running = false;
-  state.active_step = Math.max(0, index - 1);
-  state.focus_step = state.active_step;
-  if (state.steps[index].undo_effect === 'role_master') hmlApplyRole('master');
-  if (state.steps[index].undo_effect === 'role_standby') hmlApplyRole('standby');
-  if (state.steps[index].undo_effect === 'external_closed') hmlApplyExternalClosed();
-  if (state.steps[index].undo_effect === 'external_open') hmlApplyExternalOpen();
-  hmlLog('撤销步骤：' + state.steps[index].title);
-  hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
+  hmlPost('reset_step', {step_key: state.steps[index].key, target_role: state.target_role}, function() {
+    state.steps[index].state = 'pending';
+    state.steps[index].logs = [];
+    state.completed = false;
+    state.running = false;
+    state.active_step = Math.max(0, index - 1);
+    state.focus_step = state.active_step;
+    hmlLog('重置步骤：' + state.steps[index].title);
+    hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
+  });
 }
 
 function hmlCancelFlowDialog() {
   var state = window.hmlFlowState;
   if (state) hmlPauseFlowAuto(false);
+  hmlStopStepLogPolling();
   if (state && state.layer_id) layer.close(state.layer_id);
   window.hmlFlowState = null;
-  hmlRender();
+  hmlLoadState(function() {
+    hmlRender();
+  });
 }
 
 function hmlToggleExternalService() {
   if (hmlState.external_closed) {
-    hmlApplyExternalOpen();
-    hmlLog('打开对外服务完成：OpenResty 已启动');
-    layer.msg('已模拟打开 OpenResty', {icon: 1});
+    hmlPost('open_external_service', {}, function(data) {
+      if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      hmlLog('打开对外服务完成：OpenResty 已启动');
+      layer.msg('已打开 OpenResty', {icon: 1});
+      hmlRender();
+    });
   } else {
-    hmlApplyExternalClosed();
-    hmlLog('关闭对外服务完成：OpenResty 已停止');
-    layer.msg('已模拟关闭 OpenResty', {icon: 1});
+    hmlPost('close_external_service', {}, function(data) {
+      if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      hmlLog('关闭对外服务完成：OpenResty 已停止');
+      layer.msg('已关闭 OpenResty', {icon: 1});
+      hmlRender();
+    });
   }
-  hmlRender();
 }
 
 function hmlApplyExternalClosed() {
@@ -1000,15 +1149,15 @@ function hmlApplyRole(role) {
 }
 
 function hmlRunHealthCheck(fix) {
-  if (fix) {
-    hmlState.checks.forEach(function(item) { item.status = 'pass'; });
-    hmlState.checks.forEach(function(item) { if (item.name === 'OpenResty') item.actual = hmlState.role === 'master' ? '运行中' : '已停止'; });
-    hmlLog('修复并重新自检完成');
-  } else {
+  hmlPost('health_check', {}, function(data) {
+    hmlState.checks = data.checks || hmlState.checks;
+    hmlState.health_status = data.health_status || hmlState.health_status;
+    hmlState.health_text = data.health_text || hmlState.health_text;
+    hmlState.external_closed = data.external_closed;
     hmlLog('重新自检完成，发现 ' + hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length + ' 个异常项');
-  }
-  layer.msg('自检已刷新（模拟）', {icon: 1});
-  hmlSetView('health');
+    layer.msg('自检已刷新', {icon: 1});
+    hmlSetView('health');
+  });
 }
 
 function hmlRenderHealth() {

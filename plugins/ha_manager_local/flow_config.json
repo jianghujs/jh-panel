@@ -17,7 +17,7 @@
           "phase": "master_online",
           "guide_ref": "mysql",
           "code": "systemctl start mysqld\nsystemctl status mysqld --no-pager",
-          "group": "数据库切主"
+          "group": "数据库升为主"
         },
         {
           "key": "promote_mysql",
@@ -27,7 +27,38 @@
           "phase": "master_online",
           "guide_ref": "promote_mysql",
           "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/switch__mysql_master.js",
-          "group": "数据库切主"
+          "group": "数据库升为主"
+        },
+        {
+          "key": "open_lsyncd_cron",
+          "title": "开启 lsyncd 定时同步",
+          "desc": "开启 [勿删]lsyncd实时任务定时同步。",
+          "stage": "计划任务",
+          "phase": "master_online",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" enabled",
+          "group": "文件同步开启"
+        },
+        {
+          "key": "enable_rsyncd_tasks",
+          "title": "启用 rsyncd 同步任务",
+          "desc": "批量调整 rsyncd 任务为 enabled。",
+          "stage": "同步服务",
+          "phase": "master_online",
+          "guide_ref": "rsyncd_tasks",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py enabled",
+          "group": "文件同步开启"
+        },
+        {
+          "key": "restart_lsyncd",
+          "title": "启动 lsyncd 服务",
+          "desc": "执行 systemctl restart lsyncd。",
+          "stage": "同步服务",
+          "phase": "master_online",
+          "guide_ref": "lsyncd",
+          "code": "systemctl restart lsyncd",
+          "group": "文件同步开启"
         },
         {
           "key": "authorized_key_off",
@@ -117,28 +148,6 @@
           "group": "备份策略调整"
         },
         {
-          "key": "open_lsyncd_cron",
-          "title": "开启 lsyncd 定时同步",
-          "desc": "开启 [勿删]lsyncd实时任务定时同步。",
-          "stage": "计划任务",
-          "phase": "master_online",
-          "guide_ref": "cron",
-          "log_done": "计划任务调整完成",
-          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" enabled",
-          "group": "文件同步开启"
-        },
-        {
-          "key": "open_cert_cron",
-          "title": "开启证书续签任务",
-          "desc": "开启 [勿删]续签Let's Encrypt证书。",
-          "stage": "计划任务",
-          "phase": "master_online",
-          "guide_ref": "cron",
-          "log_done": "计划任务调整完成",
-          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" enabled",
-          "group": "计划任务调整"
-        },
-        {
           "key": "close_site_restore",
           "title": "关闭网站配置恢复",
           "desc": "关闭 恢复网站配置[所有]。",
@@ -161,47 +170,15 @@
           "group": "计划任务调整"
         },
         {
-          "key": "open_ssl_notify",
-          "title": "开启 SSL 到期提醒",
-          "desc": "对应旧脚本：setNotifyValue {ssl_cert:14}。",
-          "stage": "通知策略",
+          "key": "open_cert_cron",
+          "title": "开启证书续签任务",
+          "desc": "开启 [勿删]续签Let's Encrypt证书。",
+          "stage": "计划任务",
           "phase": "master_online",
-          "guide_ref": "notify",
-          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert 14",
-          "group": "通知规则调整"
-        },
-        {
-          "key": "enable_rsyncd_tasks",
-          "title": "启用 rsyncd 同步任务",
-          "desc": "批量调整 rsyncd 任务为 enabled。",
-          "stage": "同步服务",
-          "phase": "master_online",
-          "guide_ref": "rsyncd_tasks",
-          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py enabled",
-          "group": "文件同步开启"
-        },
-        {
-          "key": "restart_lsyncd",
-          "title": "启动 lsyncd 服务",
-          "desc": "执行 systemctl restart lsyncd。",
-          "stage": "同步服务",
-          "phase": "master_online",
-          "guide_ref": "lsyncd",
-          "code": "systemctl restart lsyncd",
-          "group": "文件同步开启"
-        },
-        {
-          "key": "master_openresty",
-          "title": "启动 OpenResty",
-          "desc": "解除 mask、启用自启动、启动 OpenResty，并停止系统 nginx 冲突。",
-          "stage": "Web 服务",
-          "phase": "master_online",
-          "guide_ref": "openresty",
-          "effect": "external_open",
-          "undo_effect": "external_closed",
-          "log_done": "已切入主机策略",
-          "code": "systemctl unmask openresty\nsystemctl enable openresty\nsystemctl start openresty\nsystemctl stop nginx || true",
-          "group": "打开 OpenResty"
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" enabled",
+          "group": "计划任务调整"
         },
         {
           "key": "open_email_notify",
@@ -234,14 +211,27 @@
           "group": "通知规则调整"
         },
         {
-          "key": "switch_zenlayer",
-          "title": "切换 Zenlayer",
-          "desc": "请确认 Zenlayer 入口流量已经切换到当前机器。",
-          "stage": "入口切换",
+          "key": "open_ssl_notify",
+          "title": "开启 SSL 到期提醒",
+          "desc": "对应旧脚本：setNotifyValue {ssl_cert:14}。",
+          "stage": "通知策略",
           "phase": "master_online",
-          "group": "切换 Zenlayer",
-          "guide_ref": "zenlayer",
-          "code": "# 请在 Zenlayer 控制台确认入口流量已切换到当前机器\n# 确认完成后执行当前步骤"
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert 14",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "master_openresty",
+          "title": "启动 OpenResty",
+          "desc": "解除 mask、启用自启动、启动 OpenResty，并停止系统 nginx 冲突。",
+          "stage": "Web 服务",
+          "phase": "master_online",
+          "guide_ref": "openresty",
+          "effect": "external_open",
+          "undo_effect": "external_closed",
+          "log_done": "已切入主机策略",
+          "code": "systemctl unmask openresty\nsystemctl enable openresty\nsystemctl start openresty\nsystemctl stop nginx || true",
+          "group": "打开 OpenResty"
         },
         {
           "key": "role_master",
@@ -300,6 +290,47 @@
           "group": "数据库降从"
         },
         {
+          "key": "disable_rsyncd_tasks",
+          "title": "停用 rsyncd 同步任务",
+          "desc": "批量调整 rsyncd 任务为 disabled。",
+          "stage": "同步服务",
+          "phase": "standby_offline",
+          "guide_ref": "rsyncd_tasks",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py disabled",
+          "group": "文件同步关闭"
+        },
+        {
+          "key": "stop_lsyncd",
+          "title": "停止 lsyncd 服务",
+          "desc": "执行 systemctl stop lsyncd。",
+          "stage": "同步服务",
+          "phase": "standby_offline",
+          "guide_ref": "lsyncd",
+          "code": "systemctl stop lsyncd",
+          "group": "文件同步关闭"
+        },
+        {
+          "key": "kill_rsync",
+          "title": "清理 rsync 进程",
+          "desc": "清理残留 /bin/rsync 进程。",
+          "stage": "同步服务",
+          "phase": "standby_offline",
+          "guide_ref": "lsyncd",
+          "code": "pkill -f /bin/rsync || true",
+          "group": "文件同步关闭"
+        },
+        {
+          "key": "close_lsyncd_cron",
+          "title": "关闭 lsyncd 定时同步",
+          "desc": "关闭 [勿删]lsyncd实时任务定时同步。",
+          "stage": "计划任务",
+          "phase": "standby_offline",
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" disabled",
+          "group": "文件同步关闭"
+        },
+        {
           "key": "close_mysql_notify",
           "title": "关闭主从同步异常提醒",
           "desc": "对应旧脚本：closeMysqlSlaveNotify。",
@@ -307,6 +338,26 @@
           "phase": "standby_offline",
           "guide_ref": "notify",
           "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeMysqlSlaveNotify.js",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "close_rsync_notify",
+          "title": "关闭 Rsync 状态异常提醒",
+          "desc": "对应旧脚本：closeRsyncStatusNotify。",
+          "stage": "通知策略",
+          "phase": "standby_offline",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeRsyncStatusNotify.js",
+          "group": "通知规则调整"
+        },
+        {
+          "key": "close_ssl_notify",
+          "title": "关闭 SSL 到期提醒",
+          "desc": "对应旧脚本：setNotifyValue {ssl_cert:-1}。",
+          "stage": "通知策略",
+          "phase": "standby_offline",
+          "guide_ref": "notify",
+          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert -1",
           "group": "通知规则调整"
         },
         {
@@ -397,28 +448,6 @@
           "group": "备份策略调整"
         },
         {
-          "key": "close_lsyncd_cron",
-          "title": "关闭 lsyncd 定时同步",
-          "desc": "关闭 [勿删]lsyncd实时任务定时同步。",
-          "stage": "计划任务",
-          "phase": "standby_offline",
-          "guide_ref": "cron",
-          "log_done": "计划任务调整完成",
-          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]lsyncd实时任务定时同步\" disabled",
-          "group": "文件同步关闭"
-        },
-        {
-          "key": "close_cert_cron",
-          "title": "关闭证书续签任务",
-          "desc": "关闭 [勿删]续签Let's Encrypt证书。",
-          "stage": "计划任务",
-          "phase": "standby_offline",
-          "guide_ref": "cron",
-          "log_done": "计划任务调整完成",
-          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" disabled",
-          "group": "计划任务调整"
-        },
-        {
           "key": "open_site_restore",
           "title": "开启网站配置恢复",
           "desc": "开启 恢复网站配置[所有]。",
@@ -441,54 +470,15 @@
           "group": "计划任务调整"
         },
         {
-          "key": "close_ssl_notify",
-          "title": "关闭 SSL 到期提醒",
-          "desc": "对应旧脚本：setNotifyValue {ssl_cert:-1}。",
-          "stage": "通知策略",
+          "key": "close_cert_cron",
+          "title": "关闭证书续签任务",
+          "desc": "关闭 [勿删]续签Let's Encrypt证书。",
+          "stage": "计划任务",
           "phase": "standby_offline",
-          "guide_ref": "notify",
-          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/setNotifyValue.js ssl_cert -1",
-          "group": "通知规则调整"
-        },
-        {
-          "key": "close_rsync_notify",
-          "title": "关闭 Rsync 状态异常提醒",
-          "desc": "对应旧脚本：closeRsyncStatusNotify。",
-          "stage": "通知策略",
-          "phase": "standby_offline",
-          "guide_ref": "notify",
-          "code": "node /www/server/jh-panel/plugins/ha_manager_local/scripts/closeRsyncStatusNotify.js",
-          "group": "通知规则调整"
-        },
-        {
-          "key": "disable_rsyncd_tasks",
-          "title": "停用 rsyncd 同步任务",
-          "desc": "批量调整 rsyncd 任务为 disabled。",
-          "stage": "同步服务",
-          "phase": "standby_offline",
-          "guide_ref": "rsyncd_tasks",
-          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_rsyncd_tasks.py disabled",
-          "group": "文件同步关闭"
-        },
-        {
-          "key": "stop_lsyncd",
-          "title": "停止 lsyncd 服务",
-          "desc": "执行 systemctl stop lsyncd。",
-          "stage": "同步服务",
-          "phase": "standby_offline",
-          "guide_ref": "lsyncd",
-          "code": "systemctl stop lsyncd",
-          "group": "文件同步关闭"
-        },
-        {
-          "key": "kill_rsync",
-          "title": "清理 rsync 进程",
-          "desc": "清理残留 /bin/rsync 进程。",
-          "stage": "同步服务",
-          "phase": "standby_offline",
-          "guide_ref": "lsyncd",
-          "code": "pkill -f /bin/rsync || true",
-          "group": "文件同步关闭"
+          "guide_ref": "cron",
+          "log_done": "计划任务调整完成",
+          "code": "btpython /www/server/jh-panel/plugins/ha_manager_local/scripts/set_cron_status.py \"[勿删]续签Let's Encrypt证书\" disabled",
+          "group": "计划任务调整"
         },
         {
           "key": "role_standby",
@@ -764,10 +754,6 @@
           "cmd": "systemctl status lsyncd --no-pager"
         }
       ]
-    },
-    "zenlayer": {
-      "text": "Zenlayer 切换需要确认入口流量已经指向当前机器。\n如果尚未接入自动接口，请先到 Zenlayer 控制台完成切换，再回到这里确认当前步骤。",
-      "commands": []
     }
   }
 }

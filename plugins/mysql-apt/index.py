@@ -259,6 +259,16 @@ def getSocketFile():
     return tmp.groups()[0].strip()
 
 
+def formatInitSlaveError(step, detail='', data=None):
+    msg = '初始化主从同步失败：' + step
+    detail = str(detail or '').strip()
+    if detail:
+        if len(detail) > 1200:
+            detail = detail[:1200] + '...'
+        msg += '；详细信息：' + detail
+    return mw.returnJson(False, msg, data)
+
+
 def getMysqlTerminalCmd(version=''):
     mysql_bin = getServerDir() + '/bin/usr/bin/mysql'
     if not os.path.exists(mysql_bin):
@@ -2712,10 +2722,13 @@ def initSlaveStatus(version=''):
       if len(dlist) > 0:
         return mw.returnJson(False, '已经初始化好了zz...')
     except Exception as e:
-        return mw.returnJson(False, '主从状态异常，请尝试手动修复主从状态...')
+        return formatInitSlaveError('读取本机从库状态异常', e)
 
-    conn = pSqliteDb('slave_id_rsa')
-    data = conn.field('ip,port,id_rsa').find()
+    try:
+        conn = pSqliteDb('slave_id_rsa')
+        data = conn.field('ip,port,id_rsa').find()
+    except Exception as e:
+        return formatInitSlaveError('读取[主]SSH配置异常', e)
 
     if len(data) < 1:
         return mw.returnJson(False, '需要先配置【[主]SSH配置】!')
@@ -2725,29 +2738,50 @@ def initSlaveStatus(version=''):
     id_rsa = data['id_rsa']
 
     ssh_client = master_ssh_client()
+    step = 'SSH连接[主]服务器'
     try:
         ssh = ssh_client.connect(ip, master_port, id_rsa)
 
         # todo 修复使用指定账号
+        step = '在[主]服务器获取同步账户命令'
         cmd = 'cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py get_master_rep_slave_user_cmd {"username":"","db":""}'
         # print("cmd", cmd)
         stdin, stdout, stderr = ssh.exec_command(cmd)
         result = stdout.read()
+        err_result = stderr.read().decode('utf-8', 'ignore').strip()
+        exit_status = stdout.channel.recv_exit_status()
         # print("result", result)
-        result = result.decode('utf-8')
+        result = result.decode('utf-8', 'ignore').strip()
         # print("result", result)
-        cmd_data = json.loads(result)
+        if exit_status != 0:
+            detail = err_result or result or ('退出码: ' + str(exit_status))
+            return formatInitSlaveError('[主]执行同步账户命令异常', detail, {'cmd': cmd, 'exit_status': exit_status})
+        if result == '':
+            detail = err_result or ('命令: ' + cmd)
+            return formatInitSlaveError('[主]执行同步账户命令无返回', detail, {'cmd': cmd, 'stderr': err_result})
+        try:
+            cmd_data = json.loads(result)
+        except Exception as e:
+            detail = '{}；返回内容：{}'.format(e, result)
+            if err_result:
+                detail += '；错误输出：' + err_result
+            return formatInitSlaveError('[主]返回内容不是有效JSON', detail, {'cmd': cmd, 'output': result, 'stderr': err_result})
+
+        if not isinstance(cmd_data, dict) or 'status' not in cmd_data:
+            return formatInitSlaveError('[主]返回内容格式异常', result, {'cmd': cmd, 'output': result})
 
         if not cmd_data['status']:
-            return mw.returnJson(False, '[主]:' + cmd_data['msg'])
+            return formatInitSlaveError('[主]获取同步账户失败', cmd_data.get('msg', ''), cmd_data)
 
         local_mode = recognizeDbMode()
         if local_mode != cmd_data['data']['mode']:
             return mw.returnJson(False, '主【{}】从【{}】,运行模式不一致!'.format(cmd_data['data']['mode'], local_mode))
 
+        step = '保存同步账户信息'
         u = cmd_data['data']['info']
         ps = u['username'] + "|" + u['password']
         conn.where('ip=?', (ip,)).setField('ps', ps)
+        step = '停止本机Slave'
         db.query('stop slave')
 
         # 保证同步IP一致
@@ -2770,22 +2804,27 @@ def initSlaveStatus(version=''):
             gtid_purged = gtid_purged.replace('：', ':')
             # print(gtid_purged)
             # 使用 reset master 清空 GTID_EXECUTED，否则 gtid_purged 设置会报错
+            step = '重置本机GTID'
             db.query("RESET MASTER")
             db.query("RESET SLAVE ALL")
             db.query("SET GLOBAL gtid_purged='" + gtid_purged + "'")
         # print('cmd', cmd)
+        step = '设置本机主从同步命令'
         db.query(cmd)
+        step = '启动本机Slave'
         db.query("start slave user='{}' password='{}';".format(
             u['username'], u['password']))
         
         # 开始只读
+        step = '开启本机只读模式'
         db.query('SET GLOBAL read_only = on')
         db.query('SET GLOBAL super_read_only = on')
         mw.execShell(f'source {getPluginDir()}/readonly.sh && enable_readonly')
 
     except Exception as e:
-        return mw.returnJson(False, 'SSH认证配置连接失败!' + str(e))
-    ssh_client.close()
+        return formatInitSlaveError(step, e, {'ip': ip, 'port': master_port})
+    finally:
+        ssh_client.close()
     return mw.returnJson(True, '初始化成功!')
 
 def setDbReadOnly(version=''):

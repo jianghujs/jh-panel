@@ -2623,7 +2623,7 @@ def checkSlaveStatus(version=''):
     if not isinstance(dlist, list):
         return mw.returnJson(False, '获取从库状态失败: 返回数据格式异常', {'data': []})
     if len(dlist) == 0:
-        return mw.returnJson(False, '未检测到从库状态，请确认 init_slave_status 是否已经建立主从；可能需要通过脚本库“修复主从”脚本修复主从状态。', {'data': []})
+        return mw.returnJson(False, '未检测到从库状态，请确认 init_slave_status 是否已经建立主从；可通过脚本库“修复主从”脚本修复主从状态。', {'data': []})
 
     ret = []
     bad = []
@@ -2652,7 +2652,7 @@ def checkSlaveStatus(version=''):
             bad.append('主库 {0}:{1} IO={2} SQL={3} 错误={4}'.format(host, port, io_running or '-', sql_running or '-', error_msg))
 
     if bad:
-        return mw.returnJson(False, '主从状态异常：{0}；可能需要通过脚本库“修复主从”脚本修复主从状态。'.format('；'.join(bad[:3])), {'data': ret})
+        return mw.returnJson(False, '主从状态异常：{0}；修复建议：通过脚本库“修复主从”脚本修复主从状态。'.format('；'.join(bad[:3])), {'data': ret})
 
     return mw.returnJson(True, '主从状态正常', {'data': ret})
 

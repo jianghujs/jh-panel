@@ -291,7 +291,16 @@ def _format_failed_output(output_lines):
         if isinstance(data, dict):
             msg = str(data.get('msg') or '').strip()
             if msg:
-                return '异常原因：' + msg
+                repair = ''
+                for flag in ('修复建议：', '修复建议：'):
+                    if flag in msg:
+                        msg, repair = msg.split(flag, 1)
+                        repair = '修复建议' + repair
+                        break
+                result = '异常原因：' + msg.strip()
+                if repair:
+                    result += '\n修复建议：' + repair.strip()
+                return result
             return mw.getJson(data)
         return line
 

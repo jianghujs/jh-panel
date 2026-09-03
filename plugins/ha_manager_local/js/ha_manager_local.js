@@ -248,7 +248,8 @@ function hmlTipHtml(value) {
     if (index <= 0) return '<div class="hml-tip-line hml-tip-plain">' + hmlHtml(line) + '</div>';
     var label = line.slice(0, index);
     var valueText = line.slice(index + (line.charAt(index) === ':' ? 2 : 1));
-    return '<div class="hml-tip-line"><span class="hml-tip-label">' + hmlHtml(label) + '</span><span class="hml-tip-value">' + hmlHtml(valueText) + '</span></div>';
+    var valueClass = label === '异常原因' ? 'hml-tip-value hml-tip-value-error' : 'hml-tip-value';
+    return '<div class="hml-tip-line"><span class="hml-tip-label">' + hmlHtml(label) + '</span><span class="' + valueClass + '">' + hmlHtml(valueText) + '</span></div>';
   }).join('');
 }
 

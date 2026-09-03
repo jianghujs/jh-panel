@@ -291,11 +291,11 @@ def _format_failed_output(output_lines):
         if isinstance(data, dict):
             msg = str(data.get('msg') or '').strip()
             if msg:
-                return msg
+                return msg.replace('；', '\n')
             return mw.getJson(data)
         return line
 
-    return '；'.join(lines[-10:])
+    return '\n'.join(lines[-10:])
 
 
 def _read_logs(limit=200):

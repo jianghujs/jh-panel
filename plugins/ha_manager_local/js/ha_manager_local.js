@@ -333,6 +333,31 @@ function hmlExternalServiceButtonClass() {
   return hmlExternalServiceNormal(nextExternalClosed) ? 'btn-success' : 'btn-danger';
 }
 
+function hmlOpenRoleCorrectDialog() {
+  var selectedRole = hmlState.role === 'master' ? 'master' : 'standby';
+  var html = '<div class="hml-role-correct-dialog" style="padding:18px 22px;line-height:28px;">' +
+    '<label style="margin-right:24px;font-weight:normal;"><input type="radio" name="hml_correct_role" value="master"' + (selectedRole === 'master' ? ' checked' : '') + '> 主</label>' +
+    '<label style="font-weight:normal;"><input type="radio" name="hml_correct_role" value="standby"' + (selectedRole === 'standby' ? ' checked' : '') + '> 备</label>' +
+  '</div>';
+  layer.open({
+    type: 1,
+    title: '校正主备状态',
+    area: ['320px', '170px'],
+    content: html,
+    btn: ['确定', '取消'],
+    yes: function(index, layero) {
+      var role = layero.find('input[name="hml_correct_role"]:checked').val();
+      var text = role === 'master' ? '主' : '备';
+      hmlPost('set_role', {role: role}, function(next) {
+        hmlState = $.extend(true, hmlState, next);
+        layer.close(index);
+        layer.msg('主备状态已校正为' + text, {icon: 1});
+        hmlRenderOverview();
+      });
+    }
+  });
+}
+
 function hmlRenderOverview() {
   var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
   var externalNormal = hmlExternalServiceNormal(hmlState.external_closed);
@@ -344,10 +369,11 @@ function hmlRenderOverview() {
   var demoteTitle = demoteDisabled ? '当前已是备' : '将当前机器从主切换为备';
   var promoteBtn = '<button class="btn ' + (promoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'master\')" title="' + promoteTitle + '"' + (promoteDisabled ? ' disabled' : '') + '>备-&gt;主</button>';
   var demoteBtn = '<button class="btn ' + (demoteDisabled ? 'btn-default' : 'btn-success') + ' btn-sm" onclick="hmlOpenSwitchDialog(\'standby\')" title="' + demoteTitle + '"' + (demoteDisabled ? ' disabled' : '') + '>主-&gt;备</button>';
+  var roleCorrection = '<a href="javascript:;" class="hml-role-correct" onclick="hmlOpenRoleCorrectDialog()">校正</a>';
   var html = '<div class="hml-topbar"><div><div class="hml-title">主备管理</div><div class="hml-sub">查看本机主备状态，必要时执行升主、降从与对外服务控制。</div></div><div class="hml-actions">' + promoteBtn + demoteBtn + '<button class="btn ' + hmlExternalServiceButtonClass() + ' btn-sm" onclick="hmlToggleExternalService()">' + hmlHtml(hmlExternalServiceButtonText()) + '</button><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">重新自检</button></div></div>' +
     '<div class="hml-panel"><div class="hml-panel-body">' +
       '<table class="table table-hover hml-overview-table"><tbody>' +
-        '<tr><th>当前主备状态</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleShortText(hmlState.role)) + '</td></tr>' +
+        '<tr><th>当前主备状态</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleShortText(hmlState.role)) + roleCorrection + '</td></tr>' +
         '<tr><th>对外服务</th><td>' + hmlPill(externalNormal ? 'ok' : 'bad', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
         '<tr><th>自检状态</th><td>' + hmlPill(failedChecks ? 'bad' : 'ok', failedChecks ? '有异常' : '正常') + '<span class="hml-overview-note">异常项 ' + failedChecks + ' 个</span></td></tr>' +
         '<tr><th>云监控</th><td>' + (monitorConfigured ? hmlPill(monitorEnabled ? 'ok' : 'warn', monitorEnabled ? '已启用' : '未启用') : hmlPill('warn', '未配置')) + '<span class="hml-overview-note">' + hmlHtml(monitorEnabled ? '最近上报：' + (hmlState.last_report_at || '未上报') : (monitorConfigured ? '已配置地址，但云监控相关功能已关闭' : '未启用云监控相关功能')) + '</span></td></tr>' +

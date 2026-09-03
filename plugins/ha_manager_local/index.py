@@ -1044,6 +1044,19 @@ def health_check():
     return _return(True, msg, {'checks': checks, 'health_status': status_text, 'health_text': msg, 'external_closed': _external_closed()})
 
 
+def set_role():
+    data = _args()
+    role = str(data.get('role') or '').strip()
+    if role not in ('master', 'standby'):
+        return _return(False, '角色无效')
+    cfg = _write_role(role)
+    cfg['last_action'] = '手动校正主备状态: ' + role
+    _save_config(cfg)
+    state = _state(cfg)
+    _append_log(cfg['last_action'])
+    return _return(True, '主备状态已校正为' + ('主机' if role == 'master' else '备机'), state)
+
+
 def get_step_script():
     data = _args()
     step_key = str(data.get('step_key') or data.get('key') or '').strip()
@@ -1247,6 +1260,8 @@ if __name__ == '__main__':
         print(title_state())
     elif func == 'health_check':
         print(health_check())
+    elif func == 'set_role':
+        print(set_role())
     elif func == 'get_step_script':
         print(get_step_script())
     elif func == 'run_step':

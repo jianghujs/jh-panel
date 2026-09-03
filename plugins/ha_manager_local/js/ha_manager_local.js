@@ -205,8 +205,18 @@ function hmlScrollStepLogToBottomLater() {
 function hmlLoadState(callback) {
   hmlPost('get_state', {}, function(data) {
     hmlState = $.extend(true, hmlState, data);
+    hmlRefreshBrowserTitle();
     if (callback) callback();
   });
+}
+
+function hmlRefreshBrowserTitle() {
+  var titleState = {installed: true, role: hmlState.role, desired_role: hmlState.desired_role, switch_status: hmlState.switch_status};
+  if (typeof applyHaManagerBrowserTitle === 'function') {
+    applyHaManagerBrowserTitle(titleState);
+  } else if (typeof applyHaManagerSshBrowserTitle === 'function') {
+    applyHaManagerSshBrowserTitle(titleState);
+  }
 }
 
 function hmlCloneSteps() {
@@ -866,6 +876,7 @@ function hmlExecuteFlowStep(done, forceRun, scriptContent) {
         hmlApplyStepLogFromResponse(step, data);
       }
       if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      hmlRefreshBrowserTitle();
       if (data.warning_msg) step.warning_msg = data.warning_msg;
       hmlMarkCurrentFlowStep(state, steps, 'done');
       if (!hasFileLog) {
@@ -897,6 +908,7 @@ function hmlExecuteFlowStep(done, forceRun, scriptContent) {
         hmlApplyStepLogFromResponse(step, data);
       }
       if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      hmlRefreshBrowserTitle();
       step.repair_data = data.repair || null;
       step.failure_msg = (res && res.msg) || '步骤执行失败';
       hmlMarkCurrentFlowStep(state, steps, 'failed');
@@ -1185,6 +1197,7 @@ function hmlToggleExternalService() {
   if (hmlState.external_closed) {
     hmlPost('open_external_service', {}, function(data) {
       if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      hmlRefreshBrowserTitle();
       hmlLog('打开对外服务完成：OpenResty 已启动');
       layer.msg('已打开 OpenResty', {icon: 1});
       hmlRender();
@@ -1192,6 +1205,7 @@ function hmlToggleExternalService() {
   } else {
     hmlPost('close_external_service', {}, function(data) {
       if (data.state_snapshot) hmlState = $.extend(true, hmlState, data.state_snapshot);
+      hmlRefreshBrowserTitle();
       hmlLog('关闭对外服务完成：OpenResty 已停止');
       layer.msg('已关闭 OpenResty', {icon: 1});
       hmlRender();
@@ -1233,6 +1247,7 @@ function hmlApplyRole(role) {
       item.status = (role === 'master' && !hmlState.external_closed) || (role === 'standby' && hmlState.external_closed) ? 'pass' : 'fail';
     }
   });
+  hmlRefreshBrowserTitle();
 }
 
 function hmlRunHealthCheck(fix) {

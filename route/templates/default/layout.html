@@ -83,15 +83,15 @@
     </div>
     </div>
 </body>
-<script type="text/javascript" src="/static/app/soft.js?v={{config.version}}"></script>
+<script type="text/javascript" src="/static/app/soft.js?v={{config.version}}_ha202609030100"></script>
 <script type="text/javascript">
 
-window.haManagerSshTitleState = {{data.get('ha_manager_ssh_title_state', {})|tojson}};
-if (typeof applyHaManagerSshBrowserTitle == 'function') {
-    applyHaManagerSshBrowserTitle(window.haManagerSshTitleState);
-}
-if ({{'true' if data.get('ha_manager_ssh_installed') else 'false'}} && typeof refreshHaManagerSshBrowserTitle == 'function') {
-    refreshHaManagerSshBrowserTitle();
+if (typeof initHaManagerBrowserTitle == 'function') {
+    initHaManagerBrowserTitle(
+        {{data.get('ha_manager_title_state', {})|tojson}},
+        {{'true' if data.get('ha_manager_local_installed') else 'false'}},
+        {{'true' if data.get('ha_manager_ssh_installed') else 'false'}}
+    );
 }
 
 indexSoft();

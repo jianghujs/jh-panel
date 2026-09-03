@@ -137,7 +137,19 @@ fi
 
 # 恢复脚本由xtrabackup插件生成，默认末尾会启动MySQL。
 # 这里先移除启动动作，等确认data/mysql已恢复完成后，再由下方统一启动mysql-apt。
-recovery_script=$(printf '%s\n' "$recovery_script" | sed -E '/^[[:space:]]*systemctl[[:space:]]+start[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/d')
+# unzip返回码1通常只是告警，允许继续执行prepare/copy-back；严重错误仍然中断。
+recovery_script=$(printf '%s\n' "$recovery_script" | awk '
+    /^[[:space:]]*systemctl[[:space:]]+start[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/ {next}
+    /^[[:space:]]*unzip[[:space:]]+-d[[:space:]]+/ {
+        print "set +e"
+        print $0
+        print "unzip_status=$?"
+        print "set -e"
+        print "if [ \"$unzip_status\" -gt 1 ]; then exit \"$unzip_status\"; fi"
+        next
+    }
+    {print}
+')
 
 echo "set -e" > $recovery_tmp_file
 echo "pushd /www/server/jh-panel > /dev/null" >> $recovery_tmp_file

@@ -240,6 +240,18 @@ function hmlHtml(value) {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function hmlTipHtml(value) {
+  var lines = String(value || '').replace(/\r\n/g, '\n').split('\n').filter(function(line) { return $.trim(line); });
+  return lines.map(function(line) {
+    var index = line.indexOf('：');
+    if (index < 0) index = line.indexOf(': ');
+    if (index <= 0) return '<div class="hml-tip-line hml-tip-plain">' + hmlHtml(line) + '</div>';
+    var label = line.slice(0, index);
+    var valueText = line.slice(index + (line.charAt(index) === ':' ? 2 : 1));
+    return '<div class="hml-tip-line"><span class="hml-tip-label">' + hmlHtml(label) + '</span><span class="hml-tip-value">' + hmlHtml(valueText) + '</span></div>';
+  }).join('');
+}
+
 function hmlNow() {
   var d = new Date();
   return [d.getHours(), d.getMinutes(), d.getSeconds()].map(function(n) { return n < 10 ? '0' + n : '' + n; }).join(':');
@@ -683,8 +695,8 @@ function hmlRenderFlowDialog(root, state, steps) {
   }
   var html = hmlBuildFlowStageBar(state, steps, activeStep) + '<div class="hml-flow-body"><div class="hml-flow-list">' + list + '</div><div class="hml-flow-detail"><div class="hml-flow-detail-title">' + hmlHtml(current.title) + hmlStepHintHtml(current) + '</div><div class="hml-flow-detail-desc">' + hmlHtml(current.desc) + '</div><div class="hml-flow-stage">阶段：' + hmlHtml(current.stage) + '</div>' +
       (hmlStepRequiredLabel(current) ? '<div class="hml-flow-stage">类型：' + hmlStepRequiredLabel(current) + '</div>' : '') +
-      (current.state === 'failed' && current.failure_msg ? '<div class="hml-tip" style="margin-top:12px;">' + hmlHtml(current.failure_msg) + '</div>' : '') +
-      (current.warning_msg ? '<div class="hml-tip" style="margin-top:12px;">' + hmlHtml(current.warning_msg) + '</div>' : '') +
+      (current.state === 'failed' && current.failure_msg ? '<div class="hml-tip" style="margin-top:12px;">' + hmlTipHtml(current.failure_msg) + '</div>' : '') +
+      (current.warning_msg ? '<div class="hml-tip" style="margin-top:12px;">' + hmlTipHtml(current.warning_msg) + '</div>' : '') +
       '<div class="hml-step-actions">' +
         '<button class="btn btn-success btn-sm" onclick="hmlRunFlowStepWithCode()">执行当前步骤</button>' +
         hmlStepRepairButton(current) +

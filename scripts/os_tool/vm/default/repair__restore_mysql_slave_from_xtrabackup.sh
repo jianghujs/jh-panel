@@ -140,6 +140,26 @@ fi
 # unzip返回码1通常只是告警，允许继续执行prepare/copy-back；严重错误仍然中断。
 recovery_script=$(printf '%s\n' "$recovery_script" | awk '
     /^[[:space:]]*systemctl[[:space:]]+start[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/ {next}
+    /^[[:space:]]*systemctl[[:space:]]+stop[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/ {
+        service = ($0 ~ /mysql-apt/) ? "mysql-apt" : "mysql"
+        print $0
+        print "for i in $(seq 1 30); do"
+        print "    if ! systemctl is-active --quiet " service "; then break; fi"
+        print "    sleep 1"
+        print "done"
+        print "if systemctl is-active --quiet " service "; then echo \"错误:" service "未停止，已中断恢复，避免恢复过程中启动MySQL\"; exit 1; fi"
+        next
+    }
+    /^[[:space:]]*mv[[:space:]]+\/www\/server\/(mysql-apt|mysql)\/data[[:space:]]+/ {
+        datadir = ($0 ~ /\/www\/server\/mysql-apt\/data/) ? "/www/server/mysql-apt/data" : "/www/server/mysql/data"
+        print $0
+        print "if [ -e \"" datadir "\" ]; then"
+        print "    echo \"|- 清理copy-back目标目录：" datadir "\""
+        print "    rm -rf \"" datadir "\""
+        print "fi"
+        print "mkdir -p \"" datadir "\""
+        next
+    }
     /^[[:space:]]*unzip[[:space:]]+-d[[:space:]]+/ {
         print "set +e"
         print $0

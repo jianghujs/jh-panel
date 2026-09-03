@@ -143,6 +143,9 @@ recovery_script=$(printf '%s\n' "$recovery_script" | awk '
     /^[[:space:]]*systemctl[[:space:]]+stop[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/ {
         next
     }
+    /^[[:space:]]*python3[[:space:]]+\/www\/server\/jh-panel\/scripts\/clean\.py[[:space:]]+\$LOG_DIR([[:space:]]|$)/ {
+        next
+    }
     /^[[:space:]]*mv[[:space:]]+\/www\/server\/(mysql-apt|mysql)\/data[[:space:]]+/ {
         datadir = ($0 ~ /\/www\/server\/mysql-apt\/data/) ? "/www/server/mysql-apt/data" : "/www/server/mysql/data"
         print "RESTORE_MYSQL_DATA_DIR=\"" datadir "\""

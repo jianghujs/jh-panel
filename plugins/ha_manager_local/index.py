@@ -188,11 +188,7 @@ def _config(save_missing=True):
 
 def _write_panel_title_state(cfg):
     data = {
-        'installed': True,
         'role': cfg.get('role') or 'standby',
-        'desired_role': cfg.get('desired_role') or cfg.get('role') or 'standby',
-        'switch_status': cfg.get('switch_status') or 'idle',
-        'host_name': cfg.get('host_name') or _panel_title(),
         'updated_at': _now()
     }
     parent = os.path.dirname(PANEL_TITLE_STATE_PATH)
@@ -232,6 +228,24 @@ def _append_step_log(run_id, text):
 def _read_step_log(run_id):
     path = _step_log_path(run_id)
     if not os.path.exists(path):
+        return ''
+    with open(path, 'r', encoding='utf-8', errors='replace') as fp:
+        return fp.read()[-200000:]
+
+
+def _safe_step_log_path(log_path):
+    if not log_path:
+        return ''
+    base = os.path.realpath(STEP_LOG_DIR) + os.sep
+    path = os.path.realpath(str(log_path))
+    if not path.startswith(base):
+        return ''
+    return path
+
+
+def _read_step_log_by_path(log_path):
+    path = _safe_step_log_path(log_path)
+    if not path or not os.path.exists(path):
         return ''
     with open(path, 'r', encoding='utf-8', errors='replace') as fp:
         return fp.read()[-200000:]
@@ -758,10 +772,18 @@ def _step_state():
     return data if isinstance(data, dict) else {}
 
 
-def _save_step_result(target_role, step_key, status, logs='', msg='', warning_msg=''):
+def _save_step_result(target_role, step_key, status, run_id='', msg='', warning_msg=''):
     data = _step_state()
     flow = data.setdefault(target_role, {})
-    flow[step_key] = {'state': status, 'logs': _split_lines(logs)[-400:], 'msg': msg, 'warning_msg': warning_msg, 'updated_at': _now()}
+    run_id = str(run_id or '').strip()
+    flow[step_key] = {
+        'state': status,
+        'run_id': run_id,
+        'log_path': _step_log_path(run_id) if run_id else '',
+        'msg': msg,
+        'warning_msg': warning_msg,
+        'updated_at': _now()
+    }
     _write_json(STEP_STATE_PATH, data)
 
 
@@ -773,8 +795,11 @@ def _step_list(target_role):
     for step in steps:
         item = step.copy()
         state = saved.get(item.get('key')) or {}
+        run_id = state.get('run_id') or ''
         item['state'] = state.get('state') or 'pending'
-        item['logs'] = state.get('logs') or []
+        item['run_id'] = run_id
+        item['log_path'] = state.get('log_path') or (_step_log_path(run_id) if run_id else '')
+        item['logs'] = _step_log_lines(run_id) if run_id else []
         item['failure_msg'] = state.get('msg') or ''
         item['warning_msg'] = state.get('warning_msg') or ''
         result.append(item)
@@ -1033,7 +1058,7 @@ def run_step():
             start_logs.append('|- 实际执行脚本: 前端提交脚本内容')
             start_logs.append('|- 前端提交脚本长度: {0} 字符'.format(len(script_content)))
         _overwrite_step_log_lines(run_id, start_logs)
-        _save_step_result(target_role, step_key, 'running', start_logs, '')
+        _save_step_result(target_role, step_key, 'running', run_id, '')
         if script_content:
             _run_script_content(script_content, step_meta.get('title') or step_key, run_id)
         else:
@@ -1042,7 +1067,7 @@ def run_step():
         _append_step_log(run_id, '|- 步骤执行完成')
         done_logs = _step_log_lines(run_id)
         warning_msg = _step_warning_msg(step_key, target_role, done_logs)
-        _save_step_result(target_role, step_key, 'done', done_logs, '', warning_msg)
+        _save_step_result(target_role, step_key, 'done', run_id, '', warning_msg)
         cfg = _config()
         cfg['desired_role'] = target_role
         cfg['switch_status'] = 'idle'
@@ -1066,7 +1091,7 @@ def run_step():
             _append_step_log(run_id, '|- 自检异常不阻断流程，允许继续完成')
             done_logs = _step_log_lines(run_id)
             warning_msg = _step_warning_msg(step_key, target_role, done_logs) or (msg + '；可以继续下一步。')
-            _save_step_result(target_role, step_key, 'done', done_logs, '', warning_msg)
+            _save_step_result(target_role, step_key, 'done', run_id, '', warning_msg)
             cfg = _config()
             cfg['desired_role'] = target_role
             cfg['switch_status'] = 'idle'
@@ -1074,7 +1099,7 @@ def run_step():
             _save_config(cfg)
             _append_log(cfg['last_action'])
             return _return(True, '自检完成，异常不阻断流程', {'state': 'done', 'logs': done_logs, 'log': _read_step_log(run_id), 'run_id': run_id, 'log_path': _step_log_path(run_id), 'warning_msg': warning_msg, 'state_snapshot': _state(cfg)})
-        _save_step_result(target_role, step_key, 'failed', fail_logs, msg)
+        _save_step_result(target_role, step_key, 'failed', run_id, msg)
         cfg = _config()
         cfg['switch_status'] = 'failed'
         cfg['last_action'] = '步骤失败: ' + step_key
@@ -1089,7 +1114,11 @@ def run_step():
 def read_step_log():
     data = _args()
     run_id = data.get('run_id') or data.get('step_run_id') or ''
-    return _return(True, 'ok', {'run_id': run_id, 'log': _read_step_log(run_id), 'log_path': _step_log_path(run_id)})
+    log_path = data.get('log_path') or ''
+    if run_id:
+        return _return(True, 'ok', {'run_id': run_id, 'log': _read_step_log(run_id), 'log_path': _step_log_path(run_id)})
+    safe_log_path = _safe_step_log_path(log_path)
+    return _return(True, 'ok', {'run_id': '', 'log': _read_step_log_by_path(log_path), 'log_path': safe_log_path})
 
 
 def _repair_guidance(target_role, step_key, msg):

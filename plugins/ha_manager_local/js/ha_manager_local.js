@@ -156,13 +156,20 @@ function hmlStopStepLogPolling() {
   }
 }
 
-function hmlReadStepLog(runId, callback) {
-  if (!runId) return;
-  hmlPost('read_step_log', {run_id: runId}, function(data) {
+function hmlReadStepLog(runId, callback, logPath) {
+  if (!runId && !logPath) return;
+  hmlPost('read_step_log', {run_id: runId || '', log_path: logPath || ''}, function(data) {
     if (callback) callback(data || {});
   }, function() {
     if (callback) callback({log: ''});
   });
+}
+
+function hmlEnsureStepLogLoaded(step) {
+  if (!step || (step.logs && step.logs.length) || (!step.run_id && !step.log_path)) return;
+  hmlReadStepLog(step.run_id || '', function(logData) {
+    hmlSetStepLogFromFile(step, logData);
+  }, step.log_path || '');
 }
 
 function hmlApplyStepLogFromResponse(step, data) {
@@ -211,7 +218,7 @@ function hmlLoadState(callback) {
 }
 
 function hmlRefreshBrowserTitle() {
-  var titleState = {installed: true, role: hmlState.role, desired_role: hmlState.desired_role, switch_status: hmlState.switch_status};
+  var titleState = {role: hmlState.role};
   if (typeof applyHaManagerBrowserTitle === 'function') {
     applyHaManagerBrowserTitle(titleState);
   } else if (typeof applyHaManagerSshBrowserTitle === 'function') {
@@ -471,6 +478,8 @@ function hmlCloneStepsFromConfig(role, fresh) {
     return $.extend(true, {}, item, {
       state: saved.state || item.state || 'pending',
       logs: saved.logs || item.logs || [],
+      run_id: saved.run_id || item.run_id || '',
+      log_path: saved.log_path || item.log_path || '',
       failure_msg: saved.msg || item.failure_msg || '',
       warning_msg: saved.warning_msg || item.warning_msg || ''
     });
@@ -649,6 +658,7 @@ function hmlRenderFlowDialog(root, state, steps) {
   }
   var activeStep = state.active_step < 0 ? 0 : state.active_step;
   var current = steps[activeStep] || steps[steps.length - 1];
+  hmlEnsureStepLogLoaded(current);
   var previousScrollTop = state.list_scroll_top || 0;
   var currentIsGuide = current && current.guide;
   var list = hmlRenderFlowGroupList(state, steps, activeStep);

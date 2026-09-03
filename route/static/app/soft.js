@@ -40,8 +40,8 @@ function softMain(name, title, version) {
 }
 
 function haManagerTitleText(state) {
-    if (!state || !state.installed) return '';
-    var role = state.switch_status === 'running' || state.switch_status === 'waiting_online' ? '切换中' : (state.role === 'master' ? '主' : state.role === 'standby' ? '备' : '未知');
+    if (!state || !state.role) return '';
+    var role = state.role === 'master' ? '主' : state.role === 'standby' ? '备' : '未知';
     return '[' + role + ']';
 }
 
@@ -88,6 +88,11 @@ function refreshHaManagerSshBrowserTitle() {
 }
 
 function initHaManagerBrowserTitle(titleState, localInstalled, sshInstalled) {
+    if (!localInstalled && !sshInstalled) {
+        window.haManagerTitleState = {};
+        applyHaManagerBrowserTitle({});
+        return;
+    }
     window.haManagerTitleState = titleState || {};
     applyHaManagerBrowserTitle(window.haManagerTitleState);
     if (localInstalled) {

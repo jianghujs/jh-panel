@@ -203,11 +203,7 @@ def get_coordination_state():
 
 def _write_panel_title_state(cfg):
     data = {
-        'installed': True,
         'role': cfg.get('role') or 'unknown',
-        'desired_role': cfg.get('desired_role') or cfg.get('role') or 'unknown',
-        'switch_status': cfg.get('switch_status') or 'idle',
-        'host_name': cfg.get('host_name') or _panel_title(),
         'updated_at': _now()
     }
     parent = os.path.dirname(PANEL_TITLE_STATE_PATH)

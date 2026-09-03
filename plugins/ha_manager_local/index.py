@@ -276,6 +276,28 @@ def _split_lines(text):
     return [line.rstrip('\n') for line in str(text).splitlines() if str(line).strip()]
 
 
+def _format_failed_output(output_lines):
+    lines = [str(line or '').strip() for line in (output_lines or []) if str(line or '').strip()]
+    if not lines:
+        return '无输出'
+
+    for line in reversed(lines):
+        if not line.startswith('{'):
+            continue
+        try:
+            data = json.loads(line)
+        except Exception:
+            return line
+        if isinstance(data, dict):
+            msg = str(data.get('msg') or '').strip()
+            if msg:
+                return msg
+            return mw.getJson(data)
+        return line
+
+    return '；'.join(lines[-10:])
+
+
 def _read_logs(limit=200):
     if not os.path.exists(ACTION_LOG_PATH):
         return []
@@ -501,12 +523,12 @@ def _run(cmd, title, timeout=1800, required=True):
         if CURRENT_STEP_RUN_ID:
             _append_step_log(CURRENT_STEP_RUN_ID, timeout_line)
     if code != 0 and required:
-        tail = '；'.join((output_lines or ['无输出'])[-10:])
+        error_detail = _format_failed_output(output_lines)
         exit_line = '|- exit_code: {0}'.format(code)
         log.append(exit_line)
         if CURRENT_STEP_RUN_ID:
             _append_step_log(CURRENT_STEP_RUN_ID, exit_line)
-        raise StepCommandError('{0} 失败 exit_code={1}: {2}'.format(title, code, tail[-1000:]), log)
+        raise StepCommandError('{0} 失败 exit_code={1}: {2}'.format(title, code, error_detail[-1500:]), log)
     if code != 0:
         exit_line = '|- 已忽略非关键失败 exit_code={0}'.format(code)
     else:

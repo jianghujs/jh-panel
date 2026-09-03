@@ -96,6 +96,24 @@ def writeServiceExpectedStatus(expected_status):
     return mw.writeFile(getServiceExpectedStatusFile(), expected_status)
 
 
+def systemdMaskService():
+    if mw.isAppleSystem():
+        return 'ok'
+    result = subprocess.run(['systemctl', 'mask', getPluginName()], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode == 0:
+        return 'ok'
+    return (result.stderr or result.stdout or 'mask失败').strip()
+
+
+def systemdUnmaskService():
+    if mw.isAppleSystem():
+        return 'ok'
+    result = subprocess.run(['systemctl', 'unmask', getPluginName()], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode == 0:
+        return 'ok'
+    return (result.stderr or result.stdout or 'unmask失败').strip()
+
+
 def getSemiSyncPluginDir():
     return getServerDir() + '/bin/usr/lib/mysql/plugin'
 
@@ -616,6 +634,9 @@ def appCMD(version, action):
 
 
 def start(version=''):
+    unmask_ret = systemdUnmaskService()
+    if unmask_ret != 'ok':
+        return unmask_ret
     ret = appCMD(version, 'start')
     if ret == 'ok':
         writeServiceExpectedStatus('start')
@@ -624,10 +645,16 @@ def start(version=''):
 
 def stop(version=''):
     writeServiceExpectedStatus('stop')
-    return appCMD(version, 'stop')
+    ret = appCMD(version, 'stop')
+    if ret != 'ok':
+        return ret
+    return systemdMaskService()
 
 
 def restart(version=''):
+    unmask_ret = systemdUnmaskService()
+    if unmask_ret != 'ok':
+        return unmask_ret
     ret = appCMD(version, 'restart')
     if ret == 'ok':
         writeServiceExpectedStatus('start')

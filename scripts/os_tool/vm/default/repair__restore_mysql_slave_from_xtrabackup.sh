@@ -141,21 +141,15 @@ fi
 recovery_script=$(printf '%s\n' "$recovery_script" | awk '
     /^[[:space:]]*systemctl[[:space:]]+start[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/ {next}
     /^[[:space:]]*systemctl[[:space:]]+stop[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/ {
-        service = ($0 ~ /mysql-apt/) ? "mysql-apt" : "mysql"
-        print $0
-        print "for i in $(seq 1 30); do"
-        print "    if ! systemctl is-active --quiet " service "; then break; fi"
-        print "    sleep 1"
-        print "done"
-        print "if systemctl is-active --quiet " service "; then echo \"错误:" service "未停止，已中断恢复，避免恢复过程中启动MySQL\"; exit 1; fi"
         next
     }
     /^[[:space:]]*mv[[:space:]]+\/www\/server\/(mysql-apt|mysql)\/data[[:space:]]+/ {
         datadir = ($0 ~ /\/www\/server\/mysql-apt\/data/) ? "/www/server/mysql-apt/data" : "/www/server/mysql/data"
+        print "RESTORE_MYSQL_DATA_DIR=\"" datadir "\""
         print $0
         print "if [ -e \"" datadir "\" ]; then"
-        print "    echo \"|- 清理copy-back目标目录：" datadir "\""
-        print "    rm -rf \"" datadir "\""
+        print "    echo \"|- 清理copy-back目标目录内容：" datadir "\""
+        print "    find \"" datadir "\" -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
         print "fi"
         print "mkdir -p \"" datadir "\""
         next
@@ -169,8 +163,69 @@ recovery_script=$(printf '%s\n' "$recovery_script" | awk '
         print "if [ \"$unzip_status\" -gt 1 ]; then echo \"错误:unzip解压失败，返回码：$unzip_status\"; exit \"$unzip_status\"; fi"
         next
     }
+    /^[[:space:]]*xtrabackup[[:space:]].*--copy-back/ {
+        print "if systemctl is-active --quiet mysql-apt 2>/dev/null || systemctl is-active --quiet mysql 2>/dev/null; then"
+        print "    echo \"错误:copy-back前检测到MySQL仍在运行，已中断恢复\""
+        print "    exit 1"
+        print "fi"
+        print "RESTORE_MYSQL_DATA_DIR=${RESTORE_MYSQL_DATA_DIR:-/www/server/mysql-apt/data}"
+        print "mkdir -p \"$RESTORE_MYSQL_DATA_DIR\""
+        print "if find \"$RESTORE_MYSQL_DATA_DIR\" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then"
+        print "    echo \"|- copy-back前清空目标目录内容：$RESTORE_MYSQL_DATA_DIR\""
+        print "    find \"$RESTORE_MYSQL_DATA_DIR\" -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
+        print "fi"
+        print "if find \"$RESTORE_MYSQL_DATA_DIR\" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then"
+        print "    echo \"错误:copy-back目标目录仍非空：$RESTORE_MYSQL_DATA_DIR\""
+        print "    find \"$RESTORE_MYSQL_DATA_DIR\" -mindepth 1 -maxdepth 1 -maxdepth 1 -print | head -n 20"
+        print "    exit 1"
+        print "fi"
+        print $0
+        next
+    }
     {print}
 ')
+
+restore_mysql_service=""
+if [ -d "/www/server/mysql-apt" ]; then
+    restore_mysql_service="mysql-apt"
+elif [ -d "/www/server/mysql" ]; then
+    restore_mysql_service="mysql"
+fi
+
+if [ -n "$restore_mysql_service" ]; then
+    echo "|- 正在停止${restore_mysql_service}..."
+    if [ "$restore_mysql_service" == "mysql-apt" ]; then
+        pushd /www/server/jh-panel > /dev/null
+        stop_restore_mysql_result=$(python3 /www/server/jh-panel/plugins/mysql-apt/index.py stop)
+        popd > /dev/null
+        if [ "$stop_restore_mysql_result" != "ok" ]; then
+            show_error "错误:停止${restore_mysql_service}失败：$stop_restore_mysql_result"
+            exit 1
+        fi
+    else
+        if ! systemctl stop "$restore_mysql_service"; then
+            show_error "错误:停止${restore_mysql_service}失败"
+            exit 1
+        fi
+    fi
+
+    for i in $(seq 1 30); do
+        if ! systemctl is-active --quiet "$restore_mysql_service"; then
+            break
+        fi
+        sleep 1
+    done
+    if systemctl is-active --quiet "$restore_mysql_service"; then
+        show_error "错误:${restore_mysql_service}未停止，已停止恢复"
+        exit 1
+    fi
+
+    echo "|- 正在临时mask ${restore_mysql_service}，防止恢复过程中被定时任务自动拉起..."
+    if ! systemctl mask "$restore_mysql_service" > /dev/null 2>&1; then
+        show_error "错误:临时mask ${restore_mysql_service}失败，已停止恢复"
+        exit 1
+    fi
+fi
 
 echo "set -e" > $recovery_tmp_file
 echo "set -o pipefail" >> $recovery_tmp_file
@@ -184,6 +239,9 @@ recovery_status=$?
 rm $recovery_tmp_file
 if [ $recovery_status -ne 0 ]; then
     show_error "错误:xtrabackup恢复失败，已停止，避免误启动mysql-apt导致密码被重新初始化"
+    if [ -n "$restore_mysql_service" ]; then
+        echo "|- ${restore_mysql_service}仍处于mask状态，确认数据目录正常后可手动执行：systemctl unmask ${restore_mysql_service}"
+    fi
     echo "|- 恢复日志：$recovery_log"
     tail -n 80 "$recovery_log"
     latest_xtrabackup_recovery_log=$(ls -t /www/server/xtrabackup/logs/recovery_*.log 2>/dev/null | head -n 1)
@@ -203,6 +261,9 @@ fi
 if [ ! -d "$mysql_apt_data_dir/mysql" ]; then
     show_error "错误:恢复后未检测到MySQL系统库目录：$mysql_apt_data_dir/mysql"
     echo "|- 已停止，避免mysql-apt start触发空数据目录初始化并改写面板记录密码"
+    if [ -n "$restore_mysql_service" ]; then
+        echo "|- ${restore_mysql_service}仍处于mask状态，确认数据目录正常后可手动执行：systemctl unmask ${restore_mysql_service}"
+    fi
     echo "|- 恢复日志：$recovery_log"
     tail -n 80 "$recovery_log"
     latest_xtrabackup_recovery_log=$(ls -t /www/server/xtrabackup/logs/recovery_*.log 2>/dev/null | head -n 1)
@@ -211,6 +272,14 @@ if [ ! -d "$mysql_apt_data_dir/mysql" ]; then
         tail -n 120 "$latest_xtrabackup_recovery_log"
     fi
     exit 1
+fi
+
+if [ -n "$restore_mysql_service" ]; then
+    echo "|- 正在解除${restore_mysql_service}的mask..."
+    if ! systemctl unmask "$restore_mysql_service" > /dev/null 2>&1; then
+        show_error "错误:解除${restore_mysql_service}的mask失败，请手动执行：systemctl unmask ${restore_mysql_service}"
+        exit 1
+    fi
 fi
 
 echo "|- 恢复xtrabackup文件成功✅"

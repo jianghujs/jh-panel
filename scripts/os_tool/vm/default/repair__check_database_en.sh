@@ -22,8 +22,12 @@ else
     # 检查MySQL是否在运行
     if systemctl is-active mysql-apt &> /dev/null; then
         isMySQLRunning=1
-        # 停止MySQL服务器
-        systemctl stop mysql-apt
+        # Stop MySQL through the mysql-apt plugin so the service is masked and cannot be auto-started.
+        mysql_stop_result=$(cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/mysql-apt/index.py stop)
+        if [ "$mysql_stop_result" != "ok" ]; then
+            log_echo "Failed to stop MySQL server: $mysql_stop_result"
+            exit 1
+        fi
         log_echo "MySQL server has been stopped..."
     else
         log_echo "MySQL server is not running. Skipped stopping MySQL server..."
@@ -92,8 +96,12 @@ else
 
     # 检查之前MySQL是否在运行。是，则启动MySQL服务器
     if [ $isMySQLRunning -eq 1 ]; then
-        # 启动MySQL服务器
-        systemctl start mysql-apt
+        # Start MySQL through the mysql-apt plugin so the service is unmasked first.
+        mysql_start_result=$(cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/mysql-apt/index.py start)
+        if [ "$mysql_start_result" != "ok" ]; then
+            log_echo "Failed to start MySQL server: $mysql_start_result"
+            exit 1
+        fi
         log_echo "MySQL server has been started."
     fi
 fi

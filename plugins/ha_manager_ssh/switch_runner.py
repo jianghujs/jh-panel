@@ -11,7 +11,7 @@ SWITCH_PY = os.path.join(PANEL_DIR, 'scripts/switch.py')
 MYSQL_PY = os.path.join(PANEL_DIR, 'scripts/mysql.py')
 RSYNCD_INDEX = os.path.join(PANEL_DIR, 'plugins/rsyncd/index.py')
 OPENRESTY_INDEX = os.path.join(PANEL_DIR, 'plugins/openresty/index.py')
-DRY_RUN = os.environ.get('HA_MANAGER_SWITCH_DRY_RUN') == '1'
+DRY_RUN = os.environ.get('HA_MANAGER_SSH_SWITCH_DRY_RUN') == '1'
 OS_TOOL_DIR = '/www/server/jh-panel/scripts/os_tool/vm/default'
 STANDBY_SYNC_PUBLIC_KEY = '/root/.ssh/standby_sync.pub'
 AUTHORIZED_KEYS = '/root/.ssh/authorized_keys'
@@ -69,21 +69,21 @@ def _run_node_script(script_name, step):
         raise RuntimeError('Node脚本不存在: ' + script_path)
     node_bin = os.environ.get('NODE_BIN')
     if node_bin:
-        _run('HA_MANAGER_AUTO_CONFIRM=1 {0} {1}'.format(_quote(node_bin), _quote(script_path)), step)
+        _run('HA_MANAGER_SSH_AUTO_CONFIRM=1 {0} {1}'.format(_quote(node_bin), _quote(script_path)), step)
         return
     if os.path.exists('/www/server/nodejs/fnm'):
-        _run('export PATH="/www/server/nodejs/fnm:$PATH" && eval "$(fnm env --use-on-cd --shell bash)" && HA_MANAGER_AUTO_CONFIRM=1 node {0}'.format(_quote(script_path)), step)
+        _run('export PATH="/www/server/nodejs/fnm:$PATH" && eval "$(fnm env --use-on-cd --shell bash)" && HA_MANAGER_SSH_AUTO_CONFIRM=1 node {0}'.format(_quote(script_path)), step)
         return
     for candidate in ('/usr/bin/node', '/usr/local/bin/node'):
         if os.path.exists(candidate):
-            _run('HA_MANAGER_AUTO_CONFIRM=1 {0} {1}'.format(_quote(candidate), _quote(script_path)), step)
+            _run('HA_MANAGER_SSH_AUTO_CONFIRM=1 {0} {1}'.format(_quote(candidate), _quote(script_path)), step)
             return
     raise RuntimeError('Node命令不存在，请检查系统是否安装 node 或 /www/server/nodejs/fnm')
 
 
 def _checksum_env(opts):
     env = os.environ.copy()
-    env['HA_MANAGER_AUTO_CONFIRM'] = '1'
+    env['HA_MANAGER_SSH_AUTO_CONFIRM'] = '1'
     env['LOCAL_IP'] = str(opts.get('local_ip') or '127.0.0.1')
     env['REMOTE_IP'] = str(opts.get('remote_ip') or '')
     if opts.get('mysql_port'):
@@ -158,7 +158,7 @@ def _run_mysql_checksum_compare(opts):
     local_ip = str(opts.get('local_ip') or '127.0.0.1')
     remote_ip = str(opts.get('remote_ip') or '')
     if not remote_ip:
-        raise RuntimeError('目标数据库IP地址为空，请检查 ha_manager 绑定的对端 IP')
+        raise RuntimeError('目标数据库IP地址为空，请检查 ha_manager_ssh 绑定的对端 IP')
     mysql_info = _mysql_info()
     print('|- 使用数据库插件配置：{0}，端口：{1}'.format(mysql_info.get('plugin'), mysql_info.get('port')))
     local_checksum = _mysql_checksum(mysql_info, local_ip)

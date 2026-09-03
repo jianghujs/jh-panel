@@ -2613,6 +2613,50 @@ def getSlaveList(version=''):
     return mw.getJson(data)
 
 
+def checkSlaveStatus(version=''):
+    db = pMysqlDb()
+    dlist = db.query('show slave status')
+    if isinstance(dlist, Exception):
+        return mw.returnJson(False, '获取从库状态失败: ' + str(dlist), {'data': []})
+    if isinstance(dlist, tuple):
+        dlist = list(dlist)
+    if not isinstance(dlist, list):
+        return mw.returnJson(False, '获取从库状态失败: 返回数据格式异常', {'data': []})
+    if len(dlist) == 0:
+        return mw.returnJson(False, '未检测到从库状态，请确认 init_slave_status 是否已经建立主从；可能需要通过脚本库“修复主从”脚本修复主从状态。', {'data': []})
+
+    ret = []
+    bad = []
+    for item in dlist:
+        tmp = {
+            'Master_User': item.get('Master_User'),
+            'Master_Host': item.get('Master_Host'),
+            'Master_Port': item.get('Master_Port'),
+            'Master_Log_File': item.get('Master_Log_File'),
+            'Slave_IO_Running': item.get('Slave_IO_Running'),
+            'Slave_SQL_Running': item.get('Slave_SQL_Running'),
+            'Seconds_Behind_Master': item.get('Seconds_Behind_Master') if item.get('Seconds_Behind_Master') is not None else '异常',
+            'Last_Error': item.get('Last_Error'),
+            'Last_IO_Error': item.get('Last_IO_Error')
+        }
+        ret.append(tmp)
+
+        host = str(tmp.get('Master_Host') or '-')
+        port = str(tmp.get('Master_Port') or '-')
+        io_running = str(tmp.get('Slave_IO_Running') or '')
+        sql_running = str(tmp.get('Slave_SQL_Running') or '')
+        delay = tmp.get('Seconds_Behind_Master')
+        error_msg = str(tmp.get('Last_Error') or tmp.get('Last_IO_Error') or '-')
+        print('|- 主库 {0}:{1} IO={2} SQL={3} 延迟={4}'.format(host, port, io_running or '-', sql_running or '-', delay))
+        if io_running != 'Yes' or sql_running != 'Yes':
+            bad.append('主库 {0}:{1} IO={2} SQL={3} 错误={4}'.format(host, port, io_running or '-', sql_running or '-', error_msg))
+
+    if bad:
+        return mw.returnJson(False, '主从状态异常：{0}；可能需要通过脚本库“修复主从”脚本修复主从状态。'.format('；'.join(bad[:3])), {'data': ret})
+
+    return mw.returnJson(True, '主从状态正常', {'data': ret})
+
+
 def getSlaveSyncCmd(version=''):
 
     root = mw.getRunDir()
@@ -3421,6 +3465,14 @@ if __name__ == "__main__":
         print(getMasterRepSlaveUserCmd(version))
     elif func == 'get_slave_list':
         print(getSlaveList(version))
+    elif func == 'check_slave_status':
+        result = checkSlaveStatus(version)
+        print(result)
+        try:
+            if not json.loads(result).get('status'):
+                sys.exit(1)
+        except Exception:
+            sys.exit(1)
     elif func == 'get_slave_sync_cmd':
         print(getSlaveSyncCmd(version))
     elif func == 'get_slave_ssh_list':

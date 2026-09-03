@@ -23,9 +23,9 @@ sys.path.append(os.path.join(PANEL_DIR, 'class/core'))
 import mw
 
 
-PLUGIN_NAME = 'ha_manager'
+PLUGIN_NAME = 'ha_manager_ssh'
 PLUGIN_DIR = os.path.join(PANEL_DIR, 'plugins', PLUGIN_NAME)
-RUNTIME_DIR = '/www/server/ha_manager'
+RUNTIME_DIR = '/www/server/ha_manager_ssh'
 SERVER_LOG_DIR = '/www/server/logs'
 VERSION_PATH = os.path.join(RUNTIME_DIR, 'version.pl')
 DATA_DIR = os.path.join(RUNTIME_DIR, 'data')
@@ -43,18 +43,19 @@ ALERT_NOTIFIER_STATE_PATH = os.path.join(DATA_DIR, 'alert_notifier_state.json')
 RECOVERY_LOCK_PATH = os.path.join(DATA_DIR, 'recovery.lock')
 CLOUD_TASK_CLAIMS_PATH = os.path.join(DATA_DIR, 'cloud_task_claims.json')
 CLOUD_TASK_LAUNCHER_LOG_PATH = os.path.join(LOG_DIR, 'cloud_task_launcher.log')
-CLOUD_INTERACTION_LOG_PATH = os.path.join(SERVER_LOG_DIR, 'ha_manager_cloud.log')
+CLOUD_INTERACTION_LOG_PATH = os.path.join(SERVER_LOG_DIR, 'ha_manager_ssh_cloud.log')
 ALERT_CHECK_LOG_PATH = os.path.join(LOG_DIR, 'alert_check.log')
 POLL_MONITOR_LOG_PATH = os.path.join(LOG_DIR, 'poll_monitor.log')
 REPORT_STATE_LOG_PATH = os.path.join(LOG_DIR, 'report_state.log')
 RECOVER_CHECK_LOG_PATH = os.path.join(LOG_DIR, 'recover_check.log')
-DRY_RUN = os.environ.get('HA_MANAGER_SWITCH_DRY_RUN') == '1'
+DRY_RUN = os.environ.get('HA_MANAGER_SSH_SWITCH_DRY_RUN') == '1'
 SSH_PRIVATE_KEY_PATH = '/root/.ssh/id_rsa'
 SSH_PUBLIC_KEY_PATH = '/root/.ssh/id_rsa.pub'
 LEGACY_DATA_DIR = os.path.join(PLUGIN_DIR, 'data')
 LEGACY_LOG_DIR = os.path.join(PLUGIN_DIR, 'logs')
-REMOTE_STATE_PATH = '/www/server/ha_manager/data/state.json'
-REMOTE_SWITCH_LOG_DIR = '/www/server/ha_manager/logs/switch'
+OLD_RUNTIME_DIR = '/www/server/ha_manager'
+REMOTE_STATE_PATH = '/www/server/ha_manager_ssh/data/state.json'
+REMOTE_SWITCH_LOG_DIR = '/www/server/ha_manager_ssh/logs/switch'
 PANEL_TITLE_STATE_PATH = '/www/server/jh-panel/data/ha_manager_title_state.json'
 
 
@@ -98,10 +99,18 @@ def _migrate_runtime_data():
     legacy_files = ('config.json', 'state.json', 'report_queue.json', 'seq.json')
     for filename in legacy_files:
         _copy_if_missing(os.path.join(LEGACY_DATA_DIR, filename), os.path.join(DATA_DIR, filename))
+        _copy_if_missing(os.path.join(OLD_RUNTIME_DIR, 'data', filename), os.path.join(DATA_DIR, filename))
     if os.path.exists(os.path.join(LEGACY_LOG_DIR, 'switch')):
         for filename in os.listdir(os.path.join(LEGACY_LOG_DIR, 'switch')):
             _copy_if_missing(os.path.join(LEGACY_LOG_DIR, 'switch', filename), os.path.join(SWITCH_LOG_DIR, filename))
+    if os.path.exists(os.path.join(OLD_RUNTIME_DIR, 'logs', 'switch')):
+        for filename in os.listdir(os.path.join(OLD_RUNTIME_DIR, 'logs', 'switch')):
+            _copy_if_missing(os.path.join(OLD_RUNTIME_DIR, 'logs', 'switch', filename), os.path.join(SWITCH_LOG_DIR, filename))
     _copy_tree_if_missing(os.path.join(LEGACY_LOG_DIR, 'peer'), PEER_LOG_DIR)
+    _copy_tree_if_missing(os.path.join(OLD_RUNTIME_DIR, 'logs', 'peer'), PEER_LOG_DIR)
+    _copy_if_missing(os.path.join(OLD_RUNTIME_DIR, 'host_id.pl'), os.path.join(RUNTIME_DIR, 'host_id.pl'))
+    _copy_if_missing('/www/server/jh-panel/data/ha_manager_host_id.pl', os.path.join(RUNTIME_DIR, 'host_id.pl'))
+    _copy_if_missing('/www/server/jh-panel/data/ha_manager_title_state.json', PANEL_TITLE_STATE_PATH)
     legacy_host_file = '/www/server/jh-panel/data/ha_manager_host_id.pl'
     _copy_if_missing(legacy_host_file, os.path.join(RUNTIME_DIR, 'host_id.pl'))
 
@@ -194,11 +203,7 @@ def get_coordination_state():
 
 def _write_panel_title_state(cfg):
     data = {
-        'installed': True,
         'role': cfg.get('role') or 'unknown',
-        'desired_role': cfg.get('desired_role') or cfg.get('role') or 'unknown',
-        'switch_status': cfg.get('switch_status') or 'idle',
-        'host_name': cfg.get('host_name') or _panel_title(),
         'updated_at': _now()
     }
     parent = os.path.dirname(PANEL_TITLE_STATE_PATH)
@@ -1033,7 +1038,7 @@ def generate_keypair():
             if os.path.exists(path):
                 os.remove(path)
     cmd = 'ssh-keygen -t rsa -b 4096 -N "" -C {0} -f {1}'.format(
-        shlex.quote('ha_manager@' + os.uname().nodename),
+        shlex.quote('ha_manager_ssh@' + os.uname().nodename),
         shlex.quote(SSH_PRIVATE_KEY_PATH)
     )
     out, err, code = mw.execShell(cmd, timeout=20)
@@ -1216,7 +1221,7 @@ def _sync_alert_config_to_peer(cfg):
     payload['source_host_id'] = cfg.get('host_id')
     payload['pair_id'] = cfg.get('pair_id')
     args = shlex.quote(json.dumps(payload, ensure_ascii=False))
-    remote_cmd = 'cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py sync_alert_config {0}'.format(args)
+    remote_cmd = 'cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager_ssh/index.py sync_alert_config {0}'.format(args)
     out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=15)
     if code != 0:
         msg = err or out or '同步通知配置到对端失败'
@@ -1325,7 +1330,7 @@ def _report_peer_state_after_switch(switch_run_id):
     cfg = _config()
     if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': 'SSH未绑定或未验证'}
-    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py report_state '{}'"
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager_ssh/index.py report_state '{}'"
     _append_switch_log(switch_run_id, 'switch', 'running', '切换完成后触发对端状态上报，执行方式：SSH 远程触发')
     out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=30)
     if code != 0:
@@ -1339,7 +1344,7 @@ def _report_peer_state_after_switch(switch_run_id):
 def _clear_peer_failover_state(cfg, switch_run_id):
     if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': 'SSH未绑定或未验证'}
-    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py clear_failover_state '{}'"
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager_ssh/index.py clear_failover_state '{}'"
     _append_switch_log(switch_run_id, 'switch', 'running', '恢复完成后清除对端待切换状态，执行方式：SSH 远程触发')
     out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=20)
     if code != 0:
@@ -1401,7 +1406,7 @@ def _parse_peer_state_output(out):
 def collect_peer_state_raw(cfg):
     if not cfg.get('peer_public_ip') or cfg.get('bind_test_status') != 'success':
         return {'status': False, 'msg': 'SSH未绑定或未验证'}
-    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py get_local_state '{}'"
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager_ssh/index.py get_local_state '{}'"
     out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=15)
     if code == 0:
         try:
@@ -1411,7 +1416,7 @@ def collect_peer_state_raw(cfg):
         except Exception:
             pass
 
-    py_code = 'import sys,json; sys.path.insert(0,"/www/server/jh-panel/plugins/ha_manager"); import index; index._ensure_dirs(); print(json.dumps({"status":True,"msg":"ok","data":index._state(index._config())}, ensure_ascii=False))'
+    py_code = 'import sys,json; sys.path.insert(0,"/www/server/jh-panel/plugins/ha_manager_ssh"); import index; index._ensure_dirs(); print(json.dumps({"status":True,"msg":"ok","data":index._state(index._config())}, ensure_ascii=False))'
     fallback_cmd = 'cd /www/server/jh-panel && python3 -c {0}'.format(shlex.quote(py_code))
     out2, err2, code2 = _ssh_peer_exec(cfg, fallback_cmd, timeout=15)
     if code2 != 0:
@@ -1670,7 +1675,7 @@ def _alert_html(cfg, title, alerts, context, recovery=False):
         text = alert.get('recovery_message') if recovery else alert.get('message')
         lines.append('- {0}'.format(text))
     if remain_count > 0:
-        lines.append('- 其余 {0} 项请查看插件自检状态或云监控主备管理。'.format(remain_count))
+        lines.append('- 其余 {0} 项请查看插件自检状态或云监控主备管理（SSH一键版）。'.format(remain_count))
     lines.append('时间：{0}'.format(_now()))
     return '<br>'.join([str(x) for x in lines])
 
@@ -1825,13 +1830,13 @@ def _peer_execution_ability(cfg):
         result['mode_reason'] = 'SSH 未验证'
         result['checks'].append({'name': 'ssh', 'status': 'failed', 'msg': result['mode_reason']})
         return result
-    out, err, code = _ssh_peer_exec(cfg, 'test -f /www/server/jh-panel/plugins/ha_manager/index.py && echo ok', timeout=8)
+    out, err, code = _ssh_peer_exec(cfg, 'test -f /www/server/jh-panel/plugins/ha_manager_ssh/index.py && echo ok', timeout=8)
     result['ssh_ok'] = code == 0 and out.strip().endswith('ok')
     result['checks'].append({'name': 'ssh', 'status': 'success' if result['ssh_ok'] else 'failed', 'msg': 'SSH 可达' if result['ssh_ok'] else (err or out or 'SSH 不可达')})
     if not result['ssh_ok']:
         result['mode_reason'] = result['checks'][-1]['msg']
         return result
-    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager/index.py get_coordination_state '{}'"
+    remote_cmd = "cd /www/server/jh-panel && python3 /www/server/jh-panel/plugins/ha_manager_ssh/index.py get_coordination_state '{}'"
     out, err, code = _ssh_peer_exec(cfg, remote_cmd, timeout=12)
     if code != 0:
         result['mode_reason'] = err or out or '对端插件不可执行'
@@ -1998,8 +2003,8 @@ def _notify_recovery_required(cfg, peer_coord, state):
     last_ts = _safe_int(state.get('last_notify_ts'), 0)
     if last_ts and now - last_ts < 1800:
         return {'status': True, 'msg': '通知已发送过，跳过重复通知'}
-    title = '主备管理：{0} 待恢复为备机'.format(cfg.get('host_name') or cfg.get('host_id'))
-    msg = '检测到当前主机需要补全为备用机。<br>当前主机：{0} ({1})<br>当前主机ID：{2}<br>对端当前主机：{3}<br>目标角色：备机<br>恢复方式：{4}<br>请进入江湖面板主备管理插件确认处理。'.format(
+    title = '主备管理（SSH一键版）：{0} 待恢复为备机'.format(cfg.get('host_name') or cfg.get('host_id'))
+    msg = '检测到当前主机需要补全为备用机。<br>当前主机：{0} ({1})<br>当前主机ID：{2}<br>对端当前主机：{3}<br>目标角色：备机<br>恢复方式：{4}<br>请进入江湖面板主备管理（SSH一键版）插件确认处理。'.format(
         cfg.get('host_name') or '', cfg.get('host_ip') or '', cfg.get('host_id') or '',
         peer_coord.get('current_master_host_id') or peer_coord.get('host_id') or '',
         '自动恢复' if cfg.get('auto_recover_as_standby') else '人工确认'
@@ -2135,7 +2140,7 @@ def recover_as_standby():
         cfg['switch_run_id'] = switch_run_id
         cfg['switch_status'] = 'offline_running'
         _save_config(cfg)
-        _append_switch_log(switch_run_id, 'offline', 'start', '开始恢复为备机，执行方式：本机直接执行，来源：主备管理插件恢复检查')
+        _append_switch_log(switch_run_id, 'offline', 'start', '开始恢复为备机，执行方式：本机直接执行，来源：主备管理（SSH一键版）插件恢复检查')
         _append_cloud_interaction_log('recover_as_standby', 'start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id)
         options = _switch_options_from_request(cfg, _dict_value(data.get('options')))
         cfg = _run_local_switch_phase(cfg, 'offline', 'standby', switch_run_id, options, '本机恢复为备机', True, True)
@@ -2600,7 +2605,7 @@ def _pid_cmdline(pid):
 
 def _is_ha_switch_process(pid):
     cmdline = _pid_cmdline(pid)
-    return 'plugins/ha_manager/index.py' in cmdline and (' local_switch' in cmdline or ' switch_phase' in cmdline or ' prepare_switch' in cmdline or ' finalize_switch' in cmdline)
+    return 'plugins/ha_manager_ssh/index.py' in cmdline and (' local_switch' in cmdline or ' switch_phase' in cmdline or ' prepare_switch' in cmdline or ' finalize_switch' in cmdline)
 
 
 def _process_children(pid):
@@ -2665,7 +2670,7 @@ def force_stop_switch():
         _append_switch_log(cfg.get('switch_run_id') or 'latest', 'switch', 'failed', '清理陈旧切换锁，原进程已不存在')
         return _return(True, '已清理陈旧切换锁', _switch_lock_status_data())
     if not _is_ha_switch_process(pid):
-        return _return(False, '锁定进程不是 ha_manager 切换任务，已拒绝强制结束: ' + _pid_cmdline(pid))
+        return _return(False, '锁定进程不是 ha_manager_ssh 切换任务，已拒绝强制结束: ' + _pid_cmdline(pid))
     _append_switch_log(cfg.get('switch_run_id') or 'latest', 'switch', 'failed', '用户确认强制结束正在执行的切换任务，PID: ' + str(pid))
     _terminate_pid_tree(pid)
     _unlock()
@@ -2776,8 +2781,8 @@ def _run_remote_switch_phase(cfg, phase, role, switch_run_id, options=None):
         'orchestrated': True
     }
     args = shlex.quote(json.dumps(payload, ensure_ascii=False))
-    env_prefix = 'HA_MANAGER_SWITCH_DRY_RUN=1 ' if DRY_RUN else ''
-    remote_cmd = 'cd /www/server/jh-panel && {0}PYTHONUNBUFFERED=1 python3 /www/server/jh-panel/plugins/ha_manager/index.py switch_phase {1}'.format(env_prefix, args)
+    env_prefix = 'HA_MANAGER_SSH_SWITCH_DRY_RUN=1 ' if DRY_RUN else ''
+    remote_cmd = 'cd /www/server/jh-panel && {0}PYTHONUNBUFFERED=1 python3 /www/server/jh-panel/plugins/ha_manager_ssh/index.py switch_phase {1}'.format(env_prefix, args)
     cmd = ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', '-o', 'StrictHostKeyChecking=no', '-p', str(cfg.get('peer_ssh_port')), cfg.get('peer_ssh_user') + '@' + cfg.get('peer_public_ip'), remote_cmd]
     peer_origin_host_id = cfg.get('peer_host_id') or cfg.get('peer_public_ip') or 'peer'
     try:
@@ -3073,7 +3078,7 @@ def _run_executor(phase, cfg, echo_output=False):
     env['PYTHONUNBUFFERED'] = '1'
     env['NODE_DISABLE_COLORS'] = '1'
     if phase == 'prepare_online':
-        env['HA_MANAGER_SWITCH_PHASE'] = 'prepare_online'
+        env['HA_MANAGER_SSH_SWITCH_PHASE'] = 'prepare_online'
     _append_switch_log(cfg.get('switch_run_id'), phase, 'running', '执行真实切换脚本: ' + script + '，阶段：' + _phase_text(phase))
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, preexec_fn=os.setsid, env=env)
     output_lines = []

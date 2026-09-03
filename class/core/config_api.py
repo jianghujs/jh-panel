@@ -27,7 +27,7 @@ from flask import request
 
 class config_api:
 
-    __version = '1.10.10'
+    __version = '1.10.11'
     __api_addr = 'data/api.json'
 
     def __init__(self):
@@ -857,7 +857,8 @@ class config_api:
                     data[new_tag] = 'checked'
 
         title_state_path = '/www/server/jh-panel/data/ha_manager_title_state.json'
-        data['ha_manager_installed'] = os.path.exists('/www/server/ha_manager/version.pl')
+        data['ha_manager_ssh_installed'] = os.path.exists('/www/server/ha_manager_ssh/version.pl')
+        data['ha_manager_local_installed'] = os.path.exists('/www/server/ha_manager_local/version.pl')
         data['ha_manager_title_state'] = {}
         if os.path.exists(title_state_path):
             try:

@@ -40,8 +40,8 @@ function softMain(name, title, version) {
 }
 
 function haManagerTitleText(state) {
-    if (!state || !state.installed) return '';
-    var role = state.switch_status === 'running' || state.switch_status === 'waiting_online' ? '切换中' : (state.role === 'master' ? '主' : state.role === 'standby' ? '备' : '未知');
+    if (!state || !state.role) return '';
+    var role = state.role === 'master' ? '主' : state.role === 'standby' ? '备' : '未知';
     return '[' + role + ']';
 }
 
@@ -54,23 +54,60 @@ function applyHaManagerBrowserTitle(state) {
     document.title = prefix ? (prefix + ' ' + window.haManagerBaseTitle) : window.haManagerBaseTitle;
 }
 
-function refreshHaManagerBrowserTitle() {
-    $.post('/plugins/run', {name: 'ha_manager', func: 'title_state'}, function(data) {
-        try {
-            if (typeof data === 'string') data = JSON.parse(data);
-        } catch (e) {}
-        var titleState = data && data.data;
-        try {
-            if (typeof titleState === 'string') titleState = JSON.parse(titleState);
-        } catch (e2) {}
-        if (titleState && typeof titleState === 'object' && titleState.hasOwnProperty('status') && titleState.hasOwnProperty('data')) {
-            titleState = titleState.status ? titleState.data : null;
-        }
-        if (data && data.status && titleState) {
+function normalizeHaManagerTitleState(data) {
+    try {
+        if (typeof data === 'string') data = JSON.parse(data);
+    } catch (e) {}
+    var titleState = data && data.data;
+    try {
+        if (typeof titleState === 'string') titleState = JSON.parse(titleState);
+    } catch (e2) {}
+    if (titleState && typeof titleState === 'object' && titleState.hasOwnProperty('status') && titleState.hasOwnProperty('data')) {
+        titleState = titleState.status ? titleState.data : null;
+    }
+    return data && data.status && titleState ? titleState : null;
+}
+
+function refreshHaManagerBrowserTitle(pluginName, fallbackPluginName) {
+    pluginName = pluginName || 'ha_manager_local';
+    $.post('/plugins/run', {name: pluginName, func: 'title_state'}, function(data) {
+        var titleState = normalizeHaManagerTitleState(data);
+        if (titleState) {
             window.haManagerTitleState = titleState;
             applyHaManagerBrowserTitle(titleState);
+            return;
         }
-    }, 'json');
+        if (fallbackPluginName) refreshHaManagerBrowserTitle(fallbackPluginName);
+    }, 'json').fail(function() {
+        if (fallbackPluginName) refreshHaManagerBrowserTitle(fallbackPluginName);
+    });
+}
+
+function refreshHaManagerSshBrowserTitle() {
+    refreshHaManagerBrowserTitle('ha_manager_ssh');
+}
+
+function initHaManagerBrowserTitle(titleState, localInstalled, sshInstalled) {
+    if (!localInstalled && !sshInstalled) {
+        window.haManagerTitleState = {};
+        applyHaManagerBrowserTitle({});
+        return;
+    }
+    window.haManagerTitleState = titleState || {};
+    applyHaManagerBrowserTitle(window.haManagerTitleState);
+    if (localInstalled) {
+        refreshHaManagerBrowserTitle('ha_manager_local');
+    } else if (sshInstalled) {
+        refreshHaManagerBrowserTitle('ha_manager_ssh');
+    }
+}
+
+function haManagerSshTitleText(state) {
+    return haManagerTitleText(state);
+}
+
+function applyHaManagerSshBrowserTitle(state) {
+    applyHaManagerBrowserTitle(state);
 }
 
 //取软件列表

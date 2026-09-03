@@ -144,14 +144,16 @@ recovery_script=$(printf '%s\n' "$recovery_script" | awk '
         print "set +e"
         print $0
         print "unzip_status=$?"
+        print "echo \"|- unzip返回码：$unzip_status\""
         print "set -e"
-        print "if [ \"$unzip_status\" -gt 1 ]; then exit \"$unzip_status\"; fi"
+        print "if [ \"$unzip_status\" -gt 1 ]; then echo \"错误:unzip解压失败，返回码：$unzip_status\"; exit \"$unzip_status\"; fi"
         next
     }
     {print}
 ')
 
 echo "set -e" > $recovery_tmp_file
+echo "set -o pipefail" >> $recovery_tmp_file
 echo "pushd /www/server/jh-panel > /dev/null" >> $recovery_tmp_file
 echo "${recovery_script}" >> $recovery_tmp_file
 echo "popd > /dev/null" >> $recovery_tmp_file
@@ -164,6 +166,11 @@ if [ $recovery_status -ne 0 ]; then
     show_error "错误:xtrabackup恢复失败，已停止，避免误启动mysql-apt导致密码被重新初始化"
     echo "|- 恢复日志：$recovery_log"
     tail -n 80 "$recovery_log"
+    latest_xtrabackup_recovery_log=$(ls -t /www/server/xtrabackup/logs/recovery_*.log 2>/dev/null | head -n 1)
+    if [ -n "$latest_xtrabackup_recovery_log" ]; then
+        echo "|- xtrabackup详细日志：$latest_xtrabackup_recovery_log"
+        tail -n 120 "$latest_xtrabackup_recovery_log"
+    fi
     exit 1
 fi
 
@@ -178,6 +185,11 @@ if [ ! -d "$mysql_apt_data_dir/mysql" ]; then
     echo "|- 已停止，避免mysql-apt start触发空数据目录初始化并改写面板记录密码"
     echo "|- 恢复日志：$recovery_log"
     tail -n 80 "$recovery_log"
+    latest_xtrabackup_recovery_log=$(ls -t /www/server/xtrabackup/logs/recovery_*.log 2>/dev/null | head -n 1)
+    if [ -n "$latest_xtrabackup_recovery_log" ]; then
+        echo "|- xtrabackup详细日志：$latest_xtrabackup_recovery_log"
+        tail -n 120 "$latest_xtrabackup_recovery_log"
+    fi
     exit 1
 fi
 

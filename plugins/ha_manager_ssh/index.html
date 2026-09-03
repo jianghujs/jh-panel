@@ -103,6 +103,13 @@
 .ms-option-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;}
 .ms-option-check{display:flex;align-items:center;height:26px;margin:0;font-weight:normal;color:#555;line-height:26px;}
 .ms-option-check input{margin:0 8px 0 0;flex:0 0 auto;}
+.ms-monitor-switch{display:inline-flex;align-items:center;gap:8px;height:26px;margin:0;font-weight:normal;color:#555;line-height:26px;cursor:pointer;}
+.ms-monitor-switch input{display:none;}
+.ms-switch-slider{position:relative;width:42px;height:22px;border-radius:999px;background:#d7dde6;transition:.18s;flex:0 0 auto;}
+.ms-switch-slider:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.18s;}
+.ms-monitor-switch input:checked + .ms-switch-slider{background:#5cb85c;}
+.ms-monitor-switch input:checked + .ms-switch-slider:after{left:23px;}
+.ms-switch-text{color:#555;}
 .ms-switch-wizard{padding:14px;background:#fff;}
 .ms-wizard-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px;}
 .ms-wizard-step{border:1px solid #e6e9ef;border-radius:4px;background:#fafbfc;padding:9px 10px;color:#777;}
@@ -150,7 +157,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager_ssh&f=js/ha_manager_ssh.js&v=202609031430', function(){
+$.getScript('/plugins/file?name=ha_manager_ssh&f=js/ha_manager_ssh.js&v=202609031650', function(){
   msLoadState(function(){
     msOverview();
   });

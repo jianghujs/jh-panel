@@ -161,7 +161,7 @@ def _default_config():
         'pair_id': '',
         'pair_name': '',
         'monitor_url': '',
-        'report_enabled': False,
+        'monitor_enabled': False,
         'report_interval': 30,
         'last_report_at': '',
         'role': role,
@@ -177,12 +177,12 @@ def _config(save_missing=True):
     cfg = _default_config()
     saved = _read_json(CONFIG_PATH, {})
     cfg.update(saved)
-    if 'report_enabled' not in saved:
-        cfg['report_enabled'] = bool(cfg.get('monitor_url'))
+    if 'monitor_enabled' in saved:
+        cfg['monitor_enabled'] = safeBool(cfg.get('monitor_enabled'), False)
     else:
-        cfg['report_enabled'] = safeBool(cfg.get('report_enabled'), False)
+        cfg['monitor_enabled'] = bool(cfg.get('monitor_url'))
     if not cfg.get('monitor_url'):
-        cfg['report_enabled'] = False
+        cfg['monitor_enabled'] = False
     cfg['host_name'] = _panel_title()
     cfg['host_ip'] = mw.getHostAddr() or cfg.get('host_ip')
     file_role = _read_role(cfg.get('role') or 'standby')
@@ -193,6 +193,10 @@ def _config(save_missing=True):
     if save_missing:
         _save_config(cfg)
     return cfg
+
+
+def _monitor_enabled(cfg):
+    return bool(cfg.get('monitor_url') and safeBool(cfg.get('monitor_enabled'), False))
 
 
 def _write_panel_title_state(cfg):
@@ -1158,10 +1162,10 @@ def save_monitor():
     for key in ('pair_id', 'pair_name', 'monitor_url', 'report_interval'):
         if key in data:
             cfg[key] = data.get(key) or ''
-    if 'report_enabled' in data:
-        cfg['report_enabled'] = safeBool(data.get('report_enabled'), False)
+    if 'monitor_enabled' in data:
+        cfg['monitor_enabled'] = safeBool(data.get('monitor_enabled'), False)
     if not cfg.get('monitor_url'):
-        cfg['report_enabled'] = False
+        cfg['monitor_enabled'] = False
     _save_config(cfg)
     return _return(True, '已保存配置', cfg)
 
@@ -1169,7 +1173,7 @@ def save_monitor():
 def clear_monitor():
     cfg = _config()
     cfg['monitor_url'] = ''
-    cfg['report_enabled'] = False
+    cfg['monitor_enabled'] = False
     cfg['last_report_at'] = ''
     _save_config(cfg)
     return _return(True, '已清空云监控地址', cfg)
@@ -1186,8 +1190,8 @@ def regenerate_host_id():
 
 def report_state():
     cfg = _config()
-    if not cfg.get('monitor_url') or not cfg.get('report_enabled'):
-        return _return(True, '云监控地址为空或上报已关闭，跳过上报', cfg)
+    if not _monitor_enabled(cfg):
+        return _return(True, '云监控地址为空或未启用，跳过上报', cfg)
     cfg['last_report_at'] = _now()
     _save_config(cfg)
     return _return(True, '本机状态已刷新', cfg)

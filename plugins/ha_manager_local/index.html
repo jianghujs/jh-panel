@@ -148,6 +148,13 @@
 .hml-inline-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .hml-option-check{display:flex;align-items:center;height:26px;margin:0;font-weight:normal;color:#555;line-height:26px;}
 .hml-option-check input{margin:0 8px 0 0;flex:0 0 auto;}
+.hml-monitor-switch{display:inline-flex;align-items:center;gap:8px;height:26px;margin:0;font-weight:normal;color:#555;line-height:26px;cursor:pointer;}
+.hml-monitor-switch input{display:none;}
+.hml-switch-slider{position:relative;width:42px;height:22px;border-radius:999px;background:#d7dde6;transition:.18s;flex:0 0 auto;}
+.hml-switch-slider:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.18s;}
+.hml-monitor-switch input:checked + .hml-switch-slider{background:#5cb85c;}
+.hml-monitor-switch input:checked + .hml-switch-slider:after{left:23px;}
+.hml-switch-text{color:#555;}
 @media(max-width:1100px){.hml-grid,.hml-check-grid,.hml-step-list,.hml-role-select,.hml-flow-stages{grid-template-columns:1fr 1fr;}.hml-flow-body{grid-template-columns:1fr;overflow:auto;}}
 @media(max-width:720px){.hml-grid,.hml-check-grid,.hml-step-list,.hml-role-select,.hml-flow-stages{grid-template-columns:1fr;}.hml-actions{justify-content:flex-start;}}
 </style>
@@ -170,7 +177,7 @@
 <script type="text/javascript">
 resetPluginWinWidth(980);
 resetPluginWinHeight(620);
-$.getScript('/plugins/file?name=ha_manager_local&f=js/ha_manager_local.js&v=202609031430', function(){
+$.getScript('/plugins/file?name=ha_manager_local&f=js/ha_manager_local.js&v=202609031650', function(){
   hmlBoot();
 });
 </script>

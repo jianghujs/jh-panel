@@ -17,7 +17,7 @@ var msState = {
   desired_role: 'standby',
   poll_interval: 10,
   report_interval: 30,
-  report_enabled: true,
+  monitor_enabled: true,
   last_report_at: '',
   switch_run_id: '',
   switch_status: 'idle',
@@ -116,6 +116,10 @@ function msSetActive(index) {
 function msHtml(value) {
   value = value == null ? '' : String(value);
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function msMonitorEnabled() {
+  return !!msState.monitor_url && !!msState.monitor_enabled;
 }
 
 function msAttr(value) {
@@ -246,7 +250,7 @@ function msCheckHostCard(host) {
 function msOverview() {
   msSetActive(0);
   var monitorConfigured = !!msState.monitor_url;
-  var reportEnabled = monitorConfigured && !!msState.report_enabled;
+  var monitorEnabled = msMonitorEnabled();
   var bindConfigured = msState.bind_test_status === 'success';
   var pluginStatus = 'normal';
   var pluginStatusText = '正常';
@@ -281,7 +285,7 @@ function msOverview() {
         '<tr><th>主备关系</th><td>' + msHtml(msState.pair_name) + ' <span class="c7">' + msHtml(msState.pair_id) + '</span></td></tr>' +
         '<tr><th>本机标识</th><td><code>' + msHtml(msState.host_id || '--') + '</code> <span class="c7">' + msHtml(msState.host_ip || '') + '</span> <a class="btlink ml10" href="javascript:;" onclick="msRegenerateHostId()">重新生成</a></td></tr>' +
         '<tr><th>对端绑定</th><td>' + (bindConfigured ? msPill('normal', '已绑定') + ' <span class="c7">' + msHtml(msState.peer_ssh_user) + '@' + msHtml(msState.peer_public_ip) + ':' + msHtml(msState.peer_ssh_port) + '</span>' : msPill('warning', '未验证') + ' <a class="btlink" href="javascript:;" onclick="msConfigPanel()">去绑定</a>') + '</td></tr>' +
-        '<tr><th>云监控</th><td>' + (monitorConfigured ? msPill(reportEnabled ? 'normal' : 'warning', reportEnabled ? '上报开启' : '上报关闭') + ' <span class="c7">' + msHtml(reportEnabled ? ('最近上报: ' + (msState.last_report_at || '未上报')) : '已配置地址，但不会上传状态') + '</span>' : msPill('warning', '未配置') + ' <a class="btlink" href="javascript:;" onclick="msMonitorPanel()">去配置</a>') + '</td></tr>' +
+        '<tr><th>云监控</th><td>' + (monitorConfigured ? msPill(monitorEnabled ? 'normal' : 'warning', monitorEnabled ? '已启用' : '未启用') + ' <span class="c7">' + msHtml(monitorEnabled ? ('最近上报: ' + (msState.last_report_at || '未上报')) : '已配置地址，但云监控相关功能已关闭') + '</span>' : msPill('warning', '未配置') + ' <a class="btlink" href="javascript:;" onclick="msMonitorPanel()">去配置</a>') + '</td></tr>' +
         '<tr><th>故障恢复</th><td>' + failoverCell + '</td></tr>' +
         '<tr><th>异常通知</th><td>' + msAlertSummaryHtml() + '</td></tr>' +
       '</tbody></table>' +
@@ -429,13 +433,13 @@ function msInput(label, name, value, style, type) {
 function msMonitorPanel() {
   msSetActive(3);
   var configured = !!msState.monitor_url;
-  var enabled = configured && !!msState.report_enabled;
-  var html = '<div class="ms-panel"><div class="ms-panel-head"><div><div class="ms-title">绑定云监控上报配置</div><div class="ms-sub">填写主备关系名称、云监控地址和上报开关。只有开启上报时才会上传状态和切换日志。</div></div>' + (configured ? msPill(enabled ? 'normal' : 'warning', enabled ? '上报开启' : '上报关闭') : msPill('warning', '未配置')) + '</div><div class="ms-panel-body"><form class="bt-form ms-form" id="msMonitorForm">' +
+  var enabled = msMonitorEnabled();
+  var html = '<div class="ms-panel"><div class="ms-panel-head"><div><div class="ms-title">绑定云监控配置</div><div class="ms-sub">填写主备关系名称、云监控地址和总开关。关闭后不上报状态和切换日志，也不拉取云监控任务。</div></div>' + (configured ? msPill(enabled ? 'normal' : 'warning', enabled ? '已启用' : '未启用') : msPill('warning', '未配置')) + '</div><div class="ms-panel-body"><form class="bt-form ms-form" id="msMonitorForm">' +
     msInput('主备关系名称', 'pair_name', msState.pair_name, 'width:260px') +
     msInput('云监控地址', 'monitor_url', msState.monitor_url, 'width:420px') +
-    '<div class="line"><span class="tname">是否开启上报</span><div class="info-r c4"><label class="ms-option-check"><input type="checkbox" name="report_enabled" value="1" ' + (msState.report_enabled ? 'checked' : '') + '><span>开启后才会上报到云监控</span></label></div></div>' +
+    '<div class="line"><span class="tname">是否启用</span><div class="info-r c4"><label class="ms-monitor-switch"><input type="checkbox" name="monitor_enabled" value="1" ' + (msState.monitor_enabled ? 'checked' : '') + '><span class="ms-switch-slider"></span></label></div></div>' +
     '<div class="line"><span class="tname">轮询/上报</span><div class="info-r c4"><input class="bt-input-text" type="number" name="poll_interval" value="' + msHtml(msState.poll_interval) + '" style="width:80px" /> 秒轮询 <input class="bt-input-text ml10" type="number" name="report_interval" value="' + msHtml(msState.report_interval) + '" style="width:80px" /> 秒上报</div></div>' +
-    '<div class="line"><span class="tname">状态</span><div class="info-r c4">' + msHtml(enabled ? '已开启上报，将按主备关系名称注册并上传状态。' : (configured ? '已配置云监控地址，但上报开关已关闭，不会上传状态或切换日志。' : '未配置云监控地址，不上传状态。')) + '</div></div>' +
+    '<div class="line"><span class="tname">状态</span><div class="info-r c4">' + msHtml(enabled ? '云监控已启用，将注册、上报状态、上报切换日志并轮询任务。' : (configured ? '已配置云监控地址，但云监控开关已关闭，不注册、不上报、不拉取任务。' : '未配置云监控地址，云监控相关功能未启用。')) + '</div></div>' +
     '<div class="line"><span class="tname"></span><div class="info-r"><button type="button" class="btn btn-default btn-sm" onclick="msTestMonitor()">测试云监控</button><button type="button" class="btn btn-success btn-sm ml5" onclick="msSaveMonitor()">保存并注册</button><button type="button" class="btn btn-warning btn-sm ml5" onclick="msClearMonitor()">清空地址</button></div></div>' +
     '</form></div></div>';
   $('.soft-man-con').html(html);
@@ -466,9 +470,9 @@ function msReadmePanel() {
     '<li>本插件支持正常双边切换；对端不可达时，只允许在本机确认故障升主并进入降级运行。</li>' +
     '<li>故障主机恢复后，由 task 进程周期触发插件恢复检查；默认进入恢复保护并通知，开启自动恢复后才会自动恢复为备机。</li>' +
     '<li>绑定时先输入对方机器 IP、SSH 端口、SSH 用户和对方公钥，测试连接后保存主备关系。</li>' +
-    '<li>云监控地址在“云监控”页签单独配置，默认留空；留空时不上传主备状态和切换日志。</li>' +
-    '<li>插件周期轮询云监控期望状态，领取 offline 或 online 阶段任务。</li>' +
-    '<li>切换状态和日志通过 API 上报云监控，日志最终写入 <code>/www/server/jh-monitor/logs/ha_switch/</code>。</li>' +
+    '<li>云监控地址和启用开关在“云监控”页签单独配置；关闭开关后不上传主备状态、不上传切换日志，也不拉取云监控任务。</li>' +
+    '<li>启用云监控后，插件周期轮询云监控期望状态，领取 offline 或 online 阶段任务。</li>' +
+    '<li>启用云监控后，切换状态和日志通过 API 上报云监控，日志最终写入 <code>/www/server/jh-monitor/logs/ha_switch/</code>。</li>' +
     '<li>插件首页可以直接发起本机切换：当前为主时切换为备，当前为备时切换为主。</li>' +
     '<li>确认执行前会弹出流程选项框，确认后进入切换日志视图。</li>' +
     '<li>页面数据来自插件本地配置、状态快照和云监控 API。</li>' +
@@ -481,8 +485,8 @@ function msPollMonitor() {
     layer.msg('云监控地址为空，无法拉取任务', {icon: 0});
     return;
   }
-  if (!msState.report_enabled) {
-    layer.msg('云监控上报已关闭，不拉取任务', {icon: 0});
+  if (!msMonitorEnabled()) {
+    layer.msg('云监控未启用，不拉取任务', {icon: 0});
     return;
   }
   var loadT = layer.msg('正在拉取云监控任务...', {icon: 16, time: 0});
@@ -506,8 +510,8 @@ function msReportState() {
     layer.msg('云监控地址为空，当前不会上传状态', {icon: 0});
     return;
   }
-  if (!msState.report_enabled) {
-    layer.msg('云监控上报已关闭，当前不会上传状态', {icon: 0});
+  if (!msMonitorEnabled()) {
+    layer.msg('云监控未启用，当前不会上传状态', {icon: 0});
     return;
   }
   msPost('report_state', {}, function(data) {
@@ -524,7 +528,7 @@ function msReadMonitorForm() {
   $('#msMonitorForm').serializeArray().forEach(function(item) {
     data[item.name] = item.value;
   });
-  data.report_enabled = $('#msMonitorForm input[name="report_enabled"]').is(':checked') ? '1' : '0';
+  data.monitor_enabled = $('#msMonitorForm input[name="monitor_enabled"]').is(':checked') ? '1' : '0';
   return data;
 }
 
@@ -1125,10 +1129,10 @@ function msConfirmChecksumDiff(callback) {
 
 function msTestMonitor() {
   var data = msReadMonitorForm();
-  if (!data.monitor_url) return layer.msg('云监控地址为空，不测试也不上传', {icon: 0});
+  if (!data.monitor_url) return layer.msg('云监控地址为空，云监控相关功能未启用', {icon: 0});
   msPost('save_monitor', data, function(result) {
     if (result) msState = $.extend(true, msState, result);
-    layer.msg(msState.report_enabled ? '云监控配置测试完成' : '已保存配置，上报开关关闭', {icon: msState.report_enabled ? 1 : 0});
+    layer.msg(msMonitorEnabled() ? '云监控配置测试完成' : '已保存配置，云监控未启用', {icon: msMonitorEnabled() ? 1 : 0});
     msMonitorPanel();
   });
 }
@@ -1137,7 +1141,7 @@ function msSaveMonitor() {
   var data = msReadMonitorForm();
   msPost('save_monitor', data, function(result) {
     if (result) msState = $.extend(true, msState, result);
-    layer.msg(msState.monitor_url && msState.report_enabled ? '已按主备关系名称注册到云监控' : (msState.monitor_url ? '已保存配置，上报开关关闭' : '地址为空，不上传状态'), {icon: msState.monitor_url && msState.report_enabled ? 1 : 0});
+    layer.msg(msMonitorEnabled() ? '已按主备关系名称注册到云监控' : (msState.monitor_url ? '已保存配置，云监控未启用' : '地址为空，云监控相关功能未启用'), {icon: msMonitorEnabled() ? 1 : 0});
     msMonitorPanel();
   });
 }
@@ -1145,7 +1149,7 @@ function msSaveMonitor() {
 function msClearMonitor() {
   msPost('clear_monitor', {}, function(result) {
     if (result) msState = $.extend(true, msState, result);
-    layer.msg('已清空云监控地址，不上传状态', {icon: 0});
+    layer.msg('已清空云监控地址，云监控相关功能未启用', {icon: 0});
     msMonitorPanel();
   });
 }

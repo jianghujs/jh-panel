@@ -53,9 +53,11 @@ def safeFloat(value, default=0.0):
 
 def safeBool(value, default=False):
     try:
-        if value in (1, True, "1", "true", "True", "yes", "YES", "on", "ON"):
+        if isinstance(value, str):
+            value = value.strip().lower()
+        if value in (1, True, "1", "true", "yes", "y", "on"):
             return True
-        if value in (0, False, "0", "false", "False", "no", "NO", "off", "OFF"):
+        if value in (0, False, "0", "false", "no", "n", "off"):
             return False
         return default
     except Exception:

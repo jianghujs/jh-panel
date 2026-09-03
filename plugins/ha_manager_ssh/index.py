@@ -20,7 +20,9 @@ import urllib.request
 
 PANEL_DIR = '/www/server/jh-panel'
 sys.path.append(os.path.join(PANEL_DIR, 'class/core'))
+sys.path.append(os.path.join(PANEL_DIR, 'class/plugin'))
 import mw
+from value_tool import safeBool
 
 
 PLUGIN_NAME = 'ha_manager_ssh'
@@ -465,6 +467,7 @@ def _default_config():
     return {
         'monitor_url': _default_monitor_url(),
         'monitor_disabled': False,
+        'report_enabled': True,
         'pair_name': '生产面板主备',
         'pair_id': '',
         'api_secret': hashlib.sha256((str(time.time()) + mw.getRandomString(16)).encode('utf-8')).hexdigest(),
@@ -516,6 +519,14 @@ def _config():
     cfg['options'].update(_dict_value(saved.get('options')))
     cfg['options'].pop('allow_checksum_diff', None)
     cfg['host_name'] = _panel_title()
+    if 'report_enabled' in saved:
+        cfg['report_enabled'] = safeBool(cfg.get('report_enabled'), True)
+        cfg['monitor_disabled'] = not cfg['report_enabled']
+    else:
+        cfg['monitor_disabled'] = safeBool(cfg.get('monitor_disabled'), False)
+        cfg['report_enabled'] = not cfg['monitor_disabled']
+    if not cfg.get('monitor_url') and cfg.get('monitor_disabled'):
+        cfg['report_enabled'] = False
     if not cfg.get('monitor_disabled') and not cfg.get('monitor_url'):
         cfg['monitor_url'] = _default_monitor_url()
     config_changed = False
@@ -532,9 +543,9 @@ def _config():
         config_changed = True
     cfg['alert_takeover_fail_count'] = max(1, _safe_int(cfg.get('alert_takeover_fail_count'), 3))
     cfg['alert_takeover_recover_count'] = max(1, _safe_int(cfg.get('alert_takeover_recover_count'), 2))
-    cfg['alert_enabled'] = str(cfg.get('alert_enabled')).lower() in ('1', 'true', 'yes', 'on')
-    cfg['alert_recovery_notify'] = str(cfg.get('alert_recovery_notify')).lower() not in ('0', 'false', 'no', 'off')
-    cfg['alert_key_health_check_enabled'] = str(cfg.get('alert_key_health_check_enabled')).lower() in ('1', 'true', 'yes', 'on')
+    cfg['alert_enabled'] = safeBool(cfg.get('alert_enabled'), False)
+    cfg['alert_recovery_notify'] = safeBool(cfg.get('alert_recovery_notify'), True)
+    cfg['alert_key_health_check_enabled'] = safeBool(cfg.get('alert_key_health_check_enabled'), False)
     if _sync_binding_options(cfg) or config_changed or identity_changed:
         _save_config(cfg)
     return cfg
@@ -761,7 +772,7 @@ def _health_snapshot(cfg):
         'rsync': {'status': 'warning' if rsync_failed else 'normal', 'text': 'rsync/lsyncd 状态' + ('不符合当前角色' if rsync_failed else '正常')},
         'openresty': {'status': 'warning' if openresty_failed else 'normal', 'text': 'OpenResty ' + ('不符合当前角色' if openresty_failed else '正常')},
         'ssh': {'status': 'normal' if cfg.get('bind_test_status') == 'success' else 'warning', 'text': 'SSH绑定' + ('已验证' if cfg.get('bind_test_status') == 'success' else '未验证')},
-        'cloud': {'status': 'normal' if cfg.get('monitor_url') else 'warning', 'text': '云监控' + ('已配置' if cfg.get('monitor_url') else '未配置')},
+        'cloud': {'status': 'normal' if cfg.get('monitor_url') and cfg.get('report_enabled') else 'warning', 'text': '云监控' + ('上报已开启' if cfg.get('monitor_url') and cfg.get('report_enabled') else ('上报已关闭' if cfg.get('monitor_url') else '未配置'))},
         'lock': {'status': 'warning' if os.path.exists(LOCK_PATH) else 'normal', 'text': '本地切换锁' + ('存在' if os.path.exists(LOCK_PATH) else '空闲')},
         'script_checks': checks
     }
@@ -838,6 +849,9 @@ def _state(cfg=None):
         'switch_run_id': cfg.get('switch_run_id'),
         'switch_status': cfg.get('switch_status'),
         'log_path': cfg.get('log_path'),
+        'monitor_url': cfg.get('monitor_url'),
+        'report_enabled': cfg.get('report_enabled'),
+        'monitor_disabled': cfg.get('monitor_disabled'),
         'last_report_at': cfg.get('last_report_at'),
         'failover': switch_state,
         'updated_at': _now()
@@ -963,7 +977,7 @@ def regenerate_host_id():
     cfg.setdefault('options', {})['local_ip'] = host_ip
     _save_config(cfg)
     state = _state(cfg)
-    report_result = _return_data(report_state()) if cfg.get('monitor_url') and not cfg.get('monitor_disabled') else {'status': True, 'msg': '未配置云监控，跳过上报'}
+    report_result = _return_data(report_state()) if cfg.get('monitor_url') and cfg.get('report_enabled') else {'status': True, 'msg': '云监控地址为空或上报已关闭，跳过上报'}
     return _return(True, 'host_id 已重新生成', {'old_host_id': old_host_id, 'host_id': new_host_id, 'host_ip': host_ip, 'state': state, 'report': report_result})
 
 
@@ -1027,7 +1041,7 @@ def get_key_info():
 
 def generate_keypair():
     data = _args()
-    force = str(data.get('force', '0')).lower() in ('1', 'true', 'yes', 'on')
+    force = safeBool(data.get('force'), False)
     if (os.path.exists(SSH_PRIVATE_KEY_PATH) or os.path.exists(SSH_PUBLIC_KEY_PATH)) and not force:
         return _return(False, '本机 SSH 密钥已存在，如需覆盖请确认重新生成')
     ssh_dir = os.path.dirname(SSH_PRIVATE_KEY_PATH)
@@ -1087,12 +1101,20 @@ def save_monitor():
     for key in ('pair_name', 'monitor_url', 'poll_interval', 'report_interval'):
         if key in data:
             cfg[key] = data.get(key)
-    cfg['monitor_disabled'] = False if cfg.get('monitor_url') else True
+    if 'report_enabled' in data:
+        cfg['report_enabled'] = safeBool(data.get('report_enabled'), False)
+    else:
+        cfg['report_enabled'] = bool(cfg.get('monitor_url'))
+    if not cfg.get('monitor_url'):
+        cfg['report_enabled'] = False
+    cfg['monitor_disabled'] = not cfg.get('report_enabled')
     cfg['poll_interval'] = int(cfg.get('poll_interval') or 10)
     cfg['report_interval'] = int(cfg.get('report_interval') or 30)
     _save_config(cfg)
     if not cfg.get('monitor_url'):
         return _return(True, '云监控地址为空，不上传状态', cfg)
+    if not cfg.get('report_enabled'):
+        return _return(True, '云监控上报已关闭，不上传状态', cfg)
     register = _register_monitor(cfg)
     return register
 
@@ -1101,6 +1123,7 @@ def clear_monitor():
     cfg = _config()
     cfg['monitor_url'] = ''
     cfg['monitor_disabled'] = True
+    cfg['report_enabled'] = False
     _save_config(cfg)
     return _return(True, '已清空云监控地址', cfg)
 
@@ -1121,6 +1144,9 @@ def _sign(cfg, payload):
 
 def _post_monitor(cfg, action, payload, signed=True):
     url = cfg.get('monitor_url', '').rstrip('/') + '/pub/' + action
+    if cfg.get('monitor_disabled') or not cfg.get('report_enabled'):
+        _append_cloud_interaction_log(action, 'skip', msg='云监控上报已关闭', pair_id=payload.get('pair_id') if isinstance(payload, dict) else '', host_id=cfg.get('host_id'))
+        return {'status': False, 'msg': '云监控上报已关闭'}
     if not cfg.get('monitor_url'):
         _append_cloud_interaction_log(action, 'skip', msg='云监控地址为空', pair_id=payload.get('pair_id') if isinstance(payload, dict) else '', host_id=cfg.get('host_id'))
         return {'status': False, 'msg': '云监控地址为空'}
@@ -1181,21 +1207,15 @@ def _register_monitor(cfg):
 def save_auto_recover():
     data = _args()
     cfg = _config()
-    cfg['auto_recover_as_standby'] = str(data.get('auto_recover_as_standby')).lower() in ('1', 'true', 'yes', 'on')
+    cfg['auto_recover_as_standby'] = safeBool(data.get('auto_recover_as_standby'), False)
     _save_config(cfg)
     _append_cloud_interaction_log('save_auto_recover', 'done', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), auto_recover_as_standby=cfg.get('auto_recover_as_standby'))
     return _return(True, '自动故障恢复配置已保存', cfg)
 
 
-def _bool_config_value(value, default=False):
-    if value is None:
-        return default
-    return str(value).lower() in ('1', 'true', 'yes', 'on')
-
-
 def _apply_alert_config(cfg, data):
     if 'alert_enabled' in data:
-        cfg['alert_enabled'] = _bool_config_value(data.get('alert_enabled'), False)
+        cfg['alert_enabled'] = safeBool(data.get('alert_enabled'), False)
     if 'primary_notifier_host_id' in data:
         host_id = str(data.get('primary_notifier_host_id') or '').strip()
         if host_id:
@@ -1205,9 +1225,9 @@ def _apply_alert_config(cfg, data):
     if 'alert_takeover_recover_count' in data:
         cfg['alert_takeover_recover_count'] = max(1, _safe_int(data.get('alert_takeover_recover_count'), 2))
     if 'alert_recovery_notify' in data:
-        cfg['alert_recovery_notify'] = _bool_config_value(data.get('alert_recovery_notify'), True)
+        cfg['alert_recovery_notify'] = safeBool(data.get('alert_recovery_notify'), True)
     if 'alert_key_health_check_enabled' in data:
-        cfg['alert_key_health_check_enabled'] = _bool_config_value(data.get('alert_key_health_check_enabled'), False)
+        cfg['alert_key_health_check_enabled'] = safeBool(data.get('alert_key_health_check_enabled'), False)
     if not cfg.get('primary_notifier_host_id'):
         cfg['primary_notifier_host_id'] = _default_primary_notifier_host_id(cfg)
     return cfg
@@ -1258,8 +1278,8 @@ def sync_alert_config():
 
 def report_state():
     cfg = _config()
-    _append_report_state_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), monitor_url=cfg.get('monitor_url'), monitor_disabled=cfg.get('monitor_disabled'))
-    if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+    _append_report_state_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), monitor_url=cfg.get('monitor_url'), monitor_disabled=cfg.get('monitor_disabled'), report_enabled=cfg.get('report_enabled'))
+    if cfg.get('monitor_disabled') or not cfg.get('report_enabled') or not cfg.get('monitor_url'):
         _append_report_state_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='云监控地址为空或已禁用')
         return _return(True, '云监控地址为空，不上传状态', {'hosts': []})
     report_time = _now()
@@ -1703,7 +1723,7 @@ def _send_ha_recovery_notification(cfg, alerts, context, state):
 
 
 def report_alert_event(cfg, event_type, status, title, message, alerts=None, mode=''):
-    if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+    if cfg.get('monitor_disabled') or not cfg.get('report_enabled') or not cfg.get('monitor_url'):
         _append_cloud_interaction_log('report_alert_event', 'skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), event_type=event_type, status=status, msg='云监控未启用')
         return {'status': False, 'msg': '云监控未启用'}
     alerts = alerts if isinstance(alerts, list) else []
@@ -1902,7 +1922,7 @@ def check_switch_execution_mode():
 def _require_failover_confirm(data, mode):
     if mode.get('mode') != 'local_failover':
         return True, ''
-    confirmed = str(data.get('confirm_failover') or data.get('failover_confirmed') or '').lower() in ('1', 'true', 'yes', 'on')
+    confirmed = safeBool(data.get('confirm_failover') or data.get('failover_confirmed'), False)
     if confirmed:
         return True, ''
     return False, '对端不可达时执行本机故障升主需要确认：请确认对端已停机、隔离或不会继续写入'
@@ -2203,8 +2223,8 @@ def collect_peer_logs(cfg, peer_state):
 
 def poll_monitor():
     cfg = _config()
-    _append_poll_monitor_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), monitor_url=cfg.get('monitor_url'), monitor_disabled=cfg.get('monitor_disabled'))
-    if cfg.get('monitor_disabled') or not cfg.get('monitor_url'):
+    _append_poll_monitor_log('start', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), monitor_url=cfg.get('monitor_url'), monitor_disabled=cfg.get('monitor_disabled'), report_enabled=cfg.get('report_enabled'))
+    if cfg.get('monitor_disabled') or not cfg.get('report_enabled') or not cfg.get('monitor_url'):
         _append_cloud_interaction_log('poll_monitor', 'skip', msg='云监控地址为空或已禁用', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'))
         _append_poll_monitor_log('skip', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), msg='云监控地址为空或已禁用')
         return _return(True, '云监控地址为空，不轮询期望状态', cfg)
@@ -2544,7 +2564,7 @@ def _preempt_switch_lock_for_new_task(cfg, switch_run_id, phase):
 
 
 def ack_switch_phase(cfg, phase, phase_status, step='', last_error=''):
-    if not cfg.get('monitor_url') or not cfg.get('switch_run_id'):
+    if cfg.get('monitor_disabled') or not cfg.get('report_enabled') or not cfg.get('monitor_url') or not cfg.get('switch_run_id'):
         _append_cloud_interaction_log('ack_switch_phase', 'skip', msg='无需确认', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=cfg.get('switch_run_id'), phase=phase, phase_status=phase_status)
         return {'status': False, 'msg': '无需确认'}
     payload = {
@@ -3103,7 +3123,7 @@ def _run_executor(phase, cfg, echo_output=False):
 
 def report_switch_event(cfg, phase, status, text, origin_host_id=None, seq=None, collect_method='local', switch_run_id=None):
     switch_run_id = switch_run_id or cfg.get('switch_run_id')
-    if not cfg.get('monitor_url') or not switch_run_id or switch_run_id.startswith('LOCAL_'):
+    if cfg.get('monitor_disabled') or not cfg.get('report_enabled') or not cfg.get('monitor_url') or not switch_run_id or switch_run_id.startswith('LOCAL_'):
         _append_cloud_interaction_log('report_switch_event', 'skip', msg='无需上报', pair_id=cfg.get('pair_id'), host_id=cfg.get('host_id'), switch_run_id=switch_run_id, phase=phase, event_status=status)
         return {'status': False, 'msg': '无需上报'}
     seq = seq or _seq()

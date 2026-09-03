@@ -11,6 +11,7 @@ var hmlState = {
   pair_id: '',
   pair_name: '',
   monitor_url: '',
+  report_enabled: false,
   report_interval: 30,
   last_report_at: '',
   last_action: '等待操作',
@@ -318,6 +319,8 @@ function hmlExternalServiceButtonClass() {
 function hmlRenderOverview() {
   var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
   var externalNormal = hmlExternalServiceNormal(hmlState.external_closed);
+  var monitorConfigured = !!hmlState.monitor_url;
+  var reportEnabled = monitorConfigured && !!hmlState.report_enabled;
   var promoteDisabled = hmlState.role === 'master';
   var demoteDisabled = hmlState.role === 'standby';
   var promoteTitle = promoteDisabled ? '当前已是主' : '将当前机器从备切换为主';
@@ -330,7 +333,7 @@ function hmlRenderOverview() {
         '<tr><th>当前主备状态</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleShortText(hmlState.role)) + '</td></tr>' +
         '<tr><th>对外服务</th><td>' + hmlPill(externalNormal ? 'ok' : 'bad', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
         '<tr><th>自检状态</th><td>' + hmlPill(failedChecks ? 'bad' : 'ok', failedChecks ? '有异常' : '正常') + '<span class="hml-overview-note">异常项 ' + failedChecks + ' 个</span></td></tr>' +
-        '<tr><th>云监控</th><td>' + (hmlState.monitor_url ? hmlPill('ok', '已开启') : hmlPill('warn', '未配置')) + '<span class="hml-overview-note">' + hmlHtml(hmlState.monitor_url ? '最近上报：' + (hmlState.last_report_at || '未上报') : '不上传本机状态') + '</span></td></tr>' +
+        '<tr><th>云监控</th><td>' + (monitorConfigured ? hmlPill(reportEnabled ? 'ok' : 'warn', reportEnabled ? '上报开启' : '上报关闭') : hmlPill('warn', '未配置')) + '<span class="hml-overview-note">' + hmlHtml(reportEnabled ? '最近上报：' + (hmlState.last_report_at || '未上报') : (monitorConfigured ? '已配置地址，但不会上传本机状态' : '不上传本机状态')) + '</span></td></tr>' +
       '</tbody></table>' +
     '</div></div>';
   $('.soft-man-con').html(html);
@@ -342,10 +345,13 @@ function hmlInput(label, name, value, style, type, placeholder) {
 
 function hmlRenderMonitor() {
   var configured = !!hmlState.monitor_url;
-  var html = '<div class="hml-section"><div class="hml-section-head"><div><div class="hml-section-title">绑定云监控上报配置</div><div class="hml-section-sub">配置本机 ID、主备关系 ID 和云监控地址。</div></div>' + (configured ? hmlPill('ok', '已开启') : hmlPill('warn', '未配置')) + '</div><div class="hml-section-body"><form class="bt-form hml-form" id="hmlMonitorForm">' +
+  var enabled = configured && !!hmlState.report_enabled;
+  var html = '<div class="hml-section"><div class="hml-section-head"><div><div class="hml-section-title">绑定云监控上报配置</div><div class="hml-section-sub">配置本机 ID、主备关系 ID、云监控地址和上报开关。</div></div>' + (configured ? hmlPill(enabled ? 'ok' : 'warn', enabled ? '上报开启' : '上报关闭') : hmlPill('warn', '未配置')) + '</div><div class="hml-section-body"><form class="bt-form hml-form" id="hmlMonitorForm">' +
     '<div class="line"><span class="tname">本机ID</span><div class="info-r hml-inline-actions"><input class="bt-input-text" type="text" name="host_id" value="' + hmlHtml(hmlState.host_id) + '" style="width:360px" readonly /><button type="button" class="btn btn-default btn-sm" onclick="hmlRegenerateHostId()">重新生成</button></div></div>' +
     hmlInput('主备关系ID', 'pair_id', hmlState.pair_id, 'width:360px') +
     hmlInput('云监控地址', 'monitor_url', hmlState.monitor_url, 'width:420px', 'text', '例如：http://192.168.100.1:10844') +
+    '<div class="line"><span class="tname">是否开启上报</span><div class="info-r c4"><label class="hml-option-check"><input type="checkbox" name="report_enabled" value="1" ' + (hmlState.report_enabled ? 'checked' : '') + '> <span>开启后才会上报到云监控</span></label></div></div>' +
+    '<div class="line"><span class="tname">状态</span><div class="info-r c4">' + hmlHtml(enabled ? '已开启上报，本机状态允许上传到云监控。' : (configured ? '已配置云监控地址，但上报开关已关闭，不会上传状态。' : '未配置云监控地址，不上传状态。')) + '</div></div>' +
     '<div class="line"><span class="tname"></span><div class="info-r hml-inline-actions"><button type="button" class="btn btn-default btn-sm" onclick="hmlSaveMonitor()">测试并注册</button><button type="button" class="btn btn-success btn-sm" onclick="hmlSaveMonitor(true)">保存并注册</button><button type="button" class="btn btn-default btn-sm" onclick="hmlReportState()">立即上报</button><button type="button" class="btn btn-warning btn-sm" onclick="hmlClearMonitor()">清空地址</button></div></div>' +
   '</form></div></div>';
   $('.soft-man-con').html(html);
@@ -356,6 +362,7 @@ function hmlReadMonitorForm() {
   $('#hmlMonitorForm').serializeArray().forEach(function(item) {
     data[item.name] = item.value;
   });
+  data.report_enabled = $('#hmlMonitorForm input[name="report_enabled"]').is(':checked') ? '1' : '0';
   return data;
 }
 
@@ -363,13 +370,14 @@ function hmlSaveMonitor(report) {
   var data = hmlReadMonitorForm();
   hmlPost('save_monitor', data, function(next) {
     hmlState = $.extend(true, hmlState, next);
-    layer.msg(report === true ? '已保存配置' : '配置已保存', {icon: hmlState.monitor_url ? 1 : 0});
+    layer.msg(report === true ? '已保存配置' : '配置已保存', {icon: (hmlState.monitor_url && hmlState.report_enabled) ? 1 : 0});
     hmlRenderMonitor();
   });
 }
 
 function hmlReportState() {
   if (!hmlState.monitor_url) return layer.msg('云监控地址为空，当前不会上传状态', {icon: 0});
+  if (!hmlState.report_enabled) return layer.msg('云监控上报已关闭，当前不会上传状态', {icon: 0});
   hmlPost('report_state', {}, function(next) {
     hmlState = $.extend(true, hmlState, next);
     layer.msg('本机状态已刷新', {icon: 1});

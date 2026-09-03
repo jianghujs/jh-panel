@@ -7,6 +7,10 @@ import subprocess
 import sys
 
 PANEL_DIR = '/www/server/jh-panel'
+sys.path.append(os.path.join(PANEL_DIR, 'class/plugin'))
+
+from value_tool import safeBool
+
 SWITCH_PY = os.path.join(PANEL_DIR, 'scripts/switch.py')
 MYSQL_PY = os.path.join(PANEL_DIR, 'scripts/mysql.py')
 RSYNCD_INDEX = os.path.join(PANEL_DIR, 'plugins/rsyncd/index.py')
@@ -223,10 +227,7 @@ def _quote(value):
 
 
 def _bool_opt(opts, key, default=False):
-    value = opts.get(key, default)
-    if isinstance(value, str):
-        return value.lower() in ('1', 'true', 'yes', 'y', 'on')
-    return bool(value)
+    return safeBool(opts.get(key, default), default)
 
 
 def _standby_sync_public_key():

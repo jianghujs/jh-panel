@@ -399,10 +399,10 @@ def _step_script_body(step_key, target_role=''):
         'open_mysql_notify': 'python3 {0} openMysqlSlaveNotify'.format(_quote(SWITCH_PY)),
         'open_rsync_notify': 'python3 {0} openRsyncStatusNotify'.format(_quote(SWITCH_PY)),
         'open_ssl_notify': 'python3 {0} setNotifyValue {1}'.format(_quote(SWITCH_PY), _quote(json.dumps({'ssl_cert': 14}, ensure_ascii=False))),
-        'master_openresty': '\n'.join(['systemctl stop nginx || true', 'systemctl disable nginx || true', 'systemctl unmask openresty || true', 'systemctl enable openresty || true', 'python3 {0} start'.format(_quote(OPENRESTY_INDEX)) if os.path.exists(OPENRESTY_INDEX) else 'systemctl start openresty']),
+        'master_openresty': '\n'.join(['systemctl unmask openresty || true', 'systemctl enable openresty || true', 'python3 {0} start'.format(_quote(OPENRESTY_INDEX)) if os.path.exists(OPENRESTY_INDEX) else 'systemctl start openresty']),
         'role_master': 'echo master > {0}'.format(_quote(ROLE_PATH)),
         'master_check': _health_check_script('master'),
-        'close_external': '\n'.join(['python3 {0} stop'.format(_quote(OPENRESTY_INDEX)) if os.path.exists(OPENRESTY_INDEX) else 'systemctl stop openresty', 'systemctl stop openresty || true', 'systemctl disable openresty || true', 'systemctl mask openresty || true', 'systemctl stop nginx || true', 'systemctl disable nginx || true']),
+        'close_external': '\n'.join(['python3 {0} stop'.format(_quote(OPENRESTY_INDEX)) if os.path.exists(OPENRESTY_INDEX) else 'systemctl stop openresty', 'systemctl stop openresty || true', 'systemctl disable openresty || true', 'systemctl mask openresty || true']),
         'demote_mysql': _mysql_apt_cmd('init_slave_status'),
         'disable_rsyncd_tasks': _rsyncd_task_script('disabled'),
         'stop_lsyncd': 'systemctl stop lsyncd',
@@ -668,23 +668,13 @@ def _check_lsyncd_service(expected):
 
 def _check_openresty_service(expected):
     openresty_active = _systemctl_active('openresty')
-    nginx_active = _systemctl_active('nginx')
     if expected == 'running':
-        if openresty_active and not nginx_active:
-            return 'running', 'OpenResty 运行中'
-        if openresty_active and nginx_active:
-            return 'running_with_nginx', 'OpenResty 和系统 nginx 同时运行'
-        if nginx_active:
-            return 'nginx_running', '系统 nginx 运行中，OpenResty 未运行'
-        return 'stopped', 'OpenResty 未运行'
-    if openresty_active or nginx_active:
-        active = []
         if openresty_active:
-            active.append('OpenResty')
-        if nginx_active:
-            active.append('系统 nginx')
-        return 'running', 'Web 服务运行中: ' + '、'.join(active)
-    return 'stopped', 'Web 服务已停止'
+            return 'running', 'OpenResty 运行中'
+        return 'stopped', 'OpenResty 未运行'
+    if openresty_active:
+        return 'running', 'OpenResty 运行中'
+    return 'stopped', 'OpenResty 已停止'
 
 
 def _expected_text(value):
@@ -849,9 +839,6 @@ def _ensure_mysql_running():
 
 def _openresty_master():
     logs = []
-    if _systemctl_exists('nginx'):
-        logs.append(_run_optional('systemctl stop nginx', '停止系统 nginx 服务'))
-        logs.append(_run_optional('systemctl disable nginx', '禁用系统 nginx 自启动'))
     logs.append(_run_optional('systemctl unmask openresty', '解除 OpenResty 锁定'))
     logs.append(_run_optional('systemctl enable openresty', '启用 OpenResty 自启动'))
     if os.path.exists(OPENRESTY_INDEX):
@@ -872,11 +859,8 @@ def _openresty_standby():
     logs.append(_run_optional('systemctl stop openresty', '兜底停止 OpenResty 服务'))
     logs.append(_run_optional('systemctl disable openresty', '禁用 OpenResty 自启动'))
     logs.append(_run_optional('systemctl mask openresty', '锁定 OpenResty，防止自动拉起'))
-    if _systemctl_exists('nginx'):
-        logs.append(_run_optional('systemctl stop nginx', '停止系统 nginx 服务'))
-        logs.append(_run_optional('systemctl disable nginx', '禁用系统 nginx 自启动'))
-    if not DRY_RUN and (_systemctl_active('openresty') or _systemctl_active('nginx')):
-        raise RuntimeError('关闭对外服务后 Web 服务仍在运行')
+    if not DRY_RUN and _systemctl_active('openresty'):
+        raise RuntimeError('关闭对外服务后 OpenResty 仍在运行')
     return '\n'.join(logs)
 
 

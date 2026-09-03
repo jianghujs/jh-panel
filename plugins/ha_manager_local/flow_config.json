@@ -1,5 +1,5 @@
 {
-  "version": "202609020045",
+  "version": "202609030200",
   "roles": {
     "master": {
       "stages": [
@@ -557,14 +557,14 @@
         {
           "key": "master_openresty",
           "title": "启动 OpenResty",
-          "desc": "解除 mask、启用自启动、启动 OpenResty，并停止系统 nginx 冲突。",
+          "desc": "解除 mask、启用自启动并启动 OpenResty。",
           "stage": "Web 服务",
           "phase": "master_online",
           "guide_ref": "openresty",
           "effect": "external_open",
           "undo_effect": "external_closed",
           "log_done": "已切入主机策略",
-          "code": "systemctl stop nginx || true\nsystemctl disable nginx || true\nsystemctl unmask openresty || true\nsystemctl enable openresty || true\npython3 /www/server/jh-panel/plugins/openresty/index.py start",
+          "code": "systemctl unmask openresty || true\nsystemctl enable openresty || true\npython3 /www/server/jh-panel/plugins/openresty/index.py start",
           "group": "打开 OpenResty",
           "repair": {
             "title": "检查 OpenResty 服务",
@@ -648,7 +648,7 @@
           "guide_ref": "openresty",
           "effect": "external_closed",
           "log_done": "已切入备机策略",
-          "code": "python3 /www/server/jh-panel/plugins/openresty/index.py stop\nsystemctl stop openresty || true\nsystemctl disable openresty || true\nsystemctl mask openresty || true\nsystemctl stop nginx || true\nsystemctl disable nginx || true",
+          "code": "python3 /www/server/jh-panel/plugins/openresty/index.py stop\nsystemctl stop openresty || true\nsystemctl disable openresty || true\nsystemctl mask openresty || true",
           "group": "关闭 OpenResty",
           "repair": {
             "title": "检查 OpenResty 服务",

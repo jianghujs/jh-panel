@@ -289,6 +289,19 @@ def _format_failed_output(output_lines):
         except Exception:
             return line
         if isinstance(data, dict):
+            rows = ((data.get('data') or {}).get('data') or []) if isinstance(data.get('data'), dict) else []
+            if rows and isinstance(rows[0], dict):
+                item = rows[0]
+                fields = [
+                    ('异常原因', data.get('msg') or ''),
+                    ('主库地址', '{0}:{1}'.format(item.get('Master_Host') or '--', item.get('Master_Port') or '--')),
+                    ('IO 状态', item.get('Slave_IO_Running') or '--'),
+                    ('SQL 状态', item.get('Slave_SQL_Running') or '--'),
+                    ('同步延迟', item.get('Seconds_Behind_Master') or '--'),
+                    ('SQL 错误', item.get('Last_Error') or '--'),
+                    ('IO 错误', item.get('Last_IO_Error') or '--')
+                ]
+                return '\n'.join(['{0}: {1}'.format(label, value) for label, value in fields if str(value or '').strip() and value != '--'])
             msg = str(data.get('msg') or '').strip()
             if msg:
                 return msg.replace('；', '\n')

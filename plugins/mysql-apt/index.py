@@ -314,6 +314,18 @@ def contentReplace(content):
     return content
 
 
+def ensureModeConfFiles():
+    mode_dir = getServerDir() + '/etc/mode'
+    if not os.path.exists(mode_dir):
+        os.makedirs(mode_dir, exist_ok=True)
+
+    for mode in ['gtid', 'classic']:
+        src = getPluginDir() + '/conf/' + mode + '.cnf'
+        dst = mode_dir + '/' + mode + '.cnf'
+        if os.path.exists(src) and not os.path.exists(dst):
+            mw.execShell('cp -f ' + src + ' ' + dst)
+
+
 def pSqliteDb(dbname='databases'):
     file = getServerDir() + '/mysql.db'
     name = 'mysql'
@@ -352,6 +364,8 @@ def initDreplace(version=''):
     my_dir = getServerDir() + '/etc'
     if not os.path.exists(my_dir):
         os.mkdir(my_dir)
+
+    ensureModeConfFiles()
 
     tmp_dir = getServerDir() + '/tmp'
     if not os.path.exists(tmp_dir):

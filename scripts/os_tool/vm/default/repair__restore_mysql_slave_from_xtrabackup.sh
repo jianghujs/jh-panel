@@ -129,13 +129,46 @@ recovery_script=$(python3 /www/server/jh-panel/plugins/xtrabackup/index.py  get_
 recovery_tmp_file="/tmp/temp_recovery.sh"
 recovery_log="/tmp/temp_recovery.log"
 popd > /dev/null
-echo "pushd /www/server/jh-panel > /dev/null" > $recovery_tmp_file
+
+if [ -z "$recovery_script" ] || [ "$recovery_script" == "null" ]; then
+    show_error "错误:xtrabackup恢复脚本生成失败，已停止，避免误启动mysql-apt导致密码被重新初始化"
+    exit 1
+fi
+
+# 恢复脚本由xtrabackup插件生成，默认末尾会启动MySQL。
+# 这里先移除启动动作，等确认data/mysql已恢复完成后，再由下方统一启动mysql-apt。
+recovery_script=$(printf '%s\n' "$recovery_script" | sed -E '/^[[:space:]]*systemctl[[:space:]]+start[[:space:]]+(mysql-apt|mysql)([[:space:]]|$)/d')
+
+echo "set -e" > $recovery_tmp_file
+echo "pushd /www/server/jh-panel > /dev/null" >> $recovery_tmp_file
 echo "${recovery_script}" >> $recovery_tmp_file
 echo "popd > /dev/null" >> $recovery_tmp_file
 chmod +x $recovery_tmp_file
 echo "|- 正在恢复xtrabackup文件..."
 bash $recovery_tmp_file > $recovery_log 2>&1
+recovery_status=$?
 rm $recovery_tmp_file
+if [ $recovery_status -ne 0 ]; then
+    show_error "错误:xtrabackup恢复失败，已停止，避免误启动mysql-apt导致密码被重新初始化"
+    echo "|- 恢复日志：$recovery_log"
+    tail -n 80 "$recovery_log"
+    exit 1
+fi
+
+mysql_apt_data_dir="/www/server/mysql-apt/data"
+if [ -f "/www/server/mysql-apt/etc/my.cnf" ]; then
+    mysql_apt_data_dir=$(awk -F= '/^[[:space:]]*datadir[[:space:]]*=/{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit}' /www/server/mysql-apt/etc/my.cnf)
+    mysql_apt_data_dir=${mysql_apt_data_dir:-/www/server/mysql-apt/data}
+fi
+
+if [ ! -d "$mysql_apt_data_dir/mysql" ]; then
+    show_error "错误:恢复后未检测到MySQL系统库目录：$mysql_apt_data_dir/mysql"
+    echo "|- 已停止，避免mysql-apt start触发空数据目录初始化并改写面板记录密码"
+    echo "|- 恢复日志：$recovery_log"
+    tail -n 80 "$recovery_log"
+    exit 1
+fi
+
 echo "|- 恢复xtrabackup文件成功✅"
 
 # 获取mysql-apt状态
@@ -207,4 +240,3 @@ echo "- log_file：$log_file"
 echo "- log_pos：$log_pos"
 echo "- gtid_purged：$gtid_purged"
 echo "==============================================================="
-

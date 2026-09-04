@@ -151,6 +151,7 @@ var msCheckTemplate = [
   {group: 'SSH 同步', name: 'authorized_keys 同步公钥', master: '应未授权', standby: '应授权'},
   {group: 'rsync', name: 'rsyncd 任务', master: '应运行', standby: '应停止'},
   {group: 'rsync', name: '残留 rsync 进程', master: '应停止', standby: '应停止'},
+  {group: 'MySQL', name: '主从数据库同步状态', master: '应未处于从库状态', standby: '应同步正常'},
   {group: 'Web 服务', name: 'OpenResty', master: '应运行', standby: '应停止'},
   {group: '监控提醒', name: '主从同步异常提醒', master: '应启用', standby: '应停用'},
   {group: '监控提醒', name: 'Rsync 状态异常提醒', master: '应启用', standby: '应停用'}

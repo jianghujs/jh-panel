@@ -59,6 +59,7 @@ OLD_RUNTIME_DIR = '/www/server/ha_manager'
 REMOTE_STATE_PATH = '/www/server/ha_manager_ssh/data/state.json'
 REMOTE_SWITCH_LOG_DIR = '/www/server/ha_manager_ssh/logs/switch'
 PANEL_TITLE_STATE_PATH = '/www/server/jh-panel/data/ha_manager_title_state.json'
+MYSQL_APT_INDEX = os.path.join(PANEL_DIR, 'plugins/mysql-apt/index.py')
 
 
 def _now():
@@ -571,6 +572,7 @@ HA_CHECK_DEFS = [
     {'group': 'SSH 同步', 'name': 'authorized_keys 同步公钥', 'type': 'authorized_key', 'master': 'disabled', 'standby': 'enabled'},
     {'group': 'rsync', 'name': 'rsyncd 任务', 'type': 'rsyncd_tasks', 'master': 'enabled', 'standby': 'disabled'},
     {'group': 'rsync', 'name': 'lsyncd 服务', 'type': 'lsyncd_service', 'master': 'running', 'standby': 'stopped'},
+    {'group': 'MySQL', 'name': '主从数据库同步状态', 'type': 'mysql_replication', 'master': 'not_slave', 'standby': 'healthy'},
     {'group': 'Web 服务', 'name': 'OpenResty', 'type': 'openresty_service', 'master': 'running', 'standby': 'stopped'},
     {'group': '监控提醒', 'name': '主从同步异常提醒', 'type': 'notify', 'target': 'mysql_slave_status_notice', 'master': 'enabled', 'standby': 'disabled'},
     {'group': '监控提醒', 'name': 'Rsync 状态异常提醒', 'type': 'notify', 'target': 'rsync_status_notice', 'master': 'enabled', 'standby': 'disabled'}
@@ -584,7 +586,9 @@ def _expected_text(value):
         'running': '应运行',
         'stopped': '应停止',
         'authorized': '应授权',
-        'unauthorized': '应未授权'
+        'unauthorized': '应未授权',
+        'healthy': '应同步正常',
+        'not_slave': '应未处于从库状态'
     }.get(value, value)
 
 
@@ -597,8 +601,50 @@ def _actual_text(value):
         'stopped': '已停止',
         'authorized': '已授权',
         'unauthorized': '未授权',
+        'healthy': '同步正常',
+        'unhealthy': '同步异常',
+        'not_slave': '未处于从库状态',
+        'slave_running': '从库同步中',
         'unknown': '未知'
     }.get(value, value)
+
+
+def _parse_last_json(text):
+    for line in reversed(str(text or '').splitlines()):
+        line = line.strip()
+        if not line or not line.startswith('{'):
+            continue
+        try:
+            data = json.loads(line)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            continue
+    return {}
+
+
+def _mysql_apt_result(func, timeout=20):
+    cmd = 'python3 {0} {1}'.format(shlex.quote(MYSQL_APT_INDEX), shlex.quote(func))
+    out, err, code = mw.execShell(cmd, timeout=timeout)
+    data = _parse_last_json(out)
+    if data:
+        return data
+    msg = (str(out or '').strip() or str(err or '').strip() or 'MySQL APT 插件无返回')
+    return {'status': code == 0, 'msg': msg, 'data': {}}
+
+
+def _check_mysql_replication(expected):
+    if not os.path.exists(MYSQL_APT_INDEX):
+        return 'unknown', 'mysql-apt 插件不存在'
+    result = _mysql_apt_result('check_slave_status')
+    msg = str(result.get('msg') or '').strip()
+    if expected == 'healthy':
+        return ('healthy' if result.get('status') else 'unhealthy'), (msg or ('主从同步正常' if result.get('status') else '主从同步异常'))
+    if result.get('status'):
+        return 'slave_running', '当前仍处于从库同步状态'
+    if msg.startswith('未检测到从库状态'):
+        return 'not_slave', '未检测到从库状态'
+    return 'unknown', msg or '无法确认从库状态'
 
 
 def _check_crontab(name):
@@ -702,6 +748,9 @@ def _run_health_check_item(item, role):
     elif item.get('type') == 'lsyncd_service':
         actual, actual_text = _check_lsyncd_service(expected)
         ok = actual == expected or actual == 'skip'
+    elif item.get('type') == 'mysql_replication':
+        actual, actual_text = _check_mysql_replication(expected)
+        ok = actual == expected
     elif item.get('type') == 'notify':
         actual = _check_notify(item.get('target'))
         ok = actual == expected

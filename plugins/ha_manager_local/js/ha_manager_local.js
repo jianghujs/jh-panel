@@ -27,13 +27,14 @@ var hmlState = {
     {key: 'task_policy_online', name: '上线任务调整', desc: '切到主机后启用网站备份、插件备份和证书任务。', state: 'pending', action: '调整上线任务', repair: '重试任务调整'},
     {key: 'role_mark_master', name: '标记为主机', desc: '将当前机器角色改成主机。', state: 'pending', action: '标记主机', repair: '重新写入角色'},
     {key: 'service_policy_master', name: '应用主机策略', desc: '启动入口服务并恢复对外承载。', state: 'pending', action: '应用主机策略', repair: '重试服务策略'},
-    {key: 'quality_check', name: '执行自检', desc: '检查 OpenResty、rsync、计划任务和角色一致性。', state: 'pending', action: '开始自检', repair: '重新自检'}
+    {key: 'quality_check', name: '执行自检', desc: '检查 OpenResty、rsync、MySQL、计划任务和角色一致性。', state: 'pending', action: '开始自检', repair: '重新自检'}
   ],
   checks: [
     {group: 'Web 服务', name: 'OpenResty', expected: '备机应停止', actual: '运行中', status: 'fail'},
     {group: '计划任务', name: '备份数据库', expected: '备机应启用', actual: '已启用', status: 'pass'},
     {group: '计划任务', name: '备份网站配置', expected: '备机应停用', actual: '已停用', status: 'pass'},
     {group: 'rsync', name: 'rsyncd 任务', expected: '备机应停止', actual: '已停止', status: 'pass'},
+    {group: 'MySQL', name: '主从数据库同步状态', expected: '应同步正常', actual: '未知', status: 'fail'},
     {group: '角色状态', name: '本机角色标记', expected: 'standby', actual: 'standby', status: 'pass'}
   ]
 };

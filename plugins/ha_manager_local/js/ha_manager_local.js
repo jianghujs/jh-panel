@@ -155,6 +155,71 @@ function hmlCreateFlowRunId() {
   return 'FLOW_' + hmlCreateRunId();
 }
 
+function hmlSafeMessageConfirm(title, message, callback) {
+  if (typeof safeMessage === 'function') {
+    safeMessage(title, message, callback);
+    return;
+  }
+  layer.confirm(message, {icon: 3, title: title, btn: ['确认继续', '取消']}, function(index) {
+    layer.close(index);
+    if (callback) callback();
+  });
+}
+
+function hmlFailedHealthChecks(checks) {
+  return (checks || []).filter(function(item) {
+    return item && item.status !== 'pass';
+  });
+}
+
+function hmlHealthWarningHtml(checks, actionText) {
+  var failed = hmlFailedHealthChecks(checks);
+  var names = failed.map(function(item) {
+    var group = item.group ? (item.group + ' / ') : '';
+    return group + (item.name || '未命名检查项') + '：' + (item.actual || item.status || '异常');
+  }).slice(0, 8);
+  if (failed.length > 8) names.push('还有 ' + (failed.length - 8) + ' 项异常未展示');
+  return '<div style="line-height:24px;">自检发现 <span style="color:red;font-weight:600;">' + failed.length + '</span> 个异常项。<br>' +
+    '<div style="margin-top:8px;color:#666;">' + hmlHtml(names.join('<br>')).replace(/&lt;br&gt;/g, '<br>') + '</div>' +
+    '<div style="margin-top:10px;color:red;">确认后将继续执行' + hmlHtml(actionText || '切换操作') + '，请确认风险可接受。</div></div>';
+}
+
+function hmlIsHealthCheckStep(step) {
+  if (!step) return false;
+  return step.key === 'master_check' || step.key === 'standby_check' || step.key === 'quality_check' || String(step.title || '').indexOf('自检') !== -1;
+}
+
+function hmlHealthWarningNeedsConfirm(step) {
+  return hmlIsHealthCheckStep(step) && step.state === 'done' && !!step.warning_msg && !step.health_warning_confirmed;
+}
+
+function hmlConfirmHealthWarningStep(step, callback) {
+  var message = '<div style="line-height:24px;">' + hmlHtml(step.warning_msg || '自检发现异常') +
+    '<div style="margin-top:10px;color:red;">确认后将继续执行后续切换操作，请确认风险可接受。</div></div>';
+  hmlSafeMessageConfirm('自检异常确认', message, function() {
+    step.health_warning_confirmed = true;
+    if (callback) callback();
+  });
+}
+
+function hmlConfirmCurrentHealthBeforeSwitch(targetRole, callback) {
+  hmlPost('health_check', {}, function(data) {
+    hmlState.checks = data.checks || hmlState.checks;
+    hmlState.health_status = data.health_status || hmlState.health_status;
+    hmlState.health_text = data.health_text || hmlState.health_text;
+    hmlState.external_closed = data.external_closed;
+    var failed = hmlFailedHealthChecks(hmlState.checks);
+    if (!failed.length) {
+      if (callback) callback();
+      return;
+    }
+    var actionText = targetRole === 'master' ? '备机升主' : '主机降从';
+    hmlSafeMessageConfirm('自检异常确认', hmlHealthWarningHtml(hmlState.checks, actionText), function() {
+      if (callback) callback();
+    });
+  });
+}
+
 function hmlStopStepLogPolling() {
   if (window.hmlStepLogTimer) {
     clearInterval(window.hmlStepLogTimer);
@@ -458,6 +523,12 @@ function hmlCloneFlowStep(step) {
 function hmlOpenSwitchDialog(targetRole) {
   var defaultRole = targetRole || (hmlState.role === 'master' ? 'standby' : 'master');
   if (defaultRole === hmlState.role) return;
+  hmlConfirmCurrentHealthBeforeSwitch(defaultRole, function() {
+    hmlOpenSwitchDialogConfirmed(defaultRole);
+  });
+}
+
+function hmlOpenSwitchDialogConfirmed(defaultRole) {
   var state = {
     role: hmlState.role,
     desired_role: defaultRole,
@@ -950,6 +1021,16 @@ function hmlExecuteFlowStep(done, forceRun, scriptContent) {
       hmlUpdateVisibleStepLog(step);
       hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
       if (state.auto_running) {
+        if (hmlHealthWarningNeedsConfirm(step)) {
+          state.auto_running = false;
+          hmlConfirmHealthWarningStep(step, function() {
+            state.auto_running = true;
+            hmlRenderFlowDialog($('#hmlFlowDialog'), state, steps);
+            state.flow_timer = setTimeout(hmlContinueCurrentFlowPhase, 180);
+          });
+          if (done) done(step.state === 'done');
+          return;
+        }
         if (step.state === 'done') {
           state.flow_timer = setTimeout(hmlContinueCurrentFlowPhase, 180);
         } else {
@@ -1084,13 +1165,17 @@ function hmlContinueCurrentFlowPhase() {
 function hmlGoNextFlowStep() {
   var state = window.hmlFlowState;
   if (!state || !state.steps) return;
+  var current = state.steps[state.active_step];
+  if (hmlHealthWarningNeedsConfirm(current)) {
+    hmlConfirmHealthWarningStep(current, hmlGoNextFlowStep);
+    return;
+  }
   if (state.completed) {
     state.completed_view = true;
     hmlPromptNextFlow(state.target_role);
     hmlRenderFlowDialog($('#hmlFlowDialog'), state, state.steps);
     return;
   }
-  var current = state.steps[state.active_step];
   if (current && current.guide) {
     current.state = 'done';
     var nextAfterGuide = state.active_step + 1;

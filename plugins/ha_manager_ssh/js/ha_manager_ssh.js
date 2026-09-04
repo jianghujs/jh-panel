@@ -126,6 +126,17 @@ function msAttr(value) {
   return msHtml(value).replace(/'/g, '&#39;');
 }
 
+function msSafeMessageConfirm(title, message, callback) {
+  if (typeof safeMessage === 'function') {
+    safeMessage(title, message, callback);
+    return;
+  }
+  layer.confirm(message, {icon: 3, title: title, btn: ['确认继续', '取消']}, function(index) {
+    layer.close(index);
+    if (callback) callback();
+  });
+}
+
 function msPill(status, text) {
   var cls = status === 'normal' ? 'ms-pill-normal' : status === 'warning' ? 'ms-pill-warn' : status === 'danger' ? 'ms-pill-danger' : 'ms-pill-info';
   return '<span class="ms-status-pill ' + cls + '">' + msHtml(text) + '</span>';
@@ -219,6 +230,54 @@ function msBuildHostChecks(host) {
     result.push({group: item.group, name: item.name, expected: expected, actual: actual, status: status});
   });
   return result;
+}
+
+function msFailedHostHealthItems(host) {
+  if (!host || host.unbound) return [];
+  var checks = msBuildHostChecks(host);
+  var failed = (checks || []).filter(function(item) {
+    return item && item.status !== 'pass';
+  });
+  if (host.online === false && !failed.length) {
+    failed.push({group: '主备绑定', name: '对端状态采集', actual: '插件离线或采集失败', status: 'unknown'});
+  }
+  return failed;
+}
+
+function msHealthWarningHtml(hosts, actionText) {
+  var lines = [];
+  var total = 0;
+  (hosts || []).forEach(function(host) {
+    var failed = msFailedHostHealthItems(host);
+    if (!failed.length) return;
+    total += failed.length;
+    failed.slice(0, 6).forEach(function(item) {
+      var group = item.group ? (item.group + ' / ') : '';
+      lines.push((host.name || '主机') + ' - ' + group + (item.name || '未命名检查项') + '：' + (item.actual || item.status || '异常'));
+    });
+    if (failed.length > 6) lines.push((host.name || '主机') + ' - 还有 ' + (failed.length - 6) + ' 项异常未展示');
+  });
+  return '<div style="line-height:24px;">自检发现 <span style="color:red;font-weight:600;">' + total + '</span> 个异常项。<br>' +
+    '<div style="margin-top:8px;color:#666;">' + msHtml(lines.join('<br>')).replace(/&lt;br&gt;/g, '<br>') + '</div>' +
+    '<div style="margin-top:10px;color:red;">确认后将继续执行' + msHtml(actionText || '切换操作') + '，请确认风险可接受。</div></div>';
+}
+
+function msConfirmHealthBeforeSwitch(targetRole, action, callback) {
+  msLoadState(function() {
+    var hosts = msHealthHosts().filter(function(host) { return !host.unbound; });
+    var failedCount = 0;
+    hosts.forEach(function(host) {
+      failedCount += msFailedHostHealthItems(host).length;
+    });
+    if (!failedCount) {
+      if (callback) callback();
+      return;
+    }
+    var actionText = action === 'prepare' ? '预备上线' : '正式切换';
+    msSafeMessageConfirm('自检异常确认', msHealthWarningHtml(hosts, actionText), function() {
+      if (callback) callback();
+    });
+  });
 }
 
 function msCheckHostCard(host) {
@@ -681,8 +740,10 @@ function msWizardRunPrepare() {
   var root = msSwitchWizardRoot();
   var options = msReadLocalSwitchOptions(root);
   msSwitchWizard.options = options;
-  msConfirmPrepareOnline(msSwitchWizard.targetRole, function() {
-    msPrepareRunLocalSwitch(msSwitchWizard.targetRole, options, 'prepare');
+  msConfirmHealthBeforeSwitch(msSwitchWizard.targetRole, 'prepare', function() {
+    msConfirmPrepareOnline(msSwitchWizard.targetRole, function() {
+      msPrepareRunLocalSwitch(msSwitchWizard.targetRole, options, 'prepare');
+    });
   });
 }
 
@@ -996,19 +1057,21 @@ function msStartFinalizeFromCurrentSwitchDialog() {
     }
     msPrepareRunLocalSwitch(targetRole, switchOptions, 'finalize');
   };
-  if (msSwitchWizard.executionMode && msSwitchWizard.executionMode.mode === 'local_failover') {
-    layer.confirm(msHtml(msSwitchWizard.executionMode.message || '对端不可达，本次将执行本机故障升主。') + '<br><span class="c7">原因：' + msHtml(msSwitchWizard.executionMode.reason || '--') + '</span>', {icon: 3, title: '确认故障升主', btn: ['确认执行', '取消']}, function(index) {
-      layer.close(index);
-      msSwitchWizard.confirmFailover = true;
-      runFinalize();
-    });
-    return;
-  }
-  if (targetRole === 'standby') {
-    msConfirmPeerTakeover(runFinalize);
-    return;
-  }
-  msConfirmFinalizeSwitch(targetRole, runFinalize);
+  msConfirmHealthBeforeSwitch(targetRole, 'finalize', function() {
+    if (msSwitchWizard.executionMode && msSwitchWizard.executionMode.mode === 'local_failover') {
+      layer.confirm(msHtml(msSwitchWizard.executionMode.message || '对端不可达，本次将执行本机故障升主。') + '<br><span class="c7">原因：' + msHtml(msSwitchWizard.executionMode.reason || '--') + '</span>', {icon: 3, title: '确认故障升主', btn: ['确认执行', '取消']}, function(index) {
+        layer.close(index);
+        msSwitchWizard.confirmFailover = true;
+        runFinalize();
+      });
+      return;
+    }
+    if (targetRole === 'standby') {
+      msConfirmPeerTakeover(runFinalize);
+      return;
+    }
+    msConfirmFinalizeSwitch(targetRole, runFinalize);
+  });
 }
 
 function msPrepareRunLocalSwitch(targetRole, options, action) {

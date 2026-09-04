@@ -1330,10 +1330,13 @@ function myLogs(){
         });
 
         $(".clean-btn-bin").click(function () {
-            myPost('clean_bin_log', '', function(data){
-                var rdata = $.parseJSON(data.data);
-                layer.msg(rdata.msg, { icon: rdata.status ? 1 : 5 });
-                setTimeout(function(){myLogs();}, 2000);
+            layer.confirm('确认清理BINLOG日志？<br>系统会保留当前正在写入的BINLOG，只清理旧日志文件。<br>如果有从库长时间未同步，清理旧日志可能导致从库无法继续追平。', {title:'确认操作', icon:3, btn:['确认清理','取消']}, function(index){
+                layer.close(index);
+                myPost('clean_bin_log', '', function(data){
+                    var rdata = $.parseJSON(data.data);
+                    layer.msg(rdata.msg, { icon: rdata.status ? 1 : 5 });
+                    setTimeout(function(){myLogs();}, 2000);
+                }, '正在清理BINLOG...');
             });
         });
 
@@ -1812,11 +1815,30 @@ function deleteSlave(){
     });
 }
 
+function resetSlaveStatus(){
+    layer.confirm('确认重置当前机器的主从状态？<br>该操作会停止从库复制，并清理当前机器保存的从库复制配置。<br>不会清理主库BINLOG，也不会执行RESET MASTER。重置后需要重新初始化或重新建立主从。', {title:'确认操作', icon:3, btn:['确认重置','取消']}, function(index){
+        layer.close(index);
+        myPost('reset_slave_status', {}, function(data){
+            var rdata = $.parseJSON(data.data);
+            showMsg(rdata['msg'], function(){
+                masterOrSlaveConf();
+            },{},3000);
+        }, '正在重置主从状态...');
+    });
+}
 
-function getFullSyncStatus(db){
+
+function rebuildSlaveStatus(){
+    getFullSyncStatus('ALL', true);
+}
+
+
+function getFullSyncStatus(db, rebuild){
+    rebuild = !!rebuild;
     var timeId = null;
 
-    var btn = '<div class="table_toolbar" style="left:0px;"><span data-status="init" class="sync btn btn-default btn-sm" id="begin_full_sync" title="">开始</span></div>';
+    var btnText = rebuild ? '开始同步' : '开始';
+    var btn = '<div class="table_toolbar" style="left:0px;"><span data-status="init" class="sync btn btn-default btn-sm" id="begin_full_sync" title="">' + btnText + '</span></div>';
     var loadOpen = layer.open({
         type: 1,
         title: '全量同步['+db+']',
@@ -1837,7 +1859,7 @@ function getFullSyncStatus(db){
 
     function fullSync(db,begin){
        
-        myPostN('full_sync', {db:db,begin:begin}, function(data){
+        myPostN('full_sync', {db:db,begin:begin,rebuild:rebuild ? 1 : 0}, function(data){
             var rdata = $.parseJSON(data.data);
             $('#full_msg').text(rdata['msg']);
             $('.progress-bar').css('width',rdata['progress']+'%');
@@ -1847,6 +1869,12 @@ function getFullSyncStatus(db){
                 layer.msg(rdata['msg']);
                 clearInterval(timeId);
                 $("#begin_full_sync").attr('data-status','init');
+                if (rdata['code']==6){
+                    setTimeout(function(){
+                        layer.close(loadOpen);
+                        masterOrSlaveConf();
+                    }, 1000);
+                }
             }
         });
     }
@@ -1854,11 +1882,17 @@ function getFullSyncStatus(db){
     $('#begin_full_sync').click(function(){
         var val = $(this).attr('data-status');
         if (val == 'init'){
-            fullSync(db,1);
-            timeId = setInterval(function(){
-                fullSync(db,0);
-            }, 1000);
-            $(this).attr('data-status','starting');
+            var $btn = $(this);
+            var confirmTitle = rebuild ? '<b style="color: red">【' + document.title + '】全量同步确认警告！ </b>' : '<b style="color: red">【' + document.title + '】同步确认警告！ </b>';
+            var confirmMsg = rebuild ? '确定对当前机器执行全量同步吗？确认后会从主库重新导出全量数据，覆盖导入到当前机器，并重新建立主从同步。GTID模式下会清理当前从库本机的BINLOG/GTID基线，不会清理主库BINLOG。执行前请确认当前机器是备库，主库SSH配置可用，且主库数据是最新可信数据。' : '确定开始同步数据库[' + db + ']吗？同步期间请勿重复提交。';
+            safeMessage(confirmTitle, confirmMsg, function(){
+                if ($btn.attr('data-status') != 'init') return;
+                fullSync(db,1);
+                timeId = setInterval(function(){
+                    fullSync(db,0);
+                }, 1000);
+                $btn.attr('data-status','starting');
+            });
         } else {
             layer.msg("正在同步中..");
         }
@@ -2213,6 +2247,8 @@ function masterOrSlaveConf(version=''){
                     <button class="btn '+(!rdata.slave_status ? 'btn-danger' : 'btn-success')+' btn-xs btn-slave">'+(!rdata.slave_status ? '未启动' : '已启动') +'</button>\
                     <button class="btn btn-success btn-xs" onclick="getSlaveSSHList()" >[主]SSH配置</button>\
                     <button class="btn btn-success btn-xs" onclick="initSlaveStatus()" >初始化</button>\
+                    <button class="btn btn-default btn-xs" onclick="resetSlaveStatus()" >重置主从状态</button>\
+                    <button class="btn btn-default btn-xs" onclick="rebuildSlaveStatus()" >全量同步</button>\
                 </p>\
                 <div class="auto-save-slave-to-master-cron mt20 conf_p flex" style="align-items: center;">\
                     <span class="f14 c6 mr20">定时推送状态到[主]</span><span class="f14 c6 mr20"></span>\

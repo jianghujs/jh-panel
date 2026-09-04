@@ -469,6 +469,68 @@ def binLog():
     return mw.returnJson(True, '设置成功!')
 
 
+def _binlog_size(datadir):
+    size = 0
+    if not os.path.exists(datadir):
+        return size
+    for name in os.listdir(datadir):
+        if name.startswith('mysql-bin.'):
+            path = os.path.join(datadir, name)
+            if os.path.isfile(path):
+                size += os.path.getsize(path)
+    return size
+
+
+def cleanBinLog():
+    if status() == 'stop':
+        return mw.returnJson(False, 'MySQL未启动,无法清理BINLOG日志!')
+
+    db = pMysqlDb()
+    master_status = db.query('SHOW MASTER STATUS')
+    error = isSqlError(master_status)
+    if error is not None:
+        return error
+    if not isinstance(master_status, list) or len(master_status) == 0:
+        return mw.returnJson(False, '未开启BINLOG日志,无需清理!')
+
+    current_file = str(master_status[0].get('File') or '').strip()
+    if not current_file:
+        return mw.returnJson(False, '未获取到当前BINLOG文件,清理失败!')
+
+    logs = db.query('SHOW BINARY LOGS')
+    error = isSqlError(logs)
+    if error is not None:
+        return error
+    if isinstance(logs, tuple):
+        logs = list(logs)
+    if not isinstance(logs, list):
+        return mw.returnJson(False, '获取BINLOG列表失败: ' + str(logs))
+
+    before_count = len(logs)
+    if before_count <= 1:
+        return mw.returnJson(True, '当前只有一个BINLOG文件,无需清理!', {'before_count': before_count, 'after_count': before_count})
+
+    before_size = _binlog_size(getDataDir())
+    result = db.execute("PURGE BINARY LOGS TO '{}'".format(current_file.replace("'", "''")))
+    if isinstance(result, Exception):
+        return mw.returnJson(False, '清理BINLOG失败: ' + str(result))
+
+    logs_after = db.query('SHOW BINARY LOGS')
+    after_count = len(logs_after) if isinstance(logs_after, list) else 0
+    after_size = _binlog_size(getDataDir())
+    cleaned_count = max(before_count - after_count, 0)
+    cleaned_size = max(before_size - after_size, 0)
+    return mw.returnJson(True, '清理BINLOG成功, 已清理{0}个日志文件!'.format(cleaned_count), {
+        'before_count': before_count,
+        'after_count': after_count,
+        'cleaned_count': cleaned_count,
+        'before_size': before_size,
+        'after_size': after_size,
+        'cleaned_size': cleaned_size,
+        'current_file': current_file
+    })
+
+
 def setSkipGrantTables(v):
     '''
     设置是否密码验证
@@ -2614,26 +2676,62 @@ def updateSlaveSSH(version=''):
     conn.where("ip=?", (ip,)).save('id_rsa', (id_rsa,))
     return mw.returnJson(True, 'ok')
 
+
+def _ssh_private_key_file(id_rsa, temp_path='/tmp/t_ssh.txt'):
+    value = str(id_rsa or '').strip()
+    if not value:
+        value = '/root/.ssh/id_rsa'
+    value = value.replace('\\n', '\n')
+    if 'BEGIN ' in value and 'PRIVATE KEY' in value:
+        mw.writeFile(temp_path, value)
+        mw.execShell('chmod 600 ' + shlex.quote(temp_path))
+        return temp_path, True
+    if value.endswith('.pub') and os.path.exists(value[:-4]):
+        return value[:-4], False
+    if os.path.exists(value):
+        return value, False
+    raise RuntimeError('SSH私钥不存在或格式不正确: ' + value)
+
+
+def _load_ssh_private_key(key_file):
+    last_error = None
+    key_classes = [paramiko.RSAKey]
+    for name in ('Ed25519Key', 'ECDSAKey', 'DSSKey'):
+        key_class = getattr(paramiko, name, None)
+        if key_class:
+            key_classes.append(key_class)
+    for key_class in key_classes:
+        try:
+            return key_class.from_private_key_file(key_file)
+        except Exception as e:
+            last_error = e
+    raise RuntimeError('不是有效的SSH私钥文件，或密钥类型不受支持: ' + str(last_error))
+
+
 def testSSH():
     args = getArgs()
     data = checkArgs(args, ['ip', 'port', 'id_rsa'])
     if not data[0]:
         return data[1]
-    
-    SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
-    # 如果args['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
-    if args['id_rsa'] and args['id_rsa'].find('BEGIN OPENSSH PRIVATE KEY') > -1:
-        SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
-        mw.writeFile(SSH_PRIVATE_KEY, args['id_rsa'].replace('\\n', '\n'))
-
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # 自动添加主机名和主机密钥
+    key_file = ''
+    is_temp_key = False
     try:
-        ssh.connect(hostname=args['ip'], port=args['port'], username='root', pkey=RSAKey(filename=SSH_PRIVATE_KEY), timeout=2)  # 你的主机名，用户名和密码
+        key_file, is_temp_key = _ssh_private_key_file(args.get('id_rsa'), '/tmp/t_ssh.txt')
+        key = _load_ssh_private_key(key_file)
+        ssh.connect(hostname=args['ip'], port=int(args['port']), username='root', pkey=key, timeout=2)  # 你的主机名，用户名和密码
         return mw.returnJson(True, '连接成功')
     except Exception as e:
         return mw.returnJson(False, str(e))
+    finally:
+        try:
+            ssh.close()
+        except Exception:
+            pass
+        if is_temp_key and key_file:
+            os.system('rm -rf ' + shlex.quote(key_file))
 
 def getSlaveList(version=''):
 
@@ -2723,19 +2821,15 @@ class master_ssh_client:
         self._ssh_private_key = None
 
     def connect(self, ip, port, id_rsa):
-        SSH_PRIVATE_KEY = "/root/.ssh/id_rsa"
-        # 如果args['id_rsa']的内容不是一个路径，而是证书内容（包含BEGIN OPENSSH PRIVATE KEY）
-        if id_rsa and id_rsa.find('BEGIN OPENSSH PRIVATE KEY') > -1:
-          SSH_PRIVATE_KEY = "/tmp/t_ssh.txt"
-          mw.writeFile(SSH_PRIVATE_KEY, id_rsa.replace('\\n', '\n'))
-        self._ssh_private_key = SSH_PRIVATE_KEY 
+        SSH_PRIVATE_KEY, is_temp_key = _ssh_private_key_file(id_rsa, '/tmp/t_ssh.txt')
+        self._ssh_private_key = SSH_PRIVATE_KEY if is_temp_key else ''
 
         import paramiko
         paramiko.util.log_to_file('paramiko.log')
         ssh = paramiko.SSHClient()
 
-        mw.execShell("chmod 600 " + SSH_PRIVATE_KEY)
-        key = paramiko.RSAKey.from_private_key_file(SSH_PRIVATE_KEY)
+        mw.execShell("chmod 600 " + shlex.quote(SSH_PRIVATE_KEY))
+        key = _load_ssh_private_key(SSH_PRIVATE_KEY)
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(hostname=ip, port=int(port),
                     username='root', pkey=key)
@@ -2744,8 +2838,8 @@ class master_ssh_client:
 
     def close(self):
         # 如果是tmp下的证书，删除证书
-        if self._ssh_private_key == "/tmp/t_ssh.txt":
-          os.system("rm -rf " + self._ssh_private_key)
+        if self._ssh_private_key:
+          os.system("rm -rf " + shlex.quote(self._ssh_private_key))
         if self._client:
           self._client.close()
         return True
@@ -2883,6 +2977,18 @@ def setDbReadWrite(version=''):
     return mw.returnJson(True, '设置成功!')
 
 
+def _set_db_readonly_state(db, readonly):
+    if readonly:
+        db.query('SET GLOBAL read_only = on')
+        db.query('SET GLOBAL super_read_only = on')
+        mw.execShell(f'source {getPluginDir()}/readonly.sh && enable_readonly')
+    else:
+        db.query('SET GLOBAL read_only = off')
+        db.query('SET GLOBAL super_read_only = off')
+        mw.execShell(f'source {getPluginDir()}/readonly.sh && disable_readonly')
+    return True
+
+
 def setSlaveStatus(version=''):
 
     db = pMysqlDb()
@@ -2958,6 +3064,21 @@ def deleteSlave(version=''):
     db.query('SET GLOBAL super_read_only = off')
     mw.execShell(f'source {getPluginDir()}/readonly.sh && disable_readonly')
     return mw.returnJson(True, '删除成功!')
+
+def resetSlaveStatus(version=''):
+    db = pMysqlDb()
+    stop_result = db.query('STOP SLAVE')
+    if isinstance(stop_result, Exception):
+        stop_result = db.query('STOP REPLICA')
+
+    reset_result = db.query('RESET SLAVE ALL')
+    if isinstance(reset_result, Exception):
+        reset_result = db.query('RESET REPLICA ALL')
+
+    if isinstance(reset_result, Exception):
+        return mw.returnJson(False, '重置主从状态失败: ' + str(reset_result))
+    return mw.returnJson(True, '重置主从状态成功! 当前机器的从库复制配置已清理。')
+
 
 def saveSlaveStatus(version=''):
     args = getArgs()
@@ -3035,6 +3156,34 @@ def saveSlaveStatusToMaster(version=''):
         ssh_client.close()
     return mw.returnJson(True, '保存成功!')
 
+
+def _business_database_names(db=None):
+    close_db = False
+    if db is None:
+        db = pMysqlDb()
+        close_db = True
+    rows = db.query('SHOW DATABASES')
+    if close_db:
+        try:
+            db.close()
+        except Exception:
+            pass
+    if isinstance(rows, Exception):
+        raise RuntimeError(str(rows))
+    if isinstance(rows, tuple):
+        rows = list(rows)
+    ignore = ('information_schema', 'performance_schema', 'mysql', 'sys')
+    names = []
+    for row in rows if isinstance(rows, list) else []:
+        if isinstance(row, dict):
+            name = str(next(iter(row.values())) if row else '').strip()
+        else:
+            name = str(row[0] if isinstance(row, (list, tuple)) and row else row).strip()
+        if name and name not in ignore:
+            names.append(name)
+    return names
+
+
 def dumpMysqlData(version=''):
     args = getArgs()
     data = checkArgs(args, ['db'])
@@ -3049,20 +3198,131 @@ def dumpMysqlData(version=''):
     mode = recognizeDbMode()
     if mode == 'gtid':
         option = ' --set-gtid-purged=off '
+        if str(args.get('rebuild') or '0') == '1':
+            option = ' --set-gtid-purged=ON '
+
+    dump_file = '/tmp/dump.sql.gz'
+    mysqldump_bin = mysql_dir + "/bin/usr/bin/mysqldump"
+    base_cmd = "set -o pipefail; {mysqldump} --defaults-file={myconf} {option} -uroot -p{pwd}".format(
+        mysqldump=shlex.quote(mysqldump_bin),
+        myconf=shlex.quote(myconf),
+        option=option,
+        pwd=shlex.quote(str(pwd or ''))
+    )
 
     if args['db'].lower() == 'all':
         dlist = findBinlogDoDb()
-        cmd = mysql_dir + "/bin/usr/bin/mysqldump --defaults-file=" + myconf + " " + option + " -uroot -p" + \
-            pwd + " --databases " + \
-            ' '.join(dlist) + " | gzip > /tmp/dump.sql.gz"
+        if len(dlist) == 0:
+            try:
+                dlist = _business_database_names()
+            except Exception as e:
+                return 'fail:获取数据库列表失败:' + str(e)
+        if len(dlist) == 0:
+            return 'fail:未找到可导出的业务数据库'
+        cmd = base_cmd + " --databases " + ' '.join([shlex.quote(str(item)) for item in dlist]) + " | gzip > " + shlex.quote(dump_file)
     else:
-        cmd = mysql_dir + "/bin/usr/bin/mysqldump --defaults-file=" + myconf + " " + option + " -uroot -p" + \
-            pwd + " --databases " + args['db'] + " | gzip > /tmp/dump.sql.gz"
+        cmd = base_cmd + " --databases " + shlex.quote(args['db']) + " | gzip > " + shlex.quote(dump_file)
 
-    ret = mw.execShell(cmd)
-    if ret[0] == '':
+    ret = mw.execShell(cmd, timeout=3600)
+    if ret[2] == 0 and os.path.exists(dump_file) and os.path.getsize(dump_file) > 0:
         return 'ok'
-    return 'fail'
+    detail = (str(ret[0] or '').strip() or str(ret[1] or '').strip() or 'mysqldump未生成有效备份文件')
+    return 'fail:' + detail[:500]
+
+
+def _remote_dump_mysql_data_cmd(dbname, rebuild=False):
+    payload = json.dumps({'db': dbname, 'rebuild': bool(rebuild)})
+    script = r'''
+import gzip
+import json
+import os
+import shlex
+import subprocess
+import sys
+
+args = json.loads(__PAYLOAD__)
+os.chdir('/www/server/jh-panel')
+sys.path.append('/www/server/jh-panel/plugins/mysql-apt')
+import index
+
+
+def fail(msg):
+    print('fail:' + str(msg)[:500])
+    sys.exit(1)
+
+
+def business_database_names():
+    rows = index.pMysqlDb().query('SHOW DATABASES')
+    if isinstance(rows, Exception):
+        fail('获取数据库列表失败:' + str(rows))
+    if isinstance(rows, tuple):
+        rows = list(rows)
+    ignore = ('information_schema', 'performance_schema', 'mysql', 'sys')
+    names = []
+    for row in rows if isinstance(rows, list) else []:
+        if isinstance(row, dict):
+            name = str(next(iter(row.values())) if row else '').strip()
+        else:
+            name = str(row[0] if isinstance(row, (list, tuple)) and row else row).strip()
+        if name and name not in ignore:
+            names.append(name)
+    return names
+
+
+pwd = index.pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
+mysql_dir = index.getServerDir()
+myconf = index.getConf()
+mysqldump_bin = mysql_dir + '/bin/usr/bin/mysqldump'
+if not os.path.exists(mysqldump_bin):
+    mysqldump_bin = '/usr/bin/mysqldump'
+if not os.path.exists(mysqldump_bin):
+    fail('未找到mysqldump命令')
+
+dump_file = '/tmp/dump.sql.gz'
+try:
+    os.remove(dump_file)
+except Exception:
+    pass
+
+option = []
+if index.recognizeDbMode() == 'gtid':
+    option = ['--set-gtid-purged=ON' if args.get('rebuild') else '--set-gtid-purged=off']
+
+dbname = str(args.get('db') or '')
+if dbname.lower() == 'all':
+    dlist = index.findBinlogDoDb()
+    if len(dlist) == 0:
+        dlist = business_database_names()
+    if len(dlist) == 0:
+        fail('未找到可导出的业务数据库')
+else:
+    dlist = [dbname]
+
+cmd = [mysqldump_bin, '--defaults-file=' + myconf] + option + ['-uroot', '-p' + str(pwd or ''), '--databases'] + dlist
+try:
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    with gzip.open(dump_file, 'wb') as fp:
+        while True:
+            chunk = proc.stdout.read(1024 * 1024)
+            if not chunk:
+                break
+            fp.write(chunk)
+    stderr = proc.stderr.read().decode('utf-8', 'ignore').strip()
+    code = proc.wait()
+except Exception as e:
+    fail(e)
+
+if code != 0:
+    try:
+        os.remove(dump_file)
+    except Exception:
+        pass
+    fail(stderr or ('mysqldump退出码:' + str(code)))
+if not os.path.exists(dump_file) or os.path.getsize(dump_file) == 0:
+    fail('mysqldump未生成有效备份文件')
+print('ok')
+'''.replace('__PAYLOAD__', repr(payload))
+    return "cd /www/server/jh-panel && python3 - <<'PY'\n" + script + "\nPY"
 
 
 ############### --- 重要 同步---- ###########
@@ -3081,15 +3341,15 @@ def doFullSync(version=''):
     data = checkArgs(args, ['db'])
     if not data[0]:
         return data[1]
+    rebuild = str(args.get('rebuild') or '0') == '1'
 
     db = pMysqlDb()
 
     id_rsa_conn = pSqliteDb('slave_id_rsa')
     data = id_rsa_conn.field('ip,port,db_user,id_rsa').find()
 
-    SSH_PRIVATE_KEY = "/tmp/mysql_sync_id_rsa.txt"
-    id_rsa = data['id_rsa'].replace('\\n', '\n')
-    mw.writeFile(SSH_PRIVATE_KEY, id_rsa)
+    SSH_PRIVATE_KEY = ''
+    is_temp_key = False
 
     ip = data["ip"]
     master_port = data['port']
@@ -3102,15 +3362,12 @@ def doFullSync(version=''):
     paramiko.util.log_to_file('paramiko.log')
     ssh = paramiko.SSHClient()
 
-    print(SSH_PRIVATE_KEY)
-    if not os.path.exists(SSH_PRIVATE_KEY):
-        writeDbSyncStatus({'code': 0, 'msg': '需要配置SSH......', 'progress': 0})
-        return 'fail'
-
     try:
         # ssh.load_system_host_keys()
-        mw.execShell("chmod 600 " + SSH_PRIVATE_KEY)
-        key = paramiko.RSAKey.from_private_key_file(SSH_PRIVATE_KEY)
+        SSH_PRIVATE_KEY, is_temp_key = _ssh_private_key_file(data.get('id_rsa'), '/tmp/mysql_sync_id_rsa.txt')
+        print(SSH_PRIVATE_KEY)
+        mw.execShell("chmod 600 " + shlex.quote(SSH_PRIVATE_KEY))
+        key = _load_ssh_private_key(SSH_PRIVATE_KEY)
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         print(ip, master_port)
 
@@ -3120,6 +3377,8 @@ def doFullSync(version=''):
                     username='root', pkey=key)
     except Exception as e:
         print(str(e))
+        if is_temp_key and SSH_PRIVATE_KEY:
+            os.system("rm -rf " + shlex.quote(SSH_PRIVATE_KEY))
         writeDbSyncStatus(
             {'code': 0, 'msg': 'SSH配置错误:' + str(e), 'progress': 0})
         return 'fail'
@@ -3127,19 +3386,23 @@ def doFullSync(version=''):
     writeDbSyncStatus({'code': 0, 'msg': '登录Master成功...', 'progress': 5})
 
     dbname = args['db']
-    cmd = "cd /www/server/jh-panel && python3 plugins/mysql-apt/index.py dump_mysql_data {\"db\":\"" + dbname + "\"}"
+    cmd = _remote_dump_mysql_data_cmd(dbname, rebuild)
     print(cmd)
     stdin, stdout, stderr = ssh.exec_command(cmd)
     result = stdout.read()
+    err_result = stderr.read().decode('utf-8', 'ignore').strip()
+    exit_status = stdout.channel.recv_exit_status()
     result = result.decode('utf-8')
-    if result.strip() == 'ok':
+    if exit_status == 0 and result.strip() == 'ok':
         writeDbSyncStatus({'code': 1, 'msg': '主服务器备份完成...', 'progress': 30})
     else:
+        detail = str(result or err_result or ('退出码:' + str(exit_status))).strip()
         writeDbSyncStatus(
-            {'code': 1, 'msg': '主服务器备份失败...:' + str(result), 'progress': 100})
+            {'code': 1, 'msg': '主服务器备份失败...:' + detail[:500], 'progress': 100})
         return 'fail'
 
     print("同步文件", "start")
+    mw.execShell('rm -f /tmp/dump.sql /tmp/dump.sql.gz')
     # cmd = 'scp -P' + str(master_port) + ' -i ' + SSH_PRIVATE_KEY + \
     #     ' root@' + ip + ':/tmp/dump.sql.gz /tmp'
     t = ssh.get_transport()
@@ -3156,43 +3419,73 @@ def doFullSync(version=''):
     result = result.decode('utf-8')
     cmd_data = json.loads(result)
 
-    db.query('stop slave')
-    writeDbSyncStatus({'code': 3, 'msg': '停止从库完成...', 'progress': 45})
+    if rebuild:
+        reset_result = resetSlaveStatus(version)
+        try:
+            reset_data = json.loads(reset_result)
+        except Exception:
+            reset_data = {'status': False, 'msg': reset_result}
+        if not reset_data.get('status'):
+            writeDbSyncStatus({'code': -1, 'msg': reset_data.get('msg') or '重置主从状态失败', 'progress': 100})
+            return 'fail'
+        if recognizeDbMode() == 'gtid':
+            reset_master_result = db.query('RESET MASTER')
+            if isinstance(reset_master_result, Exception):
+                writeDbSyncStatus({'code': -1, 'msg': '重置本机GTID失败:' + str(reset_master_result), 'progress': 100})
+                return 'fail'
+        writeDbSyncStatus({'code': 3, 'msg': '重置从库状态完成...', 'progress': 45})
+    else:
+        db.query('stop slave')
+        writeDbSyncStatus({'code': 3, 'msg': '停止从库完成...', 'progress': 45})
 
-    cmd = cmd_data['data']['cmd']
+    replication_cmd = cmd_data['data']['cmd']
     # 保证同步IP一致
-    if cmd.find('SOURCE_HOST') > -1:
-        cmd = re.sub(r"SOURCE_HOST='(.*)'", "SOURCE_HOST='" + ip + "'", cmd, 1)
+    if replication_cmd.find('SOURCE_HOST') > -1:
+        replication_cmd = re.sub(r"SOURCE_HOST='([^']*)'", "SOURCE_HOST='" + ip + "'", replication_cmd, 1)
 
-    if cmd.find('MASTER_HOST') > -1:
-        cmd = re.sub(r"MASTER_HOST='(.*)'", "SOURCE_HOST='" + ip + "'", cmd, 1)
+    if replication_cmd.find('MASTER_HOST') > -1:
+        replication_cmd = re.sub(r"MASTER_HOST='([^']*)'", "MASTER_HOST='" + ip + "'", replication_cmd, 1)
 
-    db.query(cmd)
     uinfo = cmd_data['data']['info']
     ps = uinfo['username'] + "|" + uinfo['password']
     id_rsa_conn.where('ip=?', (ip,)).setField('ps', ps)
-    writeDbSyncStatus({'code': 4, 'msg': '刷新从库同步信息完成...', 'progress': 50})
+    writeDbSyncStatus({'code': 4, 'msg': '获取从库同步命令完成...', 'progress': 50})
 
     pwd = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
     root_dir = getServerDir()
     msock = root_dir + "/mysql.sock"
-    mw.execShell("cd /tmp && gzip -d dump.sql.gz")
+    _set_db_readonly_state(db, False)
+    gzip_result = mw.execShell("cd /tmp && gzip -df dump.sql.gz", timeout=3600)
+    if gzip_result[2] != 0 or not os.path.exists('/tmp/dump.sql'):
+        detail = (str(gzip_result[0] or '').strip() or str(gzip_result[1] or '').strip() or '解压备份文件失败')
+        _set_db_readonly_state(db, True)
+        writeDbSyncStatus({'code': 5, 'msg': '解压备份失败:' + detail[:500], 'progress': 100})
+        return 'fail'
     cmd = root_dir + "/bin/usr/bin/mysql -S " + msock + \
         " -uroot -p" + pwd + " < /tmp/dump.sql"
-    import_data = mw.execShell(cmd)
-    if import_data[0] == '':
-        print(import_data[1])
+    import_data = mw.execShell(cmd, timeout=3600)
+    if import_data[2] == 0:
         writeDbSyncStatus({'code': 5, 'msg': '导入数据完成...', 'progress': 90})
     else:
-        print(import_data[0])
-        writeDbSyncStatus({'code': 5, 'msg': '导入数据失败...', 'progress': 100})
+        detail = (str(import_data[0] or '').strip() or str(import_data[1] or '').strip() or 'mysql导入命令执行失败')
+        _set_db_readonly_state(db, True)
+        writeDbSyncStatus({'code': 5, 'msg': '导入数据失败:' + detail[:500], 'progress': 100})
         return 'fail'
+
+    change_result = db.query(replication_cmd)
+    if isinstance(change_result, Exception):
+        _set_db_readonly_state(db, True)
+        writeDbSyncStatus({'code': -1, 'msg': '设置从库同步命令失败:' + str(change_result), 'progress': 100})
+        return 'fail'
+    writeDbSyncStatus({'code': 5, 'msg': '刷新从库同步信息完成...', 'progress': 95})
 
     db.query("start slave user='{}' password='{}';".format(
         uinfo['username'], uinfo['password']))
+    _set_db_readonly_state(db, True)
     writeDbSyncStatus({'code': 6, 'msg': '从库重启完成...', 'progress': 100})
 
-    os.system("rm -rf " + SSH_PRIVATE_KEY)
+    if is_temp_key and SSH_PRIVATE_KEY:
+        os.system("rm -rf " + shlex.quote(SSH_PRIVATE_KEY))
     os.system("rm -rf /tmp/dump.sql")
     return True
 
@@ -3205,12 +3498,13 @@ def fullSync(version=''):
 
     status_file = '/tmp/db_async_status.txt'
     if args['begin'] == '1':
+        rebuild = str(args.get('rebuild') or '0')
         cmd = 'cd ' + mw.getRunDir() + ' && python3 ' + \
-            getPluginDir() + \
-            '/index.py do_full_sync {"db":"' + args['db'] + '"} &'
+            shlex.quote(getPluginDir() + '/index.py') + \
+            ' do_full_sync db:' + shlex.quote(args['db']) + ' rebuild:' + shlex.quote(rebuild) + ' &'
         print(cmd)
         mw.execShell(cmd)
-        return json.dumps({'code': 0, 'msg': '同步数据中!', 'progress': 0})
+        return json.dumps({'code': 0, 'msg': '重建从库中!' if rebuild == '1' else '同步数据中!', 'progress': 0})
 
     if os.path.exists(status_file):
         c = mw.readFile(status_file)
@@ -3577,6 +3871,8 @@ if __name__ == "__main__":
         print(setDbReadWrite(version))
     elif func == 'delete_slave':
         print(deleteSlave(version))
+    elif func == 'reset_slave_status':
+        print(resetSlaveStatus(version))
     elif func == 'save_slave_status':
         print(saveSlaveStatus(version))
     elif func == 'save_slave_status_to_master':

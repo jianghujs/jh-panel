@@ -735,7 +735,7 @@ def _run_health_check_item(item, role):
     actual_text = ''
     if item.get('type') == 'crontab':
         actual = _check_crontab(item.get('target'))
-        ok = actual == expected or (expected == 'disabled' and actual == 'missing')
+        ok = actual == expected
     elif item.get('type') == 'process':
         actual = _check_process(item.get('target'))
         ok = actual == expected
@@ -761,12 +761,15 @@ def _run_health_check_item(item, role):
     else:
         actual = 'unknown'
         ok = False
+    status = 'pass' if ok else 'fail'
+    if item.get('type') == 'crontab' and actual == 'missing':
+        status = 'warning'
     return {
         'group': item.get('group'),
         'name': item.get('name'),
         'expected': _expected_text(expected),
         'actual': actual_text or _actual_text(actual),
-        'status': 'pass' if ok else 'fail'
+        'status': status
     }
 
 
@@ -833,9 +836,20 @@ def _plugin_health_status(cfg, health_detail):
     if isinstance(health_detail, dict) and isinstance(health_detail.get('script_checks'), list):
         checks = health_detail.get('script_checks')
     failed = [item for item in checks if isinstance(item, dict) and item.get('status') == 'fail']
+    warnings = [item for item in checks if isinstance(item, dict) and item.get('status') == 'warning']
     if failed:
         names = [str(item.get('name') or '').strip() for item in failed if str(item.get('name') or '').strip()]
         summary = '自检异常 {0} 项'.format(len(failed))
+        if names:
+            summary += '：' + '、'.join(names[:3])
+            if len(names) > 3:
+                summary += '等'
+        if isinstance(health_detail, dict):
+            health_detail['summary'] = summary
+        return 'warning', summary
+    if warnings:
+        names = [str(item.get('name') or '').strip() for item in warnings if str(item.get('name') or '').strip()]
+        summary = '自检提醒 {0} 项'.format(len(warnings))
         if names:
             summary += '：' + '、'.join(names[:3])
             if len(names) > 3:
@@ -1636,7 +1650,7 @@ def _active_alerts(cfg, context):
         if not isinstance(state, dict) or not state:
             continue
         detail = state.get('health_detail') if isinstance(state.get('health_detail'), dict) else {}
-        failed_checks = [item for item in (detail.get('script_checks') or []) if isinstance(item, dict) and item.get('status') == 'fail']
+        failed_checks = [item for item in (detail.get('script_checks') or []) if isinstance(item, dict) and item.get('status') in ('fail', 'warning')]
         for item in failed_checks:
             subject = '{0}:{1}'.format(state.get('host_id') or '', item.get('name') or '')
             message = '自检提醒：{0} {1}，当前 {2}，期望 {3}'.format(_host_label(state), item.get('name') or '', item.get('actual') or '--', item.get('expected') or '--')

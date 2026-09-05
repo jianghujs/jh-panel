@@ -170,6 +170,7 @@ var msCheckTemplate = [
 
 function msCheckStatusIcon(status) {
   if (status === 'pass') return '<span class="ms-check-icon ms-check-pass" title="正常">✓</span>';
+  if (status === 'warning') return '<span class="ms-check-icon ms-check-warn" title="提醒">!</span>';
   if (status === 'unknown') return '<span class="ms-check-icon ms-check-unknown" title="未知">?</span>';
   return '<span class="ms-check-icon ms-check-fail" title="异常">✗</span>';
 }
@@ -246,18 +247,20 @@ function msFailedHostHealthItems(host) {
 
 function msHealthWarningHtml(hosts, actionText) {
   var lines = [];
-  var total = 0;
+  var failCount = 0;
+  var warnCount = 0;
   (hosts || []).forEach(function(host) {
     var failed = msFailedHostHealthItems(host);
     if (!failed.length) return;
-    total += failed.length;
+    failCount += failed.filter(function(item) { return item.status === 'fail'; }).length;
+    warnCount += failed.filter(function(item) { return item.status === 'warning'; }).length;
     failed.slice(0, 6).forEach(function(item) {
       var group = item.group ? (item.group + ' / ') : '';
       lines.push((host.name || '主机') + ' - ' + group + (item.name || '未命名检查项') + '：' + (item.actual || item.status || '异常'));
     });
     if (failed.length > 6) lines.push((host.name || '主机') + ' - 还有 ' + (failed.length - 6) + ' 项异常未展示');
   });
-  return '<div style="line-height:24px;">自检发现 <span style="color:red;font-weight:600;">' + total + '</span> 个异常项。<br>' +
+  return '<div style="line-height:24px;">自检发现 <span style="color:red;font-weight:600;">' + failCount + '</span> 个异常项，<span style="color:#9a6200;font-weight:600;">' + warnCount + '</span> 个提醒项。<br>' +
     '<div style="margin-top:8px;color:#666;">' + msHtml(lines.join('<br>')).replace(/&lt;br&gt;/g, '<br>') + '</div>' +
     '<div style="margin-top:10px;color:red;">确认后将继续执行' + msHtml(actionText || '切换操作') + '，请确认风险可接受。</div></div>';
 }
@@ -290,7 +293,7 @@ function msCheckHostCard(host) {
       rows += '<tr class="ms-check-group-row"><td colspan="2">' + msHtml(item.group) + '</td></tr>';
     }
     var matched = item.status === 'pass';
-    var actualCls = matched ? 'ms-check-actual-pass' : 'ms-check-actual-fail';
+    var actualCls = matched ? 'ms-check-actual-pass' : (item.status === 'warning' ? 'ms-check-actual-warn' : 'ms-check-actual-fail');
     if (host.unbound) actualCls = '';
     var title = '当前状态: ' + item.actual + '\n期望状态: ' + item.expected;
     rows += '<tr>' +

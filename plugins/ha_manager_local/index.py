@@ -794,7 +794,7 @@ def _run_health_check_item(item, role):
     actual_text = ''
     if item.get('type') == 'crontab':
         actual = _cron_status(item.get('target'))
-        ok = actual == expected or (expected == 'disabled' and actual == 'missing')
+        ok = actual == expected
     elif item.get('type') == 'openresty_service':
         actual, actual_text = _check_openresty_service(expected)
         ok = actual == expected
@@ -824,7 +824,10 @@ def _run_health_check_item(item, role):
     else:
         actual = 'unknown'
         ok = False
-    return {'group': item.get('group'), 'name': item.get('name'), 'expected': _expected_text(expected), 'actual': actual_text or _actual_text(actual), 'status': 'pass' if ok else 'fail'}
+    status = 'pass' if ok else 'fail'
+    if item.get('type') == 'crontab' and actual == 'missing':
+        status = 'warning'
+    return {'group': item.get('group'), 'name': item.get('name'), 'expected': _expected_text(expected), 'actual': actual_text or _actual_text(actual), 'status': status}
 
 
 def _health_checks(role):
@@ -833,8 +836,11 @@ def _health_checks(role):
 
 def _health_summary(checks):
     failed = [item for item in checks if item.get('status') == 'fail']
+    warnings = [item for item in checks if item.get('status') == 'warning']
     if failed:
         return 'warning', '自检异常 {0} 项'.format(len(failed))
+    if warnings:
+        return 'warning', '自检提醒 {0} 项'.format(len(warnings))
     return 'normal', '正常'
 
 
@@ -1012,9 +1018,13 @@ STEP_ACTIONS_APPEND_RESULT = {'authorized_key_off', 'authorized_key_on', 'role_m
 def _assert_health(role):
     checks = _health_checks(role)
     failed = [item for item in checks if item.get('status') == 'fail']
+    warnings = [item for item in checks if item.get('status') == 'warning']
     if failed:
         names = '、'.join([item.get('name') or '' for item in failed[:5]])
         return '|- 自检发现 {0} 个异常项：{1}\n|- 自检结果仅用于提示，不阻断切换流程'.format(len(failed), names)
+    if warnings:
+        names = '、'.join([item.get('name') or '' for item in warnings[:5]])
+        return '|- 自检发现 {0} 个提醒项：{1}\n|- 自检结果仅用于提示，不阻断切换流程'.format(len(warnings), names)
     return '|- 自检通过'
 
 
@@ -1026,7 +1036,7 @@ def _step_warning_from_logs(step_key, logs):
     if not _is_health_check_step(step_key):
         return ''
     for line in _split_lines(logs):
-        if '自检发现' in line and '异常项' in line:
+        if '自检发现' in line and ('异常项' in line or '提醒项' in line):
             return line.replace('|-', '').strip() + '；可以继续下一步。'
     return ''
 
@@ -1034,8 +1044,14 @@ def _step_warning_from_logs(step_key, logs):
 def _health_warning_msg(role):
     checks = _health_checks(role)
     failed = [item for item in checks if item.get('status') == 'fail']
+    warnings = [item for item in checks if item.get('status') == 'warning']
     if not failed:
-        return ''
+        if not warnings:
+            return ''
+        names = '、'.join([item.get('name') or '' for item in warnings[:5]])
+        if len(warnings) > 5:
+            names += ' 等'
+        return '自检发现 {0} 个提醒项：{1}'.format(len(warnings), names)
     names = '、'.join([item.get('name') or '' for item in failed[:5]])
     if len(failed) > 5:
         names += ' 等'

@@ -174,12 +174,14 @@ function hmlFailedHealthChecks(checks) {
 
 function hmlHealthWarningHtml(checks, actionText) {
   var failed = hmlFailedHealthChecks(checks);
+  var failCount = failed.filter(function(item) { return item.status === 'fail'; }).length;
+  var warnCount = failed.filter(function(item) { return item.status === 'warning'; }).length;
   var names = failed.map(function(item) {
     var group = item.group ? (item.group + ' / ') : '';
     return group + (item.name || '未命名检查项') + '：' + (item.actual || item.status || '异常');
   }).slice(0, 8);
   if (failed.length > 8) names.push('还有 ' + (failed.length - 8) + ' 项异常未展示');
-  return '<div style="line-height:24px;">自检发现 <span style="color:red;font-weight:600;">' + failed.length + '</span> 个异常项。<br>' +
+  return '<div style="line-height:24px;">自检发现 <span style="color:red;font-weight:600;">' + failCount + '</span> 个异常项，<span style="color:#9a6200;font-weight:600;">' + warnCount + '</span> 个提醒项。<br>' +
     '<div style="margin-top:8px;color:#666;">' + hmlHtml(names.join('<br>')).replace(/&lt;br&gt;/g, '<br>') + '</div>' +
     '<div style="margin-top:10px;color:red;">确认后将继续执行' + hmlHtml(actionText || '切换操作') + '，请确认风险可接受。</div></div>';
 }
@@ -371,8 +373,17 @@ function hmlStepText(state) {
 
 function hmlCheckStatusIcon(status) {
   if (status === 'pass') return '<span class="hml-check-icon hml-check-pass" title="正常">✓</span>';
+  if (status === 'warning') return '<span class="hml-check-icon hml-check-warn" title="提醒">!</span>';
   if (status === 'unknown') return '<span class="hml-check-icon hml-check-unknown" title="未知">?</span>';
   return '<span class="hml-check-icon hml-check-fail" title="异常">✗</span>';
+}
+
+function hmlHealthStatePill(checks) {
+  var failCount = (checks || []).filter(function(item) { return item.status === 'fail'; }).length;
+  var warnCount = (checks || []).filter(function(item) { return item.status === 'warning'; }).length;
+  if (failCount) return hmlPill('bad', '存在异常');
+  if (warnCount) return hmlPill('warn', '存在提醒');
+  return hmlPill('ok', '正常');
 }
 
 function hmlRender() {
@@ -425,7 +436,8 @@ function hmlOpenRoleCorrectDialog() {
 }
 
 function hmlRenderOverview() {
-  var failedChecks = hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length;
+  var failChecks = hmlState.checks.filter(function(item) { return item.status === 'fail'; }).length;
+  var warnChecks = hmlState.checks.filter(function(item) { return item.status === 'warning'; }).length;
   var externalNormal = hmlExternalServiceNormal(hmlState.external_closed);
   var monitorConfigured = !!hmlState.monitor_url;
   var monitorEnabled = hmlMonitorEnabled();
@@ -441,7 +453,7 @@ function hmlRenderOverview() {
       '<table class="table table-hover hml-overview-table"><tbody>' +
         '<tr><th>当前主备状态</th><td>' + hmlPill(hmlState.role === 'master' ? 'ok' : 'info', hmlRoleShortText(hmlState.role)) + roleCorrection + '</td></tr>' +
         '<tr><th>对外服务</th><td>' + hmlPill(externalNormal ? 'ok' : 'bad', hmlState.external_closed ? '已关闭' : '开放中') + '<span class="hml-overview-note">' + hmlHtml(hmlState.external_closed ? 'OpenResty 已停止' : 'OpenResty 运行中') + '</span></td></tr>' +
-        '<tr><th>自检状态</th><td>' + hmlPill(failedChecks ? 'bad' : 'ok', failedChecks ? '有异常' : '正常') + '<span class="hml-overview-note">异常项 ' + failedChecks + ' 个</span></td></tr>' +
+        '<tr><th>自检状态</th><td>' + hmlPill(failChecks ? 'bad' : (warnChecks ? 'warn' : 'ok'), failChecks ? '有异常' : (warnChecks ? '有提醒' : '正常')) + '<span class="hml-overview-note">异常项 ' + failChecks + ' 个，提醒项 ' + warnChecks + ' 个</span></td></tr>' +
         '<tr><th>云监控</th><td>' + (monitorConfigured ? hmlPill(monitorEnabled ? 'ok' : 'warn', monitorEnabled ? '已启用' : '未启用') : hmlPill('warn', '未配置')) + '<span class="hml-overview-note">' + hmlHtml(monitorEnabled ? '最近上报：' + (hmlState.last_report_at || '未上报') : (monitorConfigured ? '已配置地址，但云监控相关功能已关闭' : '未启用云监控相关功能')) + '</span></td></tr>' +
       '</tbody></table>' +
     '</div></div>';
@@ -1403,7 +1415,7 @@ function hmlRunHealthCheck(fix) {
     hmlState.health_status = data.health_status || hmlState.health_status;
     hmlState.health_text = data.health_text || hmlState.health_text;
     hmlState.external_closed = data.external_closed;
-    hmlLog('重新自检完成，发现 ' + hmlState.checks.filter(function(item) { return item.status !== 'pass'; }).length + ' 个异常项');
+    hmlLog('重新自检完成，发现 ' + hmlState.checks.filter(function(item) { return item.status === 'fail'; }).length + ' 个异常项，' + hmlState.checks.filter(function(item) { return item.status === 'warning'; }).length + ' 个提醒项');
     layer.msg('自检已刷新', {icon: 1});
     hmlSetView('health');
   });
@@ -1420,7 +1432,7 @@ function hmlRenderHealth() {
       rows += '<tr class="hml-check-group-row"><td colspan="2">' + hmlHtml(item.group) + '</td></tr>';
     }
     var matched = item.status === 'pass';
-    var actualCls = matched ? 'hml-check-actual-pass' : 'hml-check-actual-fail';
+    var actualCls = matched ? 'hml-check-actual-pass' : (item.status === 'warning' ? 'hml-check-actual-warn' : 'hml-check-actual-fail');
     var title = '当前状态: ' + item.actual + '\n期望状态: ' + item.expected;
     rows += '<tr>' +
       '<td class="hml-check-name">' + hmlHtml(item.name) + '</td>' +
@@ -1428,7 +1440,7 @@ function hmlRenderHealth() {
     '</tr>';
   });
   var html = '<div class="hml-section"><div class="hml-section-head"><div><div class="hml-section-title">自检状态</div><div class="hml-section-sub">按本机当前角色计算期望状态。</div></div><button class="btn btn-default btn-sm" onclick="hmlRunHealthCheck()">刷新自检</button></div><div class="hml-section-body"><div class="hml-check-card">' +
-    '<div class="hml-check-host-head"><span class="hml-host-dot"></span><span class="hml-role-mark hml-role-' + (hmlState.role === 'master' ? 'master' : 'standby') + '">' + (hmlState.role === 'master' ? '主' : '备') + '</span><span class="hml-check-name">' + hmlHtml(hostName) + '</span><span class="hml-current-site-tag">当前</span><span class="hml-check-state">' + hmlPill(hmlState.checks.some(function(item) { return item.status !== 'pass'; }) ? 'bad' : 'ok', hmlState.checks.some(function(item) { return item.status !== 'pass'; }) ? '存在异常' : '正常') + '</span></div>' +
+    '<div class="hml-check-host-head"><span class="hml-host-dot"></span><span class="hml-role-mark hml-role-' + (hmlState.role === 'master' ? 'master' : 'standby') + '">' + (hmlState.role === 'master' ? '主' : '备') + '</span><span class="hml-check-name">' + hmlHtml(hostName) + '</span><span class="hml-current-site-tag">当前</span><span class="hml-check-state">' + hmlHealthStatePill(hmlState.checks) + '</span></div>' +
     '<table class="table table-hover hml-check-table"><colgroup><col><col class="hml-check-status-col"></colgroup><thead><tr><th>检查项</th><th>状态</th></tr></thead><tbody>' + rows + '</tbody></table>' +
   '</div></div></div>';
   $('.soft-man-con').html(html);

@@ -37,15 +37,21 @@ function getDatabaseTypeLabel(type){
     return type === 'postgresql' ? 'PostgreSQL' : 'MySQL';
 }
 
-function getDatabaseAllValue(types){
+function getDatabaseAllValue(types, allTypeSelected){
     types = types || [];
+    if(allTypeSelected) return 'all:backupAll';
     if(types.length == 1 && types[0] === 'postgresql') return 'postgresql:backupAll';
     if(types.length == 1 && types[0] === 'mysql') return 'mysql:backupAll';
     return 'all:backupAll';
 }
 
-function getDatabaseAllLabel(types){
+function isDatabaseAllTypeValue(value){
+    return value === 'all:backupAll' || value === 'backupAll' || value === 'ALL';
+}
+
+function getDatabaseAllLabel(types, allTypeSelected){
     types = types || [];
+    if(allTypeSelected) return '所有';
     if(types.length == 1) return getDatabaseTypeLabel(types[0]) + '所有';
     return '全部数据库';
 }
@@ -62,9 +68,24 @@ function getAvailableDatabaseTypes(data){
 function getSelectedDatabaseTypes($scope){
     var types = [];
     $scope.find('.database-type-filter:checked').each(function(){
-        types.push($(this).val());
+        var value = $(this).val();
+        if(value !== 'all') types.push(value);
     });
     return types;
+}
+
+function isDatabaseAllTypeFilterChecked($scope){
+    return $scope.find('.database-type-filter[value="all"]').prop('checked') === true;
+}
+
+function syncDatabaseTypeFilters($scope, changedValue){
+    var $all = $scope.find('.database-type-filter[value="all"]');
+    var $items = $scope.find('.database-type-filter').not('[value="all"]');
+    if(changedValue === 'all'){
+        $items.prop('checked', $all.prop('checked'));
+        return;
+    }
+    $all.prop('checked', $items.length > 0 && $items.filter(':checked').length === $items.length);
 }
 
 function filterDatabaseItems(data, types){
@@ -76,12 +97,13 @@ function filterDatabaseItems(data, types){
     return list;
 }
 
-function buildDatabaseTypeFilter(types, selectedTypes){
+function buildDatabaseTypeFilter(types, selectedTypes, allTypeSelected){
     if(!types || types.length == 0) return '';
     var html = '<div class="database-type-filter-row">';
     html += '<span class="database-type-filter-title">类型</span>';  
+    html += '<label class="database-type-chip database-type-chip-all"><input type="checkbox" class="database-type-filter" value="all"'+ (allTypeSelected ? ' checked="checked"' : '') +'><span><i></i>所有</span></label>';
     for(var i = 0; i < types.length; i++){
-        var checked = selectedTypes.indexOf(types[i]) >= 0 ? ' checked="checked"' : '';
+        var checked = (allTypeSelected || selectedTypes.indexOf(types[i]) >= 0) ? ' checked="checked"' : '';
         html += '<label class="database-type-chip database-type-chip-'+ escapeHtml(types[i]) +'"><input type="checkbox" class="database-type-filter" value="'+ escapeHtml(types[i]) +'"'+ checked +'><span><i></i>'+ getDatabaseTypeLabel(types[i]) +'</span></label>';
     }
     html += '</div>';
@@ -601,9 +623,10 @@ function toBackup(type){
 		if(sType == 'databases'){
 			var databaseTypes = getAvailableDatabaseTypes(rdata.data);
 			var selectedDatabaseTypes = databaseTypes.slice(0);
-			databaseTypeFilterHtml = buildDatabaseTypeFilter(databaseTypes, selectedDatabaseTypes);
-			defaultValue = getDatabaseAllValue(selectedDatabaseTypes);
-			defaultLabel = getDatabaseAllLabel(selectedDatabaseTypes);
+			var allTypeSelected = true;
+			databaseTypeFilterHtml = buildDatabaseTypeFilter(databaseTypes, selectedDatabaseTypes, allTypeSelected);
+			defaultValue = getDatabaseAllValue(selectedDatabaseTypes, allTypeSelected);
+			defaultLabel = getDatabaseAllLabel(selectedDatabaseTypes, allTypeSelected);
 			sOpt = buildDatabaseDropdownOptions(filterDatabaseItems(rdata.data, selectedDatabaseTypes), defaultValue, defaultLabel);
 			$(".planname input[name='name']").val(sMsg+'['+defaultLabel+']');
 		}else{
@@ -643,6 +666,7 @@ function toBackup(type){
 
 		if (sType == 'databases') {
 			function refreshDatabaseDropdown(){
+				var allTypeSelected = isDatabaseAllTypeFilterChecked($('#implement'));
 				var selectedTypes = getSelectedDatabaseTypes($('#implement'));
 				if(selectedTypes.length == 0){
 					$('#sName').attr('val', '').html('请选择数据库类型');
@@ -650,15 +674,18 @@ function toBackup(type){
 					toggleDumpTypeByDatabaseValue('postgresql:backupAll');
 					return;
 				}
-				var allValue = getDatabaseAllValue(selectedTypes);
-				var allLabel = getDatabaseAllLabel(selectedTypes);
+				var allValue = getDatabaseAllValue(selectedTypes, allTypeSelected);
+				var allLabel = getDatabaseAllLabel(selectedTypes, allTypeSelected);
 				$("[aria-labelledby='backdata']").html(buildDatabaseDropdownOptions(filterDatabaseItems(rdata.data, selectedTypes), allValue, allLabel));
 				$('#sName').attr('val', allValue).html(allLabel);
 				$(".planname input[name='name']").val(sMsg+'['+allLabel+']');
 				toggleDumpTypeByDatabaseValue(allValue);
 				bindBackupDropdown();
 			}
-			$('.database-type-filter').change(refreshDatabaseDropdown);
+			$('.database-type-filter').change(function(){
+				syncDatabaseTypeFilters($('#implement'), $(this).val());
+				refreshDatabaseDropdown();
+			});
 			toggleDumpTypeByDatabaseValue(defaultValue);
 		}
 		bindBackupDropdown();
@@ -723,23 +750,23 @@ function editTaskInfo(id){
 					$.post('/crontab/get_data_list',{type:_listType},function(rdata){
 						// console.log(rdata);
 						obj.sNameArray = rdata.data;
-						if(obj.from.stype == 'database'){
-							editDatabaseData = rdata.data;
-							var availableTypes = getAvailableDatabaseTypes(rdata.data);
-							var currentTypes = getDatabaseTypesFromValue(obj.from.sname);
-							var selectedTypes = [];
-							for(var ti = 0; ti < availableTypes.length; ti++){
-								if(currentTypes.indexOf(availableTypes[ti]) >= 0) selectedTypes.push(availableTypes[ti]);
-							}
-							if(selectedTypes.length == 0) selectedTypes = availableTypes.slice(0);
-							databaseTypeFilterHtml = buildDatabaseTypeFilter(availableTypes, selectedTypes);
-							var allValue = (obj.from.sname == 'backupAll') ? 'backupAll' : getDatabaseAllValue(selectedTypes);
-							var allLabel = getDatabaseAllLabel(selectedTypes);
-							if(obj.from.sname == 'backupAll') allLabel = '全部数据库';
-							sNameDom = buildDatabaseDropdownOptions(filterDatabaseItems(rdata.data, selectedTypes), allValue, allLabel);
-							if(obj.from.sname == 'backupAll' || obj.from.sname == 'all:backupAll' || obj.from.sname == 'mysql:backupAll' || obj.from.sname == 'postgresql:backupAll'){
-								sNameName = allLabel;
-								obj.from.sname = allValue;
+					if(obj.from.stype == 'database'){
+						editDatabaseData = rdata.data;
+						var availableTypes = getAvailableDatabaseTypes(rdata.data);
+						var currentTypes = getDatabaseTypesFromValue(obj.from.sname);
+						var allTypeSelected = isDatabaseAllTypeValue(obj.from.sname);
+						var selectedTypes = [];
+						for(var ti = 0; ti < availableTypes.length; ti++){
+							if(currentTypes.indexOf(availableTypes[ti]) >= 0) selectedTypes.push(availableTypes[ti]);
+						}
+						if(selectedTypes.length == 0) selectedTypes = availableTypes.slice(0);
+						databaseTypeFilterHtml = buildDatabaseTypeFilter(availableTypes, selectedTypes, allTypeSelected);
+						var allValue = (obj.from.sname == 'backupAll') ? 'backupAll' : getDatabaseAllValue(selectedTypes, allTypeSelected);
+						var allLabel = getDatabaseAllLabel(selectedTypes, allTypeSelected);
+						sNameDom = buildDatabaseDropdownOptions(filterDatabaseItems(rdata.data, selectedTypes), allValue, allLabel);
+						if(obj.from.sname == 'backupAll' || obj.from.sname == 'all:backupAll' || obj.from.sname == 'mysql:backupAll' || obj.from.sname == 'postgresql:backupAll'){
+							sNameName = allLabel;
+							obj.from.sname = allValue;
 							}
 						}else{
 							obj.sNameArray.unshift({name:'ALL',ps:'所有'});
@@ -1069,6 +1096,7 @@ function editTaskInfo(id){
 						}
 						if(obj.from.stype == 'database'){
 							function refreshEditDatabaseDropdown(){
+								var allTypeSelected = isDatabaseAllTypeFilterChecked($('.site_list'));
 								var selectedTypes = getSelectedDatabaseTypes($('.site_list'));
 								if(selectedTypes.length == 0){
 									$('.sName_btn').find('b').attr('val', '').html('请选择数据库类型');
@@ -1077,8 +1105,8 @@ function editTaskInfo(id){
 									toggleDumpTypeByDatabaseValue('postgresql:backupAll');
 									return;
 								}
-								var allValue = getDatabaseAllValue(selectedTypes);
-								var allLabel = getDatabaseAllLabel(selectedTypes);
+								var allValue = getDatabaseAllValue(selectedTypes, allTypeSelected);
+								var allLabel = getDatabaseAllLabel(selectedTypes, allTypeSelected);
 								$('[aria-labelledby="sName"]').html(buildDatabaseDropdownOptions(filterDatabaseItems(editDatabaseData, selectedTypes), allValue, allLabel));
 								$('.sName_btn').find('b').attr('val', allValue).html(allLabel);
 								obj.from.sname = allValue;
@@ -1091,7 +1119,10 @@ function editTaskInfo(id){
 								toggleDumpTypeByDatabaseValue(allValue);
 								bindEditSnameDropdown();
 							}
-							$('.database-type-filter').change(refreshEditDatabaseDropdown);
+							$('.database-type-filter').change(function(){
+								syncDatabaseTypeFilters($('.site_list'), $(this).val());
+								refreshEditDatabaseDropdown();
+							});
 						}
 						bindEditSnameDropdown();
 					$('.plan-submits').unbind().click(function(){

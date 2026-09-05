@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import signal
 import shlex
 import subprocess
@@ -621,20 +620,6 @@ def _cron_status(name):
     return 'missing'
 
 
-def _cron_status_by_regex(pattern):
-    prefix = str(pattern or '').lstrip('^').split('\\[')[0]
-    items = mw.M('crontab').where('name like ?', (prefix + '[%',)).field('id,name,status').select()
-    if not isinstance(items, list):
-        return 'missing'
-    matched = [item for item in items if re.fullmatch(pattern, str(item.get('name') or ''))]
-    if len(matched) == 0:
-        return 'missing'
-    for item in matched:
-        if int(item.get('status') or 0) == 1:
-            return 'enabled'
-    return 'disabled'
-
-
 def _set_cron(name, enabled):
     func = 'openCrontab' if enabled else 'closeCrontab'
     action = '开启' if enabled else '关闭'
@@ -745,7 +730,7 @@ def _actual_text(value):
 
 
 HA_CHECK_DEFS = [
-    {'group': '计划任务', 'name': '备份数据库', 'type': 'crontab', 'target': r'备份数据库\[.*\]', 'match': 'regex', 'master': 'disabled', 'standby': 'enabled'},
+    {'group': '计划任务', 'name': '备份数据库', 'type': 'crontab', 'target': ['备份数据库[所有]', '备份数据库[backupAll]'], 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': 'xtrabackup', 'type': 'crontab', 'target': '[勿删]xtrabackup-cron', 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': 'xtrabackup-inc 全量备份', 'type': 'crontab', 'target': '[勿删]xtrabackup-inc全量备份', 'master': 'disabled', 'standby': 'enabled'},
     {'group': '计划任务', 'name': 'xtrabackup-inc 增量备份', 'type': 'crontab', 'target': '[勿删]xtrabackup-inc增量备份', 'master': 'disabled', 'standby': 'enabled'},
@@ -808,10 +793,7 @@ def _run_health_check_item(item, role):
     expected = item.get(role)
     actual_text = ''
     if item.get('type') == 'crontab':
-        if item.get('match') == 'regex':
-            actual = _cron_status_by_regex(item.get('target'))
-        else:
-            actual = _cron_status(item.get('target'))
+        actual = _cron_status(item.get('target'))
         ok = actual == expected or (expected == 'disabled' and actual == 'missing')
     elif item.get('type') == 'openresty_service':
         actual, actual_text = _check_openresty_service(expected)

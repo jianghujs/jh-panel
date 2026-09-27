@@ -23,6 +23,7 @@ sys.path.append(chdir + '/class/core')
 sys.path.append(chdir + '/class/plugin')
 
 import mw
+import site_api
 
 
 SCRIPT_DIR = mw.getServerDir() + '/jh-panel/scripts'
@@ -69,6 +70,82 @@ def _restart_openresty():
         _log("未找到 openresty 插件，跳过重启")
 
 
+def _normalize_site_status(status):
+    value = str(status).strip().lower()
+    if value in ('0', 'false', 'stop', 'stopped', 'disabled', '已停用', '已停止'):
+        return '0'
+    if value in ('1', 'true', 'start', 'started', 'enabled', '正在运行', '运行中'):
+        return '1'
+    return None
+
+
+def _restore_site_status(site_status_list):
+    """按备份记录恢复网站启停状态，并同步站点配置。"""
+    if not isinstance(site_status_list, list):
+        return
+
+    api = site_api.site_api()
+    for item in site_status_list:
+        if not isinstance(item, dict):
+            continue
+        name = item.get('name')
+        desired = _normalize_site_status(item.get('status'))
+        if not name or desired is None:
+            continue
+
+        site = mw.M('sites').where('name=?', (name,)).field('id,name,path,status').find()
+        if not site:
+            _log("备份中的网站[" + str(name) + "]当前不存在，跳过状态恢复")
+            continue
+        if _normalize_site_status(site.get('status')) == desired:
+            continue
+
+        try:
+            _set_site_status(api, site, desired)
+            _log("已恢复网站[" + name + "]状态: " + ('启用' if desired == '1' else '停用'))
+        except Exception as e:
+            _log("恢复网站[" + name + "]状态失败: " + str(e))
+
+
+def _set_site_status(api, site, desired):
+    if desired == '0':
+        api.stop(site.get('id'), site.get('name'))
+        return
+
+    # startApi 依赖 Web 请求上下文，恢复脚本直接复用其配置替换逻辑。
+    name = site.get('name')
+    site_path = site.get('path')
+    stop_path = api.setupPath + '/stop'
+    host_conf = api.getHostConf(name)
+    conf = mw.readFile(host_conf)
+    if conf:
+        conf = conf.replace(stop_path, site_path)
+        mw.writeFile(host_conf, conf)
+    mw.M('sites').where('id=?', (site.get('id'),)).setField('status', '1')
+    api.triggerSiteHook('start', site.get('id'), name)
+    mw.restartWeb()
+    reload_result = api.openrestyReload()
+    if reload_result:
+        _log("网站[" + name + "]启用配置重载失败: " + str(reload_result))
+
+
+def _read_site_status(tmp, name=None):
+    candidates = [os.path.join(tmp, 'site_status.json')]
+    if name:
+        candidates.append(os.path.join(tmp, name, 'site_status.json'))
+    for path in candidates:
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return [data]
+        except Exception as e:
+            _log("读取网站状态失败: " + str(e))
+    return []
+
+
 class restoreTools:
 
     # ---------- 网站配置 ----------
@@ -92,6 +169,8 @@ class restoreTools:
                 mw.execShell('mkdir -p ' + SITE_WEB_CONF_DIR)
             mw.execShell("cp -rf '" + src_web_conf + "/.' '" + SITE_WEB_CONF_DIR + "/'")
             _log("已恢复网站[" + name + "]的 nginx 配置 -> " + SITE_WEB_CONF_DIR)
+
+        _restore_site_status(_read_site_status(tmp, name))
 
         mw.execShell('rm -rf ' + tmp)
         _restart_openresty()
@@ -139,6 +218,15 @@ class restoreTools:
             _log("已恢复 web_conf -> " + SITE_WEB_CONF_DIR)
         else:
             _log("备份包内未找到 web_conf.zip")
+
+        # site_info.json 中包含每个网站备份时的 status，配置恢复后再同步启停状态。
+        if os.path.isfile(site_info_file):
+            try:
+                with open(site_info_file, 'r') as f:
+                    site_info = json.load(f)
+                _restore_site_status(site_info.get('site_list', []))
+            except Exception as e:
+                _log("读取网站状态失败: " + str(e))
 
         mw.execShell('rm -rf ' + tmp)
         _restart_openresty()

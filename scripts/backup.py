@@ -157,6 +157,7 @@ class backupTools:
     def backupSiteSetting(self, name, save):
         sql = db.Sql()
         path = sql.table('sites').where('name=?', (name,)).getField('path')
+        site_status = sql.table('sites').where('name=?', (name,)).getField('status')
         startTime = time.time()
         if not path:
             endDate = time.strftime('%Y/%m/%d %X', time.localtime())
@@ -180,6 +181,12 @@ class backupTools:
         mw.execShell('mkdir -p ' + tmp_path)
 
         print(tmp_path)
+
+        # 将备份时的网站运行状态一并写入配置包，恢复时按原状态还原。
+        status_file = tmp_path + '/' + name + '/site_status.json'
+        mw.execShell('mkdir -p ' + tmp_path + '/' + name)
+        with open(status_file, 'w') as f:
+            json.dump({'name': name, 'status': str(site_status)}, f)
 
         backup_cmd = f"""
 set -e

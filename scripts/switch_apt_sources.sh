@@ -16,24 +16,24 @@ DEBIAN_SOURCES="deb http://deb.debian.org/debian/ bullseye main non-free contrib
 deb http://deb.debian.org/debian/ bullseye-updates main non-free contrib
 deb-src http://deb.debian.org/debian/ bullseye main non-free contrib
 deb-src http://deb.debian.org/debian/ bullseye-updates main non-free contrib
-deb http://deb.debian.org/debian-security/ bullseye-security main contrib non-free
-deb-src http://deb.debian.org/debian-security/ bullseye-security main contrib non-free" 
+deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260831T000000Z bullseye-security main contrib non-free
+deb-src [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260831T000000Z bullseye-security main contrib non-free"
 
 #定义科大源脚本
 USTC_SOURCES="deb https://mirrors.ustc.edu.cn/debian bullseye main contrib non-free
 deb-src https://mirrors.ustc.edu.cn/debian bullseye main contrib non-free
-deb https://mirrors.ustc.edu.cn/debian-security/ bullseye-security main
-deb-src https://mirrors.ustc.edu.cn/debian-security/ bullseye-security main
 deb https://mirrors.ustc.edu.cn/debian bullseye-updates main
-deb-src https://mirrors.ustc.edu.cn/debian bullseye-updates main"
+deb-src https://mirrors.ustc.edu.cn/debian bullseye-updates main
+deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260831T000000Z bullseye-security main contrib non-free
+deb-src [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260831T000000Z bullseye-security main contrib non-free"
 
 #定义网易源脚本
 NETEASE_SOURCES="deb https://mirrors.163.com/debian/ bullseye main non-free contrib
 deb-src https://mirrors.163.com/debian/ bullseye main non-free contrib
-deb https://mirrors.163.com/debian-security/ bullseye-security main
-deb-src https://mirrors.163.com/debian-security/ bullseye-security main
 deb https://mirrors.163.com/debian/ bullseye-updates main non-free contrib
-deb-src https://mirrors.163.com/debian/ bullseye-updates main non-free contrib"
+deb-src https://mirrors.163.com/debian/ bullseye-updates main non-free contrib
+deb [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260831T000000Z bullseye-security main contrib non-free
+deb-src [check-valid-until=no] https://snapshot.debian.org/archive/debian-security/20260831T000000Z bullseye-security main contrib non-free"
 
 #接受默认项，如果输入为空，则默认选择第一项
 if [[ -z "$1" ]]

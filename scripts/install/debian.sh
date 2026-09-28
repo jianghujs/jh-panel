@@ -5,6 +5,7 @@ export LANG=en_US.UTF-8
 export DEBIAN_FRONTEND=noninteractive
 
 APT_UPDATE_LOG="/tmp/jh-panel-apt-update.log"
+DEBIAN_11_SECURITY_SNAPSHOT="https://snapshot.debian.org/archive/debian-security/20260831T000000Z"
 DEBIAN_VERSION_ID=""
 DEBIAN_CODENAME=""
 
@@ -14,12 +15,13 @@ if [ -f /etc/os-release ]; then
 	DEBIAN_CODENAME="${VERSION_CODENAME:-}"
 fi
 
-# Debian 11 的 bullseye-backports 已从普通镜像下线，旧配置会导致 apt update 返回 404。
-disable_expired_bullseye_backports()
+# Debian 11 已结束 LTS：backports 已下线，普通安全镜像的索引和软件包文件可能不一致。
+fix_debian_11_sources()
 {
 	local source_file
 	local backup_file
 	local backup_suffix
+	local changed=0
 
 	if [ "${DEBIAN_CODENAME}" != "bullseye" ] && [ "${DEBIAN_VERSION_ID}" != "11" ]; then
 		return 0
@@ -28,13 +30,24 @@ disable_expired_bullseye_backports()
 	backup_suffix=$(date +%Y%m%d%H%M%S)
 	for source_file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
 		[ -f "${source_file}" ] || continue
-		if grep -Eq '^[[:space:]]*deb(-src)?[[:space:]].*[[:space:]]bullseye-backports([[:space:]]|$)' "${source_file}"; then
+		[ "${source_file}" = "/etc/apt/sources.list.d/jh-panel-bullseye-security-snapshot.list" ] && continue
+		if grep -Eq '^[[:space:]]*deb(-src)?[[:space:]].*[[:space:]]bullseye-(backports|security)([[:space:]]|$)' "${source_file}"; then
 			backup_file="${source_file}.jh-panel-backup-${backup_suffix}"
 			cp -a "${source_file}" "${backup_file}"
 			sed -Ei '/^[[:space:]]*deb(-src)?[[:space:]].*[[:space:]]bullseye-backports([[:space:]]|$)/ s|^[[:space:]]*|# jh-panel: bullseye-backports 已归档，已禁用 |' "${source_file}"
-			echo "|- 已禁用失效源 bullseye-backports，原配置备份到 ${backup_file}"
+			sed -Ei '/^[[:space:]]*deb(-src)?[[:space:]].*[[:space:]]bullseye-security([[:space:]]|$)/ s|^[[:space:]]*|# jh-panel: 已切换到 Debian 安全快照 |' "${source_file}"
+			echo "|- 已调整 Debian 11 旧软件源，原配置备份到 ${backup_file}"
+			changed=1
 		fi
 	done
+
+	cat > /etc/apt/sources.list.d/jh-panel-bullseye-security-snapshot.list <<EOF
+deb [check-valid-until=no] ${DEBIAN_11_SECURITY_SNAPSHOT} bullseye-security main contrib non-free
+EOF
+
+	if [ "${changed}" -eq 1 ]; then
+		echo "|- Debian 11 安全源已切换到 LTS 结束日快照"
+	fi
 }
 
 update_apt_sources()
@@ -44,7 +57,7 @@ update_apt_sources()
 	echo "系统版本: Debian ${DEBIAN_VERSION_ID:-未知} (${DEBIAN_CODENAME:-未知})"
 	echo "-----------------------"
 
-	disable_expired_bullseye_backports
+	fix_debian_11_sources
 
 	LC_ALL=C apt-get update -o Acquire::Retries=3 2>&1 | tee "${APT_UPDATE_LOG}"
 	if [ "${PIPESTATUS[0]}" -ne 0 ] || grep -Eq '^(E:|W: Failed to fetch)' "${APT_UPDATE_LOG}"; then

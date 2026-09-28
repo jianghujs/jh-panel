@@ -28,9 +28,16 @@ mkdir -p /www/wwwlogs
 mkdir -p /www/backup/database
 mkdir -p /www/backup/site
 
-# git clone jh-panel from gitee (cn only)
-echo "git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel"
-git clone https://gitee.com/jianghujs/jh-panel /www/server/jh-panel
+# 拉取 jh-panel；Gitee 返回认证错误时自动切换到 GitHub。
+echo "正在从 Gitee 拉取 jh-panel..."
+if ! GIT_TERMINAL_PROMPT=0 git clone https://gitee.com/jianghujs/jh-panel.git /www/server/jh-panel; then
+	echo "Gitee 拉取失败，正在切换到 GitHub 公共仓库..."
+	if ! GIT_TERMINAL_PROMPT=0 git clone https://github.com/jianghujs/jh-panel.git /www/server/jh-panel; then
+		echo -e "\e[1;31m× jh-panel 代码拉取失败，请检查网络后重试。\e[0m"
+		exit 1
+	fi
+fi
+echo -e "\e[0;32m|- jh-panel 代码拉取成功✅\e[0m"
 
 
 if [ ! -f /usr/bin/applydeltarpm ];then
@@ -198,4 +205,3 @@ chmod 755 /www/server/jh-panel/data
 # 安装后文件会被清空(cn only)
 mkdir -p /www/server/jh-panel/data
 echo "True" > /www/server/jh-panel/data/net_env_cn.pl
-

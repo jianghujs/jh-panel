@@ -16,8 +16,6 @@ DEBIAN_SOURCES="deb http://deb.debian.org/debian/ bullseye main non-free contrib
 deb http://deb.debian.org/debian/ bullseye-updates main non-free contrib
 deb-src http://deb.debian.org/debian/ bullseye main non-free contrib
 deb-src http://deb.debian.org/debian/ bullseye-updates main non-free contrib
-deb http://deb.debian.org/debian/ bullseye-backports main contrib non-free
-deb-src http://deb.debian.org/debian/ bullseye-backports main contrib non-free
 deb http://deb.debian.org/debian-security/ bullseye-security main contrib non-free
 deb-src http://deb.debian.org/debian-security/ bullseye-security main contrib non-free" 
 
@@ -31,13 +29,11 @@ deb-src https://mirrors.ustc.edu.cn/debian bullseye-updates main"
 
 #定义网易源脚本
 NETEASE_SOURCES="deb https://mirrors.163.com/debian/ bullseye main non-free contrib
-deb-src htttps://mirrors.163.com/debian/ bullseye main non-free contrib
+deb-src https://mirrors.163.com/debian/ bullseye main non-free contrib
 deb https://mirrors.163.com/debian-security/ bullseye-security main
 deb-src https://mirrors.163.com/debian-security/ bullseye-security main
 deb https://mirrors.163.com/debian/ bullseye-updates main non-free contrib
-deb-src https://mirrors.163.com/debian/ bullseye-updates main non-free contrib
-deb https://mirrors.163.com/debian/ bullseye-backports main non-free contrib
-deb-src https://mirrors.163.com/debian/ bullseye-backports main non-free contrib" 
+deb-src https://mirrors.163.com/debian/ bullseye-updates main non-free contrib"
 
 #接受默认项，如果输入为空，则默认选择第一项
 if [[ -z "$1" ]]

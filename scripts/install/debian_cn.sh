@@ -2,19 +2,72 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 export LANG=en_US.UTF-8
+export DEBIAN_FRONTEND=noninteractive
+
+APT_UPDATE_LOG="/tmp/jh-panel-apt-update.log"
+DEBIAN_VERSION_ID=""
+DEBIAN_CODENAME=""
+
+if [ -f /etc/os-release ]; then
+	. /etc/os-release
+	DEBIAN_VERSION_ID="${VERSION_ID:-}"
+	DEBIAN_CODENAME="${VERSION_CODENAME:-}"
+fi
+
+# Debian 11 的 bullseye-backports 已从普通镜像下线，旧配置会导致 apt update 返回 404。
+disable_expired_bullseye_backports()
+{
+	local source_file
+	local backup_file
+	local backup_suffix
+
+	if [ "${DEBIAN_CODENAME}" != "bullseye" ] && [ "${DEBIAN_VERSION_ID}" != "11" ]; then
+		return 0
+	fi
+
+	backup_suffix=$(date +%Y%m%d%H%M%S)
+	for source_file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
+		[ -f "${source_file}" ] || continue
+		if grep -Eq '^[[:space:]]*deb(-src)?[[:space:]].*[[:space:]]bullseye-backports([[:space:]]|$)' "${source_file}"; then
+			backup_file="${source_file}.jh-panel-backup-${backup_suffix}"
+			cp -a "${source_file}" "${backup_file}"
+			sed -Ei '/^[[:space:]]*deb(-src)?[[:space:]].*[[:space:]]bullseye-backports([[:space:]]|$)/ s|^[[:space:]]*|# jh-panel: bullseye-backports 已归档，已禁用 |' "${source_file}"
+			echo "|- 已禁用失效源 bullseye-backports，原配置备份到 ${backup_file}"
+		fi
+	done
+}
+
+update_apt_sources()
+{
+	echo "-----------------------"
+	echo "正在检查 Debian APT 软件源"
+	echo "系统版本: Debian ${DEBIAN_VERSION_ID:-未知} (${DEBIAN_CODENAME:-未知})"
+	echo "-----------------------"
+
+	disable_expired_bullseye_backports
+
+	LC_ALL=C apt-get update -o Acquire::Retries=3 2>&1 | tee "${APT_UPDATE_LOG}"
+	if [ "${PIPESTATUS[0]}" -ne 0 ] || grep -Eq '^(E:|W: Failed to fetch)' "${APT_UPDATE_LOG}"; then
+		echo -e "\e[1;31m× APT 软件源更新失败，安装已停止，避免继续产生依赖报错。\e[0m"
+		echo "请检查上方错误，或查看日志: ${APT_UPDATE_LOG}"
+		echo "常见原因: 第三方源失效、发行版代号配置错误、网络或 DNS 异常。"
+		exit 1
+	fi
+
+	echo -e "\e[0;32m|- APT 软件源更新成功✅\e[0m"
+}
 
 # 检查是否为root用户
 if [ "$EUID" -ne 0 ]
   then echo "Please run as root!"
-  exit
+  exit 1
 fi
 
 # apt 修改为阿里源(cn only)
 sed -i 's#http://deb.debian.org#https://mirrors.aliyun.com#g' /etc/apt/sources.list
 
 # apt 更新
-apt update -y
-apt-get update -y 
+update_apt_sources
 # apt 安装相应工具
 apt install -y devscripts
 apt install -y wget zip unzip

@@ -56,13 +56,9 @@ function getDatabaseAllLabel(types, allTypeSelected){
     return '全部数据库';
 }
 
-function getAvailableDatabaseTypes(data){
-    var types = [];
-    for(var i = 0; i < data.length; i++){
-        var dbType = data[i].db_type || getDatabaseTypeFromValue(data[i].name);
-        if(types.indexOf(dbType) < 0) types.push(dbType);
-    }
-    return types;
+function getAvailableDatabaseTypes(){
+    // 允许在创建数据库前配置对应类型的全部备份任务。
+    return ['mysql', 'postgresql'];
 }
 
 function getSelectedDatabaseTypes($scope){
@@ -597,6 +593,7 @@ function initDropdownMenu(){
 //备份
 function toBackup(type){
 	var sMsg = "";
+	var sType = type;
 	switch(type){
 		case 'sites': sMsg = '备份网站资源'; sType = "sites"; break;
 		case 'siteSetting': sMsg = '备份网站配置'; sType = "siteSetting"; break;
@@ -609,19 +606,16 @@ function toBackup(type){
 	}
 	$.post('/crontab/get_data_list','type='+sType,function(rdata){
 		$(".planname input[name='name']").attr('readonly','true').css({"background-color":"#f6f6f6","color":"#666"});
-		if(rdata.data.length == 0){
-			layer.msg(lan.public.list_empty,{icon:2});
-			return;
-		}
-
 		var isRestore = (sType == 'restoreSiteSetting' || sType == 'restorePluginSetting');
 		var databaseTypeFilterHtml = '';
-		var defaultValue = rdata.data[0].name;
-		var defaultLabel = getBackupItemLabel(rdata.data[0]);
+		var firstItem = rdata.data[0];
+		var defaultValue = firstItem ? firstItem.name : (isRestore ? 'restoreAll' : 'backupAll');
+		var defaultLabel = firstItem ? getBackupItemLabel(firstItem) : '所有';
+		$(".planname input[name='name']").val(sMsg+'['+(firstItem ? getBackupItemDisplayName(firstItem) : '所有')+']');
 		var sOpt = '';
 
 		if(sType == 'databases'){
-			var databaseTypes = getAvailableDatabaseTypes(rdata.data);
+			var databaseTypes = getAvailableDatabaseTypes();
 			var selectedDatabaseTypes = databaseTypes.slice(0);
 			var allTypeSelected = true;
 			databaseTypeFilterHtml = buildDatabaseTypeFilter(databaseTypes, selectedDatabaseTypes, allTypeSelected);
@@ -743,7 +737,7 @@ function editTaskInfo(id){
 					weekDom += '<li><a role="menuitem"  href="javascript:;" value="'+ obj['weekArray'][i][0] +'">'+ obj['weekArray'][i][1] +'</a></li>';
 				}
 
-				if(obj.from.stype == 'site' || obj.from.stype == 'database' || obj.from.stype == 'path' || obj.from.stype == 'logs' || obj.from.stype == 'restoreSiteSetting' || obj.from.stype == 'restorePluginSetting'){
+				if(obj.from.stype == 'site' || obj.from.stype == 'siteSetting' || obj.from.stype == 'pluginSetting' || obj.from.stype == 'database' || obj.from.stype == 'path' || obj.from.stype == 'logs' || obj.from.stype == 'restoreSiteSetting' || obj.from.stype == 'restorePluginSetting'){
 					var _listType = obj.from.stype;
 					if (obj.from.stype == 'database') _listType = 'databases';
 					else if (obj.from.stype == 'site' || obj.from.stype == 'path' || obj.from.stype == 'logs') _listType = 'sites';
@@ -752,7 +746,7 @@ function editTaskInfo(id){
 						obj.sNameArray = rdata.data;
 					if(obj.from.stype == 'database'){
 						editDatabaseData = rdata.data;
-						var availableTypes = getAvailableDatabaseTypes(rdata.data);
+						var availableTypes = getAvailableDatabaseTypes();
 						var currentTypes = getDatabaseTypesFromValue(obj.from.sname);
 						var allTypeSelected = isDatabaseAllTypeValue(obj.from.sname);
 						var selectedTypes = [];
@@ -769,7 +763,10 @@ function editTaskInfo(id){
 							obj.from.sname = allValue;
 							}
 						}else{
-							obj.sNameArray.unshift({name:'ALL',ps:'所有'});
+							var isRestore = obj.from.stype == 'restoreSiteSetting' || obj.from.stype == 'restorePluginSetting';
+							var allValue = isRestore ? 'restoreAll' : 'backupAll';
+							if(obj.from.sname == 'ALL') obj.from.sname = allValue;
+							obj.sNameArray.unshift({name:allValue,title:'所有',raw_name:'所有'});
 						}
 						obj.backupsArray = rdata.orderOpt;
 						obj.backupsArray.unshift({title:'服务器磁盘',name:'localhost'});

@@ -372,6 +372,9 @@ check_and_install "zstd"
     def backupDatabaseAll(self, save, exec_type='mysqldump'):
         db_path = mw.getServerDir() + '/mysql-apt'
         db_name = 'mysql'
+        if not os.path.exists(db_path + '/mysql.db'):
+            print('|----MySQL 未安装或未配置，跳过全部备份')
+            return
         databases = mw.M('databases').dbPos(
             db_path, db_name).field('name').select()
         for database in databases:
@@ -482,6 +485,9 @@ check_and_install "zstd"
 
     def backupSiteSettingAll(self, save):
         sites = mw.M('sites').field('name').select()
+        if not sites:
+            print('|----没有可备份的网站配置，跳过本次备份')
+            return
         for site in sites:
             self.backupSiteSetting(site['name'], save)
 
@@ -505,6 +511,9 @@ check_and_install "zstd"
     
     def backupPluginSettingAll(self, save):
         plugin_list = mw.getBackupPluginList()
+        if not plugin_list:
+            print('|----没有可备份的插件配置，跳过本次备份')
+            return
         for plugin in plugin_list:
             self.backupPluginSetting(plugin['name'], save)
 

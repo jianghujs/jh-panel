@@ -7,6 +7,7 @@ import json
 import time
 import subprocess
 import traceback
+import tempfile
 
 _PANEL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 os.chdir(_PANEL_DIR)
@@ -71,86 +72,25 @@ def statInt(output, label):
     return None
 
 
-def collectPreflightChanges(output, limit=300):
-    deleted = []
-    changed = []
-    skipped_prefixes = (
-        'sending incremental file list',
-        'Number of files:',
-        'Number of created files:',
-        'Number of deleted files:',
-        'Number of regular files transferred:',
-        'Total file size:',
-        'Total transferred file size:',
-        'Literal data:',
-        'Matched data:',
-        'File list size:',
-        'File list generation time:',
-        'File list transfer time:',
-        'Total bytes sent:',
-        'Total bytes received:',
-        'sent ',
-        'total size is ',
-    )
-
-    for raw_line in output.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith('*deleting '):
-            deleted.append(line[len('*deleting '):])
-            continue
-        if line.startswith(skipped_prefixes):
-            continue
-        if re.match(r'^[<>ch\.\*][fdLDS][A-Za-z0-9\.\+\?]{8}\s+.+', line):
-            changed.append(line)
-            continue
-        if line.startswith(('cd', 'created directory ')):
-            changed.append(line)
-
-    return {
-        'deleted': deleted,
-        'changed': changed,
-        'deleted_more': max(0, len(deleted) - limit),
-        'changed_more': max(0, len(changed) - limit),
-        'deleted_items': deleted[:limit],
-        'changed_items': changed[:limit],
-    }
-
-
-def formatPreflightChanges(changes):
-    lines = []
-    deleted_items = changes.get('deleted_items', [])
-    changed_items = changes.get('changed_items', [])
-    if deleted_items:
-        lines.append('删除明细（dry-run，最多显示 %s 条）：' % len(deleted_items))
-        lines.extend(['- ' + item for item in deleted_items])
-        if changes.get('deleted_more', 0) > 0:
-            lines.append('- ... 还有 %s 条删除未显示' % changes['deleted_more'])
-    else:
-        lines.append('删除明细：无')
-
-    if changed_items:
-        lines.append('')
-        lines.append('变更明细（dry-run，最多显示 %s 条）：' % len(changed_items))
-        lines.extend(['- ' + item for item in changed_items])
-        if changes.get('changed_more', 0) > 0:
-            lines.append('- ... 还有 %s 条变更未显示' % changes['changed_more'])
-    return '\n'.join(lines)
+def collectDeletedPaths(output):
+    # --itemize-changes 的标记占 11 列，随后一个空格才是文件名。
+    return [line[12:] for line in output.splitlines() if line.startswith('*deleting   ')]
 
 
 def writeAbortLog(log_dir, message):
     ts = time.strftime('%Y%m%d_%H%M%S')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    log_file = log_dir + '/preflight_' + ts + '.log'
+    fd, log_file = tempfile.mkstemp(prefix='preflight_' + ts + '_', suffix='.log', dir=log_dir)
+    os.close(fd)
     mw.writeFile(log_file, message.rstrip() + '\n')
     print(message)
-    print('preflight abort log: %s' % log_file)
+    print('预检日志：%s' % log_file)
+    return log_file
 
 
 def buildDryRunCmd(task, paths, rsync_bin):
-    cmd = [rsync_bin, '-avzPr', '--dry-run', '--stats', '--itemize-changes']
+    cmd = [rsync_bin, '-avzPr', '--dry-run', '--stats', '--itemize-changes', '--8-bit-output']
     if task.get('delete') == 'true':
         cmd.append('--delete')
 
@@ -182,30 +122,16 @@ def buildDryRunCmd(task, paths, rsync_bin):
 
 
 
-def getLatestRunLog(task):
-    paths = taskPaths(task)
-    log_dir = paths['log_dir']
-    if not os.path.isdir(log_dir):
-        return '', ''
-    files = []
-    for filename in os.listdir(log_dir):
-        full_path = os.path.join(log_dir, filename)
-        if filename.startswith('run_') and filename.endswith('.log') and os.path.isfile(full_path):
-            files.append((full_path, os.path.getmtime(full_path)))
-    if not files:
-        return '', ''
-    files.sort(key=lambda x: x[1], reverse=True)
-    latest_log = files[0][0]
-    return latest_log, mw.readFile(latest_log) or ''
-
-
-
-
 def getRsyncErrorSummary(content, max_lines=20):
     if not content:
         return ''
     keywords = [
         'rsync:',
+        '@ERROR:',
+        'ssh:',
+        '失败',
+        '超时',
+        'Error:',
         'rsync error',
         'failed:',
         'Permission denied',
@@ -239,82 +165,129 @@ def getRsyncErrorSummary(content, max_lines=20):
     return '\n'.join(result[-max_lines:])
 
 
+def savePreflightResult(result):
+    result_path = os.environ.get('RSYNCD_PREFLIGHT_RESULT')
+    if result_path:
+        mw.writeFile(result_path, json.dumps(result, ensure_ascii=False))
+
+
+def readPreflightResult():
+    result_path = os.environ.get('RSYNCD_PREFLIGHT_RESULT')
+    if result_path and os.path.isfile(result_path):
+        return json.loads(mw.readFile(result_path))
+    return {}
+
+
+def formatDeleteDetails(task, result):
+    deleted = result.get('deleted', [])
+    lines = ['待删除清单（目标端相对路径，目录以 / 结尾）：']
+    if deleted:
+        lines.extend('- ' + item for item in deleted)
+        if result.get('kind') == 'error':
+            lines.append('预检异常，以上仅为已获取的清单，可能不完整。')
+    elif task.get('delete') != 'true':
+        lines.append('未启用删除。')
+    elif result.get('kind') in ('ok', 'threshold'):
+        lines.append('无。')
+    else:
+        lines.append('未能取得完整删除清单。')
+    return '\n'.join(lines)
+
+
 def runPreflight():
     if len(sys.argv) < 3:
         print('usage: tool_run.py preflight <task_name>')
         sys.exit(1)
-    name = sys.argv[2]
-    task = loadTask(name)
+    task = loadTask(sys.argv[2])
     paths = taskPaths(task)
-    rsync_bin = whichRsync()
-
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
-    cmd = buildDryRunCmd(task, paths, rsync_bin)
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-    stdout = proc.stdout.decode('utf-8', 'replace') if proc.stdout else ''
-    stderr = proc.stderr.decode('utf-8', 'replace') if proc.stderr else ''
-    output = stdout + ('\n' + stderr if stderr else '')
+    cmd = buildDryRunCmd(task, paths, whichRsync())
+    result = {'kind': 'error', 'deleted': []}
+    output = ''
+    try:
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        stdout = proc.stdout.decode('utf-8', 'replace') if proc.stdout else ''
+        stderr = proc.stderr.decode('utf-8', 'replace') if proc.stderr else ''
+        output = stdout + ('\n' + stderr if stderr else '')
+        result['deleted'] = collectDeletedPaths(stdout)
+        result['exit_code'] = proc.returncode
+        if proc.returncode != 0:
+            result['error'] = stderr.strip() or getRsyncErrorSummary(stdout) or stdout.strip() or 'rsync 未输出错误详情。'
+        else:
+            total_files = statInt(stdout, 'Number of files')
+            if total_files is None:
+                result.update(exit_code=1, error='无法解析预检统计：缺少 Number of files（rsync 退出码为 0）。')
+            else:
+                deleted_files = statInt(stdout, 'Number of deleted files') or len(result['deleted'])
+                threshold = normalizeMaxDeletePercent(task.get('max_delete_percent', 30))
+                ratio = 0 if total_files == 0 else (deleted_files * 100.0 / total_files)
+                result.update(kind='threshold' if ratio > threshold else 'ok',
+                              total=total_files, deleted_count=deleted_files,
+                              ratio=ratio, threshold=threshold)
+    except OSError as exc:
+        result.update(exit_code=1, error='%s: %s' % (type(exc).__name__, exc), errno=exc.errno)
 
-    if proc.returncode != 0:
-        writeAbortLog(paths['log_dir'], 'rsync preflight failed for task %s, exit_code=%s\ncmd=%s\n%s' % (
-            name, proc.returncode, ' '.join(cmd), output.strip()))
-        sys.exit(1)
+    savePreflightResult(result)
+    if result['kind'] == 'ok':
+        print('同步前检查通过：待删除 %s 项，源端共 %s 项，删除比例 %.2f%%，阈值 %s%%。' % (
+            result['deleted_count'], result['total'], result['ratio'], result['threshold']))
+        print(formatDeleteDetails(task, result))
+        return
 
-    total_files = statInt(output, 'Number of files')
-    if total_files is None:
-        writeAbortLog(paths['log_dir'], 'rsync preflight parse failed for task %s: missing Number of files.\ncmd=%s\n%s' % (
-            name, ' '.join(cmd), output.strip()))
-        sys.exit(1)
-
-    deleted_files = statInt(output, 'Number of deleted files') or 0
-    threshold = normalizeMaxDeletePercent(task.get('max_delete_percent', 30))
-    ratio = 0 if total_files == 0 else (deleted_files * 100.0 / total_files)
-    summary = 'rsync preflight task=%s deleted=%s total=%s ratio=%.2f%% threshold=%s%%' % (
-        name, deleted_files, total_files, ratio, threshold)
-    changes = collectPreflightChanges(output)
-    detail = formatPreflightChanges(changes)
-    print(summary)
-    if changes.get('deleted_items'):
-        print('rsync preflight deleting preview:')
-        for item in changes['deleted_items'][:30]:
-            print('- ' + item)
-        if changes.get('deleted_more', 0) > 0:
-            print('- ... 还有 %s 条删除未显示' % changes['deleted_more'])
-
-    if ratio > threshold:
-        writeAbortLog(paths['log_dir'], summary + '\nabort: delete ratio exceeds threshold, real rsync skipped\n\n' + detail)
-        sys.exit(1)
+    reason = buildReason(task, result['exit_code'], 'preflight', result=result)
+    log_message = reason
+    if result['kind'] == 'error' and output.strip():
+        log_message += '\n\n预检原始输出：\n' + output.strip()
+    result['log_file'] = writeAbortLog(paths['log_dir'], log_message)
+    savePreflightResult(result)
+    # 阈值拦截向调用脚本返回失败，通知中不将其当作 rsync 错误码。
+    sys.exit(result['exit_code'] or 1)
 
 
-def buildReason(task, exit_code, phase):
+def buildReason(task, exit_code, phase, result=None):
+    if result is None:
+        result = readPreflightResult()
+    threshold_exceeded = phase == 'preflight' and result.get('kind') == 'threshold'
     if task.get('conn_type') == 'ssh':
         target = '%s:%s' % (task.get('ip', ''), task.get('target_path', ''))
     else:
-        target = '%s:%s' % (task.get('ip', ''), task.get('name', ''))
-    phase_name = '同步前检查' if phase == 'preflight' else 'rsync同步'
-    mode = '完全同步' if task.get('delete') == 'true' else '增量同步'
-    threshold = normalizeMaxDeletePercent(task.get('max_delete_percent', 30))
-    paths = taskPaths(task)
-    lines = [
-        'rsync同步失败',
+        target = '%s::%s（rsync 模块）' % (task.get('ip', ''), task.get('name', ''))
+    phase_name = {'preflight': '同步前检查', 'mount': '目录检查'}.get(phase, 'rsync同步')
+    log_file = os.environ.get('RSYNCD_RUN_LOG', '')
+    log_content = (mw.readFile(log_file) or '') if log_file and os.path.isfile(log_file) else ''
+    if phase == 'rsync':
+        log_content = log_content.rsplit('开始执行 rsync 同步', 1)[-1]
+    lines = ['rsync同步已中止：待删除比例超过阈值' if threshold_exceeded else 'rsync同步异常']
+    if threshold_exceeded:
+        lines.extend([
+            '删除比例：%.2f%%，超过阈值 %s%%（待删除 %s 项 / 源端 %s 项，含目录）。' % (
+                result['ratio'], result['threshold'], result['deleted_count'], result['total']),
+            '执行结果：已停止同步，本次未执行文件删除。',
+        ])
+    else:
+        actual_code = result.get('exit_code', exit_code) if phase == 'preflight' else exit_code
+        error = result.get('error', '') if phase == 'preflight' else ''
+        error = error or getRsyncErrorSummary(log_content) or '\n'.join(log_content.splitlines()[-30:]) or '未获取到错误输出，请查看本次运行日志。'
+        lines.extend(['失败阶段：%s' % phase_name, '错误码：%s' % actual_code, '报错信息：\n%s' % error])
+        if phase == 'preflight' and result.get('errno') is not None:
+            lines.append('系统错误码（errno）：%s' % result['errno'])
+        if phase in ('preflight', 'mount'):
+            lines.append('执行结果：已停止同步，本次未执行文件删除。')
+        else:
+            lines.append('执行结果：同步中途失败，部分文件可能已同步或删除；以下为预检计划清单。')
+    lines.extend([
         '任务名称：%s' % task.get('name', ''),
-        '失败阶段：%s' % phase_name,
-        '退出码：%s' % exit_code,
         '源目录：%s' % task.get('path', ''),
         '目标：%s' % target,
-        '同步模式：%s' % mode,
-        '连接方式：%s' % task.get('conn_type', ''),
-        '删除保护阈值：%s%%' % threshold,
-        '日志目录：%s' % paths['log_dir'],
-    ]
-    latest_log, latest_log_content = getLatestRunLog(task)
-    error_summary = getRsyncErrorSummary(latest_log_content)
-    if latest_log:
-        lines.append('最近日志：%s' % latest_log)
-    if error_summary:
-        lines.append('错误摘要：\n%s' % error_summary)
-    lines.append('提示：如确认需要跳过删除比例检查，可手动执行 bash cmd -f；rsync阶段失败仍需检查日志和连接状态。')
+        '同步模式：%s' % ('完全同步' if task.get('delete') == 'true' else '增量同步'),
+    ])
+    if threshold_exceeded or phase == 'rsync':
+        lines.extend(['', formatDeleteDetails(task, result)])
+    if log_file:
+        lines.append('本次运行日志：%s' % log_file)
+    if result.get('log_file'):
+        lines.append('预检日志：%s' % result['log_file'])
     return '\n'.join(lines)
 
 
@@ -329,10 +302,13 @@ def runNotifyFail():
     phase = sys.argv[4]
 
     task = loadTask(name)
-    reason = buildReason(task, exit_code, phase)
+    result = readPreflightResult()
+    reason = buildReason(task, exit_code, phase, result=result)
+    print(reason, flush=True)
 
     notify_msg = mw.generateCommonNotifyMessage(reason)
-    title = '🔴rsync同步失败：{} | {}'.format(name, mw.getConfig('title'))
+    label = 'rsync同步中止：删除比例超过阈值' if phase == 'preflight' and result.get('kind') == 'threshold' else 'rsync同步异常'
+    title = '{}：{} | {}'.format(label, name, mw.getConfig('title'))
     stype = 'rsyncd同步失败:' + name
     mw.notifyMessage(title=title, msg=notify_msg, stype=stype, trigger_time=3600)
     return 0

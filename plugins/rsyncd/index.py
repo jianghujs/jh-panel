@@ -631,9 +631,35 @@ def makeMountCheckCmd(t):
     cmd = '#!/bin/bash\nset -e\n'
     cmd += 'if [ "' + '$' + '{RSYNCD_SKIP_MOUNT_CHECK:-0}" != "1" ]; then\n'
     for check_cmd in check_cmds:
-        cmd += '    ' + check_cmd + '\n'
+        cmd += '    ' + check_cmd + ' || { mount_exit=$?; notify_rsync_failure "$mount_exit" "mount"; exit "$mount_exit"; }\n'
     cmd += 'fi\n'
     return cmd
+
+
+def makeRunReportCmd(task):
+    # 每次调用单独记录日志和预检结果，避免并发或手动执行时读取到其他运行的错误。
+    return """#!/bin/bash
+if [ "${{RSYNCD_REPORT_ACTIVE:-0}}" != "1" ]; then
+    log_dir={log_dir}
+    mkdir -p "$log_dir" || exit 1
+    export RSYNCD_RUN_LOG
+    RSYNCD_RUN_LOG=$(mktemp "$log_dir/run_$(date +%Y%m%d_%H%M%S)_XXXXXX.log") || exit 1
+    export RSYNCD_PREFLIGHT_RESULT
+    RSYNCD_PREFLIGHT_RESULT=$(mktemp "$log_dir/.preflight_XXXXXX.json") || exit 1
+    printf '{{}}' > "$RSYNCD_PREFLIGHT_RESULT"
+    trap 'rm -f "$RSYNCD_PREFLIGHT_RESULT"' EXIT
+    printf '同步开始：%s\\n' "$(date '+%Y-%m-%d %H:%M:%S')" > "$RSYNCD_RUN_LOG"
+    RSYNCD_REPORT_ACTIVE=1 bash "$0" "$@" >> "$RSYNCD_RUN_LOG" 2>&1
+    run_exit=$?
+    printf '同步结束：%s\\n' "$(date '+%Y-%m-%d %H:%M:%S')" >> "$RSYNCD_RUN_LOG"
+    cat "$RSYNCD_RUN_LOG"
+    exit "$run_exit"
+fi
+notify_rsync_failure() {{
+    python3 {tool_run} notify_fail {task_name} "$1" "$2" || true
+}}
+""".format(log_dir=shlex.quote(getServerDir() + '/send/' + task['name'] + '/logs'),
+           tool_run=shlex.quote(getPluginDir() + '/tool_run.py'), task_name=shlex.quote(task['name']))
 
 def makeLsyncdConf(data):
     # print(data)
@@ -691,12 +717,6 @@ def makeLsyncdConf(data):
                 'bwlimit'] + delete_ok + "  --exclude-from=" + cmd_exclude + " --password-file=" + cmd_pass + " " + t["path"] + " " + remote_addr
             tool_run_py = shlex.quote(getPluginDir() + "/tool_run.py")
             task_name_q = shlex.quote(t['name'])
-            notify_func = """notify_rsync_failure() {{
-    local exit_code="$1"
-    local phase="$2"
-    python3 {tool_run_py} notify_fail {task_name_q} "$exit_code" "$phase"
-}}
-""".format(tool_run_py=tool_run_py, task_name_q=task_name_q)
             preflight_guard = """if [ "${{1:-}}" != "-f" ]; then
     set +e
     python3 {tool_run_py} preflight {task_name_q}
@@ -707,10 +727,11 @@ def makeLsyncdConf(data):
         exit "$preflight_exit"
     fi
 else
-    echo "rsync preflight skipped by -f"
+    echo "已手动跳过同步前检查，无法提供预检删除清单。"
 fi
 """.format(tool_run_py=tool_run_py, task_name_q=task_name_q)
             rsync_guard = '''
+echo "开始执行 rsync 同步"
 set +e
 ''' + cmd + '''
 rsync_exit=$?
@@ -728,7 +749,7 @@ if [ "$rsync_exit" -ne 0 ]; then
     exit "$rsync_exit"
 fi
 '''
-            cmd = makeMountCheckCmd(t) + notify_func + preflight_guard + rsync_guard
+            cmd = makeRunReportCmd(t) + makeMountCheckCmd(t) + preflight_guard + rsync_guard
             mw.writeFile(name_dir + "/cmd", cmd)
             mw.execShell("chmod +x " + name_dir + "/cmd")
 

@@ -86,8 +86,9 @@ class RunReportsTest(unittest.TestCase):
         self.assertIn('本次未执行文件删除', notice['msg'])
         self.assertNotIn('错误码', notice['msg'])
         self.assertNotIn('报错信息', notice['msg'])
-        self.assertIn('file_399', Path(result['log_file']).read_text())
-        self.assertFalse(self.check._check_fixtime_sync_status(notice['msg'])[0])
+        self.assertNotIn('file_399', Path(result['log_file']).read_text())
+        self.assertIn('abort: delete ratio exceeds threshold', Path(result['log_file']).read_text())
+        self.assertFalse(self.check._check_fixtime_sync_status(Path(result['log_file']).read_text())[0])
 
     def test_preflight_retains_actual_code_without_delete_list(self):
         code, result = self.preflight('*deleting   old.txt\n', 'rsync: Connection refused (111)\nrsync error (code 10)', 10)
@@ -120,7 +121,7 @@ class RunReportsTest(unittest.TestCase):
 
     def test_real_failure_uses_this_run_and_keeps_preflight_plan(self):
         self.result_path.write_text(json.dumps({'kind': 'ok', 'deleted': ['old.txt']}))
-        self.log_path.write_text('Permission denied from previous phase\n开始执行 rsync 同步\nrsync: Connection timed out\nrsync error (code 30)\n')
+        self.log_path.write_text('rsync: Connection timed out\nrsync error (code 30)\n')
         message = self.notify(30, 'rsync')['msg']
         self.assertIn('错误码：30', message)
         self.assertIn('Connection timed out', message)
@@ -142,7 +143,7 @@ class RunReportsTest(unittest.TestCase):
             'import json, os, pathlib, sys\n'
             'pathlib.Path(os.environ["RSYNCD_RUN_LOG"] + ".notice").write_text(json.dumps({'
             '"args":sys.argv[1:], "log":pathlib.Path(os.environ["RSYNCD_RUN_LOG"]).read_text(),'
-            '"result":pathlib.Path(os.environ["RSYNCD_PREFLIGHT_RESULT"]).read_text()}))\n'
+            '"result":pathlib.Path(os.environ["RSYNCD_PREFLIGHT_RESULT"]).read_text(),"temp":os.environ["RSYNCD_PREFLIGHT_RESULT"]}))\n'
             'sys.exit(9)\n')
         self.mw.getPluginDir = lambda: str(self.root)
         self.mw.execShell = lambda cmd: (sys.executable, '')
@@ -154,19 +155,56 @@ class RunReportsTest(unittest.TestCase):
         script.write_text(ns['makeRunReportCmd'](self.task) +
                           ns['makeMountCheckCmd'](self.task) + 'echo SHOULD_NOT_SYNC\n')
         subprocess.run(['bash', '-n', str(script)], check=True)
-        for _ in range(2):
-            proc = subprocess.run(['bash', str(script)], capture_output=True, text=True)
+        for i in range(2):
+            log = self.root / ('run_%s.log' % i)
+            with log.open('w') as stream:
+                proc = subprocess.run(['bash', str(script)], stdout=stream, stderr=subprocess.STDOUT, text=True)
+            proc.stdout = log.read_text()
             self.assertEqual(proc.returncode, 7)
             self.assertIn('Permission denied', proc.stdout)
             self.assertNotIn('SHOULD_NOT_SYNC', proc.stdout)
-        notices = list((self.root / 'send/sample/logs').glob('*.notice'))
+        notices = list(self.root.glob('*.notice'))
         self.assertEqual(len(notices), 2)
         for notice in notices:
             data = json.loads(notice.read_text())
             self.assertEqual(data['args'], ['notify_fail', 'sample', '7', 'mount'])
             self.assertEqual(data['result'], '{}')
             self.assertIn('Permission denied', data['log'])
+            self.assertFalse(Path(data['temp']).exists())
         self.assertEqual(list((self.root / 'send/sample/logs').glob('.preflight_*')), [])
+
+        # rsync 原始输出实时进入旧日志，失败退出码不被 tee 或通知失败覆盖。
+        guard = next(node for node in ast.walk(tree) if isinstance(node, ast.Assign)
+                     and any(isinstance(t, ast.Name) and t.id == 'rsync_guard' for t in node.targets))
+        ns['cmd'] = "bash -c 'echo sending incremental file list; echo Connection refused >&2; exit 10'"
+        exec(compile(ast.Module(body=[guard], type_ignores=[]), 'index.py', 'exec'), ns)
+        script.write_text(ns['makeRunReportCmd'](self.task) + ns['rsync_guard'])
+        log = self.root / 'run_rsync.log'
+        with log.open('w') as stream:
+            proc = subprocess.run(['bash', str(script)], stdout=stream, stderr=subprocess.STDOUT)
+        self.assertEqual(proc.returncode, 10)
+        self.assertIn('sending incremental file list', log.read_text())
+        self.assertNotIn('同步开始', log.read_text())
+        data = json.loads(Path(str(log) + '.notice').read_text())
+        self.assertEqual(data['args'], ['notify_fail', 'sample', '10', 'rsync'])
+        self.assertIn('Connection refused', data['log'])
+
+    def test_threshold_does_not_throttle_exception_and_mail_not_printed(self):
+        code, result = self.preflight('Number of files: 10\nNumber of deleted files: 4\n')
+        threshold_notice = self.notify(code, 'preflight')
+        code, result = self.preflight('', 'Connection refused', 10)
+        error_notice = self.notify(code, 'preflight')
+        self.assertNotEqual(threshold_notice['stype'], error_notice['stype'])
+        self.mw.notifyMessage = lambda **kw: True
+        with patch.object(sys, 'argv', ['tool_run.py', 'notify_fail', 'sample', '10', 'preflight']), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.run.runNotifyFail()
+        self.assertEqual(output.getvalue(), '')
+        self.mw.notifyMessage = lambda **kw: False
+        with patch.object(sys, 'argv', ['tool_run.py', 'notify_fail', 'sample', '10', 'preflight']), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.run.runNotifyFail()
+        self.assertIn('通知未发送或未成功', output.getvalue())
 
 
 if __name__ == '__main__':

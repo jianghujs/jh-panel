@@ -58,13 +58,6 @@ def _check_fixtime_sync_status(content):
     if content is None or not content.strip():
         return False, "本次同步日志为空，任务可能未执行或被中断"
 
-    if 'rsync同步已中止：待删除比例超过阈值' in content:
-        return False, '待删除比例超过阈值，本次未执行文件删除，请查看日志中的待删除清单'
-    if 'rsync同步异常' in content:
-        code = re.search(r'错误码：([^\n]+)', content)
-        return False, 'rsync同步异常%s，请查看日志中的报错信息' % (
-            '（错误码：%s）' % code.group(1) if code else '')
-
     has_rsync_summary = bool(re.search(r"sent\s+[\d,]+\s+bytes\s+received\s+[\d,]+\s+bytes", content)) and bool(re.search(r"total size is\s+[\d,]+", content))
     if "rsync warning: some files vanished before they could be transferred (code 24)" in content and has_rsync_summary:
         return True, ""

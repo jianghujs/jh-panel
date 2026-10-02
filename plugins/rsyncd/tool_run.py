@@ -85,7 +85,7 @@ def writeAbortLog(log_dir, message):
     os.close(fd)
     mw.writeFile(log_file, message.rstrip() + '\n')
     print(message)
-    print('预检日志：%s' % log_file)
+    print('preflight abort log: %s' % log_file)
     return log_file
 
 
@@ -229,19 +229,18 @@ def runPreflight():
         result.update(exit_code=1, error='%s: %s' % (type(exc).__name__, exc), errno=exc.errno)
 
     savePreflightResult(result)
-    if result['kind'] == 'ok':
-        print('同步前检查通过：待删除 %s 项，源端共 %s 项，删除比例 %.2f%%，阈值 %s%%。' % (
-            result['deleted_count'], result['total'], result['ratio'], result['threshold']))
-        print(formatDeleteDetails(task, result))
-        return
-
-    reason = buildReason(task, result['exit_code'], 'preflight', result=result)
-    log_message = reason
-    if result['kind'] == 'error' and output.strip():
-        log_message += '\n\n预检原始输出：\n' + output.strip()
+    if result['kind'] in ('ok', 'threshold'):
+        summary = 'rsync preflight task=%s deleted=%s total=%s ratio=%.2f%% threshold=%s%%' % (
+            task['name'], result['deleted_count'], result['total'], result['ratio'], result['threshold'])
+        if result['kind'] == 'ok':
+            print(summary)
+            return
+        log_message = summary + '\nabort: delete ratio exceeds threshold, real rsync skipped'
+    else:
+        log_message = 'rsync preflight failed for task %s, exit_code=%s\n%s' % (
+            task['name'], result['exit_code'], result['error'])
     result['log_file'] = writeAbortLog(paths['log_dir'], log_message)
     savePreflightResult(result)
-    # 阈值拦截向调用脚本返回失败，通知中不将其当作 rsync 错误码。
     sys.exit(result['exit_code'] or 1)
 
 
@@ -256,8 +255,9 @@ def buildReason(task, exit_code, phase, result=None):
     phase_name = {'preflight': '同步前检查', 'mount': '目录检查'}.get(phase, 'rsync同步')
     log_file = os.environ.get('RSYNCD_RUN_LOG', '')
     log_content = (mw.readFile(log_file) or '') if log_file and os.path.isfile(log_file) else ''
-    if phase == 'rsync':
-        log_content = log_content.rsplit('开始执行 rsync 同步', 1)[-1]
+    error_log = os.environ.get('RSYNCD_ERROR_LOG', '')
+    if phase in ('mount', 'rsync') and error_log and os.path.isfile(error_log):
+        log_content = mw.readFile(error_log) or ''
     lines = ['rsync同步已中止：待删除比例超过阈值' if threshold_exceeded else 'rsync同步异常']
     if threshold_exceeded:
         lines.extend([
@@ -304,14 +304,16 @@ def runNotifyFail():
     task = loadTask(name)
     result = readPreflightResult()
     reason = buildReason(task, exit_code, phase, result=result)
-    print(reason, flush=True)
 
     notify_msg = mw.generateCommonNotifyMessage(reason)
     label = 'rsync同步中止：删除比例超过阈值' if phase == 'preflight' and result.get('kind') == 'threshold' else 'rsync同步异常'
     title = '{}：{} | {} | {}'.format(
         label, name, mw.getConfig('title'), time.strftime('%Y-%m-%d %H:%M:%S'))
-    stype = 'rsyncd同步失败:' + name
-    mw.notifyMessage(title=title, msg=notify_msg, stype=stype, trigger_time=3600)
+    category = 'threshold' if phase == 'preflight' and result.get('kind') == 'threshold' else phase
+    stype = 'rsyncd同步失败:%s:%s' % (name, category)
+    sent = mw.notifyMessage(title=title, msg=notify_msg, stype=stype, trigger_time=3600)
+    if not sent:
+        print('rsync notify: 通知未发送或未成功，请检查一小时通知限频及面板通知配置/日志。')
     return 0
 
 

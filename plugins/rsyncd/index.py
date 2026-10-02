@@ -631,35 +631,31 @@ def makeMountCheckCmd(t):
     cmd = '#!/bin/bash\nset -e\n'
     cmd += 'if [ "' + '$' + '{RSYNCD_SKIP_MOUNT_CHECK:-0}" != "1" ]; then\n'
     for check_cmd in check_cmds:
-        cmd += '    ' + check_cmd + ' || { mount_exit=$?; notify_rsync_failure "$mount_exit" "mount"; exit "$mount_exit"; }\n'
+        cmd += '    ' + check_cmd + ' 2>&1 | tee "$RSYNCD_ERROR_LOG" || { mount_exit=$?; notify_rsync_failure "$mount_exit" "mount"; exit "$mount_exit"; }\n'
     cmd += 'fi\n'
     return cmd
 
 
 def makeRunReportCmd(task):
-    # 每次调用单独记录日志和预检结果，避免并发或手动执行时读取到其他运行的错误。
+    # 仅暂存邮件所需结果；运行日志仍由原有计划任务记录。
     return """#!/bin/bash
-if [ "${{RSYNCD_REPORT_ACTIVE:-0}}" != "1" ]; then
-    log_dir={log_dir}
-    mkdir -p "$log_dir" || exit 1
-    export RSYNCD_RUN_LOG
-    RSYNCD_RUN_LOG=$(mktemp "$log_dir/run_$(date +%Y%m%d_%H%M%S)_XXXXXX.log") || exit 1
-    export RSYNCD_PREFLIGHT_RESULT
-    RSYNCD_PREFLIGHT_RESULT=$(mktemp "$log_dir/.preflight_XXXXXX.json") || exit 1
-    printf '{{}}' > "$RSYNCD_PREFLIGHT_RESULT"
-    trap 'rm -f "$RSYNCD_PREFLIGHT_RESULT"' EXIT
-    printf '同步开始：%s\\n' "$(date '+%Y-%m-%d %H:%M:%S')" > "$RSYNCD_RUN_LOG"
-    RSYNCD_REPORT_ACTIVE=1 bash "$0" "$@" >> "$RSYNCD_RUN_LOG" 2>&1
-    run_exit=$?
-    printf '同步结束：%s\\n' "$(date '+%Y-%m-%d %H:%M:%S')" >> "$RSYNCD_RUN_LOG"
-    cat "$RSYNCD_RUN_LOG"
-    exit "$run_exit"
+set -o pipefail
+report_dir=$(mktemp -d) || exit 1
+export RSYNCD_PREFLIGHT_RESULT="$report_dir/preflight.json"
+export RSYNCD_ERROR_LOG="$report_dir/error.log"
+export RSYNCD_RUN_LOG
+RSYNCD_RUN_LOG=$(readlink /proc/$$/fd/1)
+if [ ! -f "$RSYNCD_RUN_LOG" ]; then
+    RSYNCD_RUN_LOG=""
 fi
+printf '{{}}' > "$RSYNCD_PREFLIGHT_RESULT"
+trap 'rm -rf "$report_dir"' EXIT
 notify_rsync_failure() {{
     python3 {tool_run} notify_fail {task_name} "$1" "$2" || true
 }}
-""".format(log_dir=shlex.quote(getServerDir() + '/send/' + task['name'] + '/logs'),
-           tool_run=shlex.quote(getPluginDir() + '/tool_run.py'), task_name=shlex.quote(task['name']))
+""".format(tool_run=shlex.quote(getPluginDir() + '/tool_run.py'),
+           task_name=shlex.quote(task['name']))
+
 
 def makeLsyncdConf(data):
     # print(data)
@@ -727,14 +723,13 @@ def makeLsyncdConf(data):
         exit "$preflight_exit"
     fi
 else
-    echo "已手动跳过同步前检查，无法提供预检删除清单。"
+    echo "rsync preflight skipped by -f"
 fi
 """.format(tool_run_py=tool_run_py, task_name_q=task_name_q)
             rsync_guard = '''
-echo "开始执行 rsync 同步"
 set +e
-''' + cmd + '''
-rsync_exit=$?
+''' + cmd + ''' 2>&1 | tee "$RSYNCD_ERROR_LOG"
+rsync_exit=${PIPESTATUS[0]}
 set -e
 if [ "$rsync_exit" -eq 24 ]; then
     echo "rsync warning ignored: exit 24, some source files vanished during transfer"

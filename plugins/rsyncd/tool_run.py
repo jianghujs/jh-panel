@@ -308,7 +308,8 @@ def runNotifyFail():
 
     notify_msg = mw.generateCommonNotifyMessage(reason)
     label = 'rsync同步中止：删除比例超过阈值' if phase == 'preflight' and result.get('kind') == 'threshold' else 'rsync同步异常'
-    title = '{}：{} | {}'.format(label, name, mw.getConfig('title'))
+    title = '{}：{} | {} | {}'.format(
+        label, name, mw.getConfig('title'), time.strftime('%Y-%m-%d %H:%M:%S'))
     stype = 'rsyncd同步失败:' + name
     mw.notifyMessage(title=title, msg=notify_msg, stype=stype, trigger_time=3600)
     return 0

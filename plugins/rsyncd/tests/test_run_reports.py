@@ -29,6 +29,8 @@ class RunReportsTest(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.mw = types.ModuleType('mw')
         self.mw.getServerDir = lambda: str(self.root)
+        self.mw.getPanelTmp = lambda: str(self.root)
+        self.mw.getNotifyData = lambda: {'email': {'enable': True}}
         self.mw.readFile = lambda path: Path(path).read_text()
         self.mw.writeFile = lambda path, text: Path(path).write_text(text)
         self.mw.generateCommonNotifyMessage = lambda text: text
@@ -238,6 +240,70 @@ class RunReportsTest(unittest.TestCase):
                 contextlib.redirect_stdout(io.StringIO()) as output:
             self.run.runNotifyFail()
         self.assertIn('通知未发送或未成功', output.getvalue())
+
+    def test_notify_reports_throttling_without_attempting_delivery(self):
+        self.result_path.write_text(json.dumps({'kind': 'threshold', 'deleted': [],
+                                              'ratio': 4000, 'threshold': 30, 'deleted_count': 40, 'total': 1}))
+        (self.root / 'notify_lock.json').write_text(json.dumps({
+            'rsyncd同步失败:sample:threshold': {'do_time': self.run.time.time()}}))
+        with patch.object(sys, 'argv', ['tool_run.py', 'notify_fail', 'sample', '1', 'preflight']), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.run.runNotifyFail()
+        self.assertEqual(self.notifications, [])
+        self.assertIn('本次未尝试发送', output.getvalue())
+        self.assertIn('可重试时间', output.getvalue())
+
+    def test_notify_reports_disabled_email(self):
+        self.mw.getNotifyData = lambda: {}
+        with patch.object(sys, 'argv', ['tool_run.py', 'notify_fail', 'sample', '1', 'preflight']), \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.run.runNotifyFail()
+        self.assertIn('面板未启用邮件通知', output.getvalue())
+
+    def test_legacy_script_passes_threshold_between_separate_processes(self):
+        # 复现远端旧 cmd：没有任何 RSYNCD_* 环境变量，预检和通知各启动一次 Python。
+        launcher = self.root / 'legacy_runner.py'
+        launcher.write_text('''import importlib.util, json, os, pathlib, sys, types
+root = pathlib.Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location('runner', sys.argv[2])
+mw = types.ModuleType('mw')
+mw.getServerDir = lambda: str(root)
+mw.getPanelTmp = lambda: str(root)
+mw.readFile = lambda p: pathlib.Path(p).read_text() if pathlib.Path(p).exists() else False
+mw.writeFile = lambda p, text: pathlib.Path(p).write_text(text)
+mw.generateCommonNotifyMessage = lambda text: text
+mw.getConfig = lambda key: '测试节点'
+mw.getNotifyData = lambda: {'email': {'enable': True}}
+def notify(**kw):
+    (root / 'notice.json').write_text(json.dumps(kw, ensure_ascii=False))
+    return True
+mw.notifyMessage = notify
+sys.modules['mw'] = mw
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
+runner.loadTask = lambda name: dict(name='sample', delete='true', conn_type='ssh', max_delete_percent=30)
+runner.whichRsync = lambda: 'rsync'
+sys.argv = ['tool_run.py'] + sys.argv[3:]
+if sys.argv[1] == 'preflight':
+    output = ''.join('*deleting   file_%s\\n' % i for i in range(40)) + 'Number of files: 1\\nNumber of deleted files: 40\\n'
+    runner.subprocess.run = lambda *a, **k: types.SimpleNamespace(stdout=output.encode(), stderr=b'', returncode=0)
+    runner.runPreflight()
+else:
+    sys.exit(runner.runNotifyFail())
+''')
+        import shlex
+        command = ' '.join(shlex.quote(str(p)) for p in (sys.executable, launcher, self.root, PLUGIN / 'tool_run.py'))
+        script = command + ' preflight sample\ncode=$?\n' + command + ' notify_fail sample "$code" preflight\nexit 0\n'
+        env = {key: value for key, value in os.environ.items() if not key.startswith('RSYNCD_')}
+        proc = subprocess.run(['bash', '-c', script], env=env, capture_output=True, text=True, timeout=10)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn('ratio=4000.00%', proc.stdout)
+        notice = json.loads((self.root / 'notice.json').read_text())
+        self.assertIn('超过阈值', notice['title'])
+        self.assertIn('4000.00%', notice['msg'])
+        self.assertIn('file_39', notice['msg'])
+        self.assertNotIn('错误码', notice['msg'])
+        self.assertEqual(list((self.root / 'rsyncd/send/sample/logs').glob('.preflight_*.json')), [])
 
 
 if __name__ == '__main__':

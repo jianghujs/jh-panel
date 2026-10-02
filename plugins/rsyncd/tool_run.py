@@ -165,14 +165,31 @@ def getRsyncErrorSummary(content, max_lines=20):
     return '\n'.join(result[-max_lines:])
 
 
-def savePreflightResult(result):
+def preflightResultPath(task):
+    # 旧 cmd 没有导出结果路径。两个 Python 步骤由同一个 Bash 父进程启动，
+    # 用父进程身份关联结果，避免并发任务互相覆盖或读取历史阈值记录。
     result_path = os.environ.get('RSYNCD_PREFLIGHT_RESULT')
     if result_path:
-        mw.writeFile(result_path, json.dumps(result, ensure_ascii=False))
+        return result_path
+    if task:
+        parent_pid = os.getppid()
+        with open('/proc/%s/stat' % parent_pid) as stream:
+            start_time = stream.read().rsplit(')', 1)[1].split()[19]
+        return os.path.join(taskPaths(task)['log_dir'], '.preflight_%s_%s.json' % (parent_pid, start_time))
+    return None
+
+
+def savePreflightResult(result, task=None):
+    result_path = preflightResultPath(task)
+    if result_path:
+        os.makedirs(os.path.dirname(result_path), exist_ok=True)
+        # 显式写文件，不能静默忽略 mw.writeFile 返回的写入失败。
+        with open(result_path, 'w', encoding='utf-8') as stream:
+            json.dump(result, stream, ensure_ascii=False)
 
 
 def readPreflightResult(task=None, phase=None):
-    result_path = os.environ.get('RSYNCD_PREFLIGHT_RESULT')
+    result_path = preflightResultPath(task)
     if result_path and os.path.isfile(result_path):
         try:
             result = json.loads(mw.readFile(result_path))
@@ -250,7 +267,7 @@ def runPreflight():
     except OSError as exc:
         result.update(exit_code=1, error='%s: %s' % (type(exc).__name__, exc), errno=exc.errno)
 
-    savePreflightResult(result)
+    savePreflightResult(result, task)
     if result['kind'] in ('ok', 'threshold'):
         summary = 'rsync preflight task=%s deleted=%s total=%s ratio=%.2f%% threshold=%s%%' % (
             task['name'], result['deleted_count'], result['total'], result['ratio'], result['threshold'])
@@ -262,7 +279,7 @@ def runPreflight():
         log_message = 'rsync preflight failed for task %s, exit_code=%s\n%s' % (
             task['name'], result['exit_code'], result['error'])
     result['log_file'] = writeAbortLog(paths['log_dir'], log_message)
-    savePreflightResult(result)
+    savePreflightResult(result, task)
     sys.exit(result['exit_code'] or 1)
 
 
@@ -326,6 +343,10 @@ def runNotifyFail():
     task = loadTask(name)
     result = readPreflightResult(task, phase)
     reason = buildReason(task, exit_code, phase, result=result)
+    if not os.environ.get('RSYNCD_PREFLIGHT_RESULT'):
+        result_path = preflightResultPath(task)
+        if os.path.isfile(result_path):
+            os.remove(result_path)
 
     notify_msg = mw.generateCommonNotifyMessage(reason)
     label = 'rsync同步中止：删除比例超过阈值' if phase == 'preflight' and result.get('kind') == 'threshold' else 'rsync同步异常'
@@ -333,9 +354,25 @@ def runNotifyFail():
         label, name, mw.getConfig('title'), time.strftime('%Y-%m-%d %H:%M:%S'))
     category = 'threshold' if phase == 'preflight' and result.get('kind') == 'threshold' else phase
     stype = 'rsyncd同步失败:%s:%s' % (name, category)
+    # 发送前检查旧记录，不能把本次发送时新写入的锁误判成限频。
+    lock_file = os.path.join(mw.getPanelTmp(), 'notify_lock.json')
+    try:
+        locks = json.loads(mw.readFile(lock_file) or '{}')
+        retry_at = float(locks.get(stype, {}).get('do_time', 0)) + 3600
+    except (ValueError, TypeError, AttributeError, OSError):
+        retry_at = 0
+    if retry_at > time.time():
+        print('rsync notify: 已被一小时通知限频拦截，本次未尝试发送；可重试时间：%s；通知类型：%s。' % (
+            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(retry_at)), stype))
+        return 0
+    config = mw.getNotifyData()
+    email_enabled = config.get('email', {}).get('enable', False)
+    if not email_enabled:
+        print('rsync notify: 面板未启用邮件通知，请在通知设置中启用邮件并配置收件人。')
     sent = mw.notifyMessage(title=title, msg=notify_msg, stype=stype, trigger_time=3600)
     if not sent:
-        print('rsync notify: 通知未发送或未成功，请检查一小时通知限频及面板通知配置/日志。')
+        print('rsync notify: 通知未发送或未成功；本次调用前未被限频，请检查上方异常和面板错误日志。'
+              '面板可能已记录本次尝试时间，再次尝试可能被限频。')
     return 0
 
 

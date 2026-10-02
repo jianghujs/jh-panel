@@ -171,17 +171,38 @@ def savePreflightResult(result):
         mw.writeFile(result_path, json.dumps(result, ensure_ascii=False))
 
 
-def readPreflightResult():
+def readPreflightResult(task=None, phase=None):
     result_path = os.environ.get('RSYNCD_PREFLIGHT_RESULT')
     if result_path and os.path.isfile(result_path):
-        return json.loads(mw.readFile(result_path))
+        try:
+            result = json.loads(mw.readFile(result_path))
+            if isinstance(result, dict) and result.get('kind') in ('ok', 'threshold', 'error'):
+                return result
+        except (ValueError, TypeError, OSError):
+            pass
+    # 只读取本次运行日志；不能用历史阈值拦截覆盖本次连接错误。
+    log_file = os.environ.get('RSYNCD_RUN_LOG', '')
+    if task and phase == 'preflight' and log_file and os.path.isfile(log_file):
+        content = mw.readFile(log_file) or ''
+        pattern = (r'^rsync preflight task=' + re.escape(task['name']) +
+                   r' deleted=(\d+) total=(\d+) ratio=([\d.]+)% threshold=(\d+)%\n'
+                   r'abort: delete ratio exceeds threshold, real rsync skipped(?:\n|$)')
+        matches = list(re.finditer(pattern, content, re.M))
+        if matches:
+            match = matches[-1]
+            deleted, total, ratio, threshold = match.groups()
+            if float(ratio) > int(threshold):
+                return dict(kind='threshold', deleted_count=int(deleted), total=int(total),
+                            ratio=float(ratio), threshold=int(threshold), deleted=None)
     return {}
 
 
 def formatDeleteDetails(task, result):
-    deleted = result.get('deleted', [])
+    deleted = result.get('deleted')
     lines = ['待删除清单（目标端相对路径，目录以 / 结尾）：']
-    if deleted:
+    if deleted is None and task.get('delete') == 'true':
+        lines.append('本次删除清单未能读取，请查看预检记录。')
+    elif deleted:
         lines.extend('- ' + item for item in deleted)
         if result.get('kind') == 'error':
             lines.append('预检异常，以上仅为已获取的清单，可能不完整。')
@@ -214,14 +235,15 @@ def runPreflight():
         result['exit_code'] = proc.returncode
         if proc.returncode != 0:
             result['error'] = stderr.strip() or getRsyncErrorSummary(stdout) or stdout.strip() or 'rsync 未输出错误详情。'
-        else:
-            total_files = statInt(stdout, 'Number of files')
-            if total_files is None:
+        total_files = statInt(stdout, 'Number of files')
+        if total_files is None:
+            if proc.returncode == 0:
                 result.update(exit_code=1, error='无法解析预检统计：缺少 Number of files（rsync 退出码为 0）。')
-            else:
-                deleted_files = statInt(stdout, 'Number of deleted files') or len(result['deleted'])
-                threshold = normalizeMaxDeletePercent(task.get('max_delete_percent', 30))
-                ratio = 0 if total_files == 0 else (deleted_files * 100.0 / total_files)
+        else:
+            deleted_files = statInt(stdout, 'Number of deleted files') or len(result['deleted'])
+            threshold = normalizeMaxDeletePercent(task.get('max_delete_percent', 30))
+            ratio = 0 if total_files == 0 else (deleted_files * 100.0 / total_files)
+            if ratio > threshold or proc.returncode == 0:
                 result.update(kind='threshold' if ratio > threshold else 'ok',
                               total=total_files, deleted_count=deleted_files,
                               ratio=ratio, threshold=threshold)
@@ -246,7 +268,7 @@ def runPreflight():
 
 def buildReason(task, exit_code, phase, result=None):
     if result is None:
-        result = readPreflightResult()
+        result = readPreflightResult(task, phase)
     threshold_exceeded = phase == 'preflight' and result.get('kind') == 'threshold'
     if task.get('conn_type') == 'ssh':
         target = '%s:%s' % (task.get('ip', ''), task.get('target_path', ''))
@@ -302,7 +324,7 @@ def runNotifyFail():
     phase = sys.argv[4]
 
     task = loadTask(name)
-    result = readPreflightResult()
+    result = readPreflightResult(task, phase)
     reason = buildReason(task, exit_code, phase, result=result)
 
     notify_msg = mw.generateCommonNotifyMessage(reason)

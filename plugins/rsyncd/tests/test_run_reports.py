@@ -101,6 +101,39 @@ class RunReportsTest(unittest.TestCase):
         self.assertNotIn('待删除清单', Path(result['log_file']).read_text())
         self.assertNotIn('超过阈值', message)
 
+    def test_confirmed_threshold_takes_priority_over_nonzero_exit(self):
+        code, result = self.preflight(
+            '*deleting   old.txt\nNumber of files: 2\nNumber of deleted files: 1\n',
+            'rsync error (code 1)', 1)
+        self.assertEqual(result['kind'], 'threshold')
+        notice = self.notify(code, 'preflight')
+        self.assertIn('超过阈值', notice['title'])
+        self.assertIn('old.txt', notice['msg'])
+        self.assertNotIn('错误码', notice['msg'])
+        self.assertNotIn('报错信息', notice['msg'])
+        self.assertTrue(notice['stype'].endswith(':threshold'))
+
+    def test_missing_result_recovers_threshold_from_current_log_only(self):
+        self.log_path.write_text('rsync preflight task=sample deleted=9 total=5 ratio=180.00% threshold=30%\n'
+                                 'abort: delete ratio exceeds threshold, real rsync skipped\n')
+        for content in ('{}', '{broken json', '[]'):
+            self.result_path.write_text(content)
+            notice = self.notify(1, 'preflight')
+            self.assertIn('超过阈值', notice['title'])
+            self.assertIn('180.00%', notice['msg'])
+            self.assertNotIn('错误码', notice['msg'])
+            self.assertIn('删除清单未能读取', notice['msg'])
+        # 明确的本次异常结果优先于日志里旧的阈值行。
+        self.result_path.write_text(json.dumps(dict(kind='error', exit_code=10, error='Connection refused')))
+        notice = self.notify(10, 'preflight')
+        self.assertIn('错误码：10', notice['msg'])
+        self.assertNotIn('超过阈值', notice['title'])
+        self.result_path.write_text('{}')
+        self.log_path.write_text('rsync preflight task=another-task deleted=9 total=5 ratio=180.00% threshold=30%\n'
+                                 'abort: delete ratio exceeds threshold, real rsync skipped\n')
+        self.assertNotIn('超过阈值', self.notify(1, 'preflight')['title'])
+        self.assertNotIn('超过阈值', self.notify(1, 'rsync')['title'])
+
     def test_parse_and_launch_errors(self):
         code, result = self.preflight('unexpected output')
         self.assertEqual(result['kind'], 'error')

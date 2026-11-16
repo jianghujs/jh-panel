@@ -22,6 +22,7 @@ sys.path.append(os.getcwd() + "/class/core")
 sys.path.append(os.getcwd() + "/class/plugin")
 import mw
 from value_tool import quotePgIdentifier, quotePgLiteral
+from database_backup import ensureRecord, runCommand
 
 
 if mw.isAppleSystem():
@@ -823,23 +824,71 @@ def getDbList():
     return mw.getJson(data)
 
 
+def prepareDatabaseBackup():
+    if not os.path.isfile(getServerDir() + '/pgsql.db'):
+        return None
+    config = pSqliteDb('config').where('id=?', (1,)).field('pg_root').find()
+    if not isinstance(config, dict) or not isinstance(config.get('pg_root'), str):
+        raise ValueError('PostgreSQL 连接配置缺失')
+    port = str(int(getDbPort()))
+    if not 0 < int(port) < 65536:
+        raise ValueError('PostgreSQL 端口无效')
+    return {'port': port}
+
+
+def databaseBackupCommand(context, binary, args):
+    command = [getServerDir() + '/bin/' + binary] + args + ['-p', context['port']]
+    if mw.isAppleSystem():
+        return command
+    return ['su', '-', 'postgres', '-c', shlex.join(command)]
+
+
+def getServerDatabases(include_system=False):
+    context = prepareDatabaseBackup()
+    if context is None:
+        raise ValueError('PostgreSQL 未安装或缺少配置库')
+    query = ("SELECT COALESCE(json_agg(json_build_object('datname', datname, "
+             "'datistemplate', datistemplate)), '[]'::json) FROM pg_database")
+    output = runCommand(databaseBackupCommand(context, 'psql',
+        ['-X', '-w', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-d', 'postgres', '-c', query]),
+        '查询 PostgreSQL 名单', timeout=30)
+    rows = json.loads(output)
+    if not isinstance(rows, list):
+        raise ValueError('名单查询返回数据格式异常')
+    names = []
+    for row in rows:
+        if (not isinstance(row, dict) or not isinstance(row.get('datname'), str)
+                or not row['datname'] or type(row.get('datistemplate')) is not bool):
+            raise ValueError('名单查询返回数据库名称或模板标志格式异常')
+        name = row['datname']
+        if not include_system and (name == 'postgres' or row['datistemplate']):
+            continue
+        if name not in names:
+            names.append(name)
+    return names
+
+
+def ensureBackupDatabase(name):
+    return ensureRecord(getServerDir() + '/pgsql.db', name, '127.0.0.1/32')
+
+
+def exportDatabaseBackup(name, output, work, context, exec_type=None):
+    dump = databaseBackupCommand(context, 'pg_dump', ['-w', '-c', '-d', name])
+    command = shlex.join(dump) + ' | gzip > ' + shlex.quote(output)
+    runCommand(['bash', '-o', 'pipefail', '-c', command], 'pg_dump 导出/压缩')
+    return '.sql.gz'
+
+
 def syncGetDatabases():
-    pdb = pgDb()
     psdb = pSqliteDb('databases')
-    data = pdb.table('pg_database').field(
-        'datname').where("datistemplate=false").select()
-    nameArr = ['postgres']
+    try:
+        data = [{'datname': name} for name in getServerDatabases()]
+    except Exception as exc:
+        return mw.returnJson(False, str(exc)[:1200])
     n = 0
 
     for value in data:
         vdb_name = value["datname"]
-        b = False
-        for key in nameArr:
-            if vdb_name == key:
-                b = True
-                break
-        if b:
-            continue
         if psdb.where("name=?", (vdb_name,)).count() > 0:
             continue
         host = '127.0.0.1/32'

@@ -19,6 +19,8 @@ import psutil
 
 sys.path.append(os.getcwd() + "/class/core")
 import mw
+sys.path.append(os.path.join(os.getcwd(), 'class/plugin'))
+from database_backup import ensureRecord, runCommand, safeError
 
 app_debug = False
 if mw.isAppleSystem():
@@ -1492,31 +1494,106 @@ def getDbListPage():
     return mw.getJson(data)
 
 
+def getServerDatabases(include_system=False):
+    pdb = pMysqlDb()
+    pdb.setCharset('utf8mb4')
+    pdb.setTimeout(30)
+    try:
+        rows = pdb.query('show databases')
+    except Exception as exc:
+        raise ValueError(safeError(exc, pdb.getPwd())) from None
+    if not isinstance(rows, (list, tuple)):
+        raise ValueError('名单查询返回数据格式异常: ' + safeError(rows, pdb.getPwd()))
+    names = []
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get('Database'), str) or not row['Database']:
+            raise ValueError('名单查询返回数据库名称格式异常')
+        name = row['Database']
+        if not include_system and name in ('information_schema', 'performance_schema', 'mysql', 'sys'):
+            continue
+        if name not in names:
+            names.append(name)
+    return names
+
+
+def prepareDatabaseBackup():
+    if not os.path.isfile(getServerDir() + '/mysql.db'):
+        return None
+    password = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
+    if not isinstance(password, str):
+        raise ValueError('MySQL 连接配置缺失')
+    try:
+        port = str(int(getDbPort()))
+        if not 0 < int(port) < 65536:
+            raise ValueError('端口无效')
+        socket_file = getSocketFile()
+        return {'password': password, 'port': port, 'socket': socket_file}
+    except Exception as exc:
+        raise ValueError(safeError(exc, password)) from None
+
+
+def ensureBackupDatabase(name):
+    return ensureRecord(getServerDir() + '/mysql.db', name, '127.0.0.1')
+
+
+def exportDatabaseBackup(name, output, work, context, exec_type='mysqldump'):
+    if exec_type not in ('mysqldump', 'mydumper'):
+        raise ValueError('不支持的 MySQL 备份方式')
+    try:
+        packages = ['zstd'] + (['mydumper'] if exec_type == 'mydumper' else [])
+        install = 'source ' + shlex.quote(mw.getScriptDir() + '/util/apt.sh') + '\n'
+        install += '\n'.join('check_and_install ' + p + ' || exit $?' for p in packages)
+        runCommand(['bash', '-c', install], '准备备份工具')
+        client_conf = os.path.join(work, 'client.cnf')
+        fd = os.open(client_conf, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        password = context['password'].replace('\\', '\\\\').replace('"', '\\"')
+        password = password.replace('\n', '\\n').replace('\r', '\\r')
+        with os.fdopen(fd, 'w') as fp:
+            fp.write('[client]\nuser=root\npassword="' + password + '"\n')
+        if os.path.exists(context['socket']):
+            connection = ['--socket=' + context['socket']]
+        else:
+            connection = ['--host=127.0.0.1', '--port=' + context['port']]
+        if exec_type == 'mysqldump':
+            dump = ['nice', '-n', '19', 'ionice', '-c2', '-n7',
+                    getServerDir() + '/bin/usr/bin/mysqldump', '--defaults-file=' + client_conf]
+            dump += connection + ['--single-transaction', '--quick', '--set-gtid-purged=OFF',
+                                   '--default-character-set=utf8', '--', name]
+            command = shlex.join(dump) + ' | zstd > ' + shlex.quote(output)
+            stage = 'mysqldump 导出/压缩'
+        else:
+            dump = ['/usr/bin/mydumper', '--defaults-file=' + client_conf] + connection
+            dump_root = os.path.join(work, 'dump')
+            os.mkdir(dump_root)
+            dump += ['-B', name, '-o', os.path.join(dump_root, name), '--trx-consistency-only']
+            runCommand(dump, 'mydumper 导出')
+            command = shlex.join(['tar', '-C', dump_root, '-c', '--', name])
+            command += ' | zstd > ' + shlex.quote(output)
+            stage = 'mydumper 打包/压缩'
+        runCommand(['bash', '-o', 'pipefail', '-c', command], stage)
+        return '.mydumper.tar.zst' if exec_type == 'mydumper' else '.sql.zst'
+    except Exception as exc:
+        raise RuntimeError(safeError(exc, context['password'])) from None
+
+
 def syncGetDatabases():
     pdb = pMysqlDb()
     psdb = pSqliteDb('databases')
     # 测试代码
     # psdb.delete()
 
-    data = pdb.query('show databases')
-    isError = isSqlError(data)
-    if isError != None:
-        return isError
+    try:
+        data = [{'Database': name} for name in getServerDatabases()]
+    except Exception as exc:
+        password = pSqliteDb('config').where('id=?', (1,)).getField('mysql_root')
+        return mw.returnJson(False, safeError(exc, password))
     users = pdb.query(
         "select User,Host from mysql.user where User!='root' AND Host!='localhost' AND Host!=''")
-    nameArr = ['information_schema', 'performance_schema', 'mysql', 'sys']
     n = 0
 
     # print(users)
     for value in data:
         vdb_name = value["Database"]
-        b = False
-        for key in nameArr:
-            if vdb_name == key:
-                b = True
-                break
-        if b:
-            continue
         if psdb.where("name=?", (vdb_name,)).count() > 0:
             continue
         host = '127.0.0.1'

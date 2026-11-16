@@ -20,6 +20,7 @@ class ORM:
     __DB_SOCKET = '/www/server/mysql/mysql.sock'
 
     __DB_CHARSET = "utf8"
+    __DB_QUERY_TIMEOUT = None
 
     def __Conn(self):
         '''连接数据库'''
@@ -30,24 +31,28 @@ class ORM:
                     self.__DB_CONN = pymysql.connect(host=self.__DB_HOST, user=self.__DB_USER, passwd=self.__DB_PASS,
                                                      database=self.__DB_NAME,
                                                      port=int(self.__DB_PORT), charset=self.__DB_CHARSET, connect_timeout=1,
+                                                     read_timeout=self.__DB_QUERY_TIMEOUT, write_timeout=self.__DB_QUERY_TIMEOUT,
                                                      unix_socket=self.__DB_SOCKET, cursorclass=pymysql.cursors.DictCursor)
                 except Exception as e:
                     self.__DB_HOST = '127.0.0.1'
                     self.__DB_CONN = pymysql.connect(host=self.__DB_HOST, user=self.__DB_USER, passwd=self.__DB_PASS,
                                                      database=self.__DB_NAME,
                                                      port=int(self.__DB_PORT), charset=self.__DB_CHARSET, connect_timeout=1,
+                                                     read_timeout=self.__DB_QUERY_TIMEOUT, write_timeout=self.__DB_QUERY_TIMEOUT,
                                                      unix_socket=self.__DB_SOCKET, cursorclass=pymysql.cursors.DictCursor)
             else:
                 try:
                     self.__DB_CONN = pymysql.connect(host=self.__DB_HOST, user=self.__DB_USER, passwd=self.__DB_PASS,
                                                      database=self.__DB_NAME,
                                                      port=int(self.__DB_PORT), charset=self.__DB_CHARSET, connect_timeout=1,
+                                                     read_timeout=self.__DB_QUERY_TIMEOUT, write_timeout=self.__DB_QUERY_TIMEOUT,
                                                      cursorclass=pymysql.cursors.DictCursor)
                 except Exception as e:
                     self.__DB_HOST = '127.0.0.1'
                     self.__DB_CONN = pymysql.connect(host=self.__DB_HOST, user=self.__DB_USER, passwd=self.__DB_PASS,
                                                      database=self.__DB_NAME,
                                                      port=int(self.__DB_PORT), charset=self.__DB_CHARSET, connect_timeout=1,
+                                                     read_timeout=self.__DB_QUERY_TIMEOUT, write_timeout=self.__DB_QUERY_TIMEOUT,
                                                      cursorclass=pymysql.cursors.DictCursor)
 
             self.__DB_CUR = self.__DB_CONN.cursor()
@@ -67,6 +72,9 @@ class ORM:
 
     def setPort(self, port):
         self.__DB_PORT = port
+
+    def setTimeout(self, seconds):
+        self.__DB_QUERY_TIMEOUT = seconds
 
     def setUser(self, user):
         self.__DB_USER = user

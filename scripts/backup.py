@@ -11,6 +11,8 @@ import re
 import shutil
 import zipfile
 import shlex
+import importlib.util
+import tempfile
 
 if sys.platform != 'darwin':
     os.chdir('/www/server/jh-panel')
@@ -277,205 +279,88 @@ rm -rf $tmp_path
         print("★[" + endDate + "] " + log)
         
 
-    def getConf(self):
-        path = mw.getServerDir() + '/mysql-apt/etc/my.cnf'
-        return path
+    def _databasePlugin(self, engine):
+        plugin_name = 'mysql-apt' if engine == 'mysql' else 'postgresql'
+        path = os.path.join(mw.getPluginDir(), plugin_name, 'index.py')
+        spec = importlib.util.spec_from_file_location('backup_plugin_' + plugin_name, path)
+        plugin = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(plugin)
+        return plugin
 
-    def getMyPort(self):
-        file = self.getConf()
-        content = mw.readFile(file)
-        rep = 'port\s*=\s*(.*)'
-        tmp = re.search(rep, content)
-        return tmp.groups()[0].strip()
-
-    def backupDatabase(self, name, save, exec_type='mysqldump'):
-        # 检查 mydumper, zstd 是否安装
-        mw.execShell(f"""
-source {mw.getScriptDir()}/util/apt.sh
-check_and_install "mydumper"
-check_and_install "zstd"
-                     """)
-
-        db_path = mw.getServerDir() + '/mysql-apt'
-        db_name = 'mysql'
-
-        # 检查数据库是否存在
-        find_name = mw.M('databases').dbPos(db_path, 'mysql').where(
-            'name=?', (name,)).getField('name')
-        startTime = time.time()
-        if not find_name:
-            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
-            log = "数据库[" + name + "]不存在!"
-            print("★[" + endDate + "] " + log)
-            print(
-                "----------------------------------------------------------------------------")
-            return
-
-        backup_path = mw.getRootDir() + '/backup/database'
-        if not os.path.exists(backup_path):
-            mw.execShell("mkdir -p " + backup_path)
-
-        # 密码
-        mysql_root = mw.M('config').dbPos(db_path, db_name).where(
-            "id=?", (1,)).getField('mysql_root')
-        # 端口
-        port = self.getMyPort()
-        filename = ''
-
-        print(exec_type)
-        if exec_type == 'mysqldump':
-            filename = backup_path + "/mysql_" + name + "_" + \
-                time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.zst"
-            # 执行备份（优化cpu占用）
-            cmd = "nice -n 19 ionice -c2 -n7 " + db_path + "/bin/usr/bin/mysqldump --single-transaction --quick --set-gtid-purged=OFF --default-character-set=utf8 " + \
-                name + " -uroot -p" + mysql_root + " | zstd > " + filename
-            mw.execShell(cmd)
-        elif exec_type == 'mydumper':
-            filename = backup_path + "/mysql_" + name + "_" + \
-                time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".mydumper.tar.zst"
-            random_str = mw.getRandomString(8).lower()
-            tmp_path = '/tmp/mydumper/mydumper_' + random_str
-            if os.path.exists(tmp_path):
-                mw.execShell('rm -rf ' + tmp_path)
-            mw.execShell('mkdir -p ' + tmp_path)
-            # 执行备份
-            mw.execShell('/usr/bin/mydumper -u root -p ' + mysql_root + ' -h 127.0.0.1 -P ' + port + ' -B ' + name + ' -o ' + tmp_path + '/' + name + ' --trx-consistency-only')
-            mw.execShell('cd ' + tmp_path + ' && ' + 'tar -c ' + name + ' | zstd -o ' + filename)
-            # 删除临时文件
-            mw.execShell('rm -rf ' + tmp_path)
-
-        # 检查备份情况并记录
-        if not os.path.exists(filename):
-            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
-            log = "数据库[" + name + "]备份失败!"
-            print("★[" + endDate + "] " + log)
-            print(
-                "----------------------------------------------------------------------------")
-            return
-
-        endDate = time.strftime('%Y/%m/%d %X', time.localtime())
-        outTime = time.time() - startTime
-        pid = mw.M('databases').dbPos(db_path, db_name).where(
-            'name=?', (name,)).getField('id')
-
-        mw.M('backup').add('type,name,pid,filename,addtime,size', (1, os.path.basename(
-            filename), pid, filename, endDate, os.path.getsize(filename)))
-
-        # 记录日志
-        log = "数据库[" + name + "]备份成功,用时[" + str(round(outTime, 2)) + "]秒"
+    def _databaseError(self, engine, stage, error, name=None):
+        log = '[{}]{}{}失败: {}'.format(engine, '[' + str(name) + ']' if name is not None else '',
+                                      stage, str(error)[:1200])
+        print(log)
         mw.writeLog('计划任务', log)
-        print("★[" + endDate + "] " + log)
-        print("|---文件名:" + filename)
-        self.cleanBackupByHistory('1', pid, save)
+        return False
 
+    def _backupLiveDatabases(self, engine, save, exec_type='mysqldump', name=None):
+        try:
+            plugin = self._databasePlugin(engine)
+            context = plugin.prepareDatabaseBackup()
+            if context is None:
+                if name is not None:
+                    raise ValueError('插件未安装或缺少配置库')
+                print('|----{} 未安装，跳过全部备份'.format(engine))
+                return True
+            names = plugin.getServerDatabases(include_system=name is not None)
+            if name is not None:
+                if name not in names:
+                    raise ValueError('指定数据库不存在: ' + name)
+                names = [name]
+        except Exception as exc:
+            return self._databaseError(engine, '查询名单', exc, name)
+        print('|----{} 本次实时备份名单: {} 个数据库'.format(engine, len(names)))
+        successes = sum(self._backupLiveDatabase(plugin, engine, context, target, save, exec_type)
+                        for target in names)
+        print('|----{} 备份汇总: 成功 {}，失败 {}'.format(engine, successes, len(names) - successes))
+        return successes == len(names)
 
-    def backupDatabaseAll(self, save, exec_type='mysqldump'):
-        db_path = mw.getServerDir() + '/mysql-apt'
-        db_name = 'mysql'
-        if not os.path.exists(db_path + '/mysql.db'):
-            print('|----MySQL 未安装或未配置，跳过全部备份')
-            return
-        databases = mw.M('databases').dbPos(
-            db_path, db_name).field('name').select()
-        for database in databases:
-            self.backupDatabase(database['name'], save, exec_type)
-        print('|----备份所有数据库任务完成')
-
-    def _getPgConfig(self):
-        """读取 PostgreSQL 插件的端口和 root 密码"""
-        pg_path = mw.getServerDir() + '/postgresql'
-        pg_db_file = pg_path + '/pgsql.db'
-        if not os.path.exists(pg_db_file):
-            return None
-        config = mw.M('config').dbPos(pg_path, 'pgsql').where('id=?', (1,)).field('pg_root').find()
-        if not config:
-            return None
-        pg_root = config.get('pg_root', '')
-        conf_file = pg_path + '/data/postgresql.conf'
-        port = '5432'
-        if os.path.exists(conf_file):
-            content = mw.readFile(conf_file)
-            m = re.search(r'^\s*port\s*=\s*(\d+)', content, re.MULTILINE)
-            if m:
-                port = m.group(1).strip()
-        return {'path': pg_path, 'port': port, 'pg_root': pg_root}
-
-    def backupPgDatabase(self, name, save):
-        """PostgreSQL 单库逻辑备份，输出到 /www/backup/database"""
-        pg_cfg = self._getPgConfig()
-        startTime = time.time()
-
-        if not pg_cfg:
-            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
-            log = "PostgreSQL 未安装或未配置，跳过数据库[" + name + "]备份!"
-            print("★[" + endDate + "] " + log)
-            print("----------------------------------------------------------------------------")
-            return
-
-        pg_path = pg_cfg['path']
-        port = pg_cfg['port']
-
-        find_name = mw.M('databases').dbPos(pg_path, 'pgsql').where('name=?', (name,)).getField('name')
-        if not find_name:
-            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
-            log = "数据库[" + name + "]不存在!"
-            print("★[" + endDate + "] " + log)
-            print("----------------------------------------------------------------------------")
-            return
-
-        backup_path = mw.getRootDir() + '/backup/database'
-        if not os.path.exists(backup_path):
-            mw.execShell("mkdir -p " + backup_path)
-
-        filename = backup_path + "/postgres_" + name + "_" + \
-            time.strftime('%Y%m%d_%H%M%S', time.localtime()) + ".sql.gz"
-
-        pg_dump_bin = shlex.quote(pg_path + '/bin/pg_dump')
-        backup_cmd = 'set -o pipefail; su - postgres -c "{} -c {} -p {}" | gzip > {}'.format(
-            pg_dump_bin, shlex.quote(name), shlex.quote(str(port)), shlex.quote(filename))
-        cmd = 'bash -lc ' + shlex.quote(backup_cmd)
-
-        if mw.isAppleSystem():
-            backup_cmd = 'set -o pipefail; {} -c {} -p {} | gzip > {}'.format(
-                pg_dump_bin, shlex.quote(name), shlex.quote(str(port)), shlex.quote(filename))
-            cmd = 'bash -lc ' + shlex.quote(backup_cmd)
-
-        mw.execShell(cmd)
-
-        if not os.path.exists(filename) or os.path.getsize(filename) == 0:
-            if os.path.exists(filename):
-                os.remove(filename)
-            endDate = time.strftime('%Y/%m/%d %X', time.localtime())
-            log = "数据库[" + name + "]备份失败!"
-            print("★[" + endDate + "] " + log)
-            print("----------------------------------------------------------------------------")
-            return
-
-        endDate = time.strftime('%Y/%m/%d %X', time.localtime())
-        outTime = time.time() - startTime
-        pid = mw.M('databases').dbPos(pg_path, 'pgsql').where(
-            'name=?', (name,)).getField('id')
-
-        mw.M('backup').add('type,name,pid,filename,addtime,size', (1, os.path.basename(
-            filename), pid, filename, endDate, os.path.getsize(filename)))
-
-        log = "数据库[" + name + "]备份成功,用时[" + str(round(outTime, 2)) + "]秒"
-        mw.writeLog('计划任务', log)
-        print("★[" + endDate + "] " + log)
-        print("|---文件名:" + filename)
-        self.cleanBackupByHistory('1', pid, save)
-
-    def backupPgDatabaseAll(self, save):
-        pg_cfg = self._getPgConfig()
-        if not pg_cfg:
-            print('|----PostgreSQL 未安装或未配置，跳过全部备份')
-            return
-        pg_path = pg_cfg['path']
-        databases = mw.M('databases').dbPos(
-            pg_path, 'pgsql').field('name').select()
-        for database in databases:
-            self.backupPgDatabase(database['name'], save)
-        print('|----备份所有 PostgreSQL 数据库任务完成')
+    def _backupLiveDatabase(self, plugin, engine, context, name, save, exec_type):
+        started = time.time()
+        stage = '登记数据库'
+        filename = None
+        try:
+            if name in ('.', '..') or '/' in name or chr(92) in name or chr(0) in name:
+                raise ValueError('数据库名称包含不支持的路径字符')
+            pid = plugin.ensureBackupDatabase(name)
+            backup_path = os.path.join(mw.getRootDir(), 'backup/database')
+            os.makedirs(backup_path, exist_ok=True)
+            stage = '导出/压缩'
+            with tempfile.TemporaryDirectory(prefix='.database-backup-', dir=backup_path) as work:
+                output = os.path.join(work, 'archive')
+                suffix = plugin.exportDatabaseBackup(name, output, work, context, exec_type)
+                if not os.path.isfile(output) or os.path.getsize(output) == 0:
+                    raise ValueError('未生成非空备份文件')
+                stage = '发布备份文件'
+                prefix = 'mysql_' if engine == 'mysql' else 'postgres_'
+                stamp = datetime.datetime.now()
+                while True:
+                    candidate = os.path.join(backup_path, prefix + name + '_' + stamp.strftime('%Y%m%d_%H%M%S') + suffix)
+                    try:
+                        # No-overwrite publication on the same filesystem.
+                        os.link(output, candidate)
+                        filename = candidate
+                        break
+                    except FileExistsError:
+                        stamp += datetime.timedelta(seconds=1)
+            stage = '登记备份记录'
+            end_date = time.strftime('%Y/%m/%d %X')
+            result = mw.M('backup').add('type,name,pid,filename,addtime,size',
+                (1, os.path.basename(filename), pid, filename, end_date, os.path.getsize(filename)))
+            if not isinstance(result, int) or isinstance(result, bool) or result <= 0:
+                raise ValueError('备份记录写入失败')
+            stage = '清理本库历史'
+            self.cleanBackupByHistory('1', pid, save, engine=engine, name=name)
+            log = '[{}]数据库[{}]备份成功,用时[{}]秒'.format(engine, name, round(time.time() - started, 2))
+            mw.writeLog('计划任务', log)
+            print(log)
+            print('|---文件名:' + filename)
+            return True
+        except Exception as exc:
+            if filename:
+                print('|---完整备份文件已保留: ' + filename)
+            return self._databaseError(engine, stage, exc, name)
 
     def backupSiteAll(self, save):
         sites = mw.M('sites').field('name').select()
@@ -543,7 +428,16 @@ check_and_install "zstd"
         mw.execShell(f'pushd {tmp_path} > /dev/null && zip -r {filename} . && popd > /dev/null', useTmpFile=True)
         print('|----备份所有插件配置任务完成')
     
-    def cleanBackupByHistory(self, type, pid, save):
+    def _isDatabaseBackup(self, filename, engine, name):
+        root = os.path.realpath(os.path.join(mw.getRootDir(), 'backup/database'))
+        if os.path.dirname(os.path.realpath(filename)) != root:
+            return False
+        prefixes = ['mysql_', 'db_'] if engine == 'mysql' else ['postgres_']
+        suffix = r'\d{8}_\d{6}\.(?:sql\.(?:gz|zst)|mydumper\.tar\.zst)$'
+        return any(re.fullmatch(re.escape(prefix + name + '_') + suffix,
+                                os.path.basename(filename)) for prefix in prefixes)
+
+    def cleanBackupByHistory(self, type, pid, save, engine=None, name=None):
         # 清理多余备份
         saveAllDay = int(save.get('saveAllDay'))
         saveOther = int(save.get('saveOther'))
@@ -553,6 +447,11 @@ check_and_install "zstd"
         print("|---[" + str(saveAllDay) + "]天内全部保留，其余只保留[" + str(saveOther) + "]份，最长保留[" + str(saveMaxDay) + "]天")
 
         backups = mw.M('backup').where('type=? and pid=?', (type, pid)).field('id,filename,addtime').order('addtime desc').select()
+
+        if str(type) == '1':
+            if engine not in ('mysql', 'postgresql') or name is None:
+                raise ValueError('数据库历史清理缺少引擎或库名')
+            backups = [item for item in backups if self._isDatabaseBackup(item['filename'], engine, name)]
 
         # 获取当前日期
         now = datetime.datetime.now()
@@ -593,9 +492,35 @@ check_and_install "zstd"
 
         # 删除需要删除的备份
         for backup in to_delete:
-            os.system("rm -f " + backup['filename'])
+            if str(type) == '1':
+                if not self._isDatabaseBackup(backup['filename'], engine, name):
+                    continue
+                try:
+                    os.remove(backup['filename'])
+                except FileNotFoundError:
+                    pass
+            else:
+                os.system("rm -f " + backup['filename'])
             mw.M('backup').where('id=?', (backup['id'],)).delete()
             print("|---已清理过期备份文件：" + backup['filename'])
+
+def runDatabaseBackup(backup, backup_type, name, save, exec_type='mysqldump'):
+    if name.startswith('postgresql:'):
+        backup_type, name = 'pg_database', name.split(':', 1)[1]
+    elif name.startswith('mysql:'):
+        backup_type, name = 'mysql_database', name.split(':', 1)[1]
+    elif name.startswith('all:'):
+        backup_type, name = 'database', name.split(':', 1)[1]
+    if name in ('backupAll', 'ALL'):
+        if backup_type == 'pg_database':
+            return backup._backupLiveDatabases('postgresql', save)
+        if backup_type == 'mysql_database':
+            return backup._backupLiveDatabases('mysql', save, exec_type)
+        return (backup._backupLiveDatabases('mysql', save, exec_type)
+                and backup._backupLiveDatabases('postgresql', save))
+    engine = 'postgresql' if backup_type == 'pg_database' else 'mysql'
+    return backup._backupLiveDatabases(engine, save, exec_type, name=name)
+
 
 if __name__ == "__main__":
     backup = backupTools()
@@ -623,28 +548,7 @@ if __name__ == "__main__":
         else:
             backup.backupPluginSetting(name, save)
         clean_tool.cleanPath(mw.getPluginSettingBackupDir(), save, "*")
-    elif type == 'database':
-        execType = 'mysqldump'
-        if len(sys.argv) > 4:
-            execType = sys.argv[4]
-        if sys.argv[2].find('backupAll') >= 0:
-            backup.backupDatabaseAll(save, execType)
-            backup.backupPgDatabaseAll(save)
-        else:
-            backup.backupDatabase(name, save, execType)
-        clean_tool.cleanPath("/www/backup/database", save, "*")
-    elif type == 'mysql_database':
-        execType = 'mysqldump'
-        if len(sys.argv) > 4:
-            execType = sys.argv[4]
-        if sys.argv[2].find('backupAll') >= 0:
-            backup.backupDatabaseAll(save, execType)
-        else:
-            backup.backupDatabase(name, save, execType)
-        clean_tool.cleanPath("/www/backup/database", save, "*")
-    elif type == 'pg_database':
-        if sys.argv[2].find('backupAll') >= 0:
-            backup.backupPgDatabaseAll(save)
-        else:
-            backup.backupPgDatabase(name, save)
-        clean_tool.cleanPath("/www/backup/database", save, "*")
+    elif type in ('database', 'mysql_database', 'pg_database'):
+        execType = sys.argv[4] if len(sys.argv) > 4 else 'mysqldump'
+        success = runDatabaseBackup(backup, type, name, save, execType)
+        sys.exit(0 if success else 1)

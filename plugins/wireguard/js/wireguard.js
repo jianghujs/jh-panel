@@ -172,7 +172,7 @@ function wireguardConfigPanel(version){
                 var item = list[i];
                 var state = item.interface_up ? '<span class="wg-status-badge success">已启用</span>' : '<span class="wg-status-badge danger">未启用</span>';
                 var actionHtml = '<button class="btn btn-default btn-xs" onclick="wireguardEditConfig(\'' + version + '\',\'' + item.name + '\')">编辑</button>';
-                actionHtml += '<button class="btn btn-default btn-xs" onclick="wireguardConfigLogs(\'' + version + '\',\'' + item.name + '\')">日志</button>';
+                actionHtml += '<button class="btn btn-default btn-xs" onclick="wireguardConfigLogs(\'' + version + '\',\'' + item.name + '\')">诊断</button>';
                 if (item.interface_up){
                     actionHtml += '<button class="btn btn-danger btn-xs" onclick="wireguardStopConfig(\'' + version + '\',\'' + item.name + '\')">停用</button>';
                 } else {
@@ -200,24 +200,24 @@ function wireguardConfigLogs(version, name){
     var report = '';
     var dialog = layer.open({
         type: 1,
-        title: '配置日志 - ' + name,
+        title: '配置诊断 - ' + name,
         area: ['820px', '580px'],
-        content: '<div style="padding:15px;"><p style="color:#888;margin-bottom:10px;">只读诊断，私钥和预共享密钥已隐藏；日志仍含公钥和网络地址，请仅分享给可信人员。</p><textarea class="bt-input-text wg-config-log-content" readonly style="width:100%;height:390px;font-family:monospace;white-space:pre;">正在读取...</textarea></div>',
-        btn: ['刷新', '复制日志', '关闭'],
+        content: '<div style="padding:15px;"><p style="color:#888;margin-bottom:10px;">只读诊断，私钥和预共享密钥已隐藏；诊断结果仍含公钥和网络地址，请仅分享给可信人员。</p><textarea class="bt-input-text wg-config-log-content" readonly style="width:100%;height:390px;font-family:monospace;white-space:pre;">正在读取...</textarea></div>',
+        btn: ['刷新', '复制诊断结果', '关闭'],
         yes: function(){
             loadLogs();
         },
         btn2: function(){
             var textarea = $('#layui-layer' + dialog).find('.wg-config-log-content');
             if (!report){
-                layer.msg('暂无可复制的日志', {icon:0});
+                layer.msg('暂无可复制的诊断结果', {icon:0});
                 return false;
             }
             textarea[0].focus();
             textarea[0].select();
             try {
                 var copied = document.execCommand('copy');
-                layer.msg(copied ? '日志已复制' : '请按 Ctrl+C 手动复制', {icon:copied ? 1 : 0});
+                layer.msg(copied ? '诊断结果已复制' : '请按 Ctrl+C 手动复制', {icon:copied ? 1 : 0});
             } catch(e) {
                 layer.msg('请按 Ctrl+C 手动复制', {icon:0});
             }
@@ -228,8 +228,8 @@ function wireguardConfigLogs(version, name){
         wgPost('get_config_logs', version, {name: name}, function(res){
             var payload = wireguardParsePayload(res.data) || {};
             if (!payload.status){
-                layer.msg(payload.msg || '读取日志失败', {icon:2});
-                $('#layui-layer' + dialog).find('.wg-config-log-content').val(payload.msg || '读取日志失败');
+                layer.msg(payload.msg || '读取诊断结果失败', {icon:2});
+                $('#layui-layer' + dialog).find('.wg-config-log-content').val(payload.msg || '读取诊断结果失败');
                 report = '';
                 return;
             }

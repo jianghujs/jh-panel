@@ -579,7 +579,7 @@ def getConfigLogs():
     query('最近 7 天系统服务日志（最多 100 条）',
           ['journalctl', '-u', 'wg-quick@' + name + '.service', '--since', '7 days ago',
            '-n', '100', '--no-pager', '-o', 'short-iso'])
-    header = ['WireGuard 配置日志：' + name, '采集时间：' + time.strftime('%Y-%m-%d %H:%M:%S'),
+    header = ['WireGuard 配置诊断：' + name, '采集时间：' + time.strftime('%Y-%m-%d %H:%M:%S'),
               '只读查询，不修改网络、不重启服务、不发送 ping。私钥和预共享密钥已隐藏；仍包含公钥和 IP，请仅发给可信人员。',
               '=== 异常提示 ===']
     header.extend(checks or ['未发现上述常见配置异常；不代表隧道一定连通。'])

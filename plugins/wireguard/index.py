@@ -9,6 +9,7 @@ import shutil
 import shlex
 import ipaddress
 import glob
+import subprocess
 from urllib.parse import unquote
 
 sys.path.append(os.getcwd() + "/class/core")
@@ -200,7 +201,7 @@ def _service_enabled(iface):
     return (out or '').strip() == 'enabled'
 
 
-def _wg_quick_action(iface, action):
+def _run_wg_quick_action(iface, action):
     if not iface:
         return '接口名为空'
     if not _command_exists('wg-quick'):
@@ -224,6 +225,43 @@ def _wg_quick_action(iface, action):
     if rc == 0:
         return 'ok'
     return (err or out or '执行失败').strip()
+
+
+def _redact_config_log(text, config_content=''):
+    secrets = re.findall(r'(?im)^\s*(?:PrivateKey|PresharedKey)\s*=\s*([^\s#;]+)', config_content)
+    for secret in secrets:
+        text = text.replace(secret, '[REDACTED]')
+    return re.sub(
+        r'(?im)((?:PrivateKey|PresharedKey|private key|preshared key)\s*[:=])[^\r\n]*',
+        r'\1 [REDACTED]', text)
+
+
+def _config_action_log_path(iface):
+    return os.path.join(getServerDir(), 'logs', iface + '.log')
+
+
+def _wg_quick_action(iface, action):
+    result = _run_wg_quick_action(iface, action)
+    # 仅记录此后发生的插件操作，不影响命令执行结果。
+    if iface and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,14}', iface):
+        try:
+            config = _config_path(iface)
+            content = mw.readFile(config) if os.path.isfile(config) else ''
+            message = _redact_config_log(str(result), content or '')
+            path = _config_action_log_path(iface)
+            _ensure_dir(os.path.dirname(path))
+            with open(path, 'ab+') as log:
+                os.chmod(path, 0o600)
+                log.write('[{}] {}: {}\n'.format(time.strftime('%Y-%m-%d %H:%M:%S'), action, message).encode('utf-8'))
+                if log.tell() > 128 * 1024:
+                    log.seek(log.tell() - 64 * 1024)
+                    tail = log.read().split(b'\n', 1)[-1]
+                    log.seek(0)
+                    log.truncate()
+                    log.write(tail)
+        except (OSError, UnicodeError):
+            pass
+    return result
 
 
 def status():
@@ -442,6 +480,112 @@ def getConfig():
     if not path or not os.path.exists(path):
         return mw.returnJson(False, '配置文件不存在')
     return mw.returnJson(True, 'ok', mw.readFile(path))
+
+
+def _config_log_command(command, input_text=None):
+    if not _command_exists(command[0]):
+        return ('未找到命令：' + command[0], -1)
+    try:
+        environment = dict(os.environ, WG_HIDE_KEYS='always')
+        result = subprocess.run(command, input=input_text, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, errors='replace', timeout=4, env=environment)
+        return ((result.stdout + result.stderr).strip(), result.returncode)
+    except subprocess.TimeoutExpired:
+        return ('读取超时（4 秒），已终止本次查询', -1)
+    except OSError as error:
+        return ('无法执行查询：' + str(error), -1)
+
+
+def getConfigLogs():
+    args = getArgs()
+    name = args.get('name', '').strip()
+    if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,14}', name):
+        return mw.returnJson(False, '接口名称不合法')
+    path = _config_path(name)
+    if not os.path.isfile(path):
+        return mw.returnJson(False, '配置文件不存在')
+    content = mw.readFile(path) or ''
+    parsed = _parse_conf(content)
+    checks = []
+    sections = []
+
+    def query(title, command):
+        output, rc = _config_log_command(command)
+        sections.append('=== ' + title + ' ===\n' + (output[-60000:] or '（无记录）') +
+                        ('\n[查询退出码：{}]'.format(rc) if rc else ''))
+        return output, rc
+
+    local_key = ''
+    if parsed.get('private_key'):
+        output, rc = _config_log_command(['wg', 'pubkey'], parsed['private_key'] + '\n')
+        if rc == 0:
+            local_key = output
+        else:
+            checks.append('无法从配置私钥推导公钥：请检查私钥格式及 wg 命令是否可用。')
+    else:
+        checks.append('配置缺少 PrivateKey，无法正常建立 WireGuard 接口。')
+
+    _, link_rc = query('接口地址', ['ip', '-brief', 'address', 'show', 'dev', name])
+    query('运行中的 WireGuard（私钥已隐藏）', ['wg', 'show', name])
+    runtime_key, key_rc = _config_log_command(['wg', 'show', name, 'public-key'])
+    peers_text, peers_rc = _config_log_command(['wg', 'show', name, 'peers'])
+    handshakes, handshake_rc = _config_log_command(['wg', 'show', name, 'latest-handshakes'])
+    runtime_peers = set(peers_text.split()) if peers_rc == 0 else set()
+    config_peers = parsed.get('peers', [])
+    config_keys = {peer.get('public_key', '') for peer in config_peers}
+    if link_rc != 0 or key_rc != 0:
+        checks.append('无法读取运行接口：可能尚未启用、启动失败、权限不足或缺少查询工具，请结合下方日志确认。')
+    if not config_peers:
+        checks.append('配置没有 [Peer] 对端，无法通过该接口连接其他机器。')
+    for number, peer in enumerate(config_peers, 1):
+        public_key = peer.get('public_key', '')
+        if public_key and public_key in {local_key, runtime_key if key_rc == 0 else ''}:
+            checks.append('Peer {} 的对端公钥与本机公钥相同！WireGuard 会忽略自身 Peer；两端必须使用不同密钥对，并交换公钥。'.format(number))
+        if not public_key:
+            checks.append('Peer {} 缺少 PublicKey。'.format(number))
+        if not peer.get('allowed_ips'):
+            checks.append('Peer {} 缺少 AllowedIPs，不能为目标地址选择此对端。'.format(number))
+    if key_rc == 0 and local_key and local_key != runtime_key:
+        checks.append('磁盘配置与运行接口的公钥不同，可能保存后尚未应用。')
+    if peers_rc == 0:
+        if not runtime_peers:
+            checks.append('运行接口没有任何 Peer：去往此接口的流量可能报 Required key not available。')
+        if config_keys - {''} != runtime_peers:
+            checks.append('配置文件与运行中的 Peer 列表不一致，请检查自身公钥误填或配置未应用。')
+    if handshake_rc == 0 and runtime_peers:
+        timestamps = [line.split()[-1] for line in handshakes.splitlines() if len(line.split()) == 2]
+        if not timestamps or any(ts == '0' for ts in timestamps):
+            checks.append('至少一个运行 Peer 尚无成功握手：可能未发起连接、公钥/Endpoint 不正确，或 UDP 被防火墙/NAT 拦截。')
+        elif all(ts.isdigit() for ts in timestamps) and any(time.time() - int(ts) > 180 for ts in timestamps):
+            checks.append('至少一个 Peer 最后握手超过 3 分钟；空闲时不一定异常，请结合流量和实际连通性判断。')
+    summary = ['配置文件：' + path, '地址：' + parsed.get('address', ''),
+               '监听端口：' + parsed.get('listen_port', ''), '配置公钥：' + (local_key or '（无法读取）')]
+    for number, peer in enumerate(config_peers, 1):
+        summary.append('Peer {}: PublicKey={} | AllowedIPs={} | Endpoint={}'.format(
+            number, peer.get('public_key', ''), peer.get('allowed_ips', ''), peer.get('endpoint', '（未设置，可由对端主动连接）')))
+    sections.insert(0, '=== 磁盘配置摘要（不输出私钥、预共享密钥和钩子命令） ===\n' + '\n'.join(summary))
+    query('该接口的路由', ['ip', 'route', 'show', 'dev', name])
+    query('systemd 服务状态（不代表已连通）', ['systemctl', 'show', 'wg-quick@' + name + '.service',
+                                                '--no-pager', '-p', 'ActiveState', '-p', 'SubState', '-p', 'Result'])
+    log_path = _config_action_log_path(name)
+    try:
+        with open(log_path, 'rb') as log:
+            log.seek(0, os.SEEK_END)
+            log.seek(max(0, log.tell() - 32000))
+            action_log = log.read().decode('utf-8', errors='replace')
+    except OSError:
+        action_log = '暂无插件操作记录；仅记录此功能上线后的启用、停用和重启结果。'
+    sections.append('=== 最近插件操作 ===\n' + action_log)
+    query('最近 7 天系统服务日志（最多 100 条）',
+          ['journalctl', '-u', 'wg-quick@' + name + '.service', '--since', '7 days ago',
+           '-n', '100', '--no-pager', '-o', 'short-iso'])
+    header = ['WireGuard 配置日志：' + name, '采集时间：' + time.strftime('%Y-%m-%d %H:%M:%S'),
+              '只读查询，不修改网络、不重启服务、不发送 ping。私钥和预共享密钥已隐藏；仍包含公钥和 IP，请仅发给可信人员。',
+              '=== 异常提示 ===']
+    header.extend(checks or ['未发现上述常见配置异常；不代表隧道一定连通。'])
+    header.append('提示：WireGuard 不逐包记录握手失败原因；系统日志为空不代表正常。插件直接调用的启停结果请看“最近插件操作”。')
+    report = '\n'.join(header) + '\n\n' + '\n\n'.join(sections)
+    return mw.returnJson(True, 'ok', {'content': _redact_config_log(report, content)})
 
 
 def saveConfig():
@@ -711,6 +855,8 @@ if __name__ == "__main__":
         print(listConfigs())
     elif func == 'get_config':
         print(getConfig())
+    elif func == 'get_config_logs':
+        print(getConfigLogs())
     elif func == 'save_config':
         print(saveConfig())
     elif func == 'delete_config':

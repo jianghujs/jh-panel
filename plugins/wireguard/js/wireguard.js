@@ -164,7 +164,7 @@ function wireguardConfigPanel(version){
         var payload = wireguardParsePayload(res.data) || {};
         var list = payload.data || [];
         var table = '<div class="divtable wg-config-table"><table class="table table-hover table-bordered">\
-            <thead><tr><th>接口</th><th>地址</th><th>端口</th><th>Peer数</th><th>最后一次握手</th><th>状态</th><th width="180">操作</th></tr></thead><tbody>';
+            <thead><tr><th>接口</th><th>地址</th><th>端口</th><th>Peer数</th><th>最后一次握手</th><th>状态</th><th width="220">操作</th></tr></thead><tbody>';
         if (!list.length){
             table += '<tr><td colspan="7" style="text-align:center;">暂无配置</td></tr>';
         } else {
@@ -172,6 +172,7 @@ function wireguardConfigPanel(version){
                 var item = list[i];
                 var state = item.interface_up ? '<span class="wg-status-badge success">已启用</span>' : '<span class="wg-status-badge danger">未启用</span>';
                 var actionHtml = '<button class="btn btn-default btn-xs" onclick="wireguardEditConfig(\'' + version + '\',\'' + item.name + '\')">编辑</button>';
+                actionHtml += '<button class="btn btn-default btn-xs" onclick="wireguardConfigLogs(\'' + version + '\',\'' + item.name + '\')">日志</button>';
                 if (item.interface_up){
                     actionHtml += '<button class="btn btn-danger btn-xs" onclick="wireguardStopConfig(\'' + version + '\',\'' + item.name + '\')">停用</button>';
                 } else {
@@ -193,6 +194,50 @@ function wireguardConfigPanel(version){
         table += '</tbody></table></div>';
         $('.soft-man-con').html(header + table);
     });
+}
+
+function wireguardConfigLogs(version, name){
+    var report = '';
+    var dialog = layer.open({
+        type: 1,
+        title: '配置日志 - ' + name,
+        area: ['820px', '580px'],
+        content: '<div style="padding:15px;"><p style="color:#888;margin-bottom:10px;">只读诊断，私钥和预共享密钥已隐藏；日志仍含公钥和网络地址，请仅分享给可信人员。</p><textarea class="bt-input-text wg-config-log-content" readonly style="width:100%;height:390px;font-family:monospace;white-space:pre;">正在读取...</textarea></div>',
+        btn: ['刷新', '复制日志', '关闭'],
+        yes: function(){
+            loadLogs();
+        },
+        btn2: function(){
+            var textarea = $('#layui-layer' + dialog).find('.wg-config-log-content');
+            if (!report){
+                layer.msg('暂无可复制的日志', {icon:0});
+                return false;
+            }
+            textarea[0].focus();
+            textarea[0].select();
+            try {
+                var copied = document.execCommand('copy');
+                layer.msg(copied ? '日志已复制' : '请按 Ctrl+C 手动复制', {icon:copied ? 1 : 0});
+            } catch(e) {
+                layer.msg('请按 Ctrl+C 手动复制', {icon:0});
+            }
+            return false;
+        }
+    });
+    function loadLogs(){
+        wgPost('get_config_logs', version, {name: name}, function(res){
+            var payload = wireguardParsePayload(res.data) || {};
+            if (!payload.status){
+                layer.msg(payload.msg || '读取日志失败', {icon:2});
+                $('#layui-layer' + dialog).find('.wg-config-log-content').val(payload.msg || '读取日志失败');
+                report = '';
+                return;
+            }
+            report = (payload.data || {}).content || '';
+            $('#layui-layer' + dialog).find('.wg-config-log-content').val(report);
+        });
+    }
+    loadLogs();
 }
 
 function wireguardBuildTemplate(iface, defaults, keyInfo){
